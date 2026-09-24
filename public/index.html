@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#8f1017">
+<title>GameHub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--red:#8f1017;--red2:#b3141c;--gold:#f7c52b;--bg:#f3f3f3;--ink:#1b1b1f;--mute:#6b6b76;--card:#fff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font-family:Poppins,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+button{font:inherit;cursor:pointer;border:0}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+#app{max-width:520px;margin:0 auto;min-height:100%;position:relative}
+.btn{background:var(--red2);color:#fff;font-weight:600;padding:14px 22px;border-radius:999px;box-shadow:inset 0 0 0 2px #d4444b}
+.btn.ghost{background:#fff;color:var(--red);box-shadow:inset 0 0 0 2px #e9c4c6}
+.btn:disabled{opacity:.5}
+/* login */
+.login{min-height:100vh;background:var(--red);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center}
+.login h1{font-size:44px;font-weight:800;margin:0;color:var(--gold);letter-spacing:-1px;text-shadow:0 4px 0 #6d0a10}
+.login p{margin:0;opacity:.85}
+.login .btn{background:#fff;color:var(--ink);box-shadow:none;padding:14px 26px}
+/* lobby */
+.top{background:linear-gradient(160deg,#6d0a10,#b3141c);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 22px) 22px 26px;border-radius:0 0 28px 28px;display:flex;justify-content:space-between;align-items:center}
+.top small{opacity:.8;font-size:13px}
+.top b{display:block;font-size:34px;font-weight:700}
+.me{display:flex;align-items:center;gap:10px}
+.me img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#ddd}
+.me button{background:rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:8px 14px;font-size:13px}
+.list{padding:18px 18px 40px;display:grid;gap:14px}
+.game{background:var(--card);border-radius:22px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;border:1px solid #e6e6e6;width:100%;text-align:left}
+.game h3{margin:0;font-size:18px}.game span{color:var(--mute);font-size:13px}
+.game .ico{font-size:34px;margin-right:14px}
+.game.soon{opacity:.55}
+.tag{font-size:12px;background:#eee;border-radius:999px;padding:4px 10px;color:var(--mute)}
+/* sheet */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet{background:#fff;width:100%;max-width:520px;border-radius:26px 26px 0 0;padding:22px 20px calc(env(safe-area-inset-bottom,0px) + 22px);max-height:80vh;overflow:auto}
+.sheet h2{margin:0 0 14px}
+.row{display:flex;gap:10px;margin:12px 0}
+input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;border:2px solid #e2e2e2;text-transform:uppercase;letter-spacing:2px}
+.room{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:16px;padding:10px 14px;margin-top:8px}
+.room .btn{padding:8px 18px}
+.empty{color:var(--mute);font-size:14px;padding:8px 2px}
+/* game */
+.play{min-height:100vh;color:#fff;background:repeating-conic-gradient(from 0deg at 50% 45%,#7a0c12 0 7deg,#9c1219 7deg 14deg);padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 24px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.bar{width:100%;display:flex;justify-content:space-between;align-items:center}
+.bar .back{background:rgba(0,0,0,.3);color:#fff;width:42px;height:42px;border-radius:50%;font-size:20px}
+.code{background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.25);border-radius:12px;padding:6px 14px;font-weight:600}
+.players{width:100%;display:flex;justify-content:space-between}
+.pl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;width:110px}
+.pl img{width:60px;height:60px;border-radius:50%;object-fit:cover;background:#ddd;border:3px solid transparent}
+.pl.turn img{border-color:var(--gold);box-shadow:0 0 0 4px rgba(247,197,43,.35)}
+.status{font-weight:600;background:rgba(0,0,0,.35);border-radius:999px;padding:8px 20px;text-align:center}
+.board{background:#fff;color:var(--ink);border-radius:20px;padding:10px;display:grid;gap:8px;width:100%;max-width:400px}
+.ttt{grid-template-columns:repeat(3,1fr)}
+.cell{aspect-ratio:1;border-radius:14px;background:#f1f1f3;font-size:44px;font-weight:800;display:flex;align-items:center;justify-content:center;color:var(--red)}
+.cell.o{color:#1f57b5}
+.cf{grid-template-columns:repeat(7,1fr);gap:5px;background:#1f57b5;padding:8px}
+.cf .cell{border-radius:50%;background:#fff;font-size:0;cursor:pointer}
+.cf .cell.a{background:var(--red2)}.cf .cell.b{background:var(--gold)}
+.rps{display:flex;gap:12px;justify-content:center}
+.rps button{font-size:44px;background:#f1f1f3;border-radius:20px;padding:14px 18px}
+.rps button.sel{outline:4px solid var(--gold)}
+.over{background:#fff;color:var(--ink);border-radius:22px;padding:22px;text-align:center;width:100%;max-width:400px}
+.over h2{margin:0 0 6px;font-size:28px}
+.emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:#222;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;z-index:20;display:none;max-width:90%}
+@media (prefers-reduced-motion:no-preference){.pl.turn img{transition:box-shadow .2s}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" role="status"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+/* ============================================================
+   SERVER CONTRACT — the only place you need to edit if your
+   sockets/index.js uses different names.
+   ============================================================ */
+const EV = {
+  create: 'room:create',   // emit({game}, ack)      ack -> {ok, room:{code,...}}
+  join:   'room:join',     // emit({code}, ack)      ack -> {ok, room}
+  leave:  'room:leave',    // emit({code})
+  move:   'game:move',     // emit({code, move})
+  room:   'room:update',   // on(room)   room = {code, game, status, players:[...], ...}
+  state:  'game:state',    // on(state)  state = {board, turn, ...}  (may be {code, state})
+  over:   'game:over',     // on(result) result = {winnerIndex, status, ...}
+  error:  'error',         // on({message})
+  quick:  'room:quick',    // emit({game}, ack)
+  list:   'rooms:list',    // emit({game}, ack)      ack -> {ok, rooms:[{code, players:[{name}]}]}
+  emote:  'chat:emote',    // emit({code, i}) / on({from, name, i})
+  rematch:'game:rematch'   // emit({code})
+};
+// What you send for a move, per game (adjust to match games/<key>.js):
+const MOVE = {
+  tictactoe:  i => ({ index: i }),
+  connectfour:c => ({ column: c }),
+  rps:        c => ({ choice: c })
+};
+/* ============================================================ */
+
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const EMOTES = ['👍 Nice move!','😤','😂','😮','🔥','gg','⏳ Hurry up','🙏'];
+const ICON = { tictactoe:'❌', connectfour:'🔴', rps:'✊', ludo:'🎲', chess:'♟️', whot:'🃏' };
+let me, socket, room, gstate, result, picked;
+
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
+async function api(p){const r=await fetch(p,{credentials:'include'});if(!r.ok)throw new Error(r.status);return r.json()}
+const avatar = p => esc(p?.avatar || p?.photo || p?.picture || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E');
+const nameOf = p => esc(p?.displayName || p?.name || 'Player');
+
+async function boot(){
+  try{ me = await api('/api/me'); me = me.user || me; }catch{ return loginView(); }
+  if(!me || (!me._id && !me.id && !me.displayName && !me.name)) return loginView();
+  connect();
+  const code = new URLSearchParams(location.search).get('code');
+  code ? joinRoom(code) : lobbyView();
+}
+
+function loginView(){
+  app.innerHTML = `<div class="login"><h1>GameHub</h1><p>Quick real-time games with friends.<br>Play for bragging rights, not money.</p>
+  <a class="btn" href="/auth/google" style="text-decoration:none">Continue with Google</a></div>`;
+}
+
+function connect(){
+  socket = io({ withCredentials:true });
+  socket.on('connect_error', () => toast('Connection problem. Retrying…'));
+  socket.on(EV.error, e => toast(e?.message || 'Something went wrong'));
+  socket.on('connect', () => { if(room && room.status !== 'over') joinRoom(room.code); });
+  socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i] || ''}`));
+  socket.on(EV.room, r => {
+    room = r; if(r.state) gstate = r.state;
+    result = r.status === 'over' ? r.result : null;
+    if($('.play')) gameView();
+  });
+  socket.on(EV.state, s => { gstate = s.state || s; picked = null; if(room) gameView(); });
+  socket.on(EV.over, r => { result = r; gameView(); });
+}
+
+/* ---------- lobby ---------- */
+async function lobbyView(){
+  room = gstate = result = null; history.replaceState(null,'','/');
+  let games = [];
+  try{ games = await api('/api/games'); games = games.games || games; }catch{ toast('Could not load games'); }
+  app.innerHTML = `
+  <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
+    <div class="me"><img src="${avatar(me)}" alt=""><button id="out">Log out</button></div></div>
+  <div class="list">${games.map(g => `
+    <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
+      <div style="display:flex;align-items:center"><span class="ico">${ICON[g.key||g.id]||'🎮'}</span>
+      <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
+      <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
+  $('#out').onclick = () => location.href = '/auth/logout';
+  app.querySelectorAll('.game').forEach(b => b.onclick = () =>
+    b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
+}
+
+async function sheet(key, name){
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet"><h2>${esc(name)}</h2>
+    <button class="btn" id="qk" style="width:100%">Quick match</button>
+    <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">Create a room</button>
+    <div class="row"><input id="cd" placeholder="ROOM CODE" maxlength="8" aria-label="Room code"><button class="btn ghost" id="jn">Join</button></div>
+    <h3 style="margin:18px 0 0;font-size:15px">Open rooms</h3><div id="rooms" class="empty">Loading…</div></div>`;
+  document.body.appendChild(bg);
+  bg.onclick = e => { if(e.target === bg) bg.remove() };
+  $('#qk').onclick = () => { bg.remove(); quickMatch(key) };
+  $('#mk').onclick = () => { bg.remove(); createRoom(key) };
+  $('#jn').onclick = () => { const c = $('#cd').value.trim(); if(c){ bg.remove(); joinRoom(c) } };
+  try{
+    const rs = await new Promise((ok, no) => socket.emit(EV.list, { game: key }, r => r && r.ok ? ok(r.rooms) : no()));
+    $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${nameOf(r.players?.[0])} · ${esc(r.code)}</span><button class="btn" data-c="${esc(r.code)}">Join</button></div>`).join('')}</div>`
+      : `<div id="rooms" class="empty">No one is waiting. Create a room and share the code.</div>`;
+    bg.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { bg.remove(); joinRoom(b.dataset.c) });
+  }catch{ $('#rooms').textContent = 'Could not load rooms.' }
+}
+
+function createRoom(game){
+  socket.emit(EV.create, { game }, res => {
+    if(res && res.ok === false) return toast(res.error || 'Could not create room');
+    room = res?.room || res; result = gstate = null;
+    history.replaceState(null,'','/?code=' + room.code); gameView();
+  });
+}
+function joinRoom(code){
+  code = code.toUpperCase();
+  socket.emit(EV.join, { code }, res => {
+    if(res && res.ok === false){ toast(res.error || 'Could not join room'); return lobbyView() }
+    room = res?.room || res; result = gstate = null;
+    if(room?.state) gstate = room.state;
+    history.replaceState(null,'','/?code=' + code); gameView();
+  });
+}
+
+function quickMatch(game){
+  socket.emit(EV.quick, { game }, res => {
+    if(!res || res.ok === false) return toast(res?.error || 'Could not find a match');
+    room = res.room; result = gstate = null; gstate = room.state || null;
+    history.replaceState(null,'','/?code=' + room.code); gameView();
+  });
+}
+const emoteBar = () => `<div class="emotes">${EMOTES.map((t,i)=>`<button data-e="${i}">${t}</button>`).join('')}</div>`;
+
+/* ---------- game ---------- */
+function gameView(){
+  if(!room) return lobbyView();
+  const players = room.players || [];
+  const mine = room.you ?? players.findIndex(p => [p?._id,p?.id,p?.userId].some(x => x && x === (me._id||me.id)));
+  const turn = gstate?.turn ?? gstate?.currentPlayer;
+  const myTurn = mine >= 0 && turn === mine;
+  const waiting = players.length < 2 || room.status === 'waiting';
+  const g = room.game;
+  let status = waiting ? 'Waiting for an opponent… share code ' + room.code
+             : result ? '' : g === 'rps' ? 'Pick your move' : myTurn ? 'Your turn' : 'Opponent’s turn';
+  const gone = room.status === 'playing' && players.some((p,i) => i !== mine && p && p.connected === false);
+  if(gone && room.forfeitAt) status = `Opponent disconnected. You win in ${Math.max(0, Math.ceil((room.forfeitAt - Date.now())/1000))}s if they don’t return.`;
+  clearInterval(gameView.t);
+  if(gone && room.forfeitAt) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 1000);
+  const pl = (p,i) => `<div class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''}"><img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':''):'Waiting…'}</div>`;
+  app.innerHTML = `<div class="play">
+    <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button><div class="code">Room ${esc(room.code)}</div></div>
+    <div class="players">${pl(players[0],0)}${pl(players[1],1)}</div>
+    ${status ? `<div class="status">${esc(status)}</div>` : ''}
+    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn)}</div>
+    ${waiting ? '' : emoteBar()}
+    ${result ? overCard(mine) : ''}</div>`;
+  $('#bk').onclick = () => { socket.emit(EV.leave, { code: room.code }); lobbyView() };
+  bindBoard(g, myTurn);
+  $('#again')?.addEventListener('click', lobbyView);
+  $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
+  app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => socket.emit(EV.emote, { code: room.code, i: +b.dataset.e }));
+}
+
+const sym = v => v == null || v === '' ? '' : typeof v === 'number' ? ['X','O'][v] ?? '' : String(v);
+const side = v => (typeof v === 'number' ? v : String(v).toUpperCase().charCodeAt(0)) % 2;
+
+function board(g, myTurn){
+  const b = gstate?.board || [];
+  if(g === 'tictactoe') return `<div class="board ttt">${b.flat().map((v,i)=>`<button class="cell ${sym(v)==='O'?'o':''}" data-i="${i}" ${result||!myTurn||sym(v)?'disabled':''}>${esc(sym(v))}</button>`).join('')}</div>`;
+  if(g === 'connectfour'){
+    const rows = b.length, cols = b[0]?.length || 7;
+    return `<div class="board cf" style="grid-template-columns:repeat(${cols},1fr)">${b.flat().map((v,i)=>`<button class="cell ${sym(v)||v===0||v===1?(side(v)?'b':'a'):''}" data-c="${i%cols}" ${result||!myTurn?'disabled':''} aria-label="Column ${i%cols+1}"></button>`).join('')}</div>`;
+  }
+  if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','✊'],['paper','✋'],['scissors','✌️']].map(([k,e])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${e}</button>`).join('')}</div></div>`;
+  return '';
+}
+function bindBoard(g, myTurn){
+  const send = m => socket.emit(EV.move, { code: room.code, move: m });
+  app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => send(MOVE.tictactoe(+e.dataset.i)));
+  app.querySelectorAll('[data-c]').forEach(e => e.onclick = () => send(MOVE.connectfour(+e.dataset.c)));
+  app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k; send(MOVE.rps(picked)); gameView() });
+}
+function overCard(mine){
+  const w = result.winnerIndex ?? result.winner;
+  const draw = w == null || result.status === 'draw';
+  const won = !draw && w === mine;
+  const canRe = room.players.length === 2 && room.players.every(p => p.connected) && !room.rematch?.includes(mine);
+  return `<div class="over"><h2>${draw ? 'It’s a draw' : won ? 'You won! 🎉' : 'You lost'}</h2>
+    <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Your opponent left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
+    <button class="btn" id="rm" style="margin-right:8px" ${canRe ? '' : 'disabled'}>${room.rematch?.includes(mine) ? 'Waiting…' : 'Rematch'}</button>
+    <button class="btn ghost" id="again">Lobby</button></div>`;
+}
+
+boot();
+</script>
+</body>
+</html>
