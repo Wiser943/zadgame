@@ -1,6 +1,9 @@
 const passport = require('passport');
+const bcrypt = require('bcryptjs');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
+const { Strategy: LocalStrategy } = require('passport-local');
 const User = require('../models/User');
+const { normalizeIdentifier } = require('../utils/identifier');
 
 module.exports = function configurePassport() {
   const required = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'CLIENT_URL'];
@@ -18,22 +21,39 @@ module.exports = function configurePassport() {
     async (accessToken, refreshToken, profile, done) => {
       try {
         let user = await User.findOne({ googleId: profile.id });
+        const email = (profile.emails?.[0]?.value || '').toLowerCase();
+        if (!user && email) user = await User.findOne({ email }); // link to a manually-registered account
         if (!user) {
           user = await User.create({
             googleId: profile.id,
             displayName: profile.displayName || 'Player',
-            email: profile.emails?.[0]?.value || '',
+            email: email || undefined,
             avatar: profile.photos?.[0]?.value || ''
           });
         } else {
-          user.displayName = profile.displayName || user.displayName;
-          user.avatar = profile.photos?.[0]?.value || user.avatar;
+          user.googleId = user.googleId || profile.id;
+          user.displayName = user.displayName === 'Player' ? (profile.displayName || user.displayName) : user.displayName;
+          user.avatar = user.avatar || profile.photos?.[0]?.value || '';
           await user.save();
         }
         done(null, user);
       } catch (err) {
         done(err);
       }
+    }
+  ));
+
+  passport.use(new LocalStrategy(
+    { usernameField: 'identifier', passwordField: 'password' },
+    async (identifier, password, done) => {
+      try {
+        const id = normalizeIdentifier(identifier);
+        const user = await User.findOne(id.type === 'email' ? { email: id.value } : { phone: id.value });
+        if (!user || !user.passwordHash) return done(null, false, { message: 'No account found with that email or phone number.' });
+        const ok = await bcrypt.compare(password, user.passwordHash);
+        if (!ok) return done(null, false, { message: 'Incorrect password.' });
+        done(null, user);
+      } catch (err) { done(err); }
     }
   ));
 

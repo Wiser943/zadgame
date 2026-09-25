@@ -1,9 +1,12 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  googleId: { type: String, required: true, unique: true, index: true },
+  // A user has either googleId, or (email or phone) + passwordHash, or both.
+  googleId: { type: String, unique: true, sparse: true, index: true },
+  email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  phone: { type: String, unique: true, sparse: true, trim: true },
+  passwordHash: { type: String },
   displayName: { type: String, default: 'Player' },
-  email: { type: String, default: '' },
   avatar: { type: String, default: '' },
   coins: { type: Number, default: 0 },
   stats: {
