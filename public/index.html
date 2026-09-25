@@ -39,7 +39,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .list{padding:18px 18px 40px;display:grid;gap:14px}
 .game{background:var(--card);border-radius:22px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;border:1px solid #e6e6e6;width:100%;text-align:left}
 .game h3{margin:0;font-size:18px}.game span{color:var(--mute);font-size:13px}
-.game .ico{font-size:34px;margin-right:14px}
+.game .ico{margin-right:14px;color:var(--red);display:inline-flex;align-items:center}
 .game.soon{opacity:.55}
 .tag{font-size:12px;background:#eee;border-radius:999px;padding:4px 10px;color:var(--mute)}
 /* sheet */
@@ -69,11 +69,11 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .cf .cell{border-radius:50%;background:#fff;font-size:0;cursor:pointer}
 .cf .cell.a{background:var(--red2)}.cf .cell.b{background:var(--gold)}
 .rps{display:flex;gap:12px;justify-content:center}
-.rps button{font-size:44px;background:#f1f1f3;border-radius:20px;padding:14px 18px}
-.rps button.sel{outline:4px solid var(--gold)}
+.rps button{background:#f1f1f3;border-radius:20px;padding:16px 20px;color:var(--red)}
+.rps button.sel{outline:4px solid var(--gold);color:var(--red2)}
 .over{background:#fff;color:var(--ink);border-radius:22px;padding:22px;text-align:center;width:100%;max-width:400px}
 .over h2{margin:0 0 6px;font-size:28px}
-.emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px}
+.emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:#222;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;z-index:20;display:none;max-width:90%}
 @media (prefers-reduced-motion:no-preference){.pl.turn img{transition:box-shadow .2s}}
 </style>
@@ -109,11 +109,40 @@ const MOVE = {
 };
 /* ============================================================ */
 
+const ICONS = {
+  x: '<svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"/></svg>',
+  dot: '<svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="5" fill="currentColor"/><circle cx="16" cy="16" r="5" fill="currentColor" opacity=".45"/></svg>',
+  fist: '<svg viewBox="0 0 24 24"><path d="M7 10.5V7a2 2 0 0 1 4 0v3M11 10.5V6a2 2 0 0 1 4 0v4.5M15 10.5V7a2 2 0 0 1 4 0v6a6 6 0 0 1-6 6h-2.5a6 6 0 0 1-5-2.7L4 13.8a1.5 1.5 0 0 1 2.4-1.8L7 12.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  palm: '<svg viewBox="0 0 24 24"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4M10 10V5a1.5 1.5 0 0 1 3 0v5M13 10V6a1.5 1.5 0 0 1 3 0v5M16 11V9a1.5 1.5 0 0 1 3 0v5a6 6 0 0 1-6 6h-2a6 6 0 0 1-5.2-3L4 14.6a1.5 1.5 0 0 1 2.5-1.6L7 13.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  scissors: '<svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.6" stroke="currentColor" stroke-width="1.7" fill="none"/><circle cx="6" cy="18" r="2.6" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M8.2 7.6 20 19M8.2 16.4 20 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>',
+  dice: '<svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" stroke="currentColor" stroke-width="1.8" fill="none"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><circle cx="16" cy="8" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="8" cy="16" r="1.4" fill="currentColor"/><circle cx="16" cy="16" r="1.4" fill="currentColor"/></svg>',
+  pawn: '<svg viewBox="0 0 24 24"><circle cx="12" cy="6.5" r="3" fill="currentColor"/><path d="M9 12.5h6l1.6 3H7.4l1.6-3zM7 19a5 5 0 0 1 10 0v1H7v-1z" fill="currentColor"/></svg>',
+  card: '<svg viewBox="0 0 24 24"><rect x="5" y="3.5" width="12" height="17" rx="2.5" transform="rotate(-8 11 12)" stroke="currentColor" stroke-width="1.7" fill="none"/><circle cx="9.3" cy="9" r="1.4" fill="currentColor"/></svg>',
+  controller: '<svg viewBox="0 0 24 24"><path d="M8 10v3m-1.5-1.5h3M15 11h.01M17.5 9.5h.01M5.5 9h13a3.5 3.5 0 0 1 3.4 4.3l-.7 3A3 3 0 0 1 18.3 19l-1-1a3 3 0 0 0-2.1-.9H8.8A3 3 0 0 0 6.7 18l-1 1a3 3 0 0 1-2.9-2.7l-.7-3A3.5 3.5 0 0 1 5.5 9z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  thumbsup: '<svg viewBox="0 0 24 24"><path d="M7 11v9H4v-9h3zm2.6-1.3L13 3l1.2 1a2.4 2.4 0 0 1 .5 2.6L13.5 10H18a2.5 2.5 0 0 1 2.4 3.2l-1.6 5.6A2.5 2.5 0 0 1 16.4 20H10a3 3 0 0 1-3-3v-6.3a2 2 0 0 1 .6-1.4l2-2z" fill="currentColor"/></svg>',
+  angry: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M7.3 9.3 10 10.6M16.7 9.3 14 10.6M8 16c1.2-1.3 2.6-2 4-2s2.8.7 4 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
+  laugh: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M8 10.3c.3-.7.9-.9.9-.9s.6.2.9.9M14.2 10.3c.3-.7.9-.9.9-.9s.6.2.9.9M7.3 13.2a5.6 3.6 0 0 0 9.4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
+  surprised: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="8.7" cy="10.2" r="1.1" fill="currentColor"/><circle cx="15.3" cy="10.2" r="1.1" fill="currentColor"/><circle cx="12" cy="15.3" r="2" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>',
+  flame: '<svg viewBox="0 0 24 24"><path d="M12 2c1 3-3 4-3 8a3 3 0 0 0 6 0c0-1-.5-2-.5-2 2 1 3.5 3.4 3.5 5.8A5.8 5.8 0 0 1 6.2 13.8C6.2 8.6 12 8 12 2z" fill="currentColor"/></svg>',
+  hourglass: '<svg viewBox="0 0 24 24"><path d="M6 3h12M6 21h12M7 3c0 4.5 3 6 5 7 2-1 5-2.5 5-7M7 21c0-4.5 3-6 5-7 2 1 5 2.5 5 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  pray: '<svg viewBox="0 0 24 24"><path d="M12 3v18M8 6c0 4-2 5-2 8a2 2 0 0 0 4 0V9m6-3c0 4 2 5 2 8a2 2 0 0 1-4 0V9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  trophy: '<svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0V4zM7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3M9 20h6M12 13v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+};
+const icon = (name, size=20) => (ICONS[name] || '').replace('<svg ', `<svg width="${size}" height="${size}" style="display:inline-block;vertical-align:-5px" `);
 const $ = s => document.querySelector(s);
 const app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const EMOTES = ['👍 Nice move!','😤','😂','😮','🔥','gg','⏳ Hurry up','🙏'];
-const ICON = { tictactoe:'❌', connectfour:'🔴', rps:'✊', ludo:'🎲', chess:'♟️', whot:'🃏' };
+const EMOTES = [
+  { icon:'thumbsup', label:'Nice move!', showLabel:true },
+  { icon:'angry',    label:'Annoyed' },
+  { icon:'laugh',    label:'Haha' },
+  { icon:'surprised',label:'Whoa' },
+  { icon:'flame',    label:'On fire' },
+  { icon:null,       label:'GG', showLabel:true },
+  { icon:'hourglass',label:'Hurry up', showLabel:true },
+  { icon:'pray',     label:'Please' }
+];
+const ICON = { tictactoe:'x', connectfour:'dot', rps:'fist', ludo:'dice', chess:'pawn', whot:'card' };
 let me, socket, room, gstate, result, picked;
 let authMode = 'login', authErr = '';
 
@@ -168,7 +197,7 @@ function connect(){
   socket.on('connect_error', () => toast('Connection problem. Retrying…'));
   socket.on(EV.error, e => toast(e?.message || 'Something went wrong'));
   socket.on('connect', () => { if(room && room.status !== 'over') joinRoom(room.code); });
-  socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i] || ''}`));
+  socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
   socket.on(EV.room, r => {
     room = r; if(r.state) gstate = r.state;
     result = r.status === 'over' ? r.result : null;
@@ -188,7 +217,7 @@ async function lobbyView(){
     <div class="me"><img src="${avatar(me)}" alt=""><button id="out">Log out</button></div></div>
   <div class="list">${games.map(g => `
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
-      <div style="display:flex;align-items:center"><span class="ico">${ICON[g.key||g.id]||'🎮'}</span>
+      <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
   $('#out').onclick = () => location.href = '/auth/logout';
@@ -240,7 +269,7 @@ function quickMatch(game){
     history.replaceState(null,'','/?code=' + room.code); gameView();
   });
 }
-const emoteBar = () => `<div class="emotes">${EMOTES.map((t,i)=>`<button data-e="${i}">${t}</button>`).join('')}</div>`;
+const emoteBar = () => `<div class="emotes">${EMOTES.map((e,i)=>`<button data-e="${i}" aria-label="${esc(e.label)}">${e.icon?icon(e.icon,18):''}${e.showLabel?` ${esc(e.label)}`:''}</button>`).join('')}</div>`;
 
 /* ---------- game ---------- */
 function gameView(){
@@ -282,7 +311,7 @@ function board(g, myTurn){
     const rows = b.length, cols = b[0]?.length || 7;
     return `<div class="board cf" style="grid-template-columns:repeat(${cols},1fr)">${b.flat().map((v,i)=>`<button class="cell ${sym(v)||v===0||v===1?(side(v)?'b':'a'):''}" data-c="${i%cols}" ${result||!myTurn?'disabled':''} aria-label="Column ${i%cols+1}"></button>`).join('')}</div>`;
   }
-  if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','✊'],['paper','✋'],['scissors','✌️']].map(([k,e])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${e}</button>`).join('')}</div></div>`;
+  if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
   return '';
 }
 function bindBoard(g, myTurn){
@@ -296,7 +325,7 @@ function overCard(mine){
   const draw = w == null || result.status === 'draw';
   const won = !draw && w === mine;
   const canRe = room.players.length === 2 && room.players.every(p => p.connected) && !room.rematch?.includes(mine);
-  return `<div class="over"><h2>${draw ? 'It’s a draw' : won ? 'You won! 🎉' : 'You lost'}</h2>
+  return `<div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>
     <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Your opponent left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
     <button class="btn" id="rm" style="margin-right:8px" ${canRe ? '' : 'disabled'}>${room.rematch?.includes(mine) ? 'Waiting…' : 'Rematch'}</button>
     <button class="btn ghost" id="again">Lobby</button></div>`;
