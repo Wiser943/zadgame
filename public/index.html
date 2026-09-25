@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#8f1017">
 <title>GameHub</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -86,6 +89,65 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .lp.red{background:#c0272d}.lp.green{background:#1f8f4e}.lp.yellow{background:#c99a12}.lp.blue{background:#1f57b5}
 .lp:disabled{opacity:.4}
 .lp.home{box-shadow:0 0 0 3px var(--gold)}
+/* ---- ludo board v2: 15x15 grid matching classic board art ---- */
+.lgrid{position:relative;width:100%;max-width:400px;aspect-ratio:1;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.25)}
+.lquad{position:absolute;width:40%;height:40%;display:flex;align-items:center;justify-content:center}
+.lquad.red{top:0;left:0;background:#c0272d}
+.lquad.green{top:0;right:0;background:#1f8f4e}
+.lquad.yellow{bottom:0;right:0;background:#d8a913}
+.lquad.blue{bottom:0;left:0;background:#1f57b5}
+.lquad .ring{width:56%;height:56%;border-radius:50%;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center}
+.lquad .ring i{width:66%;height:66%;border-radius:50%;display:block}
+.lquad.red .ring i{background:#c0272d}.lquad.green .ring i{background:#1f8f4e}
+.lquad.blue .ring i{background:#1f57b5}.lquad.yellow .ring i{background:#d8a913}
+.lquad .yard{position:absolute;inset:8%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6%;pointer-events:none}
+.lquad .yard .slot{border-radius:50%;background:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center}
+.ltrack{position:absolute;background:repeating-conic-gradient(from 0deg,#eee 0 1deg)}
+.lcell{position:absolute;width:6.667%;height:6.667%;background:#fff;border:1px solid #eee;box-sizing:border-box}
+.lcell.safe{background:#e9e9e9}
+.lcell.safe::after{content:'★';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999}
+.lcell.home-red{background:#f3c7c9}.lcell.home-green{background:#c3e6d3}
+.lcell.home-yellow{background:#f2e3ae}.lcell.home-blue{background:#c4d6ef}
+.lcenter{position:absolute;left:40%;top:40%;width:20%;height:20%}
+.lcenter svg{width:100%;height:100%}
+.ltok{position:absolute;width:6.2%;height:6.2%;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.5);border:1.5px solid rgba(255,255,255,.85);transform:translate(-50%,-50%);transition:left .25s ease,top .25s ease;z-index:5}
+.ltok.red{background:#c0272d}.ltok.green{background:#1f8f4e}.ltok.yellow{background:#d8a913}.ltok.blue{background:#1f57b5}
+.ltok.movable{cursor:pointer;box-shadow:0 0 0 3px var(--gold),0 1px 3px rgba(0,0,0,.5);animation:lpulse 1s infinite}
+.ltok.stacked::after{content:attr(data-n);position:absolute;top:-6px;right:-6px;background:#222;color:#fff;border-radius:50%;width:12px;height:12px;font-size:8px;display:flex;align-items:center;justify-content:center}
+@keyframes lpulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.18)}}
+.ldice{width:64px;height:64px;border-radius:16px;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #c99a12,0 6px 14px rgba(0,0,0,.35);color:var(--ink);font-size:28px;font-weight:800}
+.ldice:disabled{opacity:.55;box-shadow:none}
+.ldice.rolling{animation:lroll .5s linear infinite}
+@keyframes lroll{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.lavg{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.35);color:#fff;font-size:10px;border-radius:8px;padding:2px 6px;display:flex;align-items:center;gap:3px}
+.lquad.yellow .lavg,.lquad.red .lavg{right:auto;left:6px}
+/* ---- profile ---- */
+.profile{min-height:100vh;background:var(--bg)}
+.pcover{background:linear-gradient(160deg,#6d0a10,#b3141c);padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 60px;border-radius:0 0 28px 28px;color:#fff;position:relative}
+.pcover .back{background:rgba(255,255,255,.18);color:#fff;width:38px;height:38px;border-radius:50%;font-size:18px}
+.pavatar-wrap{position:absolute;left:50%;bottom:-46px;transform:translateX(-50%);text-align:center}
+.pavatar-wrap .pic{width:104px;height:104px;border-radius:50%;object-fit:cover;background:#ddd;border:4px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.25);display:block}
+.pavatar-wrap .edit{position:absolute;right:-2px;bottom:2px;background:var(--gold);color:var(--ink);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.pbody{padding:58px 22px 30px;text-align:center}
+.pbody h2{margin:4px 0 2px}
+.pbody .since{color:var(--mute);font-size:13px;margin:0 0 18px}
+.pstats{display:flex;justify-content:center;gap:10px;margin-top:14px}
+.pstat{background:var(--card);border:1px solid #e6e6e6;border-radius:16px;padding:12px 16px;min-width:80px}
+.pstat b{display:block;font-size:20px}.pstat span{color:var(--mute);font-size:12px}
+.pname-edit{display:flex;gap:8px;justify-content:center;margin-top:10px}
+.pname-edit input{max-width:220px;text-transform:none;letter-spacing:normal;text-align:center}
+/* ---- rules ---- */
+.rules-btn{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:8px 16px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.rules ul{margin:0;padding-left:18px;text-align:left}
+.rules li{margin:8px 0;font-size:14px;color:var(--ink);line-height:1.4}
+/* ---- install banner ---- */
+#installBanner{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:496px;margin:0 auto;background:#fff;border-radius:18px;box-shadow:0 8px 26px rgba(0,0,0,.28);padding:14px 16px;display:none;align-items:center;gap:12px;z-index:30}
+#installBanner img{width:44px;height:44px;border-radius:12px;flex-shrink:0}
+#installBanner .txt{flex:1;min-width:0}
+#installBanner .txt b{display:block;font-size:14px}
+#installBanner .txt span{font-size:12px;color:var(--mute)}
+#installBanner .btn{padding:9px 16px;font-size:13px}
+#installBanner .x{background:none;color:var(--mute);font-size:20px;padding:0 4px}
 .over{background:#fff;color:var(--ink);border-radius:22px;padding:22px;text-align:center;width:100%;max-width:400px}
 .over h2{margin:0 0 6px;font-size:28px}
 .emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
@@ -164,6 +226,57 @@ let me, socket, room, gstate, result, picked;
 let authMode = 'login', authErr = '';
 let GAMES = [];
 
+/* ---------- ludo board v2: classic 15x15 board geometry ---------- */
+const CELL_PCT = 100 / 15;
+// The 52 shared-track cells, clockwise, as (row,col) on a 15x15 grid —
+// index 0 lines up with CORNER_STARTS[0] in games/ludo.js (red's entry),
+// 13/26/39 with green/yellow/blue's, same spacing the server uses.
+const LTRACK = [[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],
+  [1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],
+  [8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],
+  [13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const LSAFE = new Set([0,8,13,21,26,34,39,47]);
+const LYARD = { red:[[1,1],[1,4],[4,1],[4,4]], green:[[1,10],[1,13],[4,10],[4,13]],
+  yellow:[[10,10],[10,13],[13,10],[13,13]], blue:[[10,1],[10,4],[13,1],[13,4]] };
+const LHOME = { red:[[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]], green:[[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],
+  yellow:[[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]], blue:[[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]] };
+const LSUB = [[-1.55,-1.55],[1.55,-1.55],[-1.55,1.55],[1.55,1.55]]; // 2x2 cluster offset so 4 tokens on one cell don't fully overlap
+function ltokCoord(color, start, steps, tokenIndex){
+  let rc;
+  if(steps === 0) rc = LYARD[color][tokenIndex];
+  else if(steps >= 1 && steps <= 51) rc = LTRACK[(start + steps - 1) % 52];
+  else rc = LHOME[color][Math.min(steps - 52, 5)];
+  const [dx,dy] = LSUB[tokenIndex];
+  return { left: (rc[1] + 0.5) * CELL_PCT + dx * 0.4 + '%', top: (rc[0] + 0.5) * CELL_PCT + dy * 0.4 + '%' };
+}
+function ludoBoardHtml(st, mine, canMove){
+  const colors = st.colors || [];
+  const dice = st.dice;
+  const canRoll = !result && canMove === 'roll';
+  const safeCells = [...LSAFE].map(c => `<div class="lcell safe" style="left:${LTRACK[c][1]*CELL_PCT}%;top:${LTRACK[c][0]*CELL_PCT}%"></div>`).join('');
+  const homeCells = Object.entries(LHOME).flatMap(([color, cells]) => cells.slice(0,5).map(([r,c]) =>
+    `<div class="lcell home-${color}" style="left:${c*CELL_PCT}%;top:${r*CELL_PCT}%"></div>`)).join('');
+  const tokens = colors.flatMap((color, pi) => (st.tokens[pi] || []).map((steps, ti) => {
+    const {left, top} = ltokCoord(color, st.starts[pi], steps, ti);
+    const mineToken = pi === mine;
+    const clickable = mineToken && canMove === 'move' && steps !== 57;
+    const label = steps === 57 ? '★' : '';
+    return `<button class="ltok ${color} ${clickable?'movable':''}" ${clickable?`data-lt="${ti}"`:'disabled'}
+      style="left:${left};top:${top}" aria-label="${color} token ${ti+1}, ${steps===0?'in yard':steps===57?'home':'step '+steps}">${label}</button>`;
+  })).join('');
+  return `<div class="lgrid">
+    <div class="lquad red"><span class="ring"><i></i></span></div>
+    <div class="lquad green"><span class="ring"><i></i></span></div>
+    <div class="lquad yellow"><span class="ring"><i></i></span></div>
+    <div class="lquad blue"><span class="ring"><i></i></span></div>
+    <div class="lcenter"><svg viewBox="0 0 100 100"><polygon points="0,0 50,50 100,0" fill="#c0272d"/><polygon points="0,0 50,50 0,100" fill="#d8a913"/><polygon points="100,0 50,50 100,100" fill="#1f8f4e"/><polygon points="0,100 50,50 100,100" fill="#1f57b5"/></svg></div>
+    ${safeCells}${homeCells}${tokens}
+  </div>
+  <div class="dicebar" style="margin-top:6px">
+    <button class="ldice" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice">${dice ?? icon('dice',26)}</button>
+  </div>`;
+}
+
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 async function api(p){const r=await fetch(p,{credentials:'include'});if(!r.ok)throw new Error(r.status);return r.json()}
 const avatar = p => esc(p?.avatar || p?.photo || p?.picture || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E');
@@ -233,15 +346,82 @@ async function lobbyView(){
   GAMES = games;
   app.innerHTML = `
   <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
-    <div class="me"><img src="${avatar(me)}" alt=""><button id="out">Log out</button></div></div>
+    <div class="me"><button id="myProfile" style="background:none;padding:0;border-radius:50%"><img src="${avatar(me)}" alt="View your profile"></button><button id="out">Log out</button></div></div>
   <div class="list">${games.map(g => `
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
       <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
   $('#out').onclick = () => location.href = '/auth/logout';
+  $('#myProfile').onclick = () => profileView(me.id || me._id);
   app.querySelectorAll('.game').forEach(b => b.onclick = () =>
     b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
+}
+
+/* ---------- profile ---------- */
+function resizeImage(file, maxSide = 480, quality = 0.82){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if(width > height && width > maxSide){ height = height / width * maxSide; width = maxSide; }
+      else if(height > maxSide){ width = width / height * maxSide; height = maxSide; }
+      const c = document.createElement('canvas'); c.width = width; c.height = height;
+      c.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+async function apiPost(path, body){
+  const r = await fetch(path, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
+async function profileView(uid){
+  const isMe = uid === (me.id || me._id);
+  app.innerHTML = `<div class="profile">
+    <div class="pcover"><button class="back" id="pbk" aria-label="Back">‹</button>
+      <div class="pavatar-wrap"><img class="pic" id="pPic" src="${isMe ? avatar(me) : ''}" alt="">
+        ${isMe ? `<label class="edit" title="Change photo">📷<input id="pFile" type="file" accept="image/*" style="display:none"></label>` : ''}</div></div>
+    <div class="pbody" id="pBody"><p>Loading…</p></div></div>`;
+  $('#pbk').onclick = () => history.length > 1 ? (room ? gameView() : lobbyView()) : lobbyView();
+  let data;
+  try{
+    data = isMe ? { user: me } : (await api('/api/users/' + uid)).user;
+  }catch{ $('#pBody').innerHTML = '<p>Could not load this profile.</p>'; return; }
+  $('#pPic').src = avatar(data);
+  const s = data.stats || {};
+  $('#pBody').innerHTML = `
+    <h2 id="pName">${esc(data.displayName || 'Player')}</h2>
+    ${isMe ? `<div class="pname-edit"><input id="pNameInput" value="${esc(data.displayName||'')}" maxlength="40" placeholder="Your name"><button class="btn ghost" id="pNameSave" style="padding:9px 16px">Save</button></div>` : ''}
+    <div class="pstats">
+      <div class="pstat"><b>${esc(s.gamesPlayed ?? 0)}</b><span>Played</span></div>
+      <div class="pstat"><b>${esc(s.wins ?? 0)}</b><span>Wins</span></div>
+      <div class="pstat"><b>${esc(s.losses ?? 0)}</b><span>Losses</span></div>
+    </div>`;
+  if(isMe){
+    $('#pFile').onchange = async (e) => {
+      const file = e.target.files[0]; if(!file) return;
+      if(!file.type.startsWith('image/')) return toast('Please choose an image file.');
+      try{
+        const dataUrl = await resizeImage(file);
+        $('#pPic').src = dataUrl;
+        const res = await apiPost('/api/me/profile', { avatar: dataUrl });
+        me = res.user; toast('Photo updated');
+      }catch(err){ toast(err.message || 'Could not upload photo'); }
+    };
+    $('#pNameSave').onclick = async () => {
+      const name = $('#pNameInput').value.trim();
+      if(!name) return toast('Enter a name first');
+      try{ const res = await apiPost('/api/me/profile', { displayName: name }); me = res.user; $('#pName').textContent = me.displayName; toast('Name updated'); }
+      catch(err){ toast(err.message || 'Could not update name'); }
+    };
+  }
 }
 
 async function sheet(key, name){
@@ -321,25 +501,59 @@ function gameView(){
   if(goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
   clearInterval(gameView.t);
   if(goneIdx !== -1) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 1000);
-  const pl = (p,i) => `<div class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}"><img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}</div>`;
+  const pl = (p,i) => `<button class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}" ${p?`data-uid="${esc(p.id)}"`:'disabled'} style="background:none">
+    <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}</button>`;
   app.innerHTML = `<div class="play">
-    <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button><div class="code">Room ${esc(room.code)}</div></div>
+    <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
+      <div class="code">Room ${esc(room.code)}</div>
+      <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
     <div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>
     ${status ? `<div class="status">${esc(status)}</div>` : ''}
-    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players)}</div>
+    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine)}</div>
     ${waiting ? '' : emoteBar()}
     ${result ? overCard(mine) : ''}</div>`;
   $('#bk').onclick = () => { socket.emit(EV.leave, { code: room.code }); lobbyView() };
+  $('#rulesBtn').onclick = () => rulesSheet(g);
   bindBoard(g, myTurn);
   $('#again')?.addEventListener('click', lobbyView);
   $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
   app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => socket.emit(EV.emote, { code: room.code, i: +b.dataset.e }));
+  app.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
+}
+
+/* ---------- rules ---------- */
+const RULES = {
+  tictactoe: ['Two players, X and O, take turns marking empty squares on a 3×3 grid.',
+    'First to line up 3 of their marks — across, down, or diagonally — wins.',
+    'If all 9 squares fill up with no line, the game is a draw.'],
+  connectfour: ['Take turns dropping a disc into a column — it falls to the lowest empty spot.',
+    'First to connect 4 of their own discs in a row (any direction) wins.',
+    'If the grid fills up with no connection, it\'s a draw.'],
+  rps: ['Everyone picks rock, paper or scissors at the same time — picks are revealed together.',
+    'Rock beats scissors, scissors beats paper, paper beats rock.',
+    'Matching picks replay the round.'],
+  ludo: ['Roll the die and move a token that many steps along the shared track.',
+    'A token in the yard needs a roll of 6 to come out.',
+    'Land exactly on an opponent\'s token (on an unsafe cell) to send it back to their yard.',
+    'Star-marked cells are safe — tokens there can\'t be captured.',
+    'Roll a 6 and you get to roll again; three 6s in a row forfeits the turn.',
+    'Get all 4 tokens all the way around and home to win.']
+};
+function rulesSheet(game){
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  const title = (GAMES.find(x => (x.key||x.id) === game)||{}).name || 'Rules';
+  bg.innerHTML = `<div class="sheet rules"><h2>${esc(title)} — Rules</h2>
+    <ul>${(RULES[game]||['No rules written for this game yet.']).map(r => `<li>${esc(r)}</li>`).join('')}</ul>
+    <button class="btn" style="width:100%;margin-top:16px" id="rulesOk">Got it</button></div>`;
+  document.body.appendChild(bg);
+  bg.onclick = e => { if(e.target === bg) bg.remove() };
+  bg.querySelector('#rulesOk').onclick = () => bg.remove();
 }
 
 const sym = v => v == null || v === '' ? '' : typeof v === 'number' ? ['X','O'][v] ?? '' : String(v);
 const side = v => (typeof v === 'number' ? v : String(v).toUpperCase().charCodeAt(0)) % 2;
 
-function board(g, myTurn, players){
+function board(g, myTurn, players, mine){
   const b = gstate?.board || [];
   if(g === 'tictactoe') return `<div class="board ttt">${b.flat().map((v,i)=>`<button class="cell ${sym(v)==='O'?'o':''}" data-i="${i}" ${result||!myTurn||sym(v)?'disabled':''}>${esc(sym(v))}</button>`).join('')}</div>`;
   if(g === 'connectfour'){
@@ -349,23 +563,12 @@ function board(g, myTurn, players){
   if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
   if(g === 'ludo'){
     const st = gstate || {};
-    const colors = st.colors || [];
-    const dice = st.dice;
-    const canRoll = !result && myTurn && dice == null;
-    const canMove = !result && myTurn && dice != null;
-    const rows = (players||[]).map((p,i) => {
-      const color = colors[i] || 'red';
-      const toks = (st.tokens && st.tokens[i]) || [0,0,0,0];
-      const cells = toks.map((steps,t) => {
-        const label = steps === 0 ? icon('pawn',16) : steps >= 57 ? icon('trophy',15) : steps;
-        return `<button class="lp ${color}${steps>=57?' home':''}" data-lt="${t}" ${!canMove?'disabled':''}
-          aria-label="${color} token ${t+1}, ${steps===0?'in yard':steps>=57?'home':'step '+steps+' of 57'}">${label}</button>`;
-      }).join('');
-      return `<div class="lrow ${p?.out?'out':''}"><span class="lname ${color}">${nameOf(p)}${p?.out?' · out':''}</span><div class="ltokens">${cells}</div></div>`;
-    }).join('');
-    return `<div class="board ludo">
-      <div class="dicebar">${icon('dice',24)}<b>${dice ?? '–'}</b><button class="btn" id="roll" ${!canRoll?'disabled':''}>Roll</button></div>
-      ${rows}
+    if(!st.starts) return `<div class="board ludo">${ludoBoardHtml({colors:[],tokens:[],starts:[]}, mine, null)}</div>`;
+    const canMove = result ? null : !myTurn ? null : st.dice == null ? 'roll' : 'move';
+    const legend = (players||[]).map((p,i) => `<span class="lname ${st.colors[i]}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px">${nameOf(p)}${p?.out?' · out':''}</span>`).join('');
+    return `<div class="board ludo" style="align-items:center">
+      ${ludoBoardHtml(st, mine, canMove)}
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">${legend}</div>
     </div>`;
   }
   return '';
@@ -391,6 +594,39 @@ function overCard(mine){
 }
 
 boot();
+initInstallPrompt();
+
+/* ---------- install as app (PWA) ---------- */
+function initInstallPrompt(){
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if(isStandalone) return;
+  if(sessionStorage.getItem('installDismissed')) return;
+
+  const banner = document.createElement('div'); banner.id = 'installBanner';
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  banner.innerHTML = `<img src="/icon-192.png" alt="">
+    <div class="txt"><b>Install GameHub</b><span>${isIOS ? 'Tap Share, then “Add to Home Screen”' : 'Add it to your home screen for quick access'}</span></div>
+    ${isIOS ? '' : '<button class="btn" id="installGo">Download</button>'}
+    <button class="x" id="installX" aria-label="Dismiss">×</button>`;
+  document.body.appendChild(banner);
+  $('#installX').onclick = () => { banner.style.display = 'none'; sessionStorage.setItem('installDismissed', '1'); };
+
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferred = e;
+    banner.style.display = 'flex';
+  });
+  if(isIOS) banner.style.display = 'flex'; // no beforeinstallprompt on iOS Safari — show manual instructions instead
+  $('#installGo')?.addEventListener('click', async () => {
+    if(!deferred) return;
+    deferred.prompt();
+    const { outcome } = await deferred.userChoice;
+    if(outcome === 'accepted') toast('Installing…');
+    banner.style.display = 'none'; deferred = null;
+  });
+  window.addEventListener('appinstalled', () => { banner.style.display = 'none'; toast('GameHub installed'); });
+}
 </script>
 </body>
 </html>
