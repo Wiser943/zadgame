@@ -285,6 +285,14 @@ module.exports = function initSockets(io, sessionMiddleware) {
       toAll(r, 'chat:emote', { from, name: r.players[from].name, i });
     });
 
+    guard('chat:message', 20, 15000, ({ code, text }) => {
+      const [r, from] = myRoom(code);
+      if (!r || typeof text !== 'string') return;
+      const clean = text.trim().slice(0, 200);
+      if (!clean) return;
+      toAll(r, 'chat:message', { from, name: r.players[from].name, text: clean, at: Date.now() });
+    });
+
     guard('game:rematch', 10, 60000, ({ code }) => {
       const [r, i] = myRoom(code);
       if (!r || r.status !== 'over' || r.players.length < r.maxPlayers || !r.players.every((p) => p.connected)) return;

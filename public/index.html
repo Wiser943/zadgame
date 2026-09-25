@@ -71,9 +71,9 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .bar .back{background:rgba(0,0,0,.3);color:#fff;width:42px;height:42px;border-radius:50%;font-size:20px}
 .code{background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.25);border-radius:12px;padding:6px 14px;font-weight:600}
 .players{width:100%;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 4px}
-.pl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;width:88px}
-.pl img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#ddd;border:3px solid transparent}
-.pl.turn img{border-color:var(--gold);box-shadow:0 0 0 4px rgba(247,197,43,.35)}
+.pl{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;width:60px}
+.pl img{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#ddd;border:2px solid transparent}
+.pl.turn img{border-color:var(--gold);box-shadow:0 0 0 3px rgba(247,197,43,.35)}
 .pl.out{opacity:.45}
 .status{font-weight:600;background:rgba(0,0,0,.35);border-radius:999px;padding:8px 20px;text-align:center}
 .board{background:#fff;color:var(--ink);border-radius:20px;padding:10px;display:grid;gap:8px;width:100%;max-width:400px}
@@ -160,10 +160,23 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .over{background:#fff;color:var(--ink);border-radius:22px;padding:22px;text-align:center;width:100%;max-width:400px}
 .over h2{margin:0 0 6px;font-size:28px}
 .emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.chatbox{width:100%;max-width:400px;background:rgba(0,0,0,.28);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.chatlog{max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;font-size:13px;scroll-behavior:smooth}
+.chatlog:empty::before{content:'Say hi 👋';color:rgba(255,255,255,.5);font-size:12px}
+.cmsg{background:rgba(255,255,255,.14);border-radius:12px;padding:6px 11px;align-self:flex-start;max-width:85%;word-break:break-word;color:#fff}
+.cmsg.me{align-self:flex-end;background:rgba(247,197,43,.32)}
+.cmsg b{margin-right:5px;font-weight:700;opacity:.85}
+.chatform{display:flex;gap:8px}
+.chatform input{border-radius:999px;text-transform:none;letter-spacing:normal;padding:11px 16px;font-size:14px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff}
+.chatform input::placeholder{color:rgba(255,255,255,.6)}
+.chatform button{padding:0;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:#222;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;z-index:20;display:none;max-width:90%}
 @media (prefers-reduced-motion:no-preference){.pl.turn img{transition:box-shadow .2s}}
 /* ---- settings ---- */
 .gearbtn{background:rgba(255,255,255,.18);color:#fff;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mebtn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:5px 16px 5px 5px;max-width:190px;flex-shrink:0}
+.mebtn img{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#ddd;flex-shrink:0}
+.mebtn span{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .settings h1{font-size:26px;margin:6px 0 18px;text-align:center}
 .settings .swho{display:flex;align-items:center;gap:12px;margin-bottom:22px}
 .settings .swho img{width:56px;height:56px;border-radius:50%;object-fit:cover;background:#ddd}
@@ -173,7 +186,7 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .settings .swho .edit{color:var(--red2);font-weight:700;font-size:14px;display:flex;align-items:center;gap:4px;background:none;flex-shrink:0}
 .settings .glabel{color:var(--mute);font-size:13px;font-weight:600;margin:16px 4px 8px}
 .settings .grp{background:var(--card);border-radius:18px;overflow:hidden;border:1px solid var(--line)}
-.srow{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:none;color:var(--ink);border-bottom:1px solid var(--line);text-align:left;font-weight:600;font-size:15px}
+.srow{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:none;color:var(--ink);border-bottom:1px solid var(--line);text-align:left;font-weight:600;font-size:15px;text-decoration:none}
 .srow:last-child{border-bottom:0}
 .srow .si{color:var(--mute);display:flex;flex-shrink:0}
 .srow .lbl{flex:1}
@@ -259,7 +272,8 @@ const ICONS = {
   speaker: '<svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" fill="none"/><path d="M17 9a4 4 0 0 1 0 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>',
   phone: '<svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M11 19h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" fill="currentColor"/></svg>',
-  logout: '<svg viewBox="0 0 24 24"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 16l4-4-4-4M20 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+  logout: '<svg viewBox="0 0 24 24"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 16l4-4-4-4M20 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
+  send: '<svg viewBox="0 0 24 24"><path d="M4 20l17-8L4 4l0 6.5L15 12 4 13.5 4 20z" fill="currentColor"/></svg>'
 };
 const icon = (name, size=20) => (ICONS[name] || '').replace('<svg ', `<svg width="${size}" height="${size}" style="display:inline-block;vertical-align:-5px" `);
 const $ = s => document.querySelector(s);
@@ -281,6 +295,7 @@ let authMode = 'login', authErr = '';
 let GAMES = [];
 let ludoScoreDisplay = {};   // playerIndex -> last-rendered score, used as the animation start point
 let animUntil = 0;           // Date.now() timestamp: don't re-render the board before this, so in-flight animations can play out
+let chatMessages = [], chatRoomCode = null;   // in-room text chat (ephemeral — not persisted server-side)
 
 /* ---------- avatar hosting (imgbb) ---------- */
 // Free key from https://api.imgbb.com/ — paste yours here. Until then, photos
@@ -484,6 +499,21 @@ function connect(){
   socket.on(EV.state, s => { gstate = s.state || s; picked = null; if(room) scheduleRender(); });
   socket.on(EV.over, r => { result = r; if(r.status === 'win' && prefs.sound) SFX.win(); scheduleRender(); toast(r.reason === 'timeup' ? "Time's up — highest score wins!" : ''); });
   socket.on('game:event', handleLudoEvent);
+  socket.on('chat:message', appendChatMessage);
+}
+
+function appendChatMessage(m){
+  if(!room || !m) return;
+  chatMessages.push(m);
+  if(chatMessages.length > 60) chatMessages.shift();
+  const log = document.getElementById('chatLog');
+  if(log){
+    const div = document.createElement('div');
+    div.className = 'cmsg' + (m.from === room.you ? ' me' : '');
+    div.innerHTML = `<b>${esc(m.name)}:</b> ${esc(m.text)}`;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
 }
 
 /* ---------- ludo: sounds, comments and hand-off animations ---------- */
@@ -566,13 +596,13 @@ async function lobbyView(){
   GAMES = games;
   app.innerHTML = `
   <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
-    <button id="gearBtn" class="gearbtn" aria-label="Settings">${icon('gear',22)}</button></div>
+    <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
   <div class="list">${games.map(g => `
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
       <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
-  $('#gearBtn').onclick = settingsView;
+  $('#meBtn').onclick = settingsView;
   app.querySelectorAll('.game').forEach(b => b.onclick = () =>
     b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
 }
@@ -616,15 +646,100 @@ function settingsView(){
   $('#sBk').onclick = lobbyView;
   $('#sEdit').onclick = () => profileView(me.id || me._id);
   $('#sOut').onclick = () => location.href = '/auth/logout';
-  $('#sChat').onclick = () => toast('Chat support is coming soon.');
-  $('#sSocial').onclick = () => toast('Find us on social media soon.');
-  $('#sTut').onclick = () => toast('A full tutorial is coming soon.');
-  $('#sAbout').onclick = () => toast('GameHub — quick real-time games with friends.');
-  $('#sLegal').onclick = () => toast('Terms & privacy policy coming soon.');
+  $('#sChat').onclick = chatSupportView;
+  $('#sSocial').onclick = socialsView;
+  $('#sTut').onclick = tutorialView;
+  $('#sAbout').onclick = aboutView;
+  $('#sLegal').onclick = legalView;
   $('#sMusic').onclick = () => { prefs.music = !prefs.music; savePrefs(); $('#sMusic .tgl').classList.toggle('on', prefs.music); prefs.music ? startMusic() : stopMusic(); };
   $('#sSound').onclick = () => { prefs.sound = !prefs.sound; savePrefs(); $('#sSound .tgl').classList.toggle('on', prefs.sound); if(prefs.sound) SFX.move(); };
   $('#sVibe').onclick = () => { prefs.vibration = !prefs.vibration; savePrefs(); $('#sVibe .tgl').classList.toggle('on', prefs.vibration); vibrate(30); };
   $('#sDark').onclick = () => { prefs.theme = prefs.theme === 'dark' ? 'light' : 'dark'; savePrefs(); applyTheme(); $('#sDark .tgl').classList.toggle('on', prefs.theme==='dark'); };
+}
+
+/* ---------- settings sub-pages: support, socials, tutorial, about, legal ---------- */
+// Edit these to point at your own inbox / handles / community links.
+const SUPPORT_EMAIL = 'support@gamehub.example';
+const SUPPORT_WHATSAPP = 'https://wa.me/10000000000';
+const SOCIALS = [
+  { label:'WhatsApp Community', iconName:'phone', url:'https://wa.me/10000000000' },
+  { label:'X (Twitter)', iconName:'megaphone', url:'https://twitter.com/' },
+  { label:'Instagram', iconName:'megaphone', url:'https://instagram.com/' },
+  { label:'Discord', iconName:'chat', url:'https://discord.gg/' }
+];
+
+function staticPageShell(title, bodyHtml, back){
+  app.innerHTML = `<div class="settings" style="padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 40px;max-width:520px;margin:0 auto">
+    <div style="display:flex;align-items:center;margin-bottom:16px">
+      <button class="back" id="spBk" aria-label="Back" style="background:#eee;color:var(--ink);width:38px;height:38px;border-radius:50%;flex-shrink:0">‹</button>
+      <h1 style="flex:1;margin:0;font-size:22px;text-align:center">${esc(title)}</h1><span style="width:38px;flex-shrink:0"></span>
+    </div>
+    ${bodyHtml}
+  </div>`;
+  $('#spBk').onclick = back || settingsView;
+}
+const faqRow = (q, a) => `<div class="srow" style="display:block;cursor:default"><b>${esc(q)}</b><p style="margin:6px 0 0;color:var(--mute);font-size:13px;line-height:1.4">${esc(a)}</p></div>`;
+
+function chatSupportView(){
+  staticPageShell('Chat Support', `
+    <p style="color:var(--mute);line-height:1.5;margin-top:0">Stuck on a match, spotted a bug, or something about your coins looks off? Reach us directly:</p>
+    <div class="grp" style="margin-bottom:18px">
+      <a class="srow" href="mailto:${SUPPORT_EMAIL}"><span class="si">${icon('note',20)}</span><span class="lbl">Email support</span><span class="chev">›</span></a>
+      <a class="srow" href="${SUPPORT_WHATSAPP}" target="_blank" rel="noopener"><span class="si">${icon('phone',20)}</span><span class="lbl">Chat on WhatsApp</span><span class="chev">›</span></a>
+    </div>
+    <div class="glabel">Common questions</div>
+    <div class="grp">
+      ${faqRow('My coins didn’t update after a match.', 'Coins post right when a match ends. If you still don’t see them after reopening the app, tell us the room code in a support message.')}
+      ${faqRow('A match seems frozen.', 'Leave the room and rejoin with the same code — most stalls clear up on reconnect. If it keeps happening, it’s worth reporting.')}
+      ${faqRow('My profile photo won’t show.', 'Try re-uploading it from Settings → Edit. Very large photos can occasionally fail to save.')}
+      ${faqRow('I got removed from a Ludo match.', 'Three missed turns (not rolling, or not picking a token within 15s) removes you from that room and forfeits your stake for that match.')}
+    </div>`);
+}
+function socialsView(){
+  staticPageShell('Join our Socials', `
+    <p style="color:var(--mute);line-height:1.5;margin-top:0">Follow along for updates, and hang out with other players.</p>
+    <div class="grp">
+      ${SOCIALS.map(s => `<a class="srow" href="${esc(s.url)}" target="_blank" rel="noopener"><span class="si">${icon(s.iconName,20)}</span><span class="lbl">${esc(s.label)}</span><span class="chev">›</span></a>`).join('')}
+    </div>`);
+}
+function tutorialView(){
+  const list = (GAMES && GAMES.length ? GAMES : REGISTRY_FALLBACK).filter(g => RULES[g.key||g.id]);
+  const gameRules = list.map(g => `<div class="glabel">${esc(g.name)}</div>
+    <div class="grp" style="margin-bottom:14px"><ul style="margin:0;padding:14px 16px;list-style:none">
+      ${RULES[g.key||g.id].map(r=>`<li style="margin:8px 0;font-size:14px;line-height:1.4">${esc(r)}</li>`).join('')}
+    </ul></div>`).join('');
+  staticPageShell('Game Tutorial', `
+    <div class="glabel">Getting started</div>
+    <div class="grp" style="margin-bottom:14px"><ul style="margin:0;padding:14px 16px;list-style:none;font-size:14px;line-height:1.6">
+      <li>Pick a game from the lobby, then Quick match, Create a room, or join with a code.</li>
+      <li>Share your room code so a friend can jump straight into your room.</li>
+      <li>Win matches to earn coins — your total sits at the top of the lobby.</li>
+      <li>Use the emote bar during a match to react without typing.</li>
+      <li>Tap any player's avatar in a match to see their profile and stats.</li>
+    </ul></div>
+    ${gameRules}`);
+}
+function aboutView(){
+  staticPageShell('About Us', `
+    <div class="grp"><div class="srow" style="display:block;cursor:default">
+      <p style="margin:0 0 10px;line-height:1.6">GameHub is a for-fun, real-time multiplayer arcade — quick matches of Tic-Tac-Toe, Connect Four, Rock Paper Scissors and Ludo with friends, right in the browser.</p>
+      <p style="margin:0 0 10px;line-height:1.6">No downloads, no signup friction — sign in, share a room code, and play. Coins track bragging rights across matches.</p>
+      <p style="margin:0;line-height:1.6;color:var(--mute)">Built with Node.js, Socket.IO and a lot of care for snappy, mobile-first play.</p>
+    </div></div>`);
+}
+function legalView(){
+  staticPageShell('Legal', `
+    <div class="glabel">Terms of Service</div>
+    <div class="grp" style="margin-bottom:14px"><div class="srow" style="display:block;cursor:default;font-size:13px;color:var(--mute);line-height:1.6">
+      <p>By using GameHub you agree to play fair, keep your account to yourself, and treat other players with respect. Coins earned in-game have no cash value and can’t be withdrawn, transferred, or exchanged.</p>
+      <p>We can suspend accounts that cheat, abuse other players, or interfere with the service. Features, games and rules may change as the app evolves.</p>
+    </div></div>
+    <div class="glabel">Privacy Policy</div>
+    <div class="grp" style="margin-bottom:14px"><div class="srow" style="display:block;cursor:default;font-size:13px;color:var(--mute);line-height:1.6">
+      <p>We store your account details (name, email or phone, avatar), match history and coin balance to run the game. We don’t sell your data or show ads.</p>
+      <p>Your photo, if hosted externally, is publicly reachable by anyone with the link — don’t upload anything you’d rather keep private.</p>
+    </div></div>
+    <p style="font-size:12px;color:var(--mute);text-align:center">This is a starting template, not legal advice — have it reviewed before relying on it.</p>`);
 }
 
 /* ---------- profile ---------- */
@@ -761,11 +876,18 @@ function quickMatch(game, maxPlayers){
     history.replaceState(null,'','/?code=' + room.code); gameView();
   });
 }
-const emoteBar = () => `<div class="emotes">${EMOTES.map((e,i)=>`<button data-e="${i}" aria-label="${esc(e.label)}">${e.icon?icon(e.icon,18):''}${e.showLabel?` ${esc(e.label)}`:''}</button>`).join('')}</div>`;
+const chatLine = (m, mine) => `<div class="cmsg${m.from===mine?' me':''}"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`;
+const chatBar = (mine) => `<div class="chatbox">
+  <div class="chatlog" id="chatLog">${chatMessages.map(m=>chatLine(m,mine)).join('')}</div>
+  <form id="chatForm" class="chatform" autocomplete="off">
+    <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message">
+    <button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
+  </form></div>`;
 
 /* ---------- game ---------- */
 function gameView(){
   if(!room) return lobbyView();
+  if(chatRoomCode !== room.code){ chatMessages = []; chatRoomCode = room.code; }
   const players = room.players || [];
   const maxPlayers = room.maxPlayers || players.length || 2;
   const seats = Array.from({length: maxPlayers}, (_,i) => players[i] || null);
@@ -800,7 +922,7 @@ function gameView(){
     ${matchClock}
     ${status ? `<div class="status">${esc(status)}</div>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine)}</div>
-    ${waiting ? '' : emoteBar()}
+    ${chatBar(mine)}
     ${result ? overCard(mine) : ''}</div>`;
   $('#bk').onclick = () => {
     if(g === 'ludo' && room.status === 'playing' && !result && !confirm("Leaving now forfeits your coins for this match. Leave anyway?")) return;
@@ -810,11 +932,22 @@ function gameView(){
   bindBoard(g, myTurn);
   $('#again')?.addEventListener('click', () => { stopMusic(); lobbyView(); });
   $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
-  app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => socket.emit(EV.emote, { code: room.code, i: +b.dataset.e }));
+  const log = $('#chatLog'); if(log) log.scrollTop = log.scrollHeight;
+  $('#chatForm').onsubmit = (e) => {
+    e.preventDefault();
+    const inp = $('#chatInput'); const text = inp.value.trim();
+    if(!text) return;
+    socket.emit('chat:message', { code: room.code, text });
+    inp.value = ''; inp.focus();
+  };
   app.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
 }
 
 /* ---------- rules ---------- */
+const REGISTRY_FALLBACK = [
+  { key:'tictactoe', name:'Tic-Tac-Toe' }, { key:'connectfour', name:'Connect Four' },
+  { key:'rps', name:'Rock Paper Scissors' }, { key:'ludo', name:'Ludo' }
+];
 const RULES = {
   tictactoe: ['Two players, X and O, take turns marking empty squares on a 3×3 grid.',
     'First to line up 3 of their marks — across, down, or diagonally — wins.',
