@@ -86,6 +86,27 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .rps{display:flex;gap:12px;justify-content:center}
 .rps button{background:#f1f1f3;border-radius:20px;padding:16px 20px;color:var(--red)}
 .rps button.sel{outline:4px solid var(--gold);color:var(--red2)}
+.whot{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 10px}
+.wtable{display:flex;align-items:center;justify-content:center;gap:18px}
+.wcard{width:56px;height:80px;border-radius:10px;background:#fff;box-shadow:0 0 0 2px #e2e2e2,0 3px 6px rgba(0,0,0,.15);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0}
+.wcard.big{width:76px;height:108px}
+.wcard .wglyph{font-size:22px;line-height:1}
+.wcard.big .wglyph{font-size:30px}
+.wcard .wval{font-size:12px;font-weight:800}
+.wcard.big .wval{font-size:15px}
+.wcard.s-circle{color:#1f57b5}.wcard.s-triangle{color:#1f8f4e}.wcard.s-cross{color:var(--red2)}.wcard.s-square{color:#c99a12}.wcard.s-star{color:#7b2fbe}
+.wcard.s-whot{color:#fff;background:linear-gradient(160deg,#1b1b1f,#3a3a45)}
+.wcard:disabled{opacity:.45}
+.wcard.playable{box-shadow:0 0 0 3px var(--gold),0 3px 6px rgba(0,0,0,.15)}
+.wmarket{width:56px;height:80px;border-radius:10px;background:linear-gradient(160deg,#8f1017,#b3141c);color:var(--gold);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:700;flex-shrink:0;box-shadow:0 3px 6px rgba(0,0,0,.15)}
+.wmarket:disabled{opacity:.45}
+.wcalled{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--mute)}
+.whand{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;width:100%;scrollbar-width:none}
+.whand::-webkit-scrollbar{display:none}
+.wpick{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.wpick button{background:#f1f1f3;border-radius:14px;padding:10px 14px;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.wcounts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;font-size:11px;font-weight:700;color:var(--mute)}
+.wcounts .cur{color:var(--gold)}
 .ludo{display:flex;flex-direction:column;gap:10px;padding:14px 12px}
 .dicebar{display:flex;align-items:center;gap:10px;justify-content:center;font-size:20px;font-weight:700}
 .dicebar .btn{padding:8px 18px;font-size:14px}
@@ -294,6 +315,8 @@ let me, socket, room, gstate, result, picked;
 let authMode = 'login', authErr = '';
 let GAMES = [];
 let ludoScoreDisplay = {};   // playerIndex -> last-rendered score, used as the animation start point
+let whotPendingIndex = null; // hand index of a tapped Whot(20) card awaiting a shape choice
+const WHOT_GLYPH = { circle:'●', triangle:'▲', cross:'✚', square:'■', star:'★', whot:'✱' };
 let animUntil = 0;           // Date.now() timestamp: don't re-render the board before this, so in-flight animations can play out
 let chatMessages = [], chatRoomCode = null;   // in-room text chat (ephemeral — not persisted server-side)
 
@@ -896,8 +919,11 @@ function gameView(){
   const myTurn = mine >= 0 && turn === mine;
   const waiting = players.length < maxPlayers || room.status === 'waiting';
   const g = room.game;
+  if(g === 'whot' && (!myTurn || result)) whotPendingIndex = null;
   let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})`
-             : result ? '' : g === 'rps' ? 'Pick your move' : myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
+             : result ? '' : g === 'rps' ? 'Pick your move'
+             : g === 'whot' && myTurn && gstate?.pendingPick > 0 ? `Play a Pick ${gstate.pendingType === 'two' ? 'Two' : 'Three'} or draw ${gstate.pendingPick}`
+             : myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
   const forfeits = room.forfeits || {};
   const goneIdx = seats.findIndex((p,i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
   if(goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
@@ -910,8 +936,9 @@ function gameView(){
     if(!n) return '';
     return `<span class="strikes">${[0,1,2].map(k=>`<i class="${k<n?'hit':''}"></i>`).join('')}</span>`;
   };
+  const wCount = (i) => (g === 'whot' && gstate?.handCounts) ? ` · ${gstate.handCounts[i]}` : '';
   const pl = (p,i) => `<button class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}" ${p?`data-uid="${esc(p.id)}"`:'disabled'} style="background:none">
-    <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}${g==='ludo'&&p?strikeDots(i):''}</button>`;
+    <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':'')+wCount(i):'Waiting…'}${g==='ludo'&&p?strikeDots(i):''}</button>`;
   const matchClock = (g === 'ludo' && room.status === 'playing' && room.matchDeadline && !result)
     ? (() => { const ms = room.matchDeadline - Date.now(); return `<div class="matchclock ${ms<30000?'low':''}">${fmtClock(ms)}</div>`; })() : '';
   app.innerHTML = `<div class="play">
@@ -946,7 +973,8 @@ function gameView(){
 /* ---------- rules ---------- */
 const REGISTRY_FALLBACK = [
   { key:'tictactoe', name:'Tic-Tac-Toe' }, { key:'connectfour', name:'Connect Four' },
-  { key:'rps', name:'Rock Paper Scissors' }, { key:'ludo', name:'Ludo' }
+  { key:'rps', name:'Rock Paper Scissors' }, { key:'ludo', name:'Ludo' },
+  { key:'whot', name:'Whot!', playerCounts:[2,3,4] }
 ];
 const RULES = {
   tictactoe: ['Two players, X and O, take turns marking empty squares on a 3×3 grid.',
@@ -963,7 +991,13 @@ const RULES = {
     'Land exactly on an opponent\'s token (on an unsafe cell) to send it back to their yard.',
     'Star-marked cells are safe — tokens there can\'t be captured.',
     'Roll a 6 and you get to roll again; three 6s in a row forfeits the turn.',
-    'Get all 4 tokens all the way around and home to win.']
+    'Get all 4 tokens all the way around and home to win.'],
+  whot: ['Play a card that shares a shape or value with the top card, or play any Whot card.',
+    'Pick 2 and Pick 3 cards force the next player to draw — they can counter with a matching Pick card to pass the count along instead.',
+    'Hold On (1) gives you another go. Suspension (8) skips the next player — a Star 8 skips two.',
+    'General Market (14) makes everyone else draw a card.',
+    'Whot (20) is wild — play it anytime and call the shape the next card must match.',
+    'First to play their last card wins.']
 };
 function rulesSheet(game){
   const bg = document.createElement('div'); bg.className = 'sheet-bg';
@@ -997,8 +1031,52 @@ function board(g, myTurn, players, mine){
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">${legend}</div>
     </div>`;
   }
+  if(g === 'whot') return whotBoardHtml(gstate || {}, myTurn);
   return '';
 }
+
+/* ---------- whot ---------- */
+function whotCardHtml(card, {index, disabled, big, playable} = {}){
+  const glyph = WHOT_GLYPH[card.shape] || '?';
+  const label = card.shape === 'whot' ? 'WHOT' : String(card.value);
+  return `<button class="wcard s-${card.shape}${big?' big':''}${playable?' playable':''}" ${index!=null?`data-wi="${index}"`:''}
+    ${disabled?'disabled':''} aria-label="${card.shape} ${card.value}"><span class="wglyph">${glyph}</span><span class="wval">${label}</span></button>`;
+}
+function whotCardMatches(card, st){
+  if(card.shape === 'whot') return true;
+  if(st.calledShape) return card.shape === st.calledShape;
+  return !!st.topCard && (card.shape === st.topCard.shape || card.value === st.topCard.value);
+}
+function whotHasPlayable(st){
+  const hand = st.hand || [];
+  if(st.pendingPick > 0){ const nv = st.pendingType === 'two' ? 2 : 3; return hand.some(c => c.value === nv); }
+  return hand.some(c => whotCardMatches(c, st));
+}
+function whotBoardHtml(st, myTurn){
+  if(!st.topCard) return `<div class="board whot"></div>`;
+  const canAct = myTurn && !result;
+  const marketDisabled = !canAct || !(st.pendingPick > 0 || !whotHasPlayable(st));
+  const hand = st.hand || [];
+  const pendingVal = st.pendingType === 'two' ? 2 : 3;
+  const handHtml = hand.map((c,i) => {
+    const playable = canAct && (st.pendingPick > 0 ? c.value === pendingVal : whotCardMatches(c, st));
+    return whotCardHtml(c, { index:i, disabled:!playable, big:false, playable });
+  }).join('');
+  const pickerHtml = whotPendingIndex != null ? `<div class="wpick">
+      ${SHAPES_WHOT.map(s => `<button data-wshape="${s}">${WHOT_GLYPH[s]} ${s}</button>`).join('')}
+      <button data-wcancel="1" style="background:none;color:var(--mute)">Cancel</button>
+    </div>` : '';
+  return `<div class="board whot">
+    <div class="wtable">
+      ${whotCardHtml(st.topCard, { big:true })}
+      <button class="wmarket" data-wmarket="1" ${marketDisabled?'disabled':''}>Market<br>${st.marketCount ?? ''}</button>
+    </div>
+    ${st.calledShape ? `<div class="wcalled">Calling: ${WHOT_GLYPH[st.calledShape]} ${st.calledShape}</div>` : ''}
+    ${pickerHtml}
+    <div class="whand">${handHtml}</div>
+  </div>`;
+}
+const SHAPES_WHOT = ['circle','triangle','cross','square','star'];
 function bindBoard(g, myTurn){
   const send = m => socket.emit(EV.move, { code: room.code, move: m });
   app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => send(MOVE.tictactoe(+e.dataset.i)));
@@ -1011,6 +1089,19 @@ function bindBoard(g, myTurn){
     send({ type: 'roll' });
   });
   app.querySelectorAll('[data-lt]:not([disabled])').forEach(e => e.onclick = () => send({ type: 'move', token: +e.dataset.lt }));
+  app.querySelectorAll('[data-wi]:not([disabled])').forEach(e => e.onclick = () => {
+    const i = +e.dataset.wi;
+    const card = gstate?.hand?.[i];
+    if(card && card.shape === 'whot'){ whotPendingIndex = i; gameView(); return; }
+    send({ type: 'play', index: i });
+  });
+  app.querySelectorAll('[data-wshape]').forEach(e => e.onclick = () => {
+    const calledShape = e.dataset.wshape;
+    send({ type: 'play', index: whotPendingIndex, calledShape });
+    whotPendingIndex = null;
+  });
+  $('[data-wcancel]')?.addEventListener('click', () => { whotPendingIndex = null; gameView(); });
+  $('[data-wmarket]')?.addEventListener('click', () => send({ type: 'market' }));
 }
 function overCard(mine){
   const w = result.winnerIndex ?? result.winner;
