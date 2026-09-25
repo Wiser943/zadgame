@@ -48,6 +48,22 @@ async function main() {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   });
 
+  // Central error handler. Without this, any error passed to next(err) (e.g.
+  // a DB error inside the Google OAuth verify callback) falls through to
+  // Express's default handler and shows a bare "Internal Server Error" page
+  // with no useful info. This logs the real error server-side and gives the
+  // client something sane back.
+  app.use((err, req, res, next) => {
+    console.error('[error]', req.method, req.originalUrl, err);
+    if (res.headersSent) return next(err);
+    if (req.path.startsWith('/auth/google')) {
+      // Send the user back to the landing page with a flag instead of a raw 500,
+      // so the front end can show a real message.
+      return res.redirect((process.env.CLIENT_URL || '/') + '?auth_error=1');
+    }
+    res.status(500).json({ message: 'Something went wrong on our end. Please try again.' });
+  });
+
   initSockets(io, sessionMiddleware);
 
   server.listen(PORT, () => {

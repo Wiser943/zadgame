@@ -24,12 +24,24 @@ module.exports = function configurePassport() {
         const email = (profile.emails?.[0]?.value || '').toLowerCase();
         if (!user && email) user = await User.findOne({ email }); // link to a manually-registered account
         if (!user) {
-          user = await User.create({
-            googleId: profile.id,
-            displayName: profile.displayName || 'Player',
-            email: email || undefined,
-            avatar: profile.photos?.[0]?.value || ''
-          });
+          try {
+            user = await User.create({
+              googleId: profile.id,
+              displayName: profile.displayName || 'Player',
+              email: email || undefined,
+              avatar: profile.photos?.[0]?.value || ''
+            });
+          } catch (createErr) {
+            // Duplicate key on a concurrent request (e.g. double-clicked
+            // "Continue with Google", or two tabs) shouldn't 500 the callback —
+            // someone else just created the same account a moment ago, so fetch it.
+            if (createErr.code === 11000) {
+              user = await User.findOne({ googleId: profile.id }) || (email && await User.findOne({ email }));
+              if (!user) throw createErr;
+            } else {
+              throw createErr;
+            }
+          }
         } else {
           user.googleId = user.googleId || profile.id;
           user.displayName = user.displayName === 'Player' ? (profile.displayName || user.displayName) : user.displayName;

@@ -51,15 +51,18 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .room{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border-radius:16px;padding:10px 14px;margin-top:8px}
 .room .btn{padding:8px 18px}
 .empty{color:var(--mute);font-size:14px;padding:8px 2px}
+.pcbtn{flex:1;padding:10px 8px;font-size:13px}
+.pcbtn.on{background:var(--red2);color:#fff;box-shadow:inset 0 0 0 2px #d4444b}
 /* game */
 .play{min-height:100vh;color:#fff;background:repeating-conic-gradient(from 0deg at 50% 45%,#7a0c12 0 7deg,#9c1219 7deg 14deg);padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 24px;display:flex;flex-direction:column;align-items:center;gap:14px}
 .bar{width:100%;display:flex;justify-content:space-between;align-items:center}
 .bar .back{background:rgba(0,0,0,.3);color:#fff;width:42px;height:42px;border-radius:50%;font-size:20px}
 .code{background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.25);border-radius:12px;padding:6px 14px;font-weight:600}
-.players{width:100%;display:flex;justify-content:space-between}
-.pl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;width:110px}
-.pl img{width:60px;height:60px;border-radius:50%;object-fit:cover;background:#ddd;border:3px solid transparent}
+.players{width:100%;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 4px}
+.pl{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;width:88px}
+.pl img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#ddd;border:3px solid transparent}
 .pl.turn img{border-color:var(--gold);box-shadow:0 0 0 4px rgba(247,197,43,.35)}
+.pl.out{opacity:.45}
 .status{font-weight:600;background:rgba(0,0,0,.35);border-radius:999px;padding:8px 20px;text-align:center}
 .board{background:#fff;color:var(--ink);border-radius:20px;padding:10px;display:grid;gap:8px;width:100%;max-width:400px}
 .ttt{grid-template-columns:repeat(3,1fr)}
@@ -71,6 +74,18 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .rps{display:flex;gap:12px;justify-content:center}
 .rps button{background:#f1f1f3;border-radius:20px;padding:16px 20px;color:var(--red)}
 .rps button.sel{outline:4px solid var(--gold);color:var(--red2)}
+.ludo{display:flex;flex-direction:column;gap:10px;padding:14px 12px}
+.dicebar{display:flex;align-items:center;gap:10px;justify-content:center;font-size:20px;font-weight:700}
+.dicebar .btn{padding:8px 18px;font-size:14px}
+.lrow{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f7f7f9;border-radius:14px;padding:8px 10px}
+.lrow.out{opacity:.5}
+.lname{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.lname.red{color:#c0272d}.lname.green{color:#1f8f4e}.lname.yellow{color:#c99a12}.lname.blue{color:#1f57b5}
+.ltokens{display:flex;gap:5px}
+.lp{width:32px;height:32px;border-radius:50%;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff;background:#bbb;flex-shrink:0}
+.lp.red{background:#c0272d}.lp.green{background:#1f8f4e}.lp.yellow{background:#c99a12}.lp.blue{background:#1f57b5}
+.lp:disabled{opacity:.4}
+.lp.home{box-shadow:0 0 0 3px var(--gold)}
 .over{background:#fff;color:var(--ink);border-radius:22px;padding:22px;text-align:center;width:100%;max-width:400px}
 .over h2{margin:0 0 6px;font-size:28px}
 .emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
@@ -106,6 +121,8 @@ const MOVE = {
   tictactoe:  i => ({ index: i }),
   connectfour:c => ({ column: c }),
   rps:        c => ({ choice: c })
+  // ludo has two move shapes ({type:'roll'} / {type:'move',token}) so it's
+  // sent directly in bindBoard() rather than through this single-arg map.
 };
 /* ============================================================ */
 
@@ -145,6 +162,7 @@ const EMOTES = [
 const ICON = { tictactoe:'x', connectfour:'dot', rps:'fist', ludo:'dice', chess:'pawn', whot:'card' };
 let me, socket, room, gstate, result, picked;
 let authMode = 'login', authErr = '';
+let GAMES = [];
 
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 async function api(p){const r=await fetch(p,{credentials:'include'});if(!r.ok)throw new Error(r.status);return r.json()}
@@ -212,6 +230,7 @@ async function lobbyView(){
   room = gstate = result = null; history.replaceState(null,'','/');
   let games = [];
   try{ games = await api('/api/games'); games = games.games || games; }catch{ toast('Could not load games'); }
+  GAMES = games;
   app.innerHTML = `
   <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
     <div class="me"><img src="${avatar(me)}" alt=""><button id="out">Log out</button></div></div>
@@ -226,27 +245,40 @@ async function lobbyView(){
 }
 
 async function sheet(key, name){
+  const g = GAMES.find(x => (x.key||x.id) === key) || {};
+  const counts = g.playerCounts && g.playerCounts.length > 1 ? g.playerCounts : null;
+  let n = counts ? counts[0] : 2;
   const bg = document.createElement('div'); bg.className = 'sheet-bg';
   bg.innerHTML = `<div class="sheet"><h2>${esc(name)}</h2>
+    ${counts ? `<div class="row" id="pc" style="justify-content:center">${counts.map(c => `<button type="button" class="btn ghost pcbtn${c===n?' on':''}" data-n="${c}">${c} players</button>`).join('')}</div>` : ''}
     <button class="btn" id="qk" style="width:100%">Quick match</button>
     <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">Create a room</button>
     <div class="row"><input id="cd" placeholder="ROOM CODE" maxlength="8" aria-label="Room code"><button class="btn ghost" id="jn">Join</button></div>
     <h3 style="margin:18px 0 0;font-size:15px">Open rooms</h3><div id="rooms" class="empty">Loading…</div></div>`;
   document.body.appendChild(bg);
   bg.onclick = e => { if(e.target === bg) bg.remove() };
-  $('#qk').onclick = () => { bg.remove(); quickMatch(key) };
-  $('#mk').onclick = () => { bg.remove(); createRoom(key) };
+  bg.querySelectorAll('.pcbtn').forEach(b => b.onclick = () => {
+    n = +b.dataset.n;
+    bg.querySelectorAll('.pcbtn').forEach(x => x.classList.toggle('on', x === b));
+    loadRooms();
+  });
+  $('#qk').onclick = () => { bg.remove(); quickMatch(key, n) };
+  $('#mk').onclick = () => { bg.remove(); createRoom(key, n) };
   $('#jn').onclick = () => { const c = $('#cd').value.trim(); if(c){ bg.remove(); joinRoom(c) } };
-  try{
-    const rs = await new Promise((ok, no) => socket.emit(EV.list, { game: key }, r => r && r.ok ? ok(r.rooms) : no()));
-    $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${nameOf(r.players?.[0])} · ${esc(r.code)}</span><button class="btn" data-c="${esc(r.code)}">Join</button></div>`).join('')}</div>`
-      : `<div id="rooms" class="empty">No one is waiting. Create a room and share the code.</div>`;
-    bg.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { bg.remove(); joinRoom(b.dataset.c) });
-  }catch{ $('#rooms').textContent = 'Could not load rooms.' }
+  async function loadRooms(){
+    $('#rooms').outerHTML = `<div id="rooms" class="empty">Loading…</div>`;
+    try{
+      const rs = await new Promise((ok, no) => socket.emit(EV.list, { game: key, maxPlayers: n }, r => r && r.ok ? ok(r.rooms) : no()));
+      $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${r.players.map(nameOf).join(', ')} · ${r.players.length}/${r.maxPlayers||2} · ${esc(r.code)}</span><button class="btn" data-c="${esc(r.code)}">Join</button></div>`).join('')}</div>`
+        : `<div id="rooms" class="empty">No one is waiting. Create a room and share the code.</div>`;
+      bg.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { bg.remove(); joinRoom(b.dataset.c) });
+    }catch{ $('#rooms').textContent = 'Could not load rooms.' }
+  }
+  loadRooms();
 }
 
-function createRoom(game){
-  socket.emit(EV.create, { game }, res => {
+function createRoom(game, maxPlayers){
+  socket.emit(EV.create, { game, maxPlayers }, res => {
     if(res && res.ok === false) return toast(res.error || 'Could not create room');
     room = res?.room || res; result = gstate = null;
     history.replaceState(null,'','/?code=' + room.code); gameView();
@@ -262,8 +294,8 @@ function joinRoom(code){
   });
 }
 
-function quickMatch(game){
-  socket.emit(EV.quick, { game }, res => {
+function quickMatch(game, maxPlayers){
+  socket.emit(EV.quick, { game, maxPlayers }, res => {
     if(!res || res.ok === false) return toast(res?.error || 'Could not find a match');
     room = res.room; result = gstate = null; gstate = room.state || null;
     history.replaceState(null,'','/?code=' + room.code); gameView();
@@ -275,23 +307,26 @@ const emoteBar = () => `<div class="emotes">${EMOTES.map((e,i)=>`<button data-e=
 function gameView(){
   if(!room) return lobbyView();
   const players = room.players || [];
+  const maxPlayers = room.maxPlayers || players.length || 2;
+  const seats = Array.from({length: maxPlayers}, (_,i) => players[i] || null);
   const mine = room.you ?? players.findIndex(p => [p?._id,p?.id,p?.userId].some(x => x && x === (me._id||me.id)));
   const turn = gstate?.turn ?? gstate?.currentPlayer;
   const myTurn = mine >= 0 && turn === mine;
-  const waiting = players.length < 2 || room.status === 'waiting';
+  const waiting = players.length < maxPlayers || room.status === 'waiting';
   const g = room.game;
-  let status = waiting ? 'Waiting for an opponent… share code ' + room.code
-             : result ? '' : g === 'rps' ? 'Pick your move' : myTurn ? 'Your turn' : 'Opponent’s turn';
-  const gone = room.status === 'playing' && players.some((p,i) => i !== mine && p && p.connected === false);
-  if(gone && room.forfeitAt) status = `Opponent disconnected. You win in ${Math.max(0, Math.ceil((room.forfeitAt - Date.now())/1000))}s if they don’t return.`;
+  let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})`
+             : result ? '' : g === 'rps' ? 'Pick your move' : myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
+  const forfeits = room.forfeits || {};
+  const goneIdx = seats.findIndex((p,i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
+  if(goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
   clearInterval(gameView.t);
-  if(gone && room.forfeitAt) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 1000);
-  const pl = (p,i) => `<div class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''}"><img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':''):'Waiting…'}</div>`;
+  if(goneIdx !== -1) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 1000);
+  const pl = (p,i) => `<div class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}"><img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}</div>`;
   app.innerHTML = `<div class="play">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button><div class="code">Room ${esc(room.code)}</div></div>
-    <div class="players">${pl(players[0],0)}${pl(players[1],1)}</div>
+    <div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>
     ${status ? `<div class="status">${esc(status)}</div>` : ''}
-    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn)}</div>
+    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players)}</div>
     ${waiting ? '' : emoteBar()}
     ${result ? overCard(mine) : ''}</div>`;
   $('#bk').onclick = () => { socket.emit(EV.leave, { code: room.code }); lobbyView() };
@@ -304,7 +339,7 @@ function gameView(){
 const sym = v => v == null || v === '' ? '' : typeof v === 'number' ? ['X','O'][v] ?? '' : String(v);
 const side = v => (typeof v === 'number' ? v : String(v).toUpperCase().charCodeAt(0)) % 2;
 
-function board(g, myTurn){
+function board(g, myTurn, players){
   const b = gstate?.board || [];
   if(g === 'tictactoe') return `<div class="board ttt">${b.flat().map((v,i)=>`<button class="cell ${sym(v)==='O'?'o':''}" data-i="${i}" ${result||!myTurn||sym(v)?'disabled':''}>${esc(sym(v))}</button>`).join('')}</div>`;
   if(g === 'connectfour'){
@@ -312,6 +347,27 @@ function board(g, myTurn){
     return `<div class="board cf" style="grid-template-columns:repeat(${cols},1fr)">${b.flat().map((v,i)=>`<button class="cell ${sym(v)||v===0||v===1?(side(v)?'b':'a'):''}" data-c="${i%cols}" ${result||!myTurn?'disabled':''} aria-label="Column ${i%cols+1}"></button>`).join('')}</div>`;
   }
   if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
+  if(g === 'ludo'){
+    const st = gstate || {};
+    const colors = st.colors || [];
+    const dice = st.dice;
+    const canRoll = !result && myTurn && dice == null;
+    const canMove = !result && myTurn && dice != null;
+    const rows = (players||[]).map((p,i) => {
+      const color = colors[i] || 'red';
+      const toks = (st.tokens && st.tokens[i]) || [0,0,0,0];
+      const cells = toks.map((steps,t) => {
+        const label = steps === 0 ? icon('pawn',16) : steps >= 57 ? icon('trophy',15) : steps;
+        return `<button class="lp ${color}${steps>=57?' home':''}" data-lt="${t}" ${!canMove?'disabled':''}
+          aria-label="${color} token ${t+1}, ${steps===0?'in yard':steps>=57?'home':'step '+steps+' of 57'}">${label}</button>`;
+      }).join('');
+      return `<div class="lrow ${p?.out?'out':''}"><span class="lname ${color}">${nameOf(p)}${p?.out?' · out':''}</span><div class="ltokens">${cells}</div></div>`;
+    }).join('');
+    return `<div class="board ludo">
+      <div class="dicebar">${icon('dice',24)}<b>${dice ?? '–'}</b><button class="btn" id="roll" ${!canRoll?'disabled':''}>Roll</button></div>
+      ${rows}
+    </div>`;
+  }
   return '';
 }
 function bindBoard(g, myTurn){
@@ -319,14 +375,17 @@ function bindBoard(g, myTurn){
   app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => send(MOVE.tictactoe(+e.dataset.i)));
   app.querySelectorAll('[data-c]').forEach(e => e.onclick = () => send(MOVE.connectfour(+e.dataset.c)));
   app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k; send(MOVE.rps(picked)); gameView() });
+  $('#roll')?.addEventListener('click', () => send({ type: 'roll' }));
+  app.querySelectorAll('[data-lt]').forEach(e => e.onclick = () => send({ type: 'move', token: +e.dataset.lt }));
 }
 function overCard(mine){
   const w = result.winnerIndex ?? result.winner;
   const draw = w == null || result.status === 'draw';
   const won = !draw && w === mine;
-  const canRe = room.players.length === 2 && room.players.every(p => p.connected) && !room.rematch?.includes(mine);
+  const maxPlayers = room.maxPlayers || room.players.length || 2;
+  const canRe = room.players.length === maxPlayers && room.players.every(p => p.connected) && !room.rematch?.includes(mine);
   return `<div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>
-    <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Your opponent left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
+    <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Someone left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
     <button class="btn" id="rm" style="margin-right:8px" ${canRe ? '' : 'disabled'}>${room.rematch?.includes(mine) ? 'Waiting…' : 'Rematch'}</button>
     <button class="btn ghost" id="again">Lobby</button></div>`;
 }
