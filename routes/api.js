@@ -23,13 +23,6 @@ router.get('/games', ensureAuth, (req, res) => {
   res.json({ games: registry });
 });
 
-router.get('/leaderboard', ensureAuth, async (req, res) => {
-  try {
-    const users = await User.find({}).select('displayName avatar coins stats').sort({ 'stats.wins': -1, coins: -1 }).limit(10).lean();
-    res.json({ users });
-  } catch { res.status(500).json({ message: 'Could not load leaderboard.' }); }
-});
-
 // Update the signed-in user's own avatar and/or display name. The client
 // compresses/resizes the image to a small JPEG data URI before sending it
 // (see resizeImage() in public/index.html) — we just sanity-check it here.

@@ -9,12 +9,15 @@ const REGISTRY = require('../games/registry');
 const User = require('../models/User');
 
 const ENG = games.ENGINES || games;
-const FORFEIT_MS = 75 * 1000;
-  const TURN_MS = 15 * 1000;
-const GAME_MS = (maxPlayers) => maxPlayers === 4 ? 8 * 60 * 1000 : 4 * 60 * 1000; // total game clock
-const FORFEIT_NOTE = 'disconnect this long => that player forfeits';
+const FORFEIT_MS = 75 * 1000;      // disconnect this long => that player forfeits
 const WIN_COINS = 10;
 const EMOTE_COUNT = 8;             // keep in sync with EMOTES in public/index.html
+
+// ---- Ludo-only: per-turn clock, strikes, and a whole-match countdown ----
+const LUDO_TURN_MS = 15 * 1000;                 // roll or move within this long, or take a strike
+const LUDO_STRIKE_LIMIT = 3;                    // 3 strikes = removed from the room
+const LUDO_STRIKE_FORFEIT_COINS = 15;           // coins lost when removed for strikes
+const LUDO_MATCH_MS = { 2: 4 * 60 * 1000, 4: 8 * 60 * 1000 }; // match clock by room size
 
 const rooms = new Map();           // code -> room
 const hits = new Map();            // rate-limit log: "userId:event" -> [timestamps]
@@ -54,10 +57,12 @@ module.exports = function initSockets(io, sessionMiddleware) {
     forfeits: r.forfeits ? Object.fromEntries([...r.forfeits].map(([idx, f]) => [idx, f.forfeitAt])) : {},
     result: r.result || null,
     rematch: r.rematch ? [...r.rematch] : [],
+    round: r.round || 0,
+    strikes: r.strikes || [],
+    turnDeadline: r.turnDeadline || null,
+    matchDeadline: r.matchDeadline || null,
     players: r.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, connected: p.connected, out: !!p.out })),
-    state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state,
-    turnDeadline: r.turnDeadline || null, gameDeadline: r.gameDeadline || null,
-    skipCounts: r.skipCounts || {}, boardRotation: r.boardRotation || 0
+    state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state
   });
   const push = (r) => r.players.forEach((p, i) => p.sid && io.to(p.sid).emit('room:update', view(r, i)));
   const toAll = (r, ev, payload) => r.players.forEach((p) => p.sid && io.to(p.sid).emit(ev, payload));
@@ -72,11 +77,47 @@ module.exports = function initSockets(io, sessionMiddleware) {
     r.forfeits.clear();
   }
 
+  // ---- Ludo turn clock + match clock ----
+  function armTurnTimer(r) {
+    clearTimeout(r.turnTimer); r.turnTimer = null; r.turnDeadline = null;
+    if (r.game !== 'ludo' || r.status !== 'playing') return;
+    r.turnDeadline = Date.now() + LUDO_TURN_MS;
+    r.turnTimer = setTimeout(() => turnTimeout(r), LUDO_TURN_MS);
+  }
+  function turnTimeout(r) {
+    if (r.status !== 'playing') return;
+    const i = r.state.turn;
+    if (!r.strikes) r.strikes = Array(r.maxPlayers).fill(0);
+    r.strikes[i] = (r.strikes[i] || 0) + 1;
+    toAll(r, 'game:event', { type: 'timeout', player: i, strikes: r.strikes[i] });
+    if (r.strikes[i] >= LUDO_STRIKE_LIMIT) {
+      User.updateOne({ _id: r.players[i].id }, { $inc: { coins: -LUDO_STRIKE_FORFEIT_COINS } }).catch((e) => console.error('[coins]', e.message));
+      toAll(r, 'game:event', { type: 'strikeout', player: i, coinsLost: LUDO_STRIKE_FORFEIT_COINS });
+      eliminatePlayer(r, i, 'strikes'); // re-arms the turn timer itself if the match continues
+      return;
+    }
+    r.state = ENG[r.game].forcePass(r.state);
+    push(r);
+    armTurnTimer(r);
+  }
+  function armMatchTimer(r) {
+    clearTimeout(r.matchTimer); r.matchTimer = null; r.matchDeadline = null;
+    if (r.game !== 'ludo' || r.status !== 'playing') return;
+    const ms = LUDO_MATCH_MS[r.maxPlayers] || LUDO_MATCH_MS[2];
+    r.matchDeadline = Date.now() + ms;
+    r.matchTimer = setTimeout(() => matchTimeUp(r), ms);
+  }
+  function matchTimeUp(r) {
+    if (r.status !== 'playing') return;
+    const winner = ENG[r.game].highestScoreWinner(r.state);
+    finish(r, winner, 'timeup');
+  }
+
   function finish(r, winnerIndex, reason) {
     if (r.status !== 'playing') return;
     clearAllForfeits(r);
-    if (r.turnTimer) clearTimeout(r.turnTimer);
-    if (r.gameTimer) clearTimeout(r.gameTimer);
+    clearTimeout(r.turnTimer); r.turnTimer = null; r.turnDeadline = null;
+    clearTimeout(r.matchTimer); r.matchTimer = null; r.matchDeadline = null;
     r.status = 'over'; r.rematch = new Set();
     r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal' };
     r.players.forEach((p, i) => {
@@ -88,46 +129,6 @@ module.exports = function initSockets(io, sessionMiddleware) {
     });
     toAll(r, 'game:over', r.result);
     push(r);
-  }
-
-  function startTurnTimer(r) {
-    if (r.status !== 'playing' || r.game !== 'ludo') return;
-    if (r.turnTimer) clearTimeout(r.turnTimer);
-    r.turnDeadline = Date.now() + TURN_MS;
-    r.turnTimer = setTimeout(() => {
-      if (r.status !== 'playing' || !r.state) return;
-      const i = r.state.turn;
-      r.skipCounts[i] = (r.skipCounts[i] || 0) + 1;
-      toAll(r, 'game:warning', { playerIndex: i, skips: r.skipCounts[i], message: `${r.players[i]?.name || 'Player'} missed a turn.` });
-      if (r.skipCounts[i] >= 3) {
-        toAll(r, 'game:warning', { playerIndex: i, skips: 3, message: `${r.players[i]?.name || 'Player'} forfeited after 3 missed turns.` });
-        eliminatePlayer(r, i, 'forfeit');
-      } else {
-        const eng = ENG[r.game];
-        if (eng.markTimeout) r.state = eng.markTimeout(r.state, i);
-        startTurnTimer(r);
-        push(r);
-      }
-    }, TURN_MS);
-  }
-
-  function startGameTimer(r) {
-    r.gameDeadline = Date.now() + GAME_MS(r.maxPlayers);
-    r.gameTimer = setTimeout(() => {
-      if (r.status !== 'playing') return;
-      let winner = null, best = -1;
-      if (r.game === 'ludo' && ENG[r.game].score) {
-        r.players.forEach((pl, i) => { if (!pl.out) { const n = ENG[r.game].score(r.state, i); if (n > best) { best = n; winner = i; } } });
-      }
-      finish(r, winner, 'time');
-    }, GAME_MS(r.maxPlayers));
-  }
-
-  function startPlayTimers(r) {
-    if (r.status !== 'playing' || r.game !== 'ludo') return;
-    r.skipCounts = r.skipCounts || {};
-    startGameTimer(r);
-    startTurnTimer(r);
   }
 
   function startForfeitTimer(r, i) {
@@ -146,14 +147,18 @@ module.exports = function initSockets(io, sessionMiddleware) {
     if (r.status !== 'playing' || r.players[i].out) return;
     r.players[i].out = true;
     clearForfeit(r, i);
+    if (r.game === 'ludo' && reason === 'forfeit') {
+      User.updateOne({ _id: r.players[i].id }, { $inc: { coins: -LUDO_STRIKE_FORFEIT_COINS } }).catch((e) => console.error('[coins]', e.message));
+    }
     const eng = ENG[r.game];
     if (eng.markOut) r.state = eng.markOut(r.state, i);
     const remaining = r.players.filter((p) => !p.out && p.connected);
-    if (remaining.length === 0) { clearAllForfeits(r); rooms.delete(r.code); return; }
+    if (remaining.length === 0) { clearAllForfeits(r); clearTimeout(r.turnTimer); clearTimeout(r.matchTimer); rooms.delete(r.code); return; }
     if (remaining.length === 1) { finish(r, r.players.indexOf(remaining[0]), reason); return; }
     const res = eng.checkResult ? eng.checkResult(r.state) : { status: 'ongoing' };
     if (res.status !== 'ongoing') { finish(r, res.status === 'win' ? res.winnerIndex : null, reason); return; }
     push(r);
+    if (r.game === 'ludo') armTurnTimer(r);
   }
 
   function removeFromRoom(socket, explicit) {
@@ -163,14 +168,14 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const i = r.players.findIndex((p) => p.sid === socket.id);
     if (i === -1) return;
     r.players[i].connected = false; r.players[i].sid = null;
-    if (r.status === 'waiting') { clearAllForfeits(r); rooms.delete(r.code); return; }
+    if (r.status === 'waiting') { clearAllForfeits(r); clearTimeout(r.turnTimer); clearTimeout(r.matchTimer); rooms.delete(r.code); return; }
     if (r.status === 'playing') {
       if (explicit) { eliminatePlayer(r, i, 'forfeit'); return; }
       startForfeitTimer(r, i);   // dropped connection — give them time to come back
       push(r);
       return;
     }
-    if (!r.players.some((p) => p.connected)) { clearAllForfeits(r); rooms.delete(r.code); return; }
+    if (!r.players.some((p) => p.connected)) { clearAllForfeits(r); clearTimeout(r.turnTimer); clearTimeout(r.matchTimer); rooms.delete(r.code); return; }
     push(r);
   }
 
@@ -186,13 +191,18 @@ module.exports = function initSockets(io, sessionMiddleware) {
     Object.assign(r.players[i], { sid: socket.id, connected: true });
     socket.data.code = r.code;
     if (r.status === 'playing') clearForfeit(r, i);
-    if (r.status === 'waiting' && r.players.length === r.maxPlayers) { r.status = 'playing'; r.state = ENG[r.game].createInitialState(r.maxPlayers); r.boardRotation = (r.boardRotation || 0); startPlayTimers(r); }
+    if (r.status === 'waiting' && r.players.length === r.maxPlayers) {
+      r.status = 'playing'; r.state = ENG[r.game].createInitialState(r.maxPlayers);
+      r.round = (r.round || 0) + 1;
+      r.strikes = Array(r.maxPlayers).fill(0);
+      armTurnTimer(r); armMatchTimer(r);
+    }
     push(r);
     return true;
   }
 
   function createRoom(socket, game, maxPlayers) {
-    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set(), skipCounts: {}, boardRotation: Math.floor(Math.random()*4)*90 };
+    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set() };
     rooms.set(r.code, r); attach(socket, r); return r;
   }
 
@@ -252,9 +262,20 @@ module.exports = function initSockets(io, sessionMiddleware) {
       const e = ENG[r.game];
       if (!e.isValidMove(r.state, i, move)) return socket.emit('error', { message: 'That move isn’t allowed.' });
       r.state = e.applyMove(r.state, i, move);
-      r.skipCounts[i] = 0;
+
+      if (r.game === 'ludo') {
+        if (r.strikes) r.strikes[i] = 0; // acted in time — clear their strike streak
+        if (move.type === 'roll') {
+          toAll(r, 'game:event', { type: 'roll', player: i, dice: r.state.lastRoll, streak: r.state.lastRollStreak || 0 });
+        } else if (move.type === 'move') {
+          if (r.state.lastMove) toAll(r, 'game:event', { type: 'move', ...r.state.lastMove });
+          if (r.state.lastCapture) toAll(r, 'game:event', { type: 'capture', by: i, captured: r.state.lastCapture });
+          if (r.state.lastHome) toAll(r, 'game:event', { type: 'tokenHome', ...r.state.lastHome });
+        }
+      }
+
       const res = e.checkResult(r.state);
-      if (res.status === 'ongoing') { if (r.game === 'ludo') startTurnTimer(r); return push(r); }
+      if (res.status === 'ongoing') { push(r); if (r.game === 'ludo') armTurnTimer(r); return; }
       push(r); finish(r, res.status === 'win' ? res.winnerIndex : null, 'normal');
     });
 
@@ -271,7 +292,10 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (r.rematch.size === r.maxPlayers) {
         r.rematch = new Set(); r.result = null; r.status = 'playing';
         r.players.forEach((p) => { p.out = false; });
-        r.state = ENG[r.game].createInitialState(r.maxPlayers); r.skipCounts = {}; r.boardRotation = (r.boardRotation + 90) % 360; startPlayTimers(r);
+        r.state = ENG[r.game].createInitialState(r.maxPlayers);
+        r.round = (r.round || 0) + 1;
+        r.strikes = Array(r.maxPlayers).fill(0);
+        armTurnTimer(r); armMatchTimer(r);
       }
       push(r);
     });

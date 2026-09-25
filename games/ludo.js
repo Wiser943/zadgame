@@ -91,6 +91,8 @@ function applyMove(state, playerIndex, move) {
   if (move.type === 'roll') {
     // The die is rolled server-side — never trust a client-supplied value.
     const dice = 1 + Math.floor(Math.random() * 6);
+    s.lastRoll = dice;                      // kept even if the turn auto-passes, for UI/sound purposes
+    s.lastRollStreak = dice === 6 ? s.sixStreak + 1 : 0;
     s.sixStreak = dice === 6 ? s.sixStreak + 1 : 0;
     if (s.sixStreak >= 3) { passTurn(s); return s; }                          // three 6s in a row forfeits the turn
     if (movableTokens(s, playerIndex, dice).length === 0) { passTurn(s); return s; } // nothing playable, auto-pass
@@ -100,21 +102,31 @@ function applyMove(state, playerIndex, move) {
 
   // move.type === 'move'
   const dice = s.dice;
-  let steps = s.tokens[playerIndex][move.token];
+  const fromSteps = s.tokens[playerIndex][move.token];
+  let steps = fromSteps;
   steps = steps === 0 ? 1 : steps + dice;
   s.tokens[playerIndex][move.token] = steps;
+  s.lastMove = { player: playerIndex, token: move.token, from: fromSteps, to: steps, dice };
+  s.lastCapture = null;
 
   // Capture: landing on a shared, non-safe cell occupied by exactly one opponent sends it home.
   if (steps >= 1 && steps <= TRACK_LEN - 1) {
     const cell = globalCell(s, playerIndex, steps);
     if (!SAFE_CELLS.has(cell)) {
+      const captured = [];
       for (let p = 0; p < s.playerCount; p++) {
         if (p === playerIndex) continue;
-        s.tokens[p] = s.tokens[p].map((st, t) =>
-          (st >= 1 && st <= TRACK_LEN - 1 && globalCell(s, p, st) === cell) ? 0 : st);
+        s.tokens[p] = s.tokens[p].map((st, t) => {
+          if (st >= 1 && st <= TRACK_LEN - 1 && globalCell(s, p, st) === cell) { captured.push({ player: p, token: t }); return 0; }
+          return st;
+        });
       }
+      if (captured.length) s.lastCapture = captured;
     }
   }
+
+  if (steps === HOME_STEPS) s.lastHome = { player: playerIndex, token: move.token };
+  else s.lastHome = null;
 
   if (dice === 6 && s.sixStreak < 3) s.dice = null;   // extra roll for the same player
   else passTurn(s);
@@ -133,18 +145,6 @@ function checkResult(state) {
 
 // Called by sockets/index.js when a player forfeits mid-game (left or timed
 // out) so the remaining players' turns keep flowing without them.
-function markTimeout(state, playerIndex) {
-  const s = { ...state, tokens: state.tokens.map((row) => row.slice()) };
-  s.dice = null;
-  s.sixStreak = 0;
-  s.turn = nextActive(s, playerIndex);
-  return s;
-}
-
-function score(state, playerIndex) {
-  return (state.tokens[playerIndex] || []).reduce((sum, steps) => sum + (steps === HOME_STEPS ? 60 : steps), 0);
-}
-
 function markOut(state, playerIndex) {
   const s = { ...state, active: state.active.slice() };
   s.active[playerIndex] = false;
@@ -152,4 +152,40 @@ function markOut(state, playerIndex) {
   return s;
 }
 
-module.exports = { createInitialState, isValidMove, applyMove, checkResult, markOut, markTimeout, score };
+// Ends the current player's turn without a move — used by sockets/index.js
+// when a player doesn't roll, or rolls but doesn't pick a token, within the
+// per-turn time limit.
+function forcePass(state) {
+  const s = { ...state, tokens: state.tokens.map((row) => row.slice()), active: state.active.slice() };
+  passTurn(s);
+  return s;
+}
+
+// A simple running "score" per player — total steps travelled across all 4
+// tokens (a token counts more the further it has progressed; a token home
+// contributes its full 57). Used to decide a winner if the match clock (see
+// sockets/index.js) runs out before anyone finishes all 4 tokens.
+function score(state, playerIndex) {
+  return state.tokens[playerIndex].reduce((sum, steps) => sum + steps, 0);
+}
+function scores(state) {
+  return Array.from({ length: state.playerCount }, (_, i) => score(state, i));
+}
+// Returns the winning player index, or null for a tie (draw) between the
+// leaders. Only counts players still active (not eliminated).
+function highestScoreWinner(state) {
+  let best = -1, bestScore = -1, tie = false;
+  for (let i = 0; i < state.playerCount; i++) {
+    if (!state.active[i]) continue;
+    const sc = score(state, i);
+    if (sc > bestScore) { bestScore = sc; best = i; tie = false; }
+    else if (sc === bestScore) tie = true;
+  }
+  if (best === -1) return null;
+  return tie ? null : best;
+}
+
+module.exports = {
+  createInitialState, isValidMove, applyMove, checkResult, markOut,
+  forcePass, score, scores, highestScoreWinner
+};
