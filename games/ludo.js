@@ -133,6 +133,18 @@ function checkResult(state) {
 
 // Called by sockets/index.js when a player forfeits mid-game (left or timed
 // out) so the remaining players' turns keep flowing without them.
+function markTimeout(state, playerIndex) {
+  const s = { ...state, tokens: state.tokens.map((row) => row.slice()) };
+  s.dice = null;
+  s.sixStreak = 0;
+  s.turn = nextActive(s, playerIndex);
+  return s;
+}
+
+function score(state, playerIndex) {
+  return (state.tokens[playerIndex] || []).reduce((sum, steps) => sum + (steps === HOME_STEPS ? 60 : steps), 0);
+}
+
 function markOut(state, playerIndex) {
   const s = { ...state, active: state.active.slice() };
   s.active[playerIndex] = false;
@@ -140,4 +152,4 @@ function markOut(state, playerIndex) {
   return s;
 }
 
-module.exports = { createInitialState, isValidMove, applyMove, checkResult, markOut };
+module.exports = { createInitialState, isValidMove, applyMove, checkResult, markOut, markTimeout, score };

@@ -9,7 +9,10 @@ const REGISTRY = require('../games/registry');
 const User = require('../models/User');
 
 const ENG = games.ENGINES || games;
-const FORFEIT_MS = 75 * 1000;      // disconnect this long => that player forfeits
+const FORFEIT_MS = 75 * 1000;
+  const TURN_MS = 15 * 1000;
+const GAME_MS = (maxPlayers) => maxPlayers === 4 ? 8 * 60 * 1000 : 4 * 60 * 1000; // total game clock
+const FORFEIT_NOTE = 'disconnect this long => that player forfeits';
 const WIN_COINS = 10;
 const EMOTE_COUNT = 8;             // keep in sync with EMOTES in public/index.html
 
@@ -52,7 +55,9 @@ module.exports = function initSockets(io, sessionMiddleware) {
     result: r.result || null,
     rematch: r.rematch ? [...r.rematch] : [],
     players: r.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, connected: p.connected, out: !!p.out })),
-    state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state
+    state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state,
+    turnDeadline: r.turnDeadline || null, gameDeadline: r.gameDeadline || null,
+    skipCounts: r.skipCounts || {}, boardRotation: r.boardRotation || 0
   });
   const push = (r) => r.players.forEach((p, i) => p.sid && io.to(p.sid).emit('room:update', view(r, i)));
   const toAll = (r, ev, payload) => r.players.forEach((p) => p.sid && io.to(p.sid).emit(ev, payload));
@@ -70,6 +75,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
   function finish(r, winnerIndex, reason) {
     if (r.status !== 'playing') return;
     clearAllForfeits(r);
+    if (r.turnTimer) clearTimeout(r.turnTimer);
+    if (r.gameTimer) clearTimeout(r.gameTimer);
     r.status = 'over'; r.rematch = new Set();
     r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal' };
     r.players.forEach((p, i) => {
@@ -81,6 +88,46 @@ module.exports = function initSockets(io, sessionMiddleware) {
     });
     toAll(r, 'game:over', r.result);
     push(r);
+  }
+
+  function startTurnTimer(r) {
+    if (r.status !== 'playing' || r.game !== 'ludo') return;
+    if (r.turnTimer) clearTimeout(r.turnTimer);
+    r.turnDeadline = Date.now() + TURN_MS;
+    r.turnTimer = setTimeout(() => {
+      if (r.status !== 'playing' || !r.state) return;
+      const i = r.state.turn;
+      r.skipCounts[i] = (r.skipCounts[i] || 0) + 1;
+      toAll(r, 'game:warning', { playerIndex: i, skips: r.skipCounts[i], message: `${r.players[i]?.name || 'Player'} missed a turn.` });
+      if (r.skipCounts[i] >= 3) {
+        toAll(r, 'game:warning', { playerIndex: i, skips: 3, message: `${r.players[i]?.name || 'Player'} forfeited after 3 missed turns.` });
+        eliminatePlayer(r, i, 'forfeit');
+      } else {
+        const eng = ENG[r.game];
+        if (eng.markTimeout) r.state = eng.markTimeout(r.state, i);
+        startTurnTimer(r);
+        push(r);
+      }
+    }, TURN_MS);
+  }
+
+  function startGameTimer(r) {
+    r.gameDeadline = Date.now() + GAME_MS(r.maxPlayers);
+    r.gameTimer = setTimeout(() => {
+      if (r.status !== 'playing') return;
+      let winner = null, best = -1;
+      if (r.game === 'ludo' && ENG[r.game].score) {
+        r.players.forEach((pl, i) => { if (!pl.out) { const n = ENG[r.game].score(r.state, i); if (n > best) { best = n; winner = i; } } });
+      }
+      finish(r, winner, 'time');
+    }, GAME_MS(r.maxPlayers));
+  }
+
+  function startPlayTimers(r) {
+    if (r.status !== 'playing' || r.game !== 'ludo') return;
+    r.skipCounts = r.skipCounts || {};
+    startGameTimer(r);
+    startTurnTimer(r);
   }
 
   function startForfeitTimer(r, i) {
@@ -139,13 +186,13 @@ module.exports = function initSockets(io, sessionMiddleware) {
     Object.assign(r.players[i], { sid: socket.id, connected: true });
     socket.data.code = r.code;
     if (r.status === 'playing') clearForfeit(r, i);
-    if (r.status === 'waiting' && r.players.length === r.maxPlayers) { r.status = 'playing'; r.state = ENG[r.game].createInitialState(r.maxPlayers); }
+    if (r.status === 'waiting' && r.players.length === r.maxPlayers) { r.status = 'playing'; r.state = ENG[r.game].createInitialState(r.maxPlayers); r.boardRotation = (r.boardRotation || 0); startPlayTimers(r); }
     push(r);
     return true;
   }
 
   function createRoom(socket, game, maxPlayers) {
-    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set() };
+    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set(), skipCounts: {}, boardRotation: Math.floor(Math.random()*4)*90 };
     rooms.set(r.code, r); attach(socket, r); return r;
   }
 
@@ -205,8 +252,9 @@ module.exports = function initSockets(io, sessionMiddleware) {
       const e = ENG[r.game];
       if (!e.isValidMove(r.state, i, move)) return socket.emit('error', { message: 'That move isn’t allowed.' });
       r.state = e.applyMove(r.state, i, move);
+      r.skipCounts[i] = 0;
       const res = e.checkResult(r.state);
-      if (res.status === 'ongoing') return push(r);
+      if (res.status === 'ongoing') { if (r.game === 'ludo') startTurnTimer(r); return push(r); }
       push(r); finish(r, res.status === 'win' ? res.winnerIndex : null, 'normal');
     });
 
@@ -223,7 +271,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (r.rematch.size === r.maxPlayers) {
         r.rematch = new Set(); r.result = null; r.status = 'playing';
         r.players.forEach((p) => { p.out = false; });
-        r.state = ENG[r.game].createInitialState(r.maxPlayers);
+        r.state = ENG[r.game].createInitialState(r.maxPlayers); r.skipCounts = {}; r.boardRotation = (r.boardRotation + 90) % 360; startPlayTimers(r);
       }
       push(r);
     });

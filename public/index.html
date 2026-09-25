@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--red:#8f1017;--red2:#b3141c;--gold:#f7c52b;--bg:#f3f3f3;--ink:#1b1b1f;--mute:#6b6b76;--card:#fff}
+:root{--red:#8f1017;--red2:#b3141c;--gold:#f7c52b;--bg:#f3f3f3;--ink:#1b1b1f;--mute:#6b6b76;--card:#fff;--line:#e6e6e6} body.dark{--bg:#17171b;--ink:#f6f6f7;--mute:#b1b1ba;--card:#25252b;--line:#3a3a43} body.dark .sheet,body.dark .game,body.dark .pstat,body.dark .over,body.dark .lrow{background:var(--card);color:var(--ink)} body.dark input{background:#303039;color:#fff;border-color:#4a4a55}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;font-family:Poppins,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
 button{font:inherit;cursor:pointer;border:0}
@@ -103,21 +103,22 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .lquad .yard{position:absolute;inset:8%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6%;pointer-events:none}
 .lquad .yard .slot{border-radius:50%;background:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center}
 .ltrack{position:absolute;background:repeating-conic-gradient(from 0deg,#eee 0 1deg)}
-.lcell{position:absolute;width:6.667%;height:6.667%;background:#fff;border:1px solid #eee;box-sizing:border-box}
+.lcell{position:absolute;width:6.667%;height:6.667%;background:#fff;border:1.5px solid #c9c9cf;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04);box-sizing:border-box}
 .lcell.safe{background:#e9e9e9}
 .lcell.safe::after{content:'★';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:#999}
 .lcell.home-red{background:#f3c7c9}.lcell.home-green{background:#c3e6d3}
 .lcell.home-yellow{background:#f2e3ae}.lcell.home-blue{background:#c4d6ef}
 .lcenter{position:absolute;left:40%;top:40%;width:20%;height:20%}
 .lcenter svg{width:100%;height:100%}
-.ltok{position:absolute;width:6.2%;height:6.2%;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.5);border:1.5px solid rgba(255,255,255,.85);transform:translate(-50%,-50%);transition:left .25s ease,top .25s ease;z-index:5}
+.ltok{position:absolute;width:6.2%;height:6.2%;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:800;box-shadow:0 1px 3px rgba(0,0,0,.5);border:1.5px solid rgba(255,255,255,.85);transform:translate(-50%,-50%);transition:left .35s cubic-bezier(.2,.8,.2,1),top .35s cubic-bezier(.2,.8,.2,1);z-index:5;animation:token-hop .38s ease both}
 .ltok.red{background:#c0272d}.ltok.green{background:#1f8f4e}.ltok.yellow{background:#d8a913}.ltok.blue{background:#1f57b5}
 .ltok.movable{cursor:pointer;box-shadow:0 0 0 3px var(--gold),0 1px 3px rgba(0,0,0,.5);animation:lpulse 1s infinite}
 .ltok.stacked::after{content:attr(data-n);position:absolute;top:-6px;right:-6px;background:#222;color:#fff;border-radius:50%;width:12px;height:12px;font-size:8px;display:flex;align-items:center;justify-content:center}
+@keyframes token-hop{0%{transform:translate(-50%,-50%) scale(.72);filter:brightness(1.35)}70%{transform:translate(-50%,-50%) scale(1.08)}100%{transform:translate(-50%,-50%) scale(1)}}
 @keyframes lpulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.18)}}
-.ldice{width:64px;height:64px;border-radius:16px;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #c99a12,0 6px 14px rgba(0,0,0,.35);color:var(--ink);font-size:28px;font-weight:800}
+.ldice{width:64px;height:64px;border:3px solid rgba(255,255,255,.75);border-radius:16px;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #c99a12,0 6px 14px rgba(0,0,0,.35);color:var(--ink);font-size:28px;font-weight:800}
 .ldice:disabled{opacity:.55;box-shadow:none}
-.ldice.rolling{animation:lroll .5s linear infinite}
+.ldice.rolling{animation:lroll .5s linear infinite}.ldice.red{border-color:#c0272d}.ldice.green{border-color:#1f8f4e}.ldice.yellow{border-color:#d8a913}.ldice.blue{border-color:#1f57b5}
 @keyframes lroll{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .lavg{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.35);color:#fff;font-size:10px;border-radius:8px;padding:2px 6px;display:flex;align-items:center;gap:3px}
 .lquad.yellow .lavg,.lquad.red .lavg{right:auto;left:6px}
@@ -151,6 +152,7 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .over{background:#fff;color:var(--ink);border-radius:22px;padding:22px;text-align:center;width:100%;max-width:400px}
 .over h2{margin:0 0 6px;font-size:28px}
 .emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.leader{margin:0 18px 8px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}.leader h3{margin:0 0 8px;font-size:16px}.leader-row{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px}.leader-row img{width:28px;height:28px;border-radius:50%;object-fit:cover}.leader-row b{margin-left:auto;color:var(--red2)}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:#222;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;z-index:20;display:none;max-width:90%}
 @media (prefers-reduced-motion:no-preference){.pl.turn img{transition:box-shadow .2s}}
 </style>
@@ -223,6 +225,9 @@ const EMOTES = [
 ];
 const ICON = { tictactoe:'x', connectfour:'dot', rps:'fist', ludo:'dice', chess:'pawn', whot:'card' };
 let me, socket, room, gstate, result, picked;
+let theme = localStorage.getItem('gamehub-theme') || 'light';
+let soundOn = localStorage.getItem('gamehub-sound') !== 'off';
+let lastLudoDice = null;
 let authMode = 'login', authErr = '';
 let GAMES = [];
 
@@ -249,7 +254,7 @@ function ltokCoord(color, start, steps, tokenIndex){
   const [dx,dy] = LSUB[tokenIndex];
   return { left: (rc[1] + 0.5) * CELL_PCT + dx * 0.4 + '%', top: (rc[0] + 0.5) * CELL_PCT + dy * 0.4 + '%' };
 }
-function ludoBoardHtml(st, mine, canMove){
+function ludoBoardHtml(st, mine, canMove, rotation=0){
   const colors = st.colors || [];
   const dice = st.dice;
   const canRoll = !result && canMove === 'roll';
@@ -264,7 +269,7 @@ function ludoBoardHtml(st, mine, canMove){
     return `<button class="ltok ${color} ${clickable?'movable':''}" ${clickable?`data-lt="${ti}"`:'disabled'}
       style="left:${left};top:${top}" aria-label="${color} token ${ti+1}, ${steps===0?'in yard':steps===57?'home':'step '+steps}">${label}</button>`;
   })).join('');
-  return `<div class="lgrid">
+  return `<div class="lgrid" style="transform:rotate(${rotation}deg);transition:transform .6s ease">
     <div class="lquad red"><span class="ring"><i></i></span></div>
     <div class="lquad green"><span class="ring"><i></i></span></div>
     <div class="lquad yellow"><span class="ring"><i></i></span></div>
@@ -273,15 +278,18 @@ function ludoBoardHtml(st, mine, canMove){
     ${safeCells}${homeCells}${tokens}
   </div>
   <div class="dicebar" style="margin-top:6px">
-    <button class="ldice" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice">${dice ?? icon('dice',26)}</button>
+    <button class="ldice ${st.colors?.[mine]||''}" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice">${dice ?? icon('dice',26)}</button>
   </div>`;
 }
 
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 async function api(p){const r=await fetch(p,{credentials:'include'});if(!r.ok)throw new Error(r.status);return r.json()}
-const avatar = p => esc(p?.avatar || p?.photo || p?.picture || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E');
+const avatar = p => esc(p?.avatar || p?.photo || p?.picture || '/icon-192.png');
 const nameOf = p => esc(p?.displayName || p?.name || 'Player');
 
+document.body.classList.toggle('dark', theme === 'dark');
+function playSfx(kind='roll'){ if(!soundOn) return; try{ const C=window.AudioContext||window.webkitAudioContext, c=new C(), o=c.createOscillator(), g=c.createGain(); o.type=kind==='win'?'sine':'triangle'; o.frequency.value=kind==='win'?880:420; g.gain.value=.045; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+.12); }catch{} }
+function toggleTheme(){ theme=theme==='dark'?'light':'dark'; localStorage.setItem('gamehub-theme',theme); document.body.classList.toggle('dark',theme==='dark'); }
 async function boot(){
   try{ me = await api('/api/me'); me = me.user || me; }catch{ return loginView(); }
   if(!me || (!me._id && !me.id && !me.displayName && !me.name)) return loginView();
@@ -330,12 +338,14 @@ function connect(){
   socket.on('connect', () => { if(room && room.status !== 'over') joinRoom(room.code); });
   socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
   socket.on(EV.room, r => {
-    room = r; if(r.state) gstate = r.state;
+    const prevDice=gstate?.dice; room = r; if(r.state) gstate = r.state; if(r.state?.dice===6 && prevDice!==6){ toast('Awesome six! Roll or choose a token.'); playSfx('roll'); }
     result = r.status === 'over' ? r.result : null;
     if($('.play')) gameView();
   });
   socket.on(EV.state, s => { gstate = s.state || s; picked = null; if(room) gameView(); });
-  socket.on(EV.over, r => { result = r; gameView(); });
+  socket.on(EV.over, r => { result = r; playSfx('win'); gameView(); });
+  socket.on('game:warning', e => toast(e.message || 'Turn skipped'));
+  socket.on('game:comment', e => toast(e.message || 'Nice move!'));
 }
 
 /* ---------- lobby ---------- */
@@ -346,16 +356,25 @@ async function lobbyView(){
   GAMES = games;
   app.innerHTML = `
   <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
-    <div class="me"><button id="myProfile" style="background:none;padding:0;border-radius:50%"><img src="${avatar(me)}" alt="View your profile"></button><button id="out">Log out</button></div></div>
+    <div class="me"><button id="settingsBtn" aria-label="Settings" style="background:rgba(255,255,255,.18);font-size:23px;padding:8px 12px">⚙</button></div></div>
+  <div id="leaderboard" class="leader"><h3>Leaderboard</h3><div class="empty">Loading rankings…</div></div>
   <div class="list">${games.map(g => `
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
       <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
-  $('#out').onclick = () => location.href = '/auth/logout';
-  $('#myProfile').onclick = () => profileView(me.id || me._id);
+  $('#settingsBtn').onclick = settingsView;
+  loadLeaderboard();
   app.querySelectorAll('.game').forEach(b => b.onclick = () =>
     b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
+}
+
+async function loadLeaderboard(){
+  try{ const data=await api('/api/leaderboard'); const rows=(data.users||[]).map((u,i)=>`<div class="leader-row"><span>${i+1}.</span><img src="${avatar(u)}" alt=""><span>${nameOf(u)}</span><b>${u.stats?.wins||0} wins · ${u.coins||0} coins</b></div>`).join(''); $('#leaderboard').innerHTML=`<h3>Leaderboard</h3>${rows||'<div class="empty">No players yet.</div>'}`; }catch{ $('#leaderboard').innerHTML='<h3>Leaderboard</h3><div class="empty">Rankings unavailable.</div>'; }
+}
+function settingsView(){
+  app.innerHTML=`<div class="profile"><div class="pcover"><button class="back" id="setBack">‹</button><h2 style="margin:18px 0 0">Settings</h2></div><div class="pbody" style="text-align:left"><button class="game" id="setProfile">👤 <span>Profile & avatar</span><span>›</span></button><button class="game" id="themeBtn" style="margin-top:10px">◐ <span>Dark mode</span><span>${theme==='dark'?'On':'Off'}</span></button><button class="game" id="soundBtn" style="margin-top:10px">♫ <span>Sound effects</span><span>${soundOn?'On':'Off'}</span></button><button class="btn ghost" id="logoutBtn" style="width:100%;margin-top:24px">Log out</button></div></div>`;
+  $('#setBack').onclick=lobbyView; $('#setProfile').onclick=()=>profileView(me.id||me._id); $('#themeBtn').onclick=()=>{toggleTheme();settingsView()}; $('#soundBtn').onclick=()=>{soundOn=!soundOn;localStorage.setItem('gamehub-sound',soundOn?'on':'off');settingsView()}; $('#logoutBtn').onclick=()=>location.href='/auth/logout';
 }
 
 /* ---------- profile ---------- */
@@ -491,6 +510,8 @@ function gameView(){
   const seats = Array.from({length: maxPlayers}, (_,i) => players[i] || null);
   const mine = room.you ?? players.findIndex(p => [p?._id,p?.id,p?.userId].some(x => x && x === (me._id||me.id)));
   const turn = gstate?.turn ?? gstate?.currentPlayer;
+  const remaining = room.gameDeadline ? Math.max(0, Math.ceil((room.gameDeadline-Date.now())/1000)) : null;
+  const turnRemaining = room.turnDeadline ? Math.max(0, Math.ceil((room.turnDeadline-Date.now())/1000)) : null;
   const myTurn = mine >= 0 && turn === mine;
   const waiting = players.length < maxPlayers || room.status === 'waiting';
   const g = room.game;
@@ -499,21 +520,23 @@ function gameView(){
   const forfeits = room.forfeits || {};
   const goneIdx = seats.findIndex((p,i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
   if(goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
+  if(!waiting && !result && remaining != null) status += ` · Game ${Math.floor(remaining/60)}:${String(remaining%60).padStart(2,'0')} · Turn ${turnRemaining ?? 15}s`;
   clearInterval(gameView.t);
-  if(goneIdx !== -1) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 1000);
+  if(goneIdx !== -1 || (!waiting && !result && (remaining != null || turnRemaining != null))) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 1000);
   const pl = (p,i) => `<button class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}" ${p?`data-uid="${esc(p.id)}"`:'disabled'} style="background:none">
     <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}</button>`;
   app.innerHTML = `<div class="play">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
-      <div class="code">Room ${esc(room.code)}</div>
+      <div class="code">Room ${esc(room.code)} <button id="shareRoom" style="background:none;color:#fff;padding:0 0 0 6px" aria-label="Share room">↗</button></div>
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
     <div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>
     ${status ? `<div class="status">${esc(status)}</div>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine)}</div>
     ${waiting ? '' : emoteBar()}
     ${result ? overCard(mine) : ''}</div>`;
-  $('#bk').onclick = () => { socket.emit(EV.leave, { code: room.code }); lobbyView() };
+  $('#bk').onclick = () => { if(room.status==='playing' && !confirm('Leaving now forfeits your coins and match. Leave anyway?')) return; socket.emit(EV.leave, { code: room.code }); lobbyView() };
   $('#rulesBtn').onclick = () => rulesSheet(g);
+  $('#shareRoom').onclick = async () => { try{ await navigator.clipboard.writeText(location.href); toast('Room link copied'); }catch{ toast('Room code: '+room.code); } };
   bindBoard(g, myTurn);
   $('#again')?.addEventListener('click', lobbyView);
   $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
@@ -563,11 +586,11 @@ function board(g, myTurn, players, mine){
   if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
   if(g === 'ludo'){
     const st = gstate || {};
-    if(!st.starts) return `<div class="board ludo">${ludoBoardHtml({colors:[],tokens:[],starts:[]}, mine, null)}</div>`;
+    if(!st.starts) return `<div class="board ludo">${ludoBoardHtml({colors:[],tokens:[],starts:[]}, mine, null, room.boardRotation||0)}</div>`;
     const canMove = result ? null : !myTurn ? null : st.dice == null ? 'roll' : 'move';
     const legend = (players||[]).map((p,i) => `<span class="lname ${st.colors[i]}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px">${nameOf(p)}${p?.out?' · out':''}</span>`).join('');
     return `<div class="board ludo" style="align-items:center">
-      ${ludoBoardHtml(st, mine, canMove)}
+      ${ludoBoardHtml(st, mine, canMove, room.boardRotation||0)}
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">${legend}</div>
     </div>`;
   }
@@ -578,7 +601,7 @@ function bindBoard(g, myTurn){
   app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => send(MOVE.tictactoe(+e.dataset.i)));
   app.querySelectorAll('[data-c]').forEach(e => e.onclick = () => send(MOVE.connectfour(+e.dataset.c)));
   app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k; send(MOVE.rps(picked)); gameView() });
-  $('#roll')?.addEventListener('click', () => send({ type: 'roll' }));
+  $('#roll')?.addEventListener('click', () => { const d=$('#roll'); d.classList.add('rolling'); if(navigator.vibrate) navigator.vibrate([40,30,40]); playSfx('roll'); setTimeout(()=>d.classList.remove('rolling'),520); send({ type: 'roll' }); });
   app.querySelectorAll('[data-lt]').forEach(e => e.onclick = () => send({ type: 'move', token: +e.dataset.lt }));
 }
 function overCard(mine){
