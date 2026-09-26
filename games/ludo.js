@@ -162,11 +162,15 @@ function forcePass(state) {
 }
 
 // A simple running "score" per player — total steps travelled across all 4
-// tokens (a token counts more the further it has progressed; a token home
-// contributes its full 57). Used to decide a winner if the match clock (see
-// sockets/index.js) runs out before anyone finishes all 4 tokens.
+// tokens (a token counts more the further it has progressed), plus a +56
+// bonus for every token that has raced all the way home. Used to decide a
+// winner if the match clock (see sockets/index.js) runs out before anyone
+// finishes all 4 tokens.
 function score(state, playerIndex) {
-  return state.tokens[playerIndex].reduce((sum, steps) => sum + steps, 0);
+  const toks = state.tokens[playerIndex];
+  const travelled = toks.reduce((sum, steps) => sum + steps, 0);
+  const homeBonus = toks.filter((steps) => steps === HOME_STEPS).length * 56;
+  return travelled + homeBonus;
 }
 function scores(state) {
   return Array.from({ length: state.playerCount }, (_, i) => score(state, i));

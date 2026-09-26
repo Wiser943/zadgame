@@ -153,6 +153,10 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .lquad.blue .ring i{background:#1f57b5}.lquad.yellow .ring i{background:#d8a913}
 .lquad .yard{position:absolute;inset:8%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6%;pointer-events:none}
 .lquad .yard .slot{border-radius:50%;background:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center}
+.lquad .lseat{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;max-width:92%;pointer-events:none;z-index:6}
+.lquad .lseat img{width:20px;height:20px;border-radius:50%;object-fit:cover;background:#ddd;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);flex-shrink:0}
+.lquad .lseat span{font-size:8.5px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.55);text-align:center;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.lgrid-wrap.rot .lseat{transform:translateX(-50%) rotate(180deg)}
 .ltrack{position:absolute;background:repeating-conic-gradient(from 0deg,#eee 0 1deg)}
 .lcell{position:absolute;width:6.667%;height:6.667%;background:#fff;border:1px solid #eee;box-sizing:border-box}
 .lcell.safe{background:#e9e9e9}
@@ -168,7 +172,8 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 @keyframes lpulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.18)}}
 .ldice{width:64px;height:64px;border-radius:16px;background:var(--gold);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 0 #c99a12,0 6px 14px rgba(0,0,0,.35);color:var(--ink);font-size:28px;font-weight:800}
 .ldice:disabled{opacity:.55;box-shadow:none}
-.ldice.rolling{animation:lroll .5s linear infinite}
+.ldice-face{display:inline-flex;align-items:center;justify-content:center}
+.ldice-face.rolling{animation:lroll .5s linear infinite}
 @keyframes lroll{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .lavg{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.35);color:#fff;font-size:10px;border-radius:8px;padding:2px 6px;display:flex;align-items:center;gap:3px}
 .lquad.yellow .lavg,.lquad.red .lavg{right:auto;left:6px}
@@ -259,9 +264,10 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .lgrid-wrap{width:100%;max-width:400px;transition:transform .5s ease}
 .lgrid-wrap.rot{transform:rotate(180deg)}
 .lgrid-wrap.rot .hscore{transform:rotate(180deg)}
-.hscore{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.35)}
+.hscore{width:46%;height:46%;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#1c1c1c;box-shadow:0 2px 6px rgba(0,0,0,.25);border:3px solid #fff}
 .ldice{position:relative;transition:box-shadow .15s,border-color .15s}
 .ldice.myhouse{box-shadow:0 4px 0 #c99a12,0 6px 14px rgba(0,0,0,.35),0 0 0 4px var(--house,var(--gold))}
+.over-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:15;padding:20px}
 </style>
 </head>
 <body>
@@ -455,11 +461,11 @@ function ltokCoord(color, start, steps, tokenIndex){
   return { left: (rc[1] + 0.5) * CELL_PCT + dx * 0.4 + '%', top: (rc[0] + 0.5) * CELL_PCT + dy * 0.4 + '%' };
 }
 const HOUSE_HEX = { red:'#c0272d', green:'#1f8f4e', yellow:'#d8a913', blue:'#1f57b5' };
-function ludoBoardHtml(st, mine, canMove){
+function ludoBoardHtml(st, mine, canMove, players){
   const colors = st.colors || [];
   const dice = st.dice;
   const canRoll = !result && canMove === 'roll';
-  const myColor = mine >= 0 ? colors[mine] : null;
+  const turnColor = colors[st.turn];
   const trackCells = LTRACK.map((rc,c) => `<div class="lcell ${LSAFE.has(c)?'safe':''}" style="left:${rc[1]*CELL_PCT}%;top:${rc[0]*CELL_PCT}%"></div>`).join('');
   const homeCells = Object.entries(LHOME).flatMap(([color, cells]) => cells.slice(0,5).map(([r,c]) =>
     `<div class="lcell home-${color}" style="left:${c*CELL_PCT}%;top:${r*CELL_PCT}%"></div>`)).join('');
@@ -474,21 +480,30 @@ function ludoBoardHtml(st, mine, canMove){
   const houseScore = (color) => {
     const pi = colors.indexOf(color);
     if(pi === -1) return `<span class="ring"><i></i></span>`;
-    const sc = (st.tokens[pi]||[]).reduce((a,b)=>a+b,0);
+    const toks = st.tokens[pi] || [];
+    // Each token that's raced all the way home earns a +56 bonus on top of its travelled steps.
+    const sc = toks.reduce((a,b)=>a+b,0) + toks.filter(s => s === 57).length * 56;
     ludoScoreDisplay[pi] = sc; // cache, used as the "from" value for the next count-up animation
     return `<span class="hscore" data-hscore="${pi}">${sc}</span>`;
   };
+  const houseSeat = (color) => {
+    const pi = colors.indexOf(color);
+    if(pi === -1) return '';
+    const p = players?.[pi];
+    if(!p) return '';
+    return `<div class="lseat"><img src="${avatar(p)}" alt=""><span>${nameOf(p)}${pi===mine?' (you)':''}</span></div>`;
+  };
   const rotated = (st.round || 0) % 2 === 1;
   return `<div class="lgrid-wrap ${rotated?'rot':''}"><div class="lgrid">
-    <div class="lquad red">${houseScore('red')}</div>
-    <div class="lquad green">${houseScore('green')}</div>
-    <div class="lquad yellow">${houseScore('yellow')}</div>
-    <div class="lquad blue">${houseScore('blue')}</div>
+    <div class="lquad red">${houseScore('red')}${houseSeat('red')}</div>
+    <div class="lquad green">${houseScore('green')}${houseSeat('green')}</div>
+    <div class="lquad yellow">${houseScore('yellow')}${houseSeat('yellow')}</div>
+    <div class="lquad blue">${houseScore('blue')}${houseSeat('blue')}</div>
     <div class="lcenter"><svg viewBox="0 0 100 100"><polygon points="0,0 50,50 100,0" fill="#c0272d"/><polygon points="0,0 50,50 0,100" fill="#d8a913"/><polygon points="100,0 50,50 100,100" fill="#1f8f4e"/><polygon points="0,100 50,50 100,100" fill="#1f57b5"/></svg></div>
     ${trackCells}${homeCells}${tokens}
   </div></div>
   <div class="dicebar" style="margin-top:6px">
-    <button class="ldice ${myColor?'myhouse':''}" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice" style="${myColor?`--house:${HOUSE_HEX[myColor]}`:''}">${dice ?? icon('dice',26)}</button>
+    <button class="ldice ${turnColor?'myhouse':''}" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice" style="${turnColor?`--house:${HOUSE_HEX[turnColor]}`:''}"><span class="ldice-face">${dice ?? icon('dice',26)}</span></button>
   </div>`;
 }
 
@@ -593,8 +608,8 @@ function handleLudoEvent(ev){
   if(!ev || !room) return;
   const mine = room.you;
   if(ev.type === 'roll'){
-    const dice = document.getElementById('roll');
-    if(dice){ dice.classList.add('rolling'); setTimeout(() => dice?.classList.remove('rolling'), 550); }
+    const diceFace = document.querySelector('#roll .ldice-face');
+    if(diceFace){ diceFace.classList.add('rolling'); setTimeout(() => diceFace?.classList.remove('rolling'), 550); }
     animUntil = Math.max(animUntil, Date.now() + 600);
     SFX.dice();
     if(ev.dice === 6){ SFX.six(); toast(say(ev.streak >= 2 ? 'doubleSix' : 'six')); vibrate(ev.streak >= 2 ? [40,60,40,60,80] : [40,60,40]); }
@@ -646,7 +661,8 @@ function animateLudoMove(ev){
     if(i < seq.length) setTimeout(tick, stepDur);
   })();
   const fromScore = ludoScoreDisplay[player] ?? 0;
-  const toScore = fromScore + (from === 0 ? 1 : (to - from));
+  const homeBonus = to === 57 ? 56 : 0; // races a token all the way home: +56 bonus
+  const toScore = fromScore + (from === 0 ? 1 : (to - from)) + homeBonus;
   ludoScoreDisplay[player] = toScore;
   if(hEl) animateNumber(hEl, fromScore, toScore, seq.length * stepDur);
 }
@@ -1203,12 +1219,14 @@ function board(g, myTurn, players, mine){
   if(g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
   if(g === 'ludo'){
     const st = gstate || {};
-    if(!st.starts) return `<div class="board ludo">${ludoBoardHtml({colors:[],tokens:[],starts:[]}, mine, null)}</div>`;
+    if(!st.starts) return `<div class="board ludo">${ludoBoardHtml({colors:[],tokens:[],starts:[]}, mine, null, players)}</div>`;
     const canMove = result ? null : !myTurn ? null : st.dice == null ? 'roll' : 'move';
     const legend = (players||[]).map((p,i) => `<span class="lname ${st.colors[i]}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px">${nameOf(p)}${p?.out?' · out':''}</span>`).join('');
+    const turnLabel = result ? '' : (myTurn ? 'Your turn' : `${nameOf(players[st.turn])}’s turn`);
     return `<div class="board ludo" style="align-items:center">
-      ${ludoBoardHtml(st, mine, canMove)}
+      ${ludoBoardHtml(st, mine, canMove, players)}
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">${legend}</div>
+      ${turnLabel ? `<div class="status" style="margin-top:6px;font-size:13px;padding:6px 16px">${esc(turnLabel)}</div>` : ''}
     </div>`;
   }
   if(g === 'whot') return whotBoardHtml(gstate || {}, myTurn);
@@ -1265,7 +1283,7 @@ function bindBoard(g, myTurn){
   app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k; SFX.tap(); vibrate(18); send(MOVE.rps(picked)); gameView() });
   $('#roll')?.addEventListener('click', (e) => {
     const btn = e.currentTarget;
-    btn.disabled = true; btn.classList.add('rolling');
+    btn.disabled = true; btn.querySelector('.ldice-face')?.classList.add('rolling');
     vibrate(35);
     send({ type: 'roll' });
   });
@@ -1290,10 +1308,10 @@ function overCard(mine){
   const won = !draw && w === mine;
   const maxPlayers = room.maxPlayers || room.players.length || 2;
   const canRe = room.players.length === maxPlayers && room.players.every(p => p.connected) && !room.rematch?.includes(mine);
-  return `<div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>
+  return `<div class="over-bg"><div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>
     <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Someone left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
     <button class="btn" id="rm" style="margin-right:8px" ${canRe ? '' : 'disabled'}>${room.rematch?.includes(mine) ? 'Waiting…' : 'Rematch'}</button>
-    <button class="btn ghost" id="again">Lobby</button></div>`;
+    <button class="btn ghost" id="again">Lobby</button></div></div>`;
 }
 
 boot();
