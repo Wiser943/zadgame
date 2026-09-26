@@ -249,4 +249,29 @@ function publicState(state, playerIndex) {
   };
 }
 
-module.exports = { createInitialState, isValidMove, applyMove, checkResult, markOut, publicState };
+// Simple bot: clear a pending pick with a matching card if it has one
+// (otherwise draws), plays a shape/value match preferring to keep its Whot
+// wilds in hand, and when it must play a wild, calls whichever shape it
+// holds the most of.
+function botMove(state, playerIndex) {
+  const hand = state.hands[playerIndex];
+  if (state.pendingPick > 0) {
+    const neededValue = state.pendingType === 'two' ? 2 : 3;
+    const idx = hand.findIndex((c) => c.value === neededValue);
+    return idx !== -1 ? { type: 'play', index: idx } : { type: 'market' };
+  }
+  if (!hasPlayableCard(state, playerIndex)) return { type: 'market' };
+  let idx = hand.findIndex((c) => c.shape !== 'whot' && cardMatchesTop(c, state));
+  if (idx === -1) idx = hand.findIndex((c) => cardMatchesTop(c, state));
+  const card = hand[idx];
+  if (card.shape === 'whot') {
+    const counts = {};
+    hand.forEach((c) => { if (c.shape !== 'whot') counts[c.shape] = (counts[c.shape] || 0) + 1; });
+    let calledShape = SHAPES[0], best = -1;
+    SHAPES.forEach((s) => { if ((counts[s] || 0) > best) { best = counts[s] || 0; calledShape = s; } });
+    return { type: 'play', index: idx, calledShape };
+  }
+  return { type: 'play', index: idx };
+}
+
+module.exports = { createInitialState, isValidMove, applyMove, checkResult, markOut, publicState, botMove };

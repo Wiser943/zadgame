@@ -185,7 +185,36 @@ function highestScoreWinner(state) {
   return tie ? null : best;
 }
 
+// Simple bot: roll when it can, then move whichever token scores best —
+// favoring captures, reaching home, and leaving the yard on a 6, otherwise
+// just advancing the furthest token.
+function botMove(state, playerIndex) {
+  if (state.dice === null) return { type: 'roll' };
+  const dice = state.dice;
+  const movable = movableTokens(state, playerIndex, dice);
+  if (!movable.length) return null;
+  let best = movable[0], bestScore = -Infinity;
+  for (const t of movable) {
+    const steps = state.tokens[playerIndex][t];
+    const toSteps = steps === 0 ? 1 : steps + dice;
+    let score = toSteps;
+    if (toSteps === HOME_STEPS) score += 100;
+    if (steps === 0 && dice === 6) score += 20;
+    if (toSteps >= 1 && toSteps <= TRACK_LEN - 1) {
+      const cell = globalCell(state, playerIndex, toSteps);
+      if (!SAFE_CELLS.has(cell)) {
+        for (let p = 0; p < state.playerCount; p++) {
+          if (p === playerIndex) continue;
+          if (state.tokens[p].some((st) => st >= 1 && st <= TRACK_LEN - 1 && globalCell(state, p, st) === cell)) score += 50;
+        }
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = t; }
+  }
+  return { type: 'move', token: best };
+}
+
 module.exports = {
   createInitialState, isValidMove, applyMove, checkResult, markOut,
-  forcePass, score, scores, highestScoreWinner
+  forcePass, score, scores, highestScoreWinner, botMove
 };

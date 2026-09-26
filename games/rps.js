@@ -49,4 +49,9 @@ function publicState(state, playerIndex) {
   };
 }
 
-module.exports = { createInitialState, isValidMove, applyMove, checkResult, publicState };
+function botMove() {
+  const opts = ['rock', 'paper', 'scissors'];
+  return { choice: opts[Math.floor(Math.random() * opts.length)] };
+}
+
+module.exports = { createInitialState, isValidMove, applyMove, checkResult, publicState, botMove };

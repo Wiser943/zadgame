@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4-Player 5x5 Tic-Tac-Toe</title>
+    <!-- Link to external CSS styling sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>5x5 Mega Tic-Tac-Toe</h1>
+    <div class="subtitle">4 Players • 10-Second Turn Limit • Connect 4 to Win!</div>
+
+    <div id="game-container">
+        <div id="status-panel">
+            <div id="player-indicator" class="player-badge p1-active">Player 1 (X)</div>
+            <div id="timer-box">10s</div>
+        </div>
+
+        <div id="grid"></div>
+
+        <button id="reset-btn" onclick="resetGame()">Restart Game</button>
+    </div>
+
+    <div id="win-overlay" class="overlay">
+        <div id="victory-text">Player 1 Wins!</div>
+        <button id="reset-btn" style="max-width: 200px;" onclick="resetGame()">Play Again</button>
+    </div>
+
+    <!-- Link to external JavaScript logic sheet -->
+    <script src="script.js"></script>
+</body>
+</html>

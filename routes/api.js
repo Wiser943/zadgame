@@ -50,4 +50,27 @@ router.get('/users/:id', ensureAuth, async (req, res) => {
   } catch { res.status(404).json({ message: 'Player not found.' }); }
 });
 
+// Top players by coins or by wins. Always includes the caller's own rank/row
+// (marked outsideTop) even if they didn't make the cut, so "where do I
+// stand" always has an answer.
+router.get('/leaderboard', ensureAuth, async (req, res) => {
+  const byWins = req.query.by === 'wins';
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
+  const sort = byWins ? { 'stats.wins': -1, coins: -1 } : { coins: -1, 'stats.wins': -1 };
+  const rows = await User.find({}).select('displayName avatar coins stats').sort(sort).limit(limit).lean();
+  const shape = (u, rank) => ({
+    id: String(u._id), rank, displayName: u.displayName, avatar: u.avatar,
+    coins: u.coins || 0, stats: u.stats || {}
+  });
+  const leaderboard = rows.map((u, i) => shape(u, i + 1));
+  let me = leaderboard.find((u) => u.id === req.user.id);
+  if (!me) {
+    const ahead = await User.countDocuments(byWins
+      ? { 'stats.wins': { $gt: req.user.stats?.wins || 0 } }
+      : { coins: { $gt: req.user.coins || 0 } });
+    me = { ...shape(req.user, ahead + 1), outsideTop: true };
+  }
+  res.json({ leaderboard, me, by: byWins ? 'wins' : 'coins' });
+});
+
 module.exports = router;

@@ -49,6 +49,27 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-o
 .me img{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);background:#ddd}
 .me button{background:rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:8px 14px;font-size:13px}
 .list{padding:18px 18px 40px;display:grid;gap:14px}
+.lbstrip{margin:16px 18px 0;background:var(--card);border-radius:20px;padding:14px 16px;display:flex;align-items:center;gap:10px;border:1px solid #e6e6e6;width:calc(100% - 36px);text-align:left}
+.lbstrip .lbtitle{display:flex;align-items:center;gap:8px;font-weight:800;color:var(--ink);flex-shrink:0}
+.lbstrip .lbtitle svg{width:20px;height:20px;color:var(--gold)}
+.lbstrip .lbtop3{display:flex;flex:1;justify-content:flex-end}
+.lbstrip .lbtop3 img{width:28px;height:28px;border-radius:50%;border:2px solid #fff;margin-left:-9px;object-fit:cover;background:#ddd;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.lbstrip .lbtop3 img:first-child{margin-left:0}
+.lbstrip .chev{color:#bbb;font-size:20px;flex-shrink:0}
+.lbview{padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 30px;max-width:560px;margin:0 auto}
+.lbtabs{display:flex;gap:8px;background:#eee;border-radius:999px;padding:4px;margin:16px 0 6px}
+.lbtabs button{flex:1;padding:9px;border-radius:999px;font-weight:700;font-size:13px;color:#888}
+.lbtabs button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.lbrow{display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid #f0f0f0;width:100%;text-align:left;background:none}
+.lbrow .rank{width:26px;text-align:center;font-weight:800;color:#aaa;flex-shrink:0;font-size:14px}
+.lbrow.top1 .rank,.lbrow.top2 .rank,.lbrow.top3 .rank{font-size:18px}
+.lbrow img{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#ddd;flex-shrink:0}
+.lbrow .who{flex:1;min-width:0}
+.lbrow .who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14.5px}
+.lbrow .who span{font-size:12px;color:#999}
+.lbrow .val{font-weight:800;flex-shrink:0;white-space:nowrap}
+.lbrow.me{background:rgba(247,197,43,.16);border-radius:14px}
+.lbsep{text-align:center;color:#bbb;font-size:13px;margin:6px 0;letter-spacing:2px}
 .game{background:var(--card);border-radius:22px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;border:1px solid #e6e6e6;width:100%;text-align:left}
 .game h3{margin:0;font-size:18px}.game span{color:var(--mute);font-size:13px}
 .game .ico{margin-right:14px;color:var(--red);display:inline-flex;align-items:center}
@@ -182,15 +203,26 @@ input{flex:1;min-width:0;font:inherit;padding:13px 16px;border-radius:999px;bord
 .over h2{margin:0 0 6px;font-size:28px}
 .emotes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}.emotes button{background:rgba(0,0,0,.3);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;display:inline-flex;align-items:center;gap:5px}
 .chatbox{width:100%;max-width:400px;background:rgba(0,0,0,.28);border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px}
-.chatlog{max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;font-size:13px;scroll-behavior:smooth}
+.chatlog{max-height:190px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;font-size:13px;scroll-behavior:smooth}
 .chatlog:empty::before{content:'Say hi 👋';color:rgba(255,255,255,.5);font-size:12px}
-.cmsg{background:rgba(255,255,255,.14);border-radius:12px;padding:6px 11px;align-self:flex-start;max-width:85%;word-break:break-word;color:#fff}
+.cmsg{background:rgba(255,255,255,.14);border-radius:12px;padding:6px 11px;align-self:flex-start;max-width:85%;word-break:break-word;color:#fff;cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .15s}
+.cmsg:active{background:rgba(255,255,255,.24)}
 .cmsg.me{align-self:flex-end;background:rgba(247,197,43,.32)}
+.cmsg.me:active{background:rgba(247,197,43,.42)}
 .cmsg b{margin-right:5px;font-weight:700;opacity:.85}
+.creply-q{border-left:3px solid var(--gold);background:rgba(0,0,0,.2);border-radius:6px;padding:3px 8px;margin-bottom:4px;font-size:11.5px;opacity:.92}
+.creply-q b{display:block;font-size:10.5px;color:var(--gold);margin:0;font-weight:700}
+.creply-q span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.creplybar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);border-left:3px solid var(--gold);border-radius:10px;padding:6px 10px}
+.creplybar .ctxt{flex:1;min-width:0;overflow:hidden}
+.creplybar .ctxt b{display:block;font-size:11px;color:var(--gold);font-weight:700}
+.creplybar .ctxt span{display:block;font-size:12px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.creplybar button{background:none;color:rgba(255,255,255,.7);font-size:19px;line-height:1;padding:2px 4px;flex-shrink:0}
 .chatform{display:flex;gap:8px}
 .chatform input{border-radius:999px;text-transform:none;letter-spacing:normal;padding:11px 16px;font-size:14px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff}
 .chatform input::placeholder{color:rgba(255,255,255,.6)}
 .chatform button{padding:0;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wlast{color:var(--gold);font-weight:800}
 #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);background:#222;color:#fff;padding:12px 20px;border-radius:999px;font-size:14px;z-index:20;display:none;max-width:90%}
 @media (prefers-reduced-motion:no-preference){.pl.turn img{transition:box-shadow .2s}}
 /* ---- settings ---- */
@@ -253,7 +285,8 @@ const EV = {
   quick:  'room:quick',    // emit({game}, ack)
   list:   'rooms:list',    // emit({game}, ack)      ack -> {ok, rooms:[{code, players:[{name}]}]}
   emote:  'chat:emote',    // emit({code, i}) / on({from, name, i})
-  rematch:'game:rematch'   // emit({code})
+  rematch:'game:rematch',  // emit({code})
+  addBots:'room:addBots'   // emit({code}, ack) — fills empty seats in a waiting room with bots
 };
 // What you send for a move, per game (adjust to match games/<key>.js):
 const MOVE = {
@@ -319,6 +352,8 @@ let whotPendingIndex = null; // hand index of a tapped Whot(20) card awaiting a 
 const WHOT_GLYPH = { circle:'●', triangle:'▲', cross:'✚', square:'■', star:'★', whot:'✱' };
 let animUntil = 0;           // Date.now() timestamp: don't re-render the board before this, so in-flight animations can play out
 let chatMessages = [], chatRoomCode = null;   // in-room text chat (ephemeral — not persisted server-side)
+let chatReplyTo = null;      // { name, text } of the message currently being replied to (WhatsApp-style)
+let whotLastCardRound = null, whotLastCardSeen = {}; // tracks who we've already announced "last card" for, per match
 
 /* ---------- avatar hosting (imgbb) ---------- */
 // Free key from https://api.imgbb.com/ — paste yours here. Until then, photos
@@ -356,7 +391,13 @@ const SFX = (() => {
     six(){ tone(760,.1,'sine',.17); tone(990,.14,'sine',.15,.08); },
     win(){ [523,659,784,1047].forEach((f,i)=>tone(f,.18,'sine',.15,i*.11)); },
     strike(){ tone(160,.16,'square',.13); },
-    out(){ tone(150,.2,'sawtooth',.15); tone(100,.3,'sawtooth',.13,.12); }
+    out(){ tone(150,.2,'sawtooth',.15); tone(100,.3,'sawtooth',.13,.12); },
+    lose(){ tone(300,.14,'sine',.13); tone(220,.22,'sine',.12,.09); },
+    draw(){ tone(120,.18,'square',.12); },
+    tap(){ tone(700,.045,'sine',.09); },
+    send(){ tone(600,.05,'sine',.11); tone(820,.06,'sine',.1,.05); },
+    reply(){ tone(880,.05,'sine',.1); },
+    lastcard(){ tone(660,.1,'sine',.16); tone(990,.16,'sine',.15,.08); tone(1320,.18,'sine',.14,.17); }
   };
 })();
 let musicTimer = null;
@@ -520,7 +561,13 @@ function connect(){
     scheduleRender();
   });
   socket.on(EV.state, s => { gstate = s.state || s; picked = null; if(room) scheduleRender(); });
-  socket.on(EV.over, r => { result = r; if(r.status === 'win' && prefs.sound) SFX.win(); scheduleRender(); toast(r.reason === 'timeup' ? "Time's up — highest score wins!" : ''); });
+  socket.on(EV.over, r => {
+    result = r;
+    const won = r.status === 'win' && r.winnerIndex === room?.you;
+    if(r.status === 'win'){ won ? SFX.win() : SFX.lose(); vibrate(won ? [40,60,40,60,140] : [80,50,80]); }
+    else { SFX.draw(); vibrate([60,40,60]); }
+    scheduleRender(); toast(r.reason === 'timeup' ? "Time's up — highest score wins!" : '');
+  });
   socket.on('game:event', handleLudoEvent);
   socket.on('chat:message', appendChatMessage);
 }
@@ -533,10 +580,12 @@ function appendChatMessage(m){
   if(log){
     const div = document.createElement('div');
     div.className = 'cmsg' + (m.from === room.you ? ' me' : '');
-    div.innerHTML = `<b>${esc(m.name)}:</b> ${esc(m.text)}`;
+    div.dataset.mid = (m.at || 0) + '-' + m.from;
+    div.innerHTML = `${m.replyTo ? `<div class="creply-q"><b>${esc(m.replyTo.name)}</b><span>${esc(m.replyTo.text)}</span></div>` : ''}<b>${esc(m.name)}:</b> ${esc(m.text)}`;
     log.appendChild(div);
     log.scrollTop = log.scrollHeight;
   }
+  if(m.from !== room.you){ SFX.tap(); vibrate(12); }
 }
 
 /* ---------- ludo: sounds, comments and hand-off animations ---------- */
@@ -614,20 +663,66 @@ function animateNumber(el, from, to, dur){
 /* ---------- lobby ---------- */
 async function lobbyView(){
   room = gstate = result = null; history.replaceState(null,'','/');
-  let games = [];
-  try{ games = await api('/api/games'); games = games.games || games; }catch{ toast('Could not load games'); }
+  let games = [], lbTop = [];
+  try{
+    const [gamesRes, lbRes] = await Promise.all([
+      api('/api/games'),
+      api('/api/leaderboard?by=coins&limit=3').catch(() => ({ leaderboard: [] }))
+    ]);
+    games = gamesRes.games || gamesRes;
+    lbTop = lbRes.leaderboard || [];
+  }catch{ toast('Could not load games'); }
   GAMES = games;
   app.innerHTML = `
   <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
     <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
+  <button class="lbstrip" id="lbOpen" aria-label="Open leaderboard">
+    <span class="lbtitle">${icon('trophy',20)} Leaderboard</span>
+    ${lbTop.length ? `<span class="lbtop3">${lbTop.map(p=>`<img src="${avatar(p)}" alt="">`).join('')}</span>` : ''}
+    <span class="chev">›</span></button>
   <div class="list">${games.map(g => `
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
       <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
   $('#meBtn').onclick = settingsView;
+  $('#lbOpen').onclick = () => leaderboardView('coins');
   app.querySelectorAll('.game').forEach(b => b.onclick = () =>
     b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
+}
+
+/* ---------- leaderboard ---------- */
+async function leaderboardView(by){
+  by = by === 'wins' ? 'wins' : 'coins';
+  app.innerHTML = `<div class="lbview">
+    <div style="display:flex;align-items:center;margin-bottom:6px">
+      <button class="back" id="lbBk" aria-label="Back" style="background:#eee;color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
+      <h1 style="flex:1;margin:0">Leaderboard</h1><span style="width:38px"></span>
+    </div>
+    <div class="lbtabs">
+      <button type="button" data-by="coins" class="${by==='coins'?'on':''}">🪙 Coins</button>
+      <button type="button" data-by="wins" class="${by==='wins'?'on':''}">${icon('trophy',13)} Wins</button>
+    </div>
+    <div id="lbList"><p style="text-align:center;color:#999;padding:30px 0">Loading…</p></div>
+  </div>`;
+  $('#lbBk').onclick = lobbyView;
+  app.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { if(b.dataset.by !== by) leaderboardView(b.dataset.by); });
+  let data;
+  try{ data = await api('/api/leaderboard?by=' + by + '&limit=50'); }
+  catch{ $('#lbList').innerHTML = '<p style="text-align:center;color:#999;padding:30px 0">Could not load the leaderboard.</p>'; return; }
+  const list = data.leaderboard || [];
+  const meId = me.id || me._id;
+  const medal = (r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
+  const row = (p) => `<button class="lbrow ${p.rank<=3?'top'+p.rank:''} ${p.id===meId?'me':''}" data-uid="${esc(p.id)}">
+    <span class="rank">${medal(p.rank)}</span>
+    <img src="${avatar(p)}" alt="">
+    <span class="who"><b>${esc(p.displayName || 'Player')}${p.id===meId?' (you)':''}</b><span>${esc(p.stats?.gamesPlayed ?? 0)} games played</span></span>
+    <span class="val">${by === 'wins' ? `${esc(p.stats?.wins ?? 0)} wins` : `${esc(p.coins ?? 0)} 🪙`}</span></button>`;
+  const html = list.length
+    ? list.map(row).join('') + (data.me?.outsideTop ? `<div class="lbsep">···</div>${row(data.me)}` : '')
+    : '<p style="text-align:center;color:#999;padding:30px 0">No players yet — be the first!</p>';
+  $('#lbList').innerHTML = html;
+  $('#lbList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
 }
 
 /* ---------- settings ---------- */
@@ -851,6 +946,7 @@ async function sheet(key, name){
     ${counts ? `<div class="row" id="pc" style="justify-content:center">${counts.map(c => `<button type="button" class="btn ghost pcbtn${c===n?' on':''}" data-n="${c}">${c} players</button>`).join('')}</div>` : ''}
     <button class="btn" id="qk" style="width:100%">Quick match</button>
     <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">Create a room</button>
+    <button class="btn ghost" id="vb" style="width:100%;margin-top:10px">${icon('controller',16)} Play vs Bot</button>
     <div class="row"><input id="cd" placeholder="ROOM CODE" maxlength="8" aria-label="Room code"><button class="btn ghost" id="jn">Join</button></div>
     <h3 style="margin:18px 0 0;font-size:15px">Open rooms</h3><div id="rooms" class="empty">Loading…</div></div>`;
   document.body.appendChild(bg);
@@ -862,6 +958,7 @@ async function sheet(key, name){
   });
   $('#qk').onclick = () => { bg.remove(); quickMatch(key, n) };
   $('#mk').onclick = () => { bg.remove(); createRoom(key, n) };
+  $('#vb').onclick = () => { bg.remove(); createRoom(key, n, true) };
   $('#jn').onclick = () => { const c = $('#cd').value.trim(); if(c){ bg.remove(); joinRoom(c) } };
   async function loadRooms(){
     $('#rooms').outerHTML = `<div id="rooms" class="empty">Loading…</div>`;
@@ -875,10 +972,11 @@ async function sheet(key, name){
   loadRooms();
 }
 
-function createRoom(game, maxPlayers){
-  socket.emit(EV.create, { game, maxPlayers }, res => {
+function createRoom(game, maxPlayers, vsBot){
+  socket.emit(EV.create, { game, maxPlayers, vsBot: !!vsBot }, res => {
     if(res && res.ok === false) return toast(res.error || 'Could not create room');
     room = res?.room || res; result = gstate = null;
+    if(room?.state) gstate = room.state;
     history.replaceState(null,'','/?code=' + room.code); gameView();
   });
 }
@@ -899,18 +997,72 @@ function quickMatch(game, maxPlayers){
     history.replaceState(null,'','/?code=' + room.code); gameView();
   });
 }
-const chatLine = (m, mine) => `<div class="cmsg${m.from===mine?' me':''}"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`;
+const msgId = m => (m.at || 0) + '-' + m.from;
+const chatLine = (m, mine) => `<div class="cmsg${m.from===mine?' me':''}" data-mid="${esc(msgId(m))}">${m.replyTo ? `<div class="creply-q"><b>${esc(m.replyTo.name)}</b><span>${esc(m.replyTo.text)}</span></div>` : ''}<b>${esc(m.name)}:</b> ${esc(m.text)}</div>`;
+function replyBarHtml(){
+  if(!chatReplyTo) return '';
+  return `<div class="creplybar"><div class="ctxt"><b>Replying to ${esc(chatReplyTo.name)}</b><span>${esc(chatReplyTo.text)}</span></div><button type="button" id="creplyX" aria-label="Cancel reply">×</button></div>`;
+}
+function renderChatReplyBar(){
+  const el = $('#chatReplyBar'); if(!el) return;
+  el.innerHTML = replyBarHtml();
+  $('#creplyX')?.addEventListener('click', () => { chatReplyTo = null; renderChatReplyBar(); });
+}
+// WhatsApp-style: double-tap/double-click a message bubble to reply to it.
+function chatDblClick(e){
+  if(!room) return;
+  const el = e.target.closest('.cmsg'); if(!el) return;
+  const m = chatMessages.find(x => msgId(x) === el.dataset.mid);
+  if(!m) return;
+  chatReplyTo = { name: m.from === room.you ? 'You' : m.name, text: m.text };
+  SFX.reply(); vibrate(15);
+  renderChatReplyBar();
+  $('#chatInput')?.focus();
+}
 const chatBar = (mine) => `<div class="chatbox">
   <div class="chatlog" id="chatLog">${chatMessages.map(m=>chatLine(m,mine)).join('')}</div>
+  <div id="chatReplyBar">${replyBarHtml()}</div>
   <form id="chatForm" class="chatform" autocomplete="off">
-    <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message">
+    <input id="chatInput" type="text" maxlength="200" placeholder="Message… (double-tap to reply)" aria-label="Chat message">
     <button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
   </form></div>`;
+
+// Updates only the disconnect countdown / match clock text every 500ms.
+// A full gameView() re-render used to run on this same interval, which wiped
+// out anything being typed in chat and yanked the chat log back to the
+// bottom on every tick — this leaves the rest of the screen (chat included)
+// completely untouched.
+function tickUpdate(){
+  if(!room || !$('.play')){ clearInterval(gameView.t); return; }
+  const players = room.players || [];
+  const maxPlayers = room.maxPlayers || players.length || 2;
+  const seats = Array.from({length: maxPlayers}, (_,i) => players[i] || null);
+  const mine = room.you ?? -1;
+  const forfeits = room.forfeits || {};
+  const goneIdx = seats.findIndex((p,i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
+  const statusEl = $('#statusBar');
+  if(goneIdx !== -1 && statusEl){
+    statusEl.textContent = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
+  }
+  const clockEl = $('#matchClock');
+  if(clockEl && room.game === 'ludo' && room.status === 'playing' && room.matchDeadline && !result){
+    const ms = room.matchDeadline - Date.now();
+    clockEl.textContent = fmtClock(ms);
+    clockEl.classList.toggle('low', ms < 30000);
+  }
+  const stillTicking = goneIdx !== -1 || (room.game === 'ludo' && room.status === 'playing' && room.matchDeadline);
+  if(!stillTicking) clearInterval(gameView.t);
+}
 
 /* ---------- game ---------- */
 function gameView(){
   if(!room) return lobbyView();
-  if(chatRoomCode !== room.code){ chatMessages = []; chatRoomCode = room.code; }
+  if(chatRoomCode !== room.code){ chatMessages = []; chatRoomCode = room.code; chatReplyTo = null; }
+  // Preserve whatever the player is mid-typing (and any pending reply) across
+  // a re-render — re-renders happen on every opponent move, not just here.
+  const prevInput = $('#chatInput');
+  const draftText = prevInput ? prevInput.value : '';
+  const draftFocused = !!prevInput && document.activeElement === prevInput;
   const players = room.players || [];
   const maxPlayers = room.maxPlayers || players.length || 2;
   const seats = Array.from({length: maxPlayers}, (_,i) => players[i] || null);
@@ -920,34 +1072,52 @@ function gameView(){
   const waiting = players.length < maxPlayers || room.status === 'waiting';
   const g = room.game;
   if(g === 'whot' && (!myTurn || result)) whotPendingIndex = null;
+  if(g === 'whot' && (room.round || 0) !== whotLastCardRound){ whotLastCardRound = room.round || 0; whotLastCardSeen = {}; }
+  if(g === 'whot' && gstate?.handCounts && !waiting && !result){
+    gstate.handCounts.forEach((c,i) => {
+      if(c === 1 && !whotLastCardSeen[i]){
+        whotLastCardSeen[i] = true;
+        toast(i === mine ? 'You: Last card!' : `${nameOf(seats[i])}: Last card!`);
+        SFX.lastcard(); vibrate(i === mine ? [30,40,30,40,60] : 25);
+      } else if(c !== 1){ whotLastCardSeen[i] = false; }
+    });
+  }
   let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})`
              : result ? '' : g === 'rps' ? 'Pick your move'
              : g === 'whot' && myTurn && gstate?.pendingPick > 0 ? `Play a Pick ${gstate.pendingType === 'two' ? 'Two' : 'Three'} or draw ${gstate.pendingPick}`
+             : g === 'whot' && myTurn && gstate?.hand?.length === 1 ? 'Your turn — Last card!'
+             : g === 'whot' && !myTurn && gstate?.handCounts?.[turn] === 1 ? `${nameOf(players[turn])}’s turn — Last card!`
              : myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
   const forfeits = room.forfeits || {};
   const goneIdx = seats.findIndex((p,i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
   if(goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
   const ticking = goneIdx !== -1 || (g === 'ludo' && room.status === 'playing' && room.matchDeadline);
   clearInterval(gameView.t);
-  if(ticking) gameView.t = setInterval(() => $('.play') ? gameView() : clearInterval(gameView.t), 500);
+  if(ticking) gameView.t = setInterval(tickUpdate, 500);
   if(!waiting && g === 'ludo') startMusic(); else stopMusic();
   const strikeDots = (i) => {
     const n = (room.strikes && room.strikes[i]) || 0;
     if(!n) return '';
     return `<span class="strikes">${[0,1,2].map(k=>`<i class="${k<n?'hit':''}"></i>`).join('')}</span>`;
   };
-  const wCount = (i) => (g === 'whot' && gstate?.handCounts) ? ` · ${gstate.handCounts[i]}` : '';
+  const wCount = (i) => {
+    if(g !== 'whot' || !gstate?.handCounts) return '';
+    const c = gstate.handCounts[i];
+    return c === 1 ? ` · <span class="wlast">Last card!</span>` : ` · ${c}`;
+  };
   const pl = (p,i) => `<button class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}" ${p?`data-uid="${esc(p.id)}"`:'disabled'} style="background:none">
-    <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':'')+wCount(i):'Waiting…'}${g==='ludo'&&p?strikeDots(i):''}</button>`;
+    <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}${p?wCount(i):''}${g==='ludo'&&p?strikeDots(i):''}</button>`;
   const matchClock = (g === 'ludo' && room.status === 'playing' && room.matchDeadline && !result)
-    ? (() => { const ms = room.matchDeadline - Date.now(); return `<div class="matchclock ${ms<30000?'low':''}">${fmtClock(ms)}</div>`; })() : '';
+    ? (() => { const ms = room.matchDeadline - Date.now(); return `<div class="matchclock ${ms<30000?'low':''}" id="matchClock">${fmtClock(ms)}</div>`; })() : '';
+  const canAddBots = waiting;
   app.innerHTML = `<div class="play">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <div class="code">Room ${esc(room.code)}</div>
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
     <div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>
     ${matchClock}
-    ${status ? `<div class="status">${esc(status)}</div>` : ''}
+    ${status ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
+    ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine)}</div>
     ${chatBar(mine)}
     ${result ? overCard(mine) : ''}</div>`;
@@ -956,16 +1126,26 @@ function gameView(){
     socket.emit(EV.leave, { code: room.code }); stopMusic(); lobbyView();
   };
   $('#rulesBtn').onclick = () => rulesSheet(g);
+  $('#addBots')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget; btn.disabled = true;
+    socket.emit(EV.addBots, { code: room.code }, res => { if(res && res.ok === false){ toast(res.error || 'Could not add a bot'); btn.disabled = false; } });
+  });
   bindBoard(g, myTurn);
   $('#again')?.addEventListener('click', () => { stopMusic(); lobbyView(); });
   $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
-  const log = $('#chatLog'); if(log) log.scrollTop = log.scrollHeight;
+  const log = $('#chatLog'); if(log){ log.scrollTop = log.scrollHeight; log.addEventListener('dblclick', chatDblClick); }
+  const inp = $('#chatInput');
+  if(inp){ inp.value = draftText; if(draftFocused){ inp.focus(); try{ inp.setSelectionRange(draftText.length, draftText.length); }catch{} } }
   $('#chatForm').onsubmit = (e) => {
     e.preventDefault();
     const inp = $('#chatInput'); const text = inp.value.trim();
     if(!text) return;
-    socket.emit('chat:message', { code: room.code, text });
+    const payload = { code: room.code, text };
+    if(chatReplyTo) payload.replyTo = { name: chatReplyTo.name, text: chatReplyTo.text };
+    socket.emit('chat:message', payload);
     inp.value = ''; inp.focus();
+    chatReplyTo = null; renderChatReplyBar();
+    SFX.send(); vibrate(10);
   };
   app.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
 }
@@ -1079,29 +1259,30 @@ function whotBoardHtml(st, myTurn){
 const SHAPES_WHOT = ['circle','triangle','cross','square','star'];
 function bindBoard(g, myTurn){
   const send = m => socket.emit(EV.move, { code: room.code, move: m });
-  app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => send(MOVE.tictactoe(+e.dataset.i)));
-  app.querySelectorAll('[data-c]').forEach(e => e.onclick = () => send(MOVE.connectfour(+e.dataset.c)));
-  app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k; send(MOVE.rps(picked)); gameView() });
+  const act = m => { SFX.move(); vibrate(18); send(m); };
+  app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => act(MOVE.tictactoe(+e.dataset.i)));
+  app.querySelectorAll('[data-c]').forEach(e => e.onclick = () => act(MOVE.connectfour(+e.dataset.c)));
+  app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k; SFX.tap(); vibrate(18); send(MOVE.rps(picked)); gameView() });
   $('#roll')?.addEventListener('click', (e) => {
     const btn = e.currentTarget;
     btn.disabled = true; btn.classList.add('rolling');
     vibrate(35);
     send({ type: 'roll' });
   });
-  app.querySelectorAll('[data-lt]:not([disabled])').forEach(e => e.onclick = () => send({ type: 'move', token: +e.dataset.lt }));
+  app.querySelectorAll('[data-lt]:not([disabled])').forEach(e => e.onclick = () => { vibrate(18); send({ type: 'move', token: +e.dataset.lt }) });
   app.querySelectorAll('[data-wi]:not([disabled])').forEach(e => e.onclick = () => {
     const i = +e.dataset.wi;
     const card = gstate?.hand?.[i];
-    if(card && card.shape === 'whot'){ whotPendingIndex = i; gameView(); return; }
-    send({ type: 'play', index: i });
+    if(card && card.shape === 'whot'){ whotPendingIndex = i; SFX.tap(); vibrate(15); gameView(); return; }
+    act({ type: 'play', index: i });
   });
   app.querySelectorAll('[data-wshape]').forEach(e => e.onclick = () => {
     const calledShape = e.dataset.wshape;
-    send({ type: 'play', index: whotPendingIndex, calledShape });
+    act({ type: 'play', index: whotPendingIndex, calledShape });
     whotPendingIndex = null;
   });
   $('[data-wcancel]')?.addEventListener('click', () => { whotPendingIndex = null; gameView(); });
-  $('[data-wmarket]')?.addEventListener('click', () => send({ type: 'market' }));
+  $('[data-wmarket]')?.addEventListener('click', () => { SFX.draw(); vibrate(18); send({ type: 'market' }); });
 }
 function overCard(mine){
   const w = result.winnerIndex ?? result.winner;
