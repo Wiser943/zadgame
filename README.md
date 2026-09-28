@@ -7,7 +7,7 @@ just a bragging-rights score.
 **Stack:** Node.js, Express, MongoDB (Mongoose), Socket.io, Passport (Google OAuth 2.0),
 and a plain HTML/CSS/JS front end (no build step required).
 
-**Games included and working right now:** Tic-Tac-Toe, Connect Four, Rock Paper
+**Games included and working right now:** Tic-Tac-Toe (2 players = 3×3, 4 players = 5×5 connect-4, bots can fill seats), Connect Four, Rock Paper
 Scissors (best of 5). Ludo, Chess and Whot! are listed in the lobby as
 **"Coming soon"** — clicking them tells the user honestly that the game isn't
 built yet instead of pretending it works. See "Adding a new game" below to

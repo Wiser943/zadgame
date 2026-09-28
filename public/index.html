@@ -649,8 +649,50 @@
       color: var(--red)
     }
     
-    .cell.o {
+    .cell.o,
+    .cell.p1 {
       color: #1f57b5
+    }
+    
+    .cell.p0 {
+      color: var(--red)
+    }
+    
+    .cell.p2 {
+      color: #1f8f4e
+    }
+    
+    .cell.p3 {
+      color: #c99a12
+    }
+    
+    .tmark {
+      font-size: 14px;
+      margin-right: 2px
+    }
+    
+    .tmark.p0 { color: var(--red) }
+    .tmark.p1 { color: #5b8def }
+    .tmark.p2 { color: #3fbf7a }
+    .tmark.p3 { color: #e0b43a }
+    
+    .ttt-5 {
+      gap: 5px;
+      padding: 8px
+    }
+    
+    .ttt-5 .cell {
+      font-size: 28px;
+      border-radius: 10px
+    }
+    
+    .ttt .cell.win {
+      background: #fff3c4;
+      box-shadow: inset 0 0 0 3px var(--gold)
+    }
+    
+    .ttt .cell:disabled {
+      opacity: 1
     }
     
     .cf {
@@ -693,110 +735,310 @@
       color: var(--red2)
     }
     
-    .whot {
+    .board.whot {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
-      padding: 16px 10px
+      gap: 12px;
+      padding: 14px 10px 10px;
+      background: radial-gradient(ellipse at 50% 35%, #1f6b47 0%, #0f4a32 55%, #082a1d 100%);
+      color: #f4ecd2;
+      border: 2px solid rgba(255, 255, 255, .08);
+      box-shadow: inset 0 0 0 8px rgba(0, 0, 0, .12)
+    }
+    
+    .wopps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 26px;
+      justify-content: center;
+      width: 100%
+    }
+    
+    .wopp {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 0
+    }
+    
+    .wopp-name {
+      background: rgba(0, 0, 0, .28);
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 14px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: center;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+    
+    .wopp-name small {
+      display: block;
+      font-weight: 500;
+      opacity: .7;
+      font-size: 11px
+    }
+    
+    .wopp.turn .wopp-name {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(240, 190, 60, .35)
+    }
+    
+    .wfan {
+      display: flex;
+      justify-content: center;
+      padding-left: 20px;
+      height: 54px
+    }
+    
+    .wfan .wback {
+      width: 36px;
+      height: 52px;
+      margin-left: -20px;
+      transform-origin: 50% 120%
     }
     
     .wtable {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       gap: 18px
     }
     
-    .wcard {
-      width: 56px;
-      height: 80px;
-      border-radius: 10px;
-      background: #fff;
-      box-shadow: 0 0 0 2px #e2e2e2, 0 3px 6px rgba(0, 0, 0, .15);
+    .wpile {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 3px;
-      flex-shrink: 0
+      gap: 6px
+    }
+    
+    .wpile-cap {
+      font-size: 11px;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      opacity: .75
+    }
+    
+    /* ---- card face: cream, corner number, big centre shape, mirrored number ---- */
+    .wcard {
+      position: relative;
+      width: 62px;
+      height: 90px;
+      border-radius: 10px;
+      background: #fdfbf5;
+      border: 2px solid #e6e1d3;
+      color: #6b0a0a;
+      font-family: Georgia, 'Times New Roman', serif;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, .35);
+      flex-shrink: 0;
+      padding: 0;
+      overflow: hidden;
+      cursor: pointer
+    }
+    
+    .wcard::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 1px solid rgba(107, 10, 10, .22);
+      border-radius: 6px;
+      pointer-events: none
     }
     
     .wcard.big {
-      width: 76px;
-      height: 108px
+      width: 86px;
+      height: 124px;
+      border-radius: 12px
     }
     
-    .wcard .wglyph {
-      font-size: 22px;
+    .wcard .wc-idx {
+      position: absolute;
+      font-weight: 800;
+      font-size: 15px;
       line-height: 1
     }
     
-    .wcard.big .wglyph {
-      font-size: 30px
+    .wcard .wc-idx.tl {
+      top: 7px;
+      left: 8px
     }
     
-    .wcard .wval {
-      font-size: 12px;
-      font-weight: 800
+    .wcard .wc-idx.br {
+      bottom: 7px;
+      right: 8px;
+      transform: rotate(180deg)
     }
     
-    .wcard.big .wval {
-      font-size: 15px
+    .wcard.big .wc-idx {
+      font-size: 20px
     }
     
-    .wcard.s-circle {
-      color: #1f57b5
+    .wcard.big .wc-idx.tl {
+      top: 9px;
+      left: 11px
     }
     
-    .wcard.s-triangle {
-      color: #1f8f4e
+    .wcard.big .wc-idx.br {
+      bottom: 9px;
+      right: 11px
     }
     
-    .wcard.s-cross {
-      color: var(--red2)
+    .wcard .wc-shape {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 46%;
+      height: auto;
+      transform: translate(-50%, -50%);
+      fill: currentColor
     }
     
-    .wcard.s-square {
-      color: #c99a12
+    .wcard .wc-wild {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(-32deg);
+      font-family: Georgia, serif;
+      font-weight: 900;
+      font-size: 11px;
+      letter-spacing: .5px;
+      color: #fdfbf5;
+      background: #7c0d12;
+      padding: 3px 6px;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .5) inset
     }
     
-    .wcard.s-star {
-      color: #7b2fbe
+    .wcard.big .wc-wild {
+      font-size: 15px;
+      padding: 4px 8px
     }
     
     .wcard.s-whot {
-      color: #fff;
-      background: linear-gradient(160deg, #1b1b1f, #3a3a45)
+      background: repeating-linear-gradient(135deg, #8f1017 0 9px, #6b0a0a 9px 18px);
+      border-color: #f1e6c1;
+      color: #fdfbf5
+    }
+    
+    .wcard.s-whot::before {
+      border-color: rgba(255, 255, 255, .3)
     }
     
     .wcard:disabled {
-      opacity: .45
+      opacity: .6;
+      cursor: default;
+      filter: saturate(.8)
     }
     
     .wcard.playable {
-      box-shadow: 0 0 0 3px var(--gold), 0 3px 6px rgba(0, 0, 0, .15)
+      border-color: #d4a72c;
+      box-shadow: 0 0 0 2px #d4a72c, 0 6px 12px rgba(0, 0, 0, .4);
+      transform: translateY(-5px)
+    }
+    
+    /* ---- card backs: market (gold/teal) and opponents' hands (red) ---- */
+    .wmarket,
+    .wback {
+      position: relative;
+      border-radius: 10px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden
     }
     
     .wmarket {
-      width: 56px;
-      height: 80px;
-      border-radius: 10px;
-      background: linear-gradient(160deg, #8f1017, #b3141c);
-      color: var(--gold);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      font-size: 11px;
-      font-weight: 700;
-      flex-shrink: 0;
-      box-shadow: 0 3px 6px rgba(0, 0, 0, .15)
+      width: 86px;
+      height: 124px;
+      padding: 0;
+      border-radius: 12px;
+      border: 3px solid #f1e3a8;
+      background: repeating-linear-gradient(135deg, #e0b52e 0 11px, #146b4d 11px 22px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, .4);
+      cursor: pointer
     }
     
     .wmarket:disabled {
-      opacity: .45
+      opacity: .8;
+      cursor: default
+    }
+    
+    .wmarket .wlabel {
+      transform: rotate(-22deg);
+      font-family: Georgia, serif;
+      font-weight: 900;
+      font-size: 15px;
+      color: #fff;
+      padding: 4px 8px;
+      border: 1px solid rgba(255, 255, 255, .6);
+      background: rgba(255, 255, 255, .12);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .5)
+    }
+    
+    .wback {
+      background: repeating-linear-gradient(135deg, #a3141c 0 6px, #7c0d12 6px 12px);
+      border: 3px solid #f6eedb;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .4)
+    }
+    
+    .wback .wlabel {
+      transform: rotate(-12deg);
+      font-family: Georgia, serif;
+      font-weight: 900;
+      font-size: 8px;
+      color: #7c0d12;
+      background: #f6eedb;
+      padding: 1px 3px;
+      border-radius: 2px
+    }
+    
+    .whand {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 18px 6px 10px;
+      width: 100%;
+      scrollbar-width: none
+    }
+    
+    .whand::-webkit-scrollbar {
+      display: none
+    }
+    
+    .whand .wcard {
+      margin: 0
+    }
+    
+    .wpick {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+    
+    .wpick button {
+      background: #fdfbf5;
+      color: #6b0a0a;
+      border-radius: 14px;
+      padding: 8px 12px;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px
+    }
+    
+    .wpick button svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor
     }
     
     .wcalled {
@@ -804,7 +1046,7 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .4px;
-      color: var(--mute)
+      color: #f4ecd2
     }
     
     .whand {
@@ -2867,7 +3109,7 @@
       const bg = document.createElement('div');
       bg.className = 'sheet-bg';
       bg.innerHTML = `<div class="sheet"><h2>${esc(name)}</h2>
-    ${counts ? `<div class="row" id="pc" style="justify-content:center">${counts.map(c => `<button type="button" class="btn ghost pcbtn${c===n?' on':''}" data-n="${c}">${c} players</button>`).join('')}</div>` : ''}
+    ${counts ? `<div class="row" id="pc" style="justify-content:center">${counts.map(c => `<button type="button" class="btn ghost pcbtn${c===n?' on':''}" data-n="${c}">${c} players${key==='tictactoe'?(c===4?' · 5×5':' · 3×3'):''}</button>`).join('')}</div>` : ''}
     <button class="btn" id="qk" style="width:100%">Quick match</button>
     <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">Create a room</button>
     <button class="btn ghost" id="vb" style="width:100%;margin-top:10px">${icon('controller',16)} Play vs Bot</button>
@@ -3054,7 +3296,7 @@
         return c === 1 ? ` · <span class="wlast">Last card!</span>` : ` · ${c}`;
       };
       const pl = (p, i) => `<button class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}" ${p?`data-uid="${esc(p.id)}"`:'disabled'} style="background:none">
-    <img src="${avatar(p)}" alt="">${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}${p?wCount(i):''}${g==='ludo'&&p?strikeDots(i):''}</button>`;
+    <img src="${avatar(p)}" alt="">${g==='tictactoe'&&maxPlayers>2?`<b class="tmark p${i}">${TTT_MARKS[i]}</b> `:''}${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}${p?wCount(i):''}${g==='ludo'&&p?strikeDots(i):''}</button>`;
       const matchClock = (g === 'ludo' && room.status === 'playing' && room.matchDeadline && !result) ?
         (() => { const ms = room.matchDeadline - Date.now(); return `<div class="matchclock ${ms<30000?'low':''}" id="matchClock">${fmtClock(ms)}</div>`; })() : '';
       const canAddBots = waiting;
@@ -3116,9 +3358,10 @@
       { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }
     ];
     const RULES = {
-      tictactoe: ['Two players, X and O, take turns marking empty squares on a 3×3 grid.',
-        'First to line up 3 of their marks — across, down, or diagonally — wins.',
-        'If all 9 squares fill up with no line, the game is a draw.'
+      tictactoe: ['2 players: X and O take turns marking empty squares on a 3×3 grid. First to line up 3 wins.',
+        '4 players: X, O, △ and □ take turns on a 5×5 grid. First to line up 4 of their marks — across, down, or diagonally — wins.',
+        'Play 4-player online with friends, or tap “Play vs Bot” to fill the empty seats with bots.',
+        'If every square fills up with no line, the game is a draw.'
       ],
       connectfour: ['Take turns dropping a disc into a column — it falls to the lowest empty spot.',
         'First to connect 4 of their own discs in a row (any direction) wins.',
@@ -3156,12 +3399,17 @@
       bg.querySelector('#rulesOk').onclick = () => bg.remove();
     }
     
-    const sym = v => v == null || v === '' ? '' : typeof v === 'number' ? ['X', 'O'][v] ?? '' : String(v);
+    const TTT_MARKS = ['X', 'O', '△', '□'];
+    const sym = v => v == null || v === '' ? '' : typeof v === 'number' ? TTT_MARKS[v] ?? '' : String(v);
     const side = v => (typeof v === 'number' ? v : String(v).toUpperCase().charCodeAt(0)) % 2;
     
     function board(g, myTurn, players, mine) {
       const b = gstate?.board || [];
-      if (g === 'tictactoe') return `<div class="board ttt">${b.flat().map((v,i)=>`<button class="cell ${sym(v)==='O'?'o':''}" data-i="${i}" ${result||!myTurn||sym(v)?'disabled':''}>${esc(sym(v))}</button>`).join('')}</div>`;
+      if (g === 'tictactoe') {
+        const n = gstate?.size || Math.round(Math.sqrt(b.length)) || 3;
+        const win = new Set(gstate?.winLine || []);
+        return `<div class="board ttt ttt-${n}" style="grid-template-columns:repeat(${n},1fr)">${b.flat().map((v,i)=>`<button class="cell p${v ?? ''}${win.has(i)?' win':''}" data-i="${i}" aria-label="${v==null?'Empty':esc(sym(v))} cell ${i+1}" ${result||!myTurn||sym(v)?'disabled':''}>${esc(sym(v))}</button>`).join('')}</div>`;
+      }
       if (g === 'connectfour') {
         const rows = b.length,
           cols = b[0]?.length || 7;
@@ -3180,16 +3428,39 @@
       ${turnLabel ? `<div class="status" style="margin-top:6px;font-size:13px;padding:6px 16px">${esc(turnLabel)}</div>` : ''}
     </div>`;
       }
-      if (g === 'whot') return whotBoardHtml(gstate || {}, myTurn);
+      if (g === 'whot') return whotBoardHtml(gstate || {}, myTurn, players, mine);
       return '';
     }
     
     /* ---------- whot ---------- */
+    const WHOT_SVG = {
+      circle: '<circle cx="50" cy="50" r="40"/>',
+      triangle: '<polygon points="50,8 94,88 6,88"/>',
+      cross: '<path d="M36 6h28v30h30v28H64v30H36V64H6V36h30z"/>',
+      square: '<rect x="12" y="12" width="76" height="76" rx="4"/>',
+      star: '<polygon points="50,4 62,37 97,38 69,59 79,93 50,73 21,93 31,59 3,38 38,37"/>'
+    };
+    const whotShapeSvg = (shape, cls = 'wc-shape') => WHOT_SVG[shape] ? `<svg class="${cls}" viewBox="0 0 100 100" aria-hidden="true">${WHOT_SVG[shape]}</svg>` : '';
     function whotCardHtml(card, { index, disabled, big, playable } = {}) {
-      const glyph = WHOT_GLYPH[card.shape] || '?';
-      const label = card.shape === 'whot' ? 'WHOT' : String(card.value);
+      const label = String(card.value);
+      const centre = card.shape === 'whot' ? '<span class="wc-wild">WHOT</span>' : whotShapeSvg(card.shape);
       return `<button class="wcard s-${card.shape}${big?' big':''}${playable?' playable':''}" ${index!=null?`data-wi="${index}"`:''}
-    ${disabled?'disabled':''} aria-label="${card.shape} ${card.value}"><span class="wglyph">${glyph}</span><span class="wval">${label}</span></button>`;
+    ${disabled?'disabled':''} aria-label="${card.shape} ${card.value}"><span class="wc-idx tl">${label}</span>${centre}<span class="wc-idx br">${label}</span></button>`;
+    }
+    
+    const whotBackHtml = (style = '') => `<span class="wback" style="${style}"><span class="wlabel">WHOT</span></span>`;
+    
+    function whotOppsHtml(st, players, mine) {
+      const counts = st.handCounts || [];
+      const opps = counts.map((c, i) => i).filter(i => i !== mine);
+      if (!opps.length) return '';
+      return `<div class="wopps">${opps.map(i => {
+        const n = counts[i], shown = Math.min(n, 7), mid = (shown - 1) / 2;
+        const fan = Array.from({ length: shown }, (_, k) => whotBackHtml(`transform:rotate(${((k - mid) * 7).toFixed(1)}deg)`)).join('');
+        const out = st.active && st.active[i] === false;
+        return `<div class="wopp${st.turn === i ? ' turn' : ''}"><div class="wopp-name">${esc(nameOf(players[i]))}<small>${out ? 'out' : n + (n === 1 ? ' card' : ' cards')}</small></div>
+        <div class="wfan">${fan}</div></div>`;
+      }).join('')}</div>`;
     }
     
     function whotCardMatches(card, st) {
@@ -3204,7 +3475,7 @@
       return hand.some(c => whotCardMatches(c, st));
     }
     
-    function whotBoardHtml(st, myTurn) {
+    function whotBoardHtml(st, myTurn, players = [], mine = -1) {
       if (!st.topCard) return `<div class="board whot"></div>`;
       const canAct = myTurn && !result;
       const marketDisabled = !canAct || !(st.pendingPick > 0 || !whotHasPlayable(st));
@@ -3215,15 +3486,16 @@
         return whotCardHtml(c, { index: i, disabled: !playable, big: false, playable });
       }).join('');
       const pickerHtml = whotPendingIndex != null ? `<div class="wpick">
-      ${SHAPES_WHOT.map(s => `<button data-wshape="${s}">${WHOT_GLYPH[s]} ${s}</button>`).join('')}
-      <button data-wcancel="1" style="background:none;color:var(--mute)">Cancel</button>
+      ${SHAPES_WHOT.map(s => `<button data-wshape="${s}">${whotShapeSvg(s, '')} ${s}</button>`).join('')}
+      <button data-wcancel="1" style="background:none;color:#f4ecd2">Cancel</button>
     </div>` : '';
       return `<div class="board whot">
+    ${whotOppsHtml(st, players, mine)}
     <div class="wtable">
-      ${whotCardHtml(st.topCard, { big:true })}
-      <button class="wmarket" data-wmarket="1" ${marketDisabled?'disabled':''}>Market<br>${st.marketCount ?? ''}</button>
+      <div class="wpile"><button class="wmarket" data-wmarket="1" ${marketDisabled?'disabled':''} aria-label="Draw from market"><span class="wlabel">WHOT</span></button>
+        <span class="wpile-cap">Market ${st.marketCount ?? ''}</span></div>
+      <div class="wpile">${whotCardHtml(st.topCard, { big:true })}<span class="wpile-cap">${st.calledShape ? 'Calling: ' + st.calledShape : 'Top card'}</span></div>
     </div>
-    ${st.calledShape ? `<div class="wcalled">Calling: ${WHOT_GLYPH[st.calledShape]} ${st.calledShape}</div>` : ''}
     ${pickerHtml}
     <div class="whand">${handHtml}</div>
   </div>`;
