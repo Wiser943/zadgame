@@ -1,6 +1,6 @@
 const express = require('express');
 const ensureAuth = require('../middleware/auth');
-const registry = require('../games/registry');
+const { effectiveGames } = require('../config/gameSettings');
 const User = require('../models/User');
 
 const router = express.Router();
@@ -20,7 +20,7 @@ router.get('/me', ensureAuth, (req, res) => {
 });
 
 router.get('/games', ensureAuth, (req, res) => {
-  res.json({ games: registry });
+  res.json({ games: effectiveGames() });
 });
 
 // Update the signed-in user's own avatar and/or display name. The client

@@ -736,33 +736,56 @@
     
 
     /* ---- chess ---- */
-    .board.chess { display:grid; grid-template-columns:repeat(8,1fr); padding:0; gap:0; width:min(94vw,520px); aspect-ratio:1; border-radius:16px; overflow:hidden; background:#b58863; box-shadow:0 12px 28px rgba(0,0,0,.18); }
-    .chess .square { border:0; border-radius:0; min-width:0; min-height:0; aspect-ratio:1; padding:0; position:relative; display:flex; align-items:center; justify-content:center; font-size:clamp(28px,9vw,60px); line-height:1; font-family:"Noto Sans Symbols 2","DejaVu Sans",serif; text-shadow:0 2px 1px rgba(0,0,0,.2); }
+    .board.chess { display:grid; grid-template-columns:repeat(14,1fr); padding:0; gap:1px; width:min(96vw,520px); aspect-ratio:1; border-radius:16px; overflow:hidden; background:#27303a; box-shadow:0 12px 28px rgba(0,0,0,.18); }
+    .chess .square { border:0; border-radius:0; min-width:0; min-height:0; aspect-ratio:1; padding:0; position:relative; display:flex; align-items:center; justify-content:center; font-size:clamp(13px,5.3vw,34px); line-height:1; font-family:"Noto Sans Symbols 2","DejaVu Sans",serif; text-shadow:0 2px 1px rgba(0,0,0,.2); }
+    .chess .void { background:transparent; pointer-events:none; }
     .chess .square.light { background:#f0d9b5; } .chess .square.dark { background:#b58863; }
     .chess .square.selected { box-shadow:inset 0 0 0 5px #e8bd3e; background:#d6b34d; }
     .chess .square.target::after { content:""; width:22%; height:22%; border-radius:50%; background:rgba(40,40,40,.32); position:absolute; }
     .chess .square.capture::after { width:78%; height:78%; border:5px solid rgba(180,30,35,.72); background:transparent; }
     .chess .square.check { background:#d45b4d; }
-    .chess .piece.white { color:#fff; } .chess .piece.black { color:#25232a; }
-    .chess-coords { display:flex; justify-content:space-between; width:min(94vw,520px); padding:5px 8px 0; color:var(--mute); font-size:11px; font-weight:700; }
+    .chess .piece.p0 { color:#fff; } .chess .piece.p1 { color:#d74d52; } .chess .piece.p2 { color:#25232a; } .chess .piece.p3 { color:#2867c7; }
+    .chess .square.check { background:#d45b4d; }
+    .chess-coords { display:flex; justify-content:space-between; width:min(96vw,520px); padding:5px 8px 0; color:var(--mute); font-size:10px; font-weight:700; }
     .chess-promo { display:flex; gap:8px; justify-content:center; margin-top:10px; }
-    .rps {
-      display: flex;
-      gap: 12px;
-      justify-content: center
-    }
-    
-    .rps button {
-      background: #f1f1f3;
-      border-radius: 20px;
-      padding: 16px 20px;
-      color: var(--red)
-    }
-    
-    .rps button.sel {
-      outline: 4px solid var(--gold);
-      color: var(--red2)
-    }
+    .board.rpsboard { width:100%; padding:18px 14px 16px; display:flex; flex-direction:column; gap:15px; background:linear-gradient(145deg,#fff,#f5f5f8); border:1px solid var(--line); }
+    .rps-score { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; width:100%; }
+    .rps-player { background:var(--bg); border-radius:16px; padding:10px 8px; text-align:center; min-width:0; border:2px solid transparent; }
+    .rps-player.you { border-color:var(--gold); background:rgba(247,197,43,.12); }
+    .rps-player.waiting { border-color:var(--red2); }
+    .rps-player b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+    .rps-player strong { display:block; color:var(--red); font-size:28px; line-height:1.1; }
+    .rps-vs { color:var(--mute); font-size:11px; font-weight:800; }
+    .rps-round { text-align:center; color:var(--mute); font-size:12px; font-weight:700; }
+    .rps-prompt { text-align:center; font-weight:700; min-height:22px; }
+    .rps { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; justify-content:center; }
+    .rps button { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:13px 8px 10px; color:var(--red); min-height:84px; transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
+    .rps button:active { transform:scale(.95); }
+    .rps button.sel { border:3px solid var(--gold); color:var(--red2); box-shadow:0 5px 14px rgba(247,197,43,.25); background:#fffdf0; }
+    .rps button:disabled { opacity:.55; }
+    .rps-choice-label { display:block; margin-top:5px; font-size:11px; font-weight:700; text-transform:capitalize; }
+    .rps-submit { width:100%; padding:12px 18px; border-radius:999px; background:var(--red2); color:#fff; font-weight:800; }
+    .rps-submit:disabled { opacity:.45; }
+    .rps-last { border-radius:14px; padding:10px 12px; background:var(--bg); text-align:center; color:var(--mute); font-size:12px; }
+    .rps-last.win { color:#1f8f4e; background:#e8f7ed; } .rps-last.lose { color:var(--red2); background:#fff0f0; } .rps-last.tie { color:#947111; background:#fff8da; }
+    .board.joker { display:flex; flex-direction:column; align-items:center; gap:14px; width:100%; padding:15px 10px 12px; background:linear-gradient(145deg,#16613e,#0b3826); color:#f4ecd2; border:2px solid rgba(255,255,255,.1); }
+    .jopps { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 18px; width:100%; }
+    .jopp { display:flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; background:rgba(0,0,0,.25); font-size:11px; }
+    .jopp.turn { box-shadow:0 0 0 2px var(--gold); }
+    .jopp.out { opacity:.45; text-decoration:line-through; }
+    .jopp strong { color:var(--gold); font-size:13px; }
+    .jtable { display:flex; justify-content:center; align-items:flex-start; gap:18px; }
+    .jcaption { font-size:10px; text-transform:uppercase; letter-spacing:.6px; opacity:.78; margin-top:5px; }
+    .jcard { position:relative; width:58px; height:84px; border-radius:9px; background:#fffdf7; border:2px solid #e8e0d0; color:#20232a; font-family:Georgia,'Times New Roman',serif; box-shadow:0 3px 8px rgba(0,0,0,.32); padding:0; flex-shrink:0; }
+    .jcard.red { color:#c0272d; } .jcard.jwild { color:#fff; background:linear-gradient(135deg,#c0272d 0 50%,#1f57b5 50%); border-color:#fff; }
+    .jcard.big { width:78px; height:112px; } .jcard .jr { position:absolute; top:5px; left:6px; font-size:14px; font-weight:800; } .jcard .jr.bottom { top:auto; left:auto; right:6px; bottom:5px; transform:rotate(180deg); }
+    .jcard .jsuit { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:29px; } .jcard.big .jsuit { font-size:40px; }
+    .jcard .jwildmark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:800 12px Poppins,sans-serif; transform:rotate(-35deg); }
+    .jhand { display:flex; justify-content:center; flex-wrap:wrap; gap:7px; max-width:100%; padding:5px 2px; }
+    .jhand .jcard { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; } .jhand .jcard.playable { transform:translateY(-6px); box-shadow:0 7px 12px rgba(0,0,0,.35),0 0 0 2px var(--gold); } .jhand .jcard:active { transform:scale(.94); }
+    .jmarket { background:#173c69; color:#fff; border-radius:9px; border:2px solid rgba(255,255,255,.55); width:58px; height:84px; font-weight:800; font-size:11px; box-shadow:0 3px 8px rgba(0,0,0,.3); } .jmarket:disabled { opacity:.5; }
+    .jstatus { text-align:center; font-weight:700; font-size:13px; min-height:20px; } .jpenalty { color:#ffd34e; font-size:12px; text-align:center; }
+    .jsuitpicker { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; } .jsuitpicker button { background:#fff; border-radius:999px; padding:7px 11px; font-weight:700; color:#222; } .jsuitpicker button.red { color:#c0272d; }
     
     .board.whot {
       display: flex;
@@ -2711,7 +2734,7 @@
       { icon: 'hourglass', label: 'Hurry up', showLabel: true },
       { icon: 'pray', label: 'Please' }
     ];
-    const ICON = { tictactoe: 'x', connectfour: 'dot', rps: 'fist', ludo: 'dice', chess: 'pawn', whot: 'card' };
+    const ICON = { tictactoe: 'x', connectfour: 'dot', rps: 'fist', ludo: 'dice', chess: 'pawn', whot: 'card', joker: 'card' };
     let me, socket, room, gstate, result, picked;
     let authMode = 'login',
       authErr = '';
@@ -3142,11 +3165,19 @@
       socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
       socket.on(EV.room, r => {
         const previousStatus = room?.status;
+        const previousRpsRound = gstate?.lastRound?.id;
         if (r && r.now) clockSkew = r.now - Date.now();
         room = r;
         if (r?.status === 'playing' && previousStatus !== 'playing') playAudioCue('start');
         else if (r?.status === 'playing' && previousStatus === 'playing') playAudioCue('game');
-        if (r.state) gstate = r.state;
+        if (r.state) {
+          if (r.game === 'rps' && r.state.mine) picked = null;
+          if (r.game === 'rps' && r.state.lastRound?.id && r.state.lastRound.id !== previousRpsRound) {
+            r.state.lastRound.tie ? SFX.draw() : r.state.lastRound.winner === r.you ? SFX.win() : SFX.lose();
+            vibrate(r.state.lastRound.tie ? [40, 30, 40] : r.state.lastRound.winner === r.you ? [35, 45, 90] : [80, 45, 35]);
+          }
+          gstate = r.state;
+        }
         result = r.status === 'over' ? r.result : null;
         scheduleRender();
       });
@@ -3302,6 +3333,7 @@
         lbTop = lbRes.leaderboard || [];
       } catch { toast('Could not load games'); }
       GAMES = games;
+      games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
       app.innerHTML = `
   <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
     <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
@@ -3816,6 +3848,7 @@
         ludoRollReady = ready;
       }
       if (g === 'whot' && (!myTurn || result)) whotPendingIndex = null;
+      if (g !== 'joker' || !myTurn || result) jokerPendingIndex = null;
       if (g === 'whot' && (room.round || 0) !== whotLastCardRound) { whotLastCardRound = room.round || 0;
         whotLastCardSeen = {}; }
       if (g === 'whot' && gstate?.handCounts && !waiting && !result) {
@@ -3829,7 +3862,7 @@
         });
       }
       let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})` :
-        result ? '' : g === 'rps' ? 'Pick your move' :
+        result ? '' : g === 'rps' ? (gstate?.mine ? (gstate?.opponentPicked ? 'Revealing the round…' : 'Choice locked — waiting for your opponent') : gstate?.opponentPicked ? 'Your opponent is ready — choose now' : 'Choose your move') :
         g === 'whot' && myTurn && gstate?.pendingPick > 0 ? `Play a Pick ${gstate.pendingType === 'two' ? 'Two' : 'Three'} or draw ${gstate.pendingPick}` :
         g === 'whot' && myTurn && gstate?.hand?.length === 1 ? 'Your turn — Last card!' :
         g === 'whot' && !myTurn && gstate?.handCounts?.[turn] === 1 ? `${nameOf(players[turn])}’s turn — Last card!` :
@@ -3899,9 +3932,9 @@
     const REGISTRY_FALLBACK = [
       { key: 'tictactoe', name: 'Tic-Tac-Toe' }, { key: 'connectfour', name: 'Connect Four' },
       { key: 'rps', name: 'Rock Paper Scissors' }, { key: 'ludo', name: 'Ludo', playerCounts: [2, 3, 4] },
-      { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }, { key: 'chess', name: 'Chess', playerCounts: [2] }
+      { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }, { key: 'chess', name: 'Chess', playerCounts: [3, 4] }, { key: 'joker', name: 'Joker', playerCounts: [2, 3, 4] }
     ];
-    const RULES = {
+    let RULES = {
       tictactoe: ['2 players: X and O take turns marking empty squares on a 3×3 grid. First to line up 3 wins.',
         '4 players: X, O, △ and □ take turns on a 5×5 grid. First to line up 4 of their marks — across, down, or diagonally — wins.',
         'Play 4-player online with friends, or tap “Play vs Bot” to fill the empty seats with bots.',
@@ -3918,6 +3951,11 @@
         '15 seconds to pick each round — run out and a random pick is made for you.',
         'Matching picks replay the round.'
       ],
+      joker: ['Play a card that matches the top card by rank or suit. The first player to empty their hand wins.',
+        'Jokers are wild. When you play one, choose the suit the next player must follow.',
+        'Every numbered card from 2 to 10 can be stacked as a penalty card. For example, a 3 followed by a 5 creates an 8-card penalty.',
+        'A player can answer the stack with another numbered card, adding its value; otherwise they draw the full penalty.',
+        'If you cannot play, draw one card when there is no penalty. Each turn has 25 seconds.'],
       ludo: ['Roll the die and move a token that many steps along the shared track.',
         'A token in the yard needs a roll of 6 to come out.',
         'Land exactly on an opponent\'s token (on an unsafe cell) to send it back to their yard.',
@@ -3927,10 +3965,10 @@
         '15 seconds per turn — miss it 3 times and you\'re out of the match.',
         'Get all 4 tokens all the way around and home to win.'
       ],
-      chess: ['White moves first. Tap one of your pieces, then tap a highlighted legal destination.',
-        'The goal is checkmate: attack the opponent king so it has no legal escape.',
-        'Castling, en passant and pawn promotion are supported. Choose a queen, rook, bishop or knight when promoting.',
-        'A position with no legal move but no check is stalemate and is a draw.',
+      chess: ['Chess supports 3 or 4 players on a 14×14 cross board. Players take turns clockwise from the bottom, left, top and right sides.',
+        'Tap one of your pieces, then tap a highlighted legal destination. Pieces move in familiar chess patterns across the playable cross.',
+        'A king in checkmate is eliminated; the last remaining king wins. Stalemated kings are also removed from play.',
+        'Pawns can promote to a queen, rook, bishop or knight when they reach the opposite edge.',
         'Each turn has 30 seconds; an automatic legal move is made if the clock expires.'],
       whot: ['Play a card that shares a shape or value with the top card, or play any Whot card.',
         'Pick 2 and Pick 3 cards force the next player to draw — they can counter with a matching Pick card to pass the count along instead.',
@@ -3963,6 +4001,52 @@
     // board array's length, which can momentarily be wrong (e.g. empty) and
     // used to collapse a 5×5 board down to a 3-column layout.
     const TTT_SIZE_BY_PLAYERS = { 2: 3, 4: 5 };
+    const RPS_LABELS = { rock: 'Rock', paper: 'Paper', scissors: 'Scissors' };
+    function rpsBoardHtml(st, mine, players) {
+      const myChoice = st.mine || null;
+      const selected = picked && !myChoice ? picked : null;
+      const locked = !!myChoice;
+      const opponent = mine === 0 ? 1 : 0;
+      const last = st.lastRound;
+      let lastHtml = '';
+      if (last?.choices?.[0] && last?.choices?.[1]) {
+        const outcome = last.tie ? 'Tie round' : last.winner === mine ? 'You won this round' : 'You lost this round';
+        const cls = last.tie ? 'tie' : last.winner === mine ? 'win' : 'lose';
+        lastHtml = `<div class="rps-last ${cls}"><b>Round ${last.id}</b> · ${esc(outcome)}<br><span>${esc(RPS_LABELS[last.choices[mine]])} vs ${esc(RPS_LABELS[last.choices[opponent]])}</span></div>`;
+      }
+      const prompt = locked ? (st.opponentPicked ? 'Revealing the round…' : 'Choice locked — waiting for your opponent') : selected ? `${RPS_LABELS[selected]} selected` : 'Choose one, then lock it in';
+      const buttons = [['rock','fist'], ['paper','palm'], ['scissors','scissors']].map(([key, ic]) => `<button data-rps="${key}" class="${selected === key ? 'sel' : ''}" ${locked || result ? 'disabled' : ''} aria-label="${RPS_LABELS[key]}">${icon(ic,34)}<span class="rps-choice-label">${RPS_LABELS[key]}</span></button>`).join('');
+      const playerName = i => nameOf(players?.[i] || { name: i === mine ? 'You' : 'Opponent' });
+      return `<div class="board rpsboard">
+        <div class="rps-score"><div class="rps-player you ${locked?'waiting':''}"><b>${playerName(mine)}</b><strong>${st.scores?.[mine] || 0}</strong></div><span class="rps-vs">VS</span><div class="rps-player ${st.opponentPicked?'waiting':''}"><b>${playerName(opponent)}</b><strong>${st.scores?.[opponent] || 0}</strong></div></div>
+        <div class="rps-round">Round ${st.round || 1} · First to 3 wins</div>
+        <div class="rps-prompt" aria-live="polite">${esc(prompt)}</div>
+        <div class="rps">${buttons}</div>
+        <button id="rpsSubmit" class="rps-submit" ${!selected || locked || result ? 'disabled' : ''}>Lock in choice</button>
+        ${lastHtml}
+      </div>`;
+    }
+    const JOKER_SUITS = { hearts:'♥', diamonds:'♦', clubs:'♣', spades:'♠' };
+    const JOKER_NUMBER_RANKS = new Set(['2','3','4','5','6','7','8','9','10']);
+    const JOKER_SUIT_LABELS = { hearts:'Hearts', diamonds:'Diamonds', clubs:'Clubs', spades:'Spades' };
+    let jokerPendingIndex = null;
+    function jokerCardHtml(card, { index = null, big = false, playable = false } = {}) {
+      if (!card) return '';
+      const red = card.suit === 'hearts' || card.suit === 'diamonds';
+      const wild = !!card.joker;
+      return `<button class="jcard ${red?'red ':''}${wild?'jwild ':''}${big?'big ':''}${playable?'playable':''}" ${index != null ? `data-ji="${index}"` : ''} ${index != null && !playable ? 'disabled' : ''} aria-label="${wild?'Joker':`${card.rank} of ${card.suit}`}" style="${index == null ? 'cursor:default' : ''}">${wild ? '<span class="jwildmark">JOKER</span>' : `<span class="jr">${card.rank}</span><span class="jsuit">${JOKER_SUITS[card.suit]}</span><span class="jr bottom">${card.rank}</span>`}</button>`;
+    }
+    function jokerBoardHtml(st, myTurn, players = [], mine = -1) {
+      const canAct = myTurn && !result;
+      const hand = st.hand || [];
+      const canPlay = c => st.pendingPick > 0 ? JOKER_NUMBER_RANKS.has(c.rank) : (c.joker || !st.topCard ? true : st.calledSuit ? c.suit === st.calledSuit : c.suit === st.topCard.suit || c.rank === st.topCard.rank);
+      const handHtml = hand.map((c,i) => jokerCardHtml(c, { index:i, playable:canAct && canPlay(c) })).join('');
+      const opponents = (st.handCounts || []).map((count,i) => i).filter(i => i !== mine).map(i => `<div class="jopp ${st.turn===i?'turn':''} ${st.active?.[i]===false?'out':''}"><span>${nameOf(players[i])}</span><strong>${st.handCounts[i]}</strong></div>`).join('');
+      const picker = jokerPendingIndex != null ? `<div class="jsuitpicker"><b>Choose the next suit:</b>${Object.keys(JOKER_SUITS).map(s => `<button class="${s==='hearts'||s==='diamonds'?'red':''}" data-jsuit="${s}">${JOKER_SUITS[s]} ${JOKER_SUIT_LABELS[s]}</button>`).join('')}</div>` : '';
+      const status = st.pendingPick > 0 ? `Penalty stack: ${st.pendingPick} — play a numbered card to add to it` : st.calledSuit ? `Wild suit: ${JOKER_SUIT_LABELS[st.calledSuit]}` : canAct ? 'Your turn — match the rank or suit' : `${nameOf(players[st.turn])}’s turn`;
+      const marketDisabled = !canAct || hand.some(canPlay);
+      return `<div class="board joker"><div class="jopps">${opponents}</div><div class="jstatus" aria-live="polite">${esc(status)}</div>${st.pendingPick ? '<div class="jpenalty">Number cards 2–10 can continue this stack.</div>' : ''}<div class="jtable"><div><button class="jmarket" data-jmarket="1" ${marketDisabled?'disabled':''}>DRAW</button><div class="jcaption">${st.pendingPick ? `Draw ${st.pendingPick}` : `Market ${st.marketCount ?? ''}`}</div></div><div>${jokerCardHtml(st.topCard,{big:true})}<div class="jcaption">Top card</div></div></div>${picker}<div class="jhand">${handHtml || '<span>No cards</span>'}</div></div>`;
+    }
     function board(g, myTurn, players, mine, maxPlayers) {
       const b = gstate?.board || [];
       if (g === 'tictactoe') {
@@ -3975,7 +4059,8 @@
           cols = b[0]?.length || 7;
         return `<div class="board cf" style="grid-template-columns:repeat(${cols},1fr)">${b.flat().map((v,i)=>`<button class="cell ${sym(v)||v===0||v===1?(side(v)?'b':'a'):''}" data-c="${i%cols}" ${result||!myTurn?'disabled':''} aria-label="Column ${i%cols+1}"></button>`).join('')}</div>`;
       }
-      if (g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
+      if (g === 'rps') return rpsBoardHtml(gstate || {}, mine, players);
+      if (g === 'joker') return jokerBoardHtml(gstate || {}, myTurn, players, mine);
       if (g === 'ludo') {
         const st = gstate || {};
         if (!st.starts) return ludoBoardHtml({ colors: [], tokens: [], starts: [] }, mine, null, players);
@@ -4057,18 +4142,20 @@
     }
     const SHAPES_WHOT = ['circle', 'triangle', 'cross', 'square', 'star'];
     
-    const CHESS_GLYPHS = { K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙', k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
+    const CHESS_GLYPHS = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
     const CHESS_NAMES = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
     let chessSelected = null;
     function chessBoardHtml(st, myTurn, mine) {
-      const board = st.board || [], selected = chessSelected != null ? chessSelected : -1;
+      const board = st.board || [], size = st.size || 14, selected = chessSelected != null ? chessSelected : -1;
       const targets = new Set((st.legal || []).filter(m => m.from === selected).map(m => m.to));
-      const squares = Array.from({ length: 64 }, (_, view) => {
-        const vr = Math.floor(view / 8), f = view % 8, i = (7 - vr) * 8 + f, p = board[i];
-        const target = targets.has(i), capture = target && p;
-        return `<button class="square ${(vr+f)%2?'dark':'light'} ${selected===i?'selected':''} ${target?'target':''} ${capture?'capture':''}" data-chess="${i}" aria-label="${p ? CHESS_NAMES[p.toLowerCase()] : 'empty'} ${String.fromCharCode(97+f)}${7-vr+1}">${p ? `<span class="piece ${p===p.toUpperCase()?'white':'black'}">${CHESS_GLYPHS[p]}</span>` : ''}</button>`;
+      const isPlayable = (r,c) => (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
+      const squares = Array.from({ length: size * size }, (_, view) => {
+        const vr = Math.floor(view / size), c = view % size, r = size - 1 - vr, i = r * size + c, p = board[i];
+        if (!isPlayable(r,c)) return '<span class="square void" aria-hidden="true"></span>';
+        const target = targets.has(i), capture = target && p, check = st.check === i;
+        return `<button class="square ${(vr+c)%2?'dark':'light'} ${selected===i?'selected':''} ${target?'target':''} ${capture?'capture':''} ${check?'check':''}" data-chess="${i}" aria-label="${p ? CHESS_NAMES[p.type] : 'empty'} ${String.fromCharCode(97+c)}${r+1}">${p ? `<span class="piece p${p.player}">${CHESS_GLYPHS[p.type]}</span>` : ''}</button>`;
       }).join('');
-      return `<div class="chess-wrap"><div class="board chess">${squares}</div><div class="chess-coords"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div></div>`;
+      return `<div class="chess-wrap"><div class="board chess">${squares}</div><div class="chess-coords"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span><span>i</span><span>j</span><span>k</span><span>l</span><span>m</span><span>n</span></div></div>`;
     }
     function bindBoard(g, myTurn) {
       const send = m => socket.emit(EV.move, { code: room.code, move: m });
@@ -4077,19 +4164,35 @@
         send(m); };
       app.querySelectorAll('[data-i]').forEach(e => e.onclick = () => act(MOVE.tictactoe(+e.dataset.i)));
       app.querySelectorAll('[data-c]').forEach(e => e.onclick = () => act(MOVE.connectfour(+e.dataset.c)));
-      app.querySelectorAll('[data-k]').forEach(e => e.onclick = () => { picked = e.dataset.k;
+      app.querySelectorAll('[data-rps]').forEach(e => e.onclick = () => { picked = e.dataset.rps;
         SFX.tap();
         vibrate(18);
-        send(MOVE.rps(picked));
         gameView() });
+      $('#rpsSubmit')?.addEventListener('click', () => { if (!picked || gstate?.mine) return;
+        SFX.send();
+        vibrate(24);
+        send(MOVE.rps(picked));
+      });
+      app.querySelectorAll('[data-ji]:not([disabled])').forEach(e => e.onclick = () => {
+        const index = +e.dataset.ji, card = gstate?.hand?.[index];
+        if (!card) return;
+        if (card.joker) { jokerPendingIndex = index; SFX.tap(); gameView(); return; }
+        SFX.move(); vibrate(18); send({ type:'play', index });
+      });
+      app.querySelectorAll('[data-jsuit]').forEach(e => e.onclick = () => {
+        if (jokerPendingIndex == null) return;
+        SFX.send(); vibrate(18); send({ type:'play', index:jokerPendingIndex, calledSuit:e.dataset.jsuit }); jokerPendingIndex = null;
+      });
+      $('[data-jmarket]')?.addEventListener('click', () => { SFX.draw(); vibrate(18); send({ type:'market' }); });
       if (g === 'chess') app.querySelectorAll('[data-chess]').forEach(e => e.onclick = () => {
         const to = +e.dataset.chess, board = gstate?.board || [], p = board[to];
-        if (chessSelected == null) { if (p && (p === p.toUpperCase()) === (room.you === 0) && myTurn) { chessSelected = to; gameView(); } return; }
+        if (chessSelected == null) { if (p && p.player === room.you && myTurn) { chessSelected = to; gameView(); } return; }
         if (to === chessSelected) { chessSelected = null; gameView(); return; }
         const from = chessSelected; chessSelected = null;
         const moving = board[from];
         let promotion;
-        if (moving?.toLowerCase() === 'p' && Math.floor(to / 8) % 7 === 0) {
+        const size = gstate?.size || 14, tr = Math.floor(to / size), tc = to % size;
+        if (moving?.type === 'p' && (tr === 0 || tr === size - 1 || tc === 0 || tc === size - 1)) {
           promotion = (window.prompt('Promote to: queen, rook, bishop or knight', 'queen') || 'queen').trim().toLowerCase()[0];
           if (!['q', 'r', 'b', 'n'].includes(promotion)) promotion = 'q';
         }

@@ -12,12 +12,15 @@ const connectDB = require('./config/db');
 const configurePassport = require('./config/passport');
 const authRoutes = require('./routes/auth');
 const apiRoutes = require('./routes/api');
+const adminRoutes = require('./routes/admin');
 const initSockets = require('./sockets');
+const { loadGameSettings } = require('./config/gameSettings');
 
 const PORT = process.env.PORT || 3000;
 
 async function main() {
   await connectDB();
+  await loadGameSettings();
   configurePassport();
 
   const app = express();
@@ -40,6 +43,8 @@ async function main() {
 
   app.use('/auth', authRoutes);
   app.use('/api', apiRoutes);
+  app.use('/admin-api', adminRoutes);
+  app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
   app.use(express.static(path.join(__dirname, 'public')));

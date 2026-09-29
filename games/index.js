@@ -4,5 +4,6 @@ module.exports = {
   rps: require('./rps'),
   ludo: require('./ludo'),
   whot: require('./whot'),
-  chess: require('./chess')
+  chess: require('./chess'),
+  joker: require('./joker')
 };

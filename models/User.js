@@ -9,6 +9,9 @@ const UserSchema = new mongoose.Schema({
   displayName: { type: String, default: 'Player' },
   avatar: { type: String, default: '' },
   coins: { type: Number, default: 0 },
+  suspendedUntil: { type: Date, default: null },
+  penaltyPoints: { type: Number, default: 0 },
+  adminNote: { type: String, default: '' },
   stats: {
     gamesPlayed: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },

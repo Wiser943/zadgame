@@ -4,7 +4,7 @@ const BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
 const TARGET = 3;
 
 function createInitialState() {
-  return { choices: [null, null], scores: [0, 0], round: 1 };
+  return { choices: [null, null], scores: [0, 0], round: 1, resolved: 0, lastRound: null };
 }
 
 function isValidMove(state, playerIndex, move) {
@@ -21,15 +21,18 @@ function applyMove(state, playerIndex, move) {
   let round = state.round;
 
   if (choices[0] && choices[1]) {
+    let winner = null;
     if (choices[0] !== choices[1]) {
-      const winner = BEATS[choices[0]] === choices[1] ? 0 : 1;
+      winner = BEATS[choices[0]] === choices[1] ? 0 : 1;
       scores = scores.map((s, i) => (i === winner ? s + 1 : s));
     }
     // tie or resolved round: clear picks; only advance the round counter on a real result
     if (choices[0] !== choices[1]) round += 1;
-    return { choices: [null, null], scores, round };
+    const resolved = (state.resolved || 0) + 1;
+    return { choices: [null, null], scores, round, resolved,
+      lastRound: { id: resolved, choices: choices.slice(), winner, tie: winner === null } };
   }
-  return { choices, scores, round };
+  return { choices, scores, round, resolved: state.resolved || 0, lastRound: state.lastRound || null };
 }
 
 function checkResult(state) {
@@ -45,7 +48,8 @@ function publicState(state, playerIndex) {
     scores: state.scores,
     round: state.round,
     mine: state.choices[playerIndex],
-    opponentPicked: state.choices[opp] !== null
+    opponentPicked: state.choices[opp] !== null,
+    lastRound: state.lastRound || null
   };
 }
 

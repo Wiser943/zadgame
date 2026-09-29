@@ -5,7 +5,7 @@
 // creator picks one when the room is made, and it's stored as r.maxPlayers.
 const passport = require('passport');
 const games = require('../games');
-const REGISTRY = require('../games/registry');
+const { effectiveGame } = require('../config/gameSettings');
 const User = require('../models/User');
 
 const ENG = games.ENGINES || games;
@@ -46,7 +46,8 @@ let botSeq = 0;
 
 const engineFor = (g) => (typeof g === 'string' && Object.prototype.hasOwnProperty.call(ENG, g) && ENG[g]) || null;
 const isCode = (c) => typeof c === 'string' && /^[A-Z0-9]{4,8}$/.test(c);
-const playerCountsFor = (game) => REGISTRY.find((g) => g.key === game)?.playerCounts || [2];
+const playerCountsFor = (game) => effectiveGame(game)?.playerCounts || [2];
+const gameEnabled = (game) => !!effectiveGame(game)?.available;
 const resolveMaxPlayers = (game, requested) => {
   const allowed = playerCountsFor(game);
   return allowed.includes(requested) ? requested : allowed[0];
@@ -70,7 +71,12 @@ module.exports = function initSockets(io, sessionMiddleware) {
   io.engine.use(sessionMiddleware);
   io.engine.use(passport.initialize());
   io.engine.use(passport.session());
-  io.use((socket, next) => (socket.request.user ? next() : next(new Error('unauthorized'))));
+  io.use((socket, next) => {
+    const u = socket.request.user;
+    if (!u) return next(new Error('unauthorized'));
+    if (u.suspendedUntil && new Date(u.suspendedUntil).getTime() > Date.now()) return next(new Error('account-suspended'));
+    next();
+  });
 
   const view = (r, i) => ({
     code: r.code, game: r.game, status: r.status, you: i, maxPlayers: r.maxPlayers,
@@ -116,6 +122,11 @@ module.exports = function initSockets(io, sessionMiddleware) {
   function applyValidatedMove(r, i, move) {
     const e = ENG[r.game];
     r.state = e.applyMove(r.state, i, move);
+    if (r.game === 'chess' && Array.isArray(r.state.active)) {
+      r.state.active.forEach((active, player) => {
+        if (!active && r.players[player]) r.players[player].out = true;
+      });
+    }
 
     if (r.game === 'ludo') {
       if (r.strikes) r.strikes[i] = 0; // acted in time — clear their strike streak
@@ -392,6 +403,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
 
     guard('room:create', 6, 60000, ({ game, maxPlayers, vsBot }, ack) => {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
+      if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const r = createRoom(socket, game, resolveMaxPlayers(game, maxPlayers), !!vsBot);
       ack({ ok: true, room: view(r, 0) });
     });
@@ -413,6 +425,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
 
     guard('room:quick', 6, 60000, ({ game, maxPlayers }, ack) => {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
+      if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
       const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting'
         && r.players.length < mp && !r.players.some((p) => p.id === uid));
@@ -422,6 +435,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
 
     guard('rooms:list', 30, 60000, ({ game, maxPlayers }, ack) => {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
+      if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
       const list = [...rooms.values()].filter((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting' && r.players.length < mp)
         .slice(0, 20).map((r) => ({ code: r.code, maxPlayers: r.maxPlayers, players: r.players.map((p) => ({ name: p.name })) }));
