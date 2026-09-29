@@ -557,6 +557,21 @@
       align-items: center;
       gap: 8px
     }
+    .play-layout { width:min(1480px,100%); display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:18px; align-items:start; }
+    .game-main { min-width:0; display:flex; flex-direction:column; align-items:center; gap:8px; }
+    .game-rail { position:sticky; top:16px; order:-1; border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.28); border-radius:20px; padding:16px 14px; min-height:240px; backdrop-filter:blur(8px); }
+    .game-rail h2 { margin:0 0 4px; font-size:18px; color:#fff; }
+    .game-rail p { margin:0 0 16px; color:rgba(255,255,255,.7); font-size:12px; }
+    .rail-lobby { width:100%; margin-bottom:14px; background:#fff; color:#7a0c12; border-radius:12px; padding:11px 12px; font-weight:800; }
+    .rail-room { font-size:12px; padding:10px 0; border-top:1px solid rgba(255,255,255,.14); border-bottom:1px solid rgba(255,255,255,.14); }
+    .rail-players { display:grid; gap:8px; margin-top:12px; }
+    .rail-player { display:flex; align-items:center; gap:8px; font-size:12px; min-width:0; }
+    .rail-player img { width:28px; height:28px; border-radius:50%; object-fit:cover; border:2px solid transparent; }
+    .rail-player.turn img { border-color:var(--gold); }
+    .rail-player span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .play-layout > .game-main > .bar { width:100%; }
+    @media (max-width: 820px) { .play-layout { display:block; } .game-rail { display:none; } .game-main { width:100%; } }
+    @media (min-width: 821px) { .play { padding-left:clamp(18px,3vw,44px); padding-right:clamp(18px,3vw,44px); } .game-main > .players { max-width:720px; } .game-main > #bd { max-width:900px; } }
     
     .bar {
       width: 100%;
@@ -748,6 +763,18 @@
     .chess .square.check { background:#d45b4d; }
     .chess-coords { display:flex; justify-content:space-between; width:min(96vw,520px); padding:5px 8px 0; color:var(--mute); font-size:10px; font-weight:700; }
     .chess-promo { display:flex; gap:8px; justify-content:center; margin-top:10px; }
+    .chess-wrap { position:relative; width:min(96vw,560px); padding:34px 42px; }
+    .chess-wrap .board.chess { width:100%; }
+    .chess-wrap .chess-coords { width:100% !important; }
+    .chess-seat { position:absolute; z-index:3; display:flex; align-items:center; gap:6px; max-width:120px; color:#fff; font-size:10px; font-weight:800; text-shadow:0 1px 2px rgba(0,0,0,.65); }
+    .chess-seat img { width:30px; height:30px; border-radius:50%; object-fit:cover; background:#ddd; border:2px solid rgba(255,255,255,.8); box-shadow:0 2px 5px rgba(0,0,0,.3); }
+    .chess-seat.you img { border-color:var(--gold); box-shadow:0 0 0 2px rgba(247,197,43,.45); }
+    .chess-seat span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .chess-seat.top { top:0; left:50%; transform:translateX(-50%); flex-direction:column; }
+    .chess-seat.bottom { bottom:0; left:50%; transform:translateX(-50%); flex-direction:column; }
+    .chess-seat.left { left:0; top:50%; transform:translateY(-50%); flex-direction:column; }
+    .chess-seat.right { right:0; top:50%; transform:translateY(-50%); flex-direction:column; }
+    @media(max-width:520px) { .chess-wrap { padding-left:34px; padding-right:34px; } .chess-seat { max-width:72px; font-size:9px; } .chess-seat img { width:27px; height:27px; } }
     .board.rpsboard { width:100%; padding:18px 14px 16px; display:flex; flex-direction:column; gap:15px; background:linear-gradient(145deg,#fff,#f5f5f8); border:1px solid var(--line); }
     .rps-score { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; width:100%; }
     .rps-player { background:var(--bg); border-radius:16px; padding:10px 8px; text-align:center; min-width:0; border:2px solid transparent; }
@@ -2549,6 +2576,13 @@
     #toast {
       animation: toastIn .2s ease both
     }
+    .custom-dialog-bg { position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(10,12,18,.62); backdrop-filter:blur(5px); animation:scrimIn .16s ease both; }
+    .custom-dialog { width:min(100%,390px); border:1px solid rgba(255,255,255,.16); border-radius:22px; padding:22px; color:var(--ink); background:var(--card); box-shadow:0 20px 60px rgba(0,0,0,.28); animation:popIn .2s cubic-bezier(.2,.8,.3,1) both; }
+    .custom-dialog h3 { margin:0 0 8px; font-size:20px; } .custom-dialog p { margin:0; color:var(--mute); line-height:1.5; font-size:14px; }
+    .custom-dialog-actions { display:flex; justify-content:flex-end; gap:9px; flex-wrap:wrap; margin-top:20px; }
+    .custom-dialog-actions button { border:0; border-radius:12px; padding:11px 16px; font:inherit; font-weight:800; cursor:pointer; background:var(--red2); color:#fff; }
+    .custom-dialog-actions button.cancel { background:var(--line); color:var(--ink); }
+    .custom-dialog-actions button.choice { min-width:112px; }
     
     @keyframes toastIn {
       from { opacity: 0; transform: translate(-50%, 10px) }
@@ -3081,6 +3115,21 @@
       return String(Math.floor(s / 60)).padStart(1, '0') + ':' + String(s % 60).padStart(2, '0');
     }
     
+    function customDialog({ title, message, confirmText = 'OK', cancelText = '', choices = null }) {
+      return new Promise(resolve => {
+        const bg = document.createElement('div'); bg.className = 'custom-dialog-bg';
+        const buttons = choices ? choices.map(c => `<button class="choice" data-choice="${esc(c.value)}">${esc(c.label)}</button>`).join('') : `<button class="${cancelText ? 'cancel' : ''}" data-dialog="confirm">${esc(confirmText)}</button>`;
+        bg.innerHTML = `<div class="custom-dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><h3 id="dialogTitle">${esc(title)}</h3><p>${esc(message)}</p><div class="custom-dialog-actions">${cancelText ? `<button class="cancel" data-dialog="cancel">${esc(cancelText)}</button>` : ''}${buttons}</div></div>`;
+        document.body.appendChild(bg);
+        const finish = value => { bg.remove(); resolve(value); };
+        bg.querySelector('[data-dialog="cancel"]')?.addEventListener('click', () => finish(false));
+        bg.querySelector('[data-dialog="confirm"]')?.addEventListener('click', () => finish(true));
+        bg.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => finish(b.dataset.choice)));
+        bg.addEventListener('click', e => { if (e.target === bg && cancelText) finish(false); });
+      });
+    }
+    const askDialog = (title, message, confirmText = 'Continue') => customDialog({ title, message, confirmText, cancelText: 'Cancel' });
+    const chooseDialog = (title, message, choices) => customDialog({ title, message, choices, cancelText: 'Cancel' });
     function toast(t) { const e = $('#toast');
       e.textContent = t;
       e.style.display = 'block';
@@ -3896,7 +3945,8 @@
       // Ludo draws avatars, match clock and turn label around the board itself, so the
       // generic players row / clocks / status pill only show while waiting or on a disconnect.
       const showStatus = status && (!isLudo || waiting || goneIdx !== -1);
-      app.innerHTML = `<div class="play">
+      const railPlayers = seats.map((p, i) => p ? `<div class="rail-player ${!waiting&&!result&&turn===i?'turn':''}"><img src="${avatar(p)}" alt=""><span>${nameOf(p)}${i===mine?' (you)':''}</span></div>` : '').join('');
+      app.innerHTML = `<div class="play"><div class="play-layout"><main class="game-main">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <button class="code" id="roomCode" type="button" aria-label="Copy invite link for room ${esc(room.code)}">Room ${esc(room.code)}</button>
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
@@ -3905,9 +3955,10 @@
     ${showStatus ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine, maxPlayers)}</div>
-    ${result ? overCard(mine) : ''}</div>`;
-      $('#bk').onclick = () => {
-        if (g === 'ludo' && room.status === 'playing' && !result && !confirm("Leaving now forfeits your coins for this match. Leave anyway?")) return;
+    ${result ? overCard(mine) : ''}</main><aside class="game-rail"><button class="rail-lobby" id="railLobby">‹ Back to lobby</button><h2>${esc(GAMES.find(x => (x.key || x.id) === g)?.name || g)}</h2><p>${waiting ? 'Waiting room' : 'Live match'}</p><div class="rail-room">Room <b>${esc(room.code)}</b><br><span>${players.length}/${maxPlayers} players</span></div><div class="rail-players">${railPlayers}</div></aside></div></div>`;
+      $('#railLobby').onclick = () => $('#bk').click();
+      $('#bk').onclick = async () => {
+        if (g === 'ludo' && room.status === 'playing' && !result && !await askDialog('Leave this match?', 'Leaving now forfeits your coins for this match. Do you want to leave?', 'Leave match')) return;
         socket.emit(EV.leave, { code: room.code });
         stopMusic();
         goBackToLobby();
@@ -4067,7 +4118,7 @@
         const canMove = result ? null : !myTurn ? null : st.dice == null ? 'roll' : 'move';
         return ludoBoardHtml(st, mine, canMove, players);
       }
-      if (g === 'chess') return chessBoardHtml(gstate || {}, myTurn, mine);
+      if (g === 'chess') return chessBoardHtml(gstate || {}, myTurn, mine, players);
       if (g === 'whot') return whotBoardHtml(gstate || {}, myTurn, players, mine);
       return '';
     }
@@ -4145,18 +4196,28 @@
     const CHESS_GLYPHS = { k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
     const CHESS_NAMES = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
     let chessSelected = null;
-    function chessBoardHtml(st, myTurn, mine) {
+    function chessBoardHtml(st, myTurn, mine, players = []) {
       const board = st.board || [], size = st.size || 14, selected = chessSelected != null ? chessSelected : -1;
       const targets = new Set((st.legal || []).filter(m => m.from === selected).map(m => m.to));
+      const orient = size === 8 ? (mine === 1 ? 2 : 0) : (mine >= 0 ? mine : 0);
+      const sideMap = size === 8 ? (orient === 2 ? ['top','bottom'] : ['bottom','top']) : (orient === 0 ? ['bottom','left','top','right'] : orient === 1 ? ['right','bottom','left','top'] : orient === 2 ? ['top','right','bottom','left'] : ['left','top','right','bottom']);
+      const chessSeats = players.map((p, i) => p ? `<div class="chess-seat ${sideMap[i] || 'top'} ${i === mine ? 'you' : ''}"><img src="${avatar(p)}" alt=""><span>${nameOf(p)}${i === mine ? ' (you)' : ''}</span></div>` : '').join('');
       const isPlayable = (r,c) => size === 8 || (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
       const squares = Array.from({ length: size * size }, (_, view) => {
-        const vr = Math.floor(view / size), c = view % size, r = size - 1 - vr, i = r * size + c, p = board[i];
+        const vr = Math.floor(view / size), vc = view % size;
+        // Standard chess: player 0 is at the bottom; rotate 180° for player 1.
+        // Cross chess: rotate the board so the local player's side is always bottom.
+        let r = vr, c = vc;
+        if (orient === 1) { r = vc; c = size - 1 - vr; }
+        else if (orient === 2) { r = size - 1 - vr; c = size - 1 - vc; }
+        else if (orient === 3) { r = size - 1 - vc; c = vr; }
+        const i = r * size + c, p = board[i];
         if (!isPlayable(r,c)) return '<span class="square void" aria-hidden="true"></span>';
         const target = targets.has(i), capture = target && p, check = st.check === i;
-        return `<button class="square ${(vr+c)%2?'dark':'light'} ${selected===i?'selected':''} ${target?'target':''} ${capture?'capture':''} ${check?'check':''}" data-chess="${i}" aria-label="${p ? CHESS_NAMES[p.type] : 'empty'} ${String.fromCharCode(97+c)}${r+1}">${p ? `<span class="piece p${p.player}">${CHESS_GLYPHS[p.type]}</span>` : ''}</button>`;
+        return `<button class="square ${(vr+vc)%2?'dark':'light'} ${selected===i?'selected':''} ${target?'target':''} ${capture?'capture':''} ${check?'check':''}" data-chess="${i}" aria-label="${p ? CHESS_NAMES[p.type] : 'empty'} ${String.fromCharCode(97+c)}${r+1}">${p ? `<span class="piece p${p.player}">${CHESS_GLYPHS[p.type]}</span>` : ''}</button>`;
       }).join('');
       const coords = Array.from({length:size}, (_, i) => `<span>${String.fromCharCode(97 + i)}</span>`).join('');
-      return `<div class="chess-wrap"><div class="board chess" style="grid-template-columns:repeat(${size},1fr)">${squares}</div><div class="chess-coords" style="width:min(96vw,${size === 8 ? 520 : 520}px)">${coords}</div></div>`;
+      return `<div class="chess-wrap">${chessSeats}<div class="board chess" style="grid-template-columns:repeat(${size},1fr)">${squares}</div><div class="chess-coords">${coords}</div></div>`;
     }
     function bindBoard(g, myTurn) {
       const send = m => socket.emit(EV.move, { code: room.code, move: m });
@@ -4185,7 +4246,7 @@
         SFX.send(); vibrate(18); send({ type:'play', index:jokerPendingIndex, calledSuit:e.dataset.jsuit }); jokerPendingIndex = null;
       });
       $('[data-jmarket]')?.addEventListener('click', () => { SFX.draw(); vibrate(18); send({ type:'market' }); });
-      if (g === 'chess') app.querySelectorAll('[data-chess]').forEach(e => e.onclick = () => {
+      if (g === 'chess') app.querySelectorAll('[data-chess]').forEach(e => e.onclick = async () => {
         const to = +e.dataset.chess, board = gstate?.board || [], p = board[to];
         if (chessSelected == null) { if (p && p.player === room.you && myTurn) { chessSelected = to; gameView(); } return; }
         if (to === chessSelected) { chessSelected = null; gameView(); return; }
@@ -4194,8 +4255,11 @@
         let promotion;
         const size = gstate?.size || 14, tr = Math.floor(to / size), tc = to % size;
         if (moving?.type === 'p' && (tr === 0 || tr === size - 1 || tc === 0 || tc === size - 1)) {
-          promotion = (window.prompt('Promote to: queen, rook, bishop or knight', 'queen') || 'queen').trim().toLowerCase()[0];
-          if (!['q', 'r', 'b', 'n'].includes(promotion)) promotion = 'q';
+          const choice = await chooseDialog('Promote your pawn', 'Choose the piece your pawn becomes.', [
+            { value:'q', label:'Queen' }, { value:'r', label:'Rook' }, { value:'b', label:'Bishop' }, { value:'n', label:'Knight' }
+          ]);
+          if (!choice) return;
+          promotion = choice;
         }
         act({ from, to, ...(promotion ? { promotion } : {}) });
       });
