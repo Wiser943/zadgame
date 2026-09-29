@@ -1,75 +1,26 @@
-// 3–4 player cross-board chess. The board is a 14x14 cross: cells in the
-// central 8 ranks or central 8 files are playable. Each player owns a side:
-// 0 = bottom/white, 1 = left/red, 2 = top/black, 3 = right/blue.
-const SIZE = 14;
-const PLAYERS = 4;
-const TYPES = ['q', 'r', 'b', 'n'];
-const KNIGHT = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
-const KING = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-const DIAGONAL = [[-1,-1],[-1,1],[1,-1],[1,1]];
-const ORTHOGONAL = [[-1,0],[1,0],[0,-1],[0,1]];
-const inside = (r,c) => r >= 0 && r < SIZE && c >= 0 && c < SIZE;
-const playable = (r,c) => inside(r,c) && ((r >= 3 && r <= 10) || (c >= 3 && c <= 10));
-const at = (s,r,c) => playable(r,c) ? s.board[r * SIZE + c] : null;
-const colorOf = (p) => p?.player;
-const own = (p, player) => p && p.player === player;
-const enemy = (p, player) => p && p.player !== player;
-const dir = (player) => [[-1,0],[0,1],[1,0],[0,-1]][player];
-const left = (player) => [[0,-1],[1,0],[0,1],[-1,0]][player];
-const clonePiece = (p) => p ? { type: p.type, player: p.player } : null;
-function initialPieces(player) {
-  const back = ['r','n','b','q','k','b','n','r'];
-  const out = [];
-  for (let i = 0; i < 8; i++) {
-    if (player === 0) { out.push([13 * SIZE + 3 + i, back[i]]); out.push([12 * SIZE + 3 + i, 'p']); }
-    if (player === 1) { out.push([(3 + i) * SIZE, back[i]]); out.push([(3 + i) * SIZE + 1, 'p']); }
-    if (player === 2) { out.push([3 + i, back[i]]); out.push([(1 * SIZE) + 3 + i, 'p']); }
-    if (player === 3) { out.push([(3 + i) * SIZE + 13, back[i]]); out.push([(3 + i) * SIZE + 12, 'p']); }
-  }
-  return out;
-}
-function createInitialState(playerCount = 4) {
-  const count = playerCount === 3 ? 3 : 4, board = Array(SIZE * SIZE).fill(null);
-  for (let player = 0; player < count; player++) for (const [sq,type] of initialPieces(player)) board[sq] = { type, player };
-  return { size: SIZE, playerCount: count, board, turn: 0, active: Array(count).fill(true), halfmove: 0, fullmove: 1, lastMove: null };
-}
-function nextActive(s, from) {
-  for (let n = 1; n <= s.playerCount; n++) { const p = (from + n) % s.playerCount; if (s.active[p]) return p; }
-  return from;
-}
-function kingSquare(s, player) { return s.board.findIndex((p) => p?.type === 'k' && p.player === player); }
-function isAttackedBy(s, sq, attacker) {
-  const r = Math.floor(sq / SIZE), c = sq % SIZE;
-  for (let i = 0; i < s.board.length; i++) {
-    const p = s.board[i]; if (!p || p.player !== attacker) continue;
-    const pr = Math.floor(i / SIZE), pc = i % SIZE, dr = r - pr, dc = c - pc;
-    if (p.type === 'p') { const [vr,vc] = dir(attacker), [lr,lc] = left(attacker); if ((dr === vr + lr && dc === vc + lc) || (dr === vr - lr && dc === vc - lc)) return true; }
-    else if (p.type === 'n' && KNIGHT.some(([a,b]) => a === dr && b === dc)) return true;
-    else if (p.type === 'k' && Math.max(Math.abs(dr),Math.abs(dc)) === 1) return true;
-    else if ((p.type === 'b' || p.type === 'q') && Math.abs(dr) === Math.abs(dc) && dr) { const sr=Math.sign(dr), sc=Math.sign(dc); let clear=true; for(let n=1;n<Math.abs(dr);n++) if(at(s,pr+sr*n,pc+sc*n)) clear=false; if(clear) return true; }
-    if ((p.type === 'r' || p.type === 'q') && ((dr === 0) !== (dc === 0))) { const sr=Math.sign(dr), sc=Math.sign(dc), n=Math.max(Math.abs(dr),Math.abs(dc)); let clear=true; for(let k=1;k<n;k++) if(at(s,pr+sr*k,pc+sc*k)) clear=false; if(clear) return true; }
-  }
-  return false;
-}
-function inCheck(s, player) { const k=kingSquare(s,player); return k >= 0 && s.active.some((on, p) => on && p !== player && isAttackedBy(s,k,p)); }
-function add(out, s, from, to, extra={}) { if (!playable(Math.floor(to/SIZE),to%SIZE)) return; const p=s.board[from], target=s.board[to]; if (!p || own(target,p.player) || target?.type === 'k') return; out.push({from,to,...extra}); }
-function pseudo(s, player) {
-  const out=[];
-  for (let from=0;from<s.board.length;from++) { const p=s.board[from]; if (!own(p,player)) continue; const r=Math.floor(from/SIZE), c=from%SIZE;
-    if (p.type === 'p') { const [vr,vc]=dir(player), [lr,lc]=left(player), one=(r+vr)*SIZE+c+vc; if(playable(r+vr,c+vc)&&!s.board[one]) { if (r+vr===0||r+vr===13||c+vc===0||c+vc===13) TYPES.forEach(t=>add(out,s,from,one,{promotion:t})); else add(out,s,from,one); }
-      for(const sign of [-1,1]) { const rr=r+vr+lr*sign, cc=c+vc+lc*sign, to=rr*SIZE+cc; if(playable(rr,cc)&&enemy(s.board[to],player)) { if(rr===0||rr===13||cc===0||cc===13) TYPES.forEach(t=>add(out,s,from,to,{promotion:t})); else add(out,s,from,to); } }
-      const rr=r+vr*2,cc=c+vc*2,to=rr*SIZE+cc; if((r===12&&player===0)||(c===1&&player===1)||(r===1&&player===2)||(c===12&&player===3)) if(playable(rr,cc)&&!s.board[(r+vr)*SIZE+c+vc]&&!s.board[to]) add(out,s,from,to);
-    } else if (p.type === 'n' || p.type === 'k') { const steps=p.type==='n'?KNIGHT:KING; steps.forEach(([dr,dc])=>add(out,s,from,(r+dr)*SIZE+c+dc)); }
-    else { const dirs=p.type==='b'?DIAGONAL:p.type==='r'?ORTHOGONAL:DIAGONAL.concat(ORTHOGONAL); for(const [dr,dc] of dirs) for(let n=1;n<SIZE;n++){const rr=r+dr*n,cc=c+dc*n;if(!playable(rr,cc))break;const to=rr*SIZE+cc;if(!s.board[to]) out.push({from,to}); else {add(out,s,from,to);break;}} }
-  }
-  return out;
-}
-function makeMove(s,m) { const board=s.board.map(clonePiece), p=board[m.from], captured=board[m.to], player=p.player; board[m.from]=null; board[m.to]={type:m.promotion||p.type,player}; const next={...s,board,turn:nextActive(s,player),halfmove:p.type==='p'||captured?0:s.halfmove+1,fullmove:player===s.playerCount-1?s.fullmove+1:s.fullmove,lastMove:m}; return next; }
-function legalMoves(s,player=s.turn) { return pseudo(s,player).filter(m=>!inCheck(makeMove(s,m),player)); }
-function isValidMove(s,player,move) { if(!s.active[player]||s.turn!==player||!move||!Number.isInteger(move.from)||!Number.isInteger(move.to))return false; return legalMoves(s,player).some(m=>m.from===move.from&&m.to===move.to&&(m.promotion||'q')===(move.promotion||'q')); }
-function applyMove(s,player,move) { const exact=legalMoves(s,player).find(m=>m.from===move.from&&m.to===move.to&&(m.promotion||'q')===(move.promotion||'q')); const next=makeMove(s,exact||move); const opponent=next.turn, moves=legalMoves(next,opponent); if(!moves.length) { const active=next.active.slice(); active[opponent]=false; next.active=active; next.board=next.board.map(p=>p&&p.player===opponent?null:p); next.turn=nextActive(next,opponent); next.lastMove={...next.lastMove, eliminated:opponent, checkmate:inCheck(next,opponent)}; } return next; }
-function checkResult(s) { const alive=s.active.map((on,i)=>on?i:-1).filter(i=>i>=0); if(alive.length===1)return{status:'win',winnerIndex:alive[0],reason:'lastKingStanding'}; if(!alive.length)return{status:'draw',reason:'draw'}; return{status:'ongoing'}; }
-function publicState(s,playerIndex) { const king=kingSquare(s,s.turn); return {...s,legal:legalMoves(s,playerIndex),check:king>=0&&inCheck(s,s.turn)?king:null}; }
-function botMove(s,player) { const moves=legalMoves(s,player); if(!moves.length)return null; return moves.map(m=>({m,score:(s.board[m.to]?10:0)+(m.promotion?8:0)+Math.random()*2})).sort((a,b)=>b.score-a.score)[0].m; }
-function markOut(s,player) { const active=s.active.slice(); active[player]=false; const board=s.board.map(p=>p&&p.player===player?null:p); return {...s,active,board,turn:s.turn===player?nextActive({...s,active},player):s.turn}; }
+// Chess engine: standard 8x8 chess for 2 players; 14x14 cross-board for 3-4.
+const CROSS_SIZE=14, STANDARD_SIZE=8, TYPES=['q','r','b','n'];
+const KNIGHT=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]], KING=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]], DIAGONAL=[[-1,-1],[-1,1],[1,-1],[1,1]], ORTHOGONAL=[[-1,0],[1,0],[0,-1],[0,1]];
+const inside=(s,r,c)=>r>=0&&r<s.size&&c>=0&&c<s.size;
+const playable=(s,r,c)=>inside(s,r,c)&&(s.size===STANDARD_SIZE||(r>=3&&r<=10)||(c>=3&&c<=10));
+const at=(s,r,c)=>playable(s,r,c)?s.board[r*s.size+c]:null;
+const own=(p,i)=>p&&p.player===i, enemy=(p,i)=>p&&p.player!==i, clone=p=>p?{type:p.type,player:p.player}:null;
+function direction(s,p){return s.size===8?(p===0?[-1,0]:[1,0]):[[-1,0],[0,1],[1,0],[0,-1]][p];}
+function leftVector(s,p){return s.size===8?(p===0?[0,-1]:[0,1]):[[0,-1],[1,0],[0,1],[-1,0]][p];}
+function initialPieces(s,p){const back=['r','n','b','q','k','b','n','r'],out=[],z=s.size;if(z===8){const row=p===0?7:0,pawn=p===0?6:1;for(let i=0;i<8;i++){out.push([row*z+i,back[i]]);out.push([pawn*z+i,'p']);}return out;}for(let i=0;i<8;i++){if(p===0){out.push([13*z+3+i,back[i]]);out.push([12*z+3+i,'p']);}if(p===1){out.push([(3+i)*z,back[i]]);out.push([(3+i)*z+1,'p']);}if(p===2){out.push([3+i,back[i]]);out.push([z+3+i,'p']);}if(p===3){out.push([(3+i)*z+13,back[i]]);out.push([(3+i)*z+12,'p']);}}return out;}
+function createInitialState(playerCount=4){const count=Number(playerCount)===2?2:Number(playerCount)===3?3:4,size=count===2?8:14,s={size,mode:count===2?'standard':'cross',playerCount:count,board:Array(size*size).fill(null),turn:0,active:Array(count).fill(true),halfmove:0,fullmove:1,lastMove:null};for(let p=0;p<count;p++)for(const[sq,type]of initialPieces(s,p))s.board[sq]={type,player:p};return s;}
+function nextActive(s,from){for(let n=1;n<=s.playerCount;n++){const p=(from+n)%s.playerCount;if(s.active[p])return p;}return from;}
+function kingSquare(s,p){return s.board.findIndex(x=>x?.type==='k'&&x.player===p);}
+function isAttackedBy(s,sq,attacker){const r=Math.floor(sq/s.size),c=sq%s.size;for(let i=0;i<s.board.length;i++){const p=s.board[i];if(!p||p.player!==attacker)continue;const pr=Math.floor(i/s.size),pc=i%s.size,dr=r-pr,dc=c-pc;if(p.type==='p'){const[vr,vc]=direction(s,attacker),[lr,lc]=leftVector(s,attacker);if((dr===vr+lr&&dc===vc+lc)||(dr===vr-lr&&dc===vc-lc))return true;}else if(p.type==='n'&&KNIGHT.some(([a,b])=>a===dr&&b===dc))return true;else if(p.type==='k'&&Math.max(Math.abs(dr),Math.abs(dc))===1)return true;else if((p.type==='b'||p.type==='q')&&Math.abs(dr)===Math.abs(dc)&&dr){const sr=Math.sign(dr),sc=Math.sign(dc);let clear=true;for(let n=1;n<Math.abs(dr);n++)if(at(s,pr+sr*n,pc+sc*n))clear=false;if(clear)return true;}if((p.type==='r'||p.type==='q')&&((dr===0)!==(dc===0))){const sr=Math.sign(dr),sc=Math.sign(dc),n=Math.max(Math.abs(dr),Math.abs(dc));let clear=true;for(let k=1;k<n;k++)if(at(s,pr+sr*k,pc+sc*k))clear=false;if(clear)return true;}}return false;}
+function inCheck(s,p){const k=kingSquare(s,p);return k>=0&&s.active.some((on,i)=>on&&i!==p&&isAttackedBy(s,k,i));}
+function add(out,s,from,to,extra={}){const r=Math.floor(to/s.size),c=to%s.size,p=s.board[from],target=s.board[to];if(!playable(s,r,c)||!p||own(target,p.player)||target?.type==='k')return;out.push({from,to,...extra});}
+function pseudo(s,player){const out=[];for(let from=0;from<s.board.length;from++){const p=s.board[from];if(!own(p,player))continue;const r=Math.floor(from/s.size),c=from%s.size;if(p.type==='p'){const[vr,vc]=direction(s,player),[lr,lc]=leftVector(s,player),rr=r+vr,cc=c+vc,one=rr*s.size+cc,promote=s.size===8?(rr===0||rr===7):(rr===0||rr===13||cc===0||cc===13);if(playable(s,rr,cc)&&!s.board[one]){if(promote)TYPES.forEach(t=>add(out,s,from,one,{promotion:t}));else add(out,s,from,one);}for(const sign of[-1,1]){const ar=r+vr+lr*sign,ac=c+vc+lc*sign,to=ar*s.size+ac;if(playable(s,ar,ac)&&enemy(s.board[to],player)){const pr=s.size===8?(ar===0||ar===7):(ar===0||ar===13||ac===0||ac===13);if(pr)TYPES.forEach(t=>add(out,s,from,to,{promotion:t}));else add(out,s,from,to);}}const canDouble=s.size===8?((player===0&&r===6)||(player===1&&r===1)):((player===0&&r===12)||(player===1&&c===1)||(player===2&&r===1)||(player===3&&c===12));const r2=r+vr*2,c2=c+vc*2,to=r2*s.size+c2;if(canDouble&&playable(s,r2,c2)&&!s.board[(r+vr)*s.size+c+vc]&&!s.board[to])add(out,s,from,to);}else if(p.type==='n'||p.type==='k'){(p.type==='n'?KNIGHT:KING).forEach(([dr,dc])=>add(out,s,from,(r+dr)*s.size+c+dc));}else{const dirs=p.type==='b'?DIAGONAL:p.type==='r'?ORTHOGONAL:DIAGONAL.concat(ORTHOGONAL);for(const[dr,dc]of dirs)for(let n=1;n<s.size;n++){const rr=r+dr*n,cc=c+dc*n;if(!playable(s,rr,cc))break;const to=rr*s.size+cc;if(!s.board[to])out.push({from,to});else{add(out,s,from,to);break;}}}}return out;}
+function makeMove(s,m){const board=s.board.map(clone),p=board[m.from],captured=board[m.to],player=p.player;board[m.from]=null;board[m.to]={type:m.promotion||p.type,player};return{...s,board,turn:nextActive(s,player),halfmove:p.type==='p'||captured?0:s.halfmove+1,fullmove:player===s.playerCount-1?s.fullmove+1:s.fullmove,lastMove:m};}
+function legalMoves(s,p=s.turn){return pseudo(s,p).filter(m=>!inCheck(makeMove(s,m),p));}
+function isValidMove(s,p,m){if(!s.active[p]||s.turn!==p||!m||!Number.isInteger(m.from)||!Number.isInteger(m.to))return false;return legalMoves(s,p).some(x=>x.from===m.from&&x.to===m.to&&(x.promotion||'q')===(m.promotion||'q'));}
+function applyMove(s,p,m){const exact=legalMoves(s,p).find(x=>x.from===m.from&&x.to===m.to&&(x.promotion||'q')===(m.promotion||'q'));if(!exact)return s;const next=makeMove(s,exact),op=next.turn,moves=legalMoves(next,op);if(!moves.length){const active=next.active.slice();active[op]=false;next.active=active;next.board=next.board.map(x=>x&&x.player===op?null:x);next.turn=nextActive(next,op);next.lastMove={...next.lastMove,eliminated:op,checkmate:inCheck(next,op)};}return next;}
+function checkResult(s){const alive=s.active.map((on,i)=>on?i:-1).filter(i=>i>=0);if(alive.length===1)return{status:'win',winnerIndex:alive[0],reason:'lastKingStanding'};if(!alive.length)return{status:'draw',reason:'draw'};return{status:'ongoing'};}
+function publicState(s,p){const king=kingSquare(s,s.turn);return{...s,legal:legalMoves(s,p),check:king>=0&&inCheck(s,s.turn)?king:null};}
+function botMove(s,p){const moves=legalMoves(s,p);if(!moves.length)return null;return moves.map(m=>({m,score:(s.board[m.to]?10:0)+(m.promotion?8:0)+Math.random()*2})).sort((a,b)=>b.score-a.score)[0].m;}
+function markOut(s,p){const active=s.active.slice();active[p]=false;const board=s.board.map(x=>x&&x.player===p?null:x);return{...s,active,board,turn:s.turn===p?nextActive({...s,active},p):s.turn};}
 module.exports={createInitialState,isValidMove,applyMove,checkResult,publicState,botMove,markOut};

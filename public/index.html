@@ -3932,7 +3932,7 @@
     const REGISTRY_FALLBACK = [
       { key: 'tictactoe', name: 'Tic-Tac-Toe' }, { key: 'connectfour', name: 'Connect Four' },
       { key: 'rps', name: 'Rock Paper Scissors' }, { key: 'ludo', name: 'Ludo', playerCounts: [2, 3, 4] },
-      { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }, { key: 'chess', name: 'Chess', playerCounts: [3, 4] }, { key: 'joker', name: 'Joker', playerCounts: [2, 3, 4] }
+      { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }, { key: 'chess', name: 'Chess', playerCounts: [2, 3, 4] }, { key: 'joker', name: 'Joker', playerCounts: [2, 3, 4] }
     ];
     let RULES = {
       tictactoe: ['2 players: X and O take turns marking empty squares on a 3×3 grid. First to line up 3 wins.',
@@ -3965,7 +3965,7 @@
         '15 seconds per turn — miss it 3 times and you\'re out of the match.',
         'Get all 4 tokens all the way around and home to win.'
       ],
-      chess: ['Chess supports 3 or 4 players on a 14×14 cross board. Players take turns clockwise from the bottom, left, top and right sides.',
+      chess: ['2 players use standard 8×8 chess. 3 or 4 players use the 14×14 cross-board variant.',
         'Tap one of your pieces, then tap a highlighted legal destination. Pieces move in familiar chess patterns across the playable cross.',
         'A king in checkmate is eliminated; the last remaining king wins. Stalemated kings are also removed from play.',
         'Pawns can promote to a queen, rook, bishop or knight when they reach the opposite edge.',
@@ -4148,14 +4148,15 @@
     function chessBoardHtml(st, myTurn, mine) {
       const board = st.board || [], size = st.size || 14, selected = chessSelected != null ? chessSelected : -1;
       const targets = new Set((st.legal || []).filter(m => m.from === selected).map(m => m.to));
-      const isPlayable = (r,c) => (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
+      const isPlayable = (r,c) => size === 8 || (r >= 3 && r <= 10) || (c >= 3 && c <= 10);
       const squares = Array.from({ length: size * size }, (_, view) => {
         const vr = Math.floor(view / size), c = view % size, r = size - 1 - vr, i = r * size + c, p = board[i];
         if (!isPlayable(r,c)) return '<span class="square void" aria-hidden="true"></span>';
         const target = targets.has(i), capture = target && p, check = st.check === i;
         return `<button class="square ${(vr+c)%2?'dark':'light'} ${selected===i?'selected':''} ${target?'target':''} ${capture?'capture':''} ${check?'check':''}" data-chess="${i}" aria-label="${p ? CHESS_NAMES[p.type] : 'empty'} ${String.fromCharCode(97+c)}${r+1}">${p ? `<span class="piece p${p.player}">${CHESS_GLYPHS[p.type]}</span>` : ''}</button>`;
       }).join('');
-      return `<div class="chess-wrap"><div class="board chess">${squares}</div><div class="chess-coords"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span><span>i</span><span>j</span><span>k</span><span>l</span><span>m</span><span>n</span></div></div>`;
+      const coords = Array.from({length:size}, (_, i) => `<span>${String.fromCharCode(97 + i)}</span>`).join('');
+      return `<div class="chess-wrap"><div class="board chess" style="grid-template-columns:repeat(${size},1fr)">${squares}</div><div class="chess-coords" style="width:min(96vw,${size === 8 ? 520 : 520}px)">${coords}</div></div>`;
     }
     function bindBoard(g, myTurn) {
       const send = m => socket.emit(EV.move, { code: room.code, move: m });
