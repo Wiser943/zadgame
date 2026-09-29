@@ -41,6 +41,7 @@ async function main() {
   app.use('/auth', authRoutes);
   app.use('/api', apiRoutes);
 
+  app.use('/assets', express.static(path.join(__dirname, 'assets')));
   app.use(express.static(path.join(__dirname, 'public')));
 
   // Anything else -> back to the landing page

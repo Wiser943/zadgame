@@ -9,7 +9,8 @@ const REGISTRY = require('../games/registry');
 const User = require('../models/User');
 
 const ENG = games.ENGINES || games;
-const FORFEIT_MS = 75 * 1000;      // disconnect this long => that player forfeits
+const FORFEIT_MS = 75 * 1000;
+const WAITING_ROOM_RETENTION_MS = 60 * 1000;      // disconnect this long => that player forfeits
 const WIN_COINS = 10;
 const EMOTE_COUNT = 8;             // keep in sync with EMOTES in public/index.html
 
@@ -315,6 +316,12 @@ module.exports = function initSockets(io, sessionMiddleware) {
     pushAndBot(r);
   }
 
+  function scheduleWaitingRoomCleanup(r) {
+    clearTimeout(r.waitingCleanupTimer);
+    r.waitingCleanupTimer = setTimeout(() => {
+      if (r.status === 'waiting' && !r.players.some((p) => p.connected)) rooms.delete(r.code);
+    }, WAITING_ROOM_RETENTION_MS);
+  }
   function removeFromRoom(socket, explicit) {
     const r = rooms.get(socket.data.code);
     socket.data.code = null;
@@ -322,7 +329,10 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const i = r.players.findIndex((p) => p.sid === socket.id);
     if (i === -1) return;
     r.players[i].connected = false; r.players[i].sid = null;
-    if (r.status === 'waiting') { clearAllForfeits(r); clearTimeout(r.turnTimer); clearTimeout(r.matchTimer); clearTimeout(r.botTimer); rooms.delete(r.code); return; }
+    if (r.status === 'waiting') {
+      clearAllForfeits(r); clearTimeout(r.turnTimer); clearTimeout(r.matchTimer); clearTimeout(r.botTimer);
+      scheduleWaitingRoomCleanup(r); push(r); return;
+    }
     if (r.status === 'playing') {
       if (explicit) { eliminatePlayer(r, i, 'forfeit'); return; }
       startForfeitTimer(r, i);   // dropped connection — give them time to come back
@@ -336,6 +346,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   function attach(socket, r) {
     const u = socket.request.user, uid = String(u._id || u.id);
     if (socket.data.code && socket.data.code !== r.code) removeFromRoom(socket, true);
+    clearTimeout(r.waitingCleanupTimer); r.waitingCleanupTimer = null;
     let i = r.players.findIndex((p) => p.id === uid);
     if (i === -1) {
       if (r.players.length >= r.maxPlayers) return false;
@@ -356,7 +367,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   }
 
   function createRoom(socket, game, maxPlayers, vsBot) {
-    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set() };
+    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
     rooms.set(r.code, r); attach(socket, r);
     if (vsBot) fillWithBots(r);
     return r;

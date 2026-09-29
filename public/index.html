@@ -2675,6 +2675,19 @@
     const icon = (name, size = 20) => (ICONS[name] || '').replace('<svg ', `<svg width="${size}" height="${size}" style="display:inline-block;vertical-align:-5px" `);
     const $ = s => document.querySelector(s);
     const app = $('#app');
+    function routePath() { return location.pathname.replace(/\/$/, '') || '/'; }
+    function goBackToLobby() {
+      if (history.state?.page === 'game' && history.length > 1) history.back();
+      else lobbyView(false);
+    }
+    window.addEventListener('popstate', () => {
+      const path = routePath();
+      if (path === '/settings') return settingsView(false);
+      if (path === '/leaderboard') return leaderboardView(new URLSearchParams(location.search).get('by') || 'coins', false);
+      const code = new URLSearchParams(location.search).get('code');
+      if (code) return joinRoom(code, false);
+      lobbyView(false);
+    });
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [c]));
     const EMOTES = [
       { icon: 'thumbsup', label: 'Nice move!', showLabel: true },
@@ -2710,7 +2723,7 @@
     const IMGBB_API_KEY = '';
     
     /* ---------- preferences: theme + sound/music/vibration ---------- */
-    const prefs = Object.assign({ theme: 'light', music: false, sound: true, vibration: true }, (() => {
+    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true }, (() => {
       try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch { return {} }
     })());
     
@@ -2772,38 +2785,29 @@
           tone(1320, .18, 'sine', .14, .17); }
       };
     })();
-    let musicTimer = null;
-    
-    function startMusic() {
-      if (!prefs.music || musicTimer) return;
-      const notes = [392, 440, 494, 440];
-      let i = 0;
-      musicTimer = setInterval(() => {
-        if (!prefs.music) return;
-        try {
-          const c = musicCtx();
-          const t0 = c.currentTime;
-          const o = c.createOscillator(),
-            g = c.createGain();
-          o.type = 'sine';
-          o.frequency.setValueAtTime(notes[i % notes.length], t0);
-          g.gain.setValueAtTime(0.05, t0);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.6);
-          o.connect(g);
-          g.connect(c.destination);
-          o.start(t0);
-          o.stop(t0 + 1.7);
-        } catch {}
-        i++;
-      }, 2200);
+    const AUDIO_FILES = {
+      music: '/assets/audio/mixkit-game-level-music-689.wav',
+      start: '/assets/audio/mixkit-unlock-game-notification-253.wav',
+      game: '/assets/audio/mixkit-game-bonus-reached-2065.wav',
+      lose: '/assets/audio/mixkit-player-losing-or-failing-2042.wav',
+      win: '/assets/audio/mixkit-winning-a-coin-video-game-2069.wav',
+      secondary: '/assets/audio/mixkit-unlock-new-item-game-notification-254.wav'
+    };
+    const musicAudio = new Audio(AUDIO_FILES.music);
+    musicAudio.loop = true;
+    musicAudio.preload = 'auto';
+    musicAudio.volume = 0.22;
+    function playAudioCue(name) {
+      if (!prefs.sound || !AUDIO_FILES[name]) return;
+      try { const a = new Audio(AUDIO_FILES[name]); a.volume = name === 'game' ? 0.16 : 0.28; a.play().catch(() => {}); } catch {}
     }
-    
-    function stopMusic() { clearInterval(musicTimer);
-      musicTimer = null; }
-    let _musicCtx;
-    
-    function musicCtx() { if (!_musicCtx) _musicCtx = new(window.AudioContext || window.webkitAudioContext)(); if (_musicCtx.state === 'suspended') _musicCtx.resume(); return _musicCtx; }
-    
+    function startMusic() { if (prefs.music) musicAudio.play().catch(() => {}); }
+    function stopMusic() { musicAudio.pause(); }
+    function setLobbyMusic(active) { active ? startMusic() : stopMusic(); }
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('button, a');
+      if (b && (b.matches('.rules-btn, .code, .back, .ghost, .lbstrip, .mebtn, .srow, .logoutbtn') || b.id === 'roomCode')) playAudioCue('secondary');
+    });
     const COMMENTS = {
       six: ['Nice six! 🎲', 'Lucky roll!', 'Six! Go again.'],
       doubleSix: ['Double six! 🔥', 'On fire!', 'Unstoppable!'],
@@ -3064,7 +3068,7 @@
       if (!me || (!me._id && !me.id && !me.displayName && !me.name)) return loginView();
       connect();
       const code = new URLSearchParams(location.search).get('code');
-      code ? joinRoom(code) : lobbyView();
+      if (code) joinRoom(code, false); else { history.replaceState({ page: 'lobby' }, '', '/lobby'); lobbyView(false); }
     }
     
     function loginView() {
@@ -3106,7 +3110,7 @@
           authErr = '';
           connect();
           const code = new URLSearchParams(location.search).get('code');
-          code ? joinRoom(code) : lobbyView();
+          if (code) joinRoom(code, false); else { history.replaceState({ page: 'lobby' }, '', '/lobby'); lobbyView(false); }
         } catch { authErr = 'Network error. Check your connection and try again.';
           loginView() }
       };
@@ -3122,11 +3126,14 @@
       socket = io({ withCredentials: true });
       socket.on('connect_error', () => toast('Connection problem. Retrying…'));
       socket.on(EV.error, e => toast(e?.message || 'Something went wrong'));
-      socket.on('connect', () => { if (room && room.status !== 'over') joinRoom(room.code); });
+      socket.on('connect', () => { if (room && room.status !== 'over') joinRoom(room.code, false); });
       socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
       socket.on(EV.room, r => {
+        const previousStatus = room?.status;
         if (r && r.now) clockSkew = r.now - Date.now();
         room = r;
+        if (r?.status === 'playing' && previousStatus !== 'playing') playAudioCue('start');
+        else if (r?.status === 'playing' && previousStatus === 'playing') playAudioCue('game');
         if (r.state) gstate = r.state;
         result = r.status === 'over' ? r.result : null;
         scheduleRender();
@@ -3136,7 +3143,7 @@
       socket.on(EV.over, r => {
         result = r;
         const won = r.status === 'win' && r.winnerIndex === room?.you;
-        if (r.status === 'win') { won ? SFX.win() : SFX.lose();
+        if (r.status === 'win') { won ? (SFX.win(), playAudioCue('win')) : (SFX.lose(), playAudioCue('lose'));
           vibrate(won ? [40, 60, 40, 60, 140] : [80, 50, 80]); }
         else { SFX.draw();
           vibrate([60, 40, 60]); }
@@ -3266,10 +3273,11 @@
     
     
     /* ---------- lobby ---------- */
-    async function lobbyView() {
+    async function lobbyView(navigate = true) {
       room = gstate = result = null;
       ludoRollReady = false;
-      history.replaceState(null, '', '/');
+      if (navigate && routePath() !== '/lobby') history.pushState({ page: 'lobby' }, '', '/lobby');
+      setLobbyMusic(true);
       let games = [],
         lbTop = [];
       try {
@@ -3300,8 +3308,10 @@
     }
     
     /* ---------- leaderboard ---------- */
-    async function leaderboardView(by) {
+    async function leaderboardView(by, navigate = true) {
       by = by === 'wins' ? 'wins' : 'coins';
+      if (navigate) history.pushState({ page: 'leaderboard' }, '', '/leaderboard?by=' + by);
+      setLobbyMusic(true);
       app.innerHTML = `<div class="lbview">
     <div style="display:flex;align-items:center;margin-bottom:6px">
       <button class="back" id="lbBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
@@ -3313,7 +3323,7 @@
     </div>
     <div id="lbList"><p style="text-align:center;color:var(--mute);padding:30px 0">Loading…</p></div>
   </div>`;
-      $('#lbBk').onclick = lobbyView;
+      $('#lbBk').onclick = () => history.back();
       app.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { if (b.dataset.by !== by) leaderboardView(b.dataset.by); });
       let data;
       try { data = await api('/api/leaderboard?by=' + by + '&limit=50'); }
@@ -3342,7 +3352,9 @@
       return `<button type="button" class="srow" id="${id}"><span class="si">${icon(iconName,20)}</span><span class="lbl">${esc(label)}</span><span class="chev">›</span></button>`;
     }
     
-    function settingsView() {
+    function settingsView(navigate = true) {
+      if (navigate) history.pushState({ page: 'settings' }, '', '/settings');
+      setLobbyMusic(true);
       app.innerHTML = `<div class="settings" style="padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 30px;max-width:520px;margin:0 auto">
     <div style="display:flex;align-items:center;margin-bottom:6px">
       <button class="back" id="sBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
@@ -3371,7 +3383,7 @@
     <button class="logoutbtn" id="sOut">${icon('logout',18)} Log Out</button>
     <div class="ver">Version 1.0.10141</div>
   </div>`;
-      $('#sBk').onclick = lobbyView;
+      $('#sBk').onclick = () => history.back();
       $('#sEdit').onclick = () => profileView(me.id || me._id);
       $('#sOut').onclick = () => location.href = '/auth/logout';
       $('#sChat').onclick = chatSupportView;
@@ -3618,19 +3630,20 @@
         room = res?.room || res;
         result = gstate = null;
         if (room?.state) gstate = room.state;
-        history.replaceState(null, '', '/?code=' + room.code);
+        history.pushState({ page: 'game', code: room.code }, '', '/?code=' + room.code);
         gameView();
       });
     }
     
-    function joinRoom(code) {
+    function joinRoom(code, navigate = true) {
       code = code.toUpperCase();
       socket.emit(EV.join, { code }, res => {
-        if (res && res.ok === false) { toast(res.error || 'Could not join room'); return lobbyView() }
+        if (res && res.ok === false) { toast(res.error || 'Could not join room'); return lobbyView(false) }
         room = res?.room || res;
         result = gstate = null;
         if (room?.state) gstate = room.state;
-        history.replaceState(null, '', '/?code=' + code);
+        if (navigate) history.pushState({ page: 'game', code }, '', '/?code=' + code);
+        else history.replaceState({ page: 'game', code }, '', '/?code=' + code);
         gameView();
       });
     }
@@ -3641,7 +3654,7 @@
         room = res.room;
         result = gstate = null;
         gstate = room.state || null;
-        history.replaceState(null, '', '/?code=' + room.code);
+        history.pushState({ page: 'game', code: room.code }, '', '/?code=' + room.code);
         gameView();
       });
     }
@@ -3851,7 +3864,7 @@
         if (g === 'ludo' && room.status === 'playing' && !result && !confirm("Leaving now forfeits your coins for this match. Leave anyway?")) return;
         socket.emit(EV.leave, { code: room.code });
         stopMusic();
-        lobbyView();
+        goBackToLobby();
       };
       $('#rulesBtn').onclick = () => rulesSheet(g);
       $('#roomCode').onclick = copyInviteLink;
@@ -3863,7 +3876,7 @@
       });
       bindBoard(g, myTurn);
       $('#again')?.addEventListener('click', () => { stopMusic();
-        lobbyView(); });
+        goBackToLobby(); });
       $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
       ensureChatDock();
       app.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
