@@ -3254,7 +3254,7 @@
         result = r;
         const won = r.status === 'win' && r.winnerIndex === room?.you;
         if (r.status === 'win') { won ? (SFX.win(), playAudioCue('win')) : (SFX.lose(), playAudioCue('lose'));
-          callout(won ? 'You win' : 'You lose');
+          callout(won ? 'You win' : 'You lost');
           vibrate(won ? [40, 60, 40, 60, 140] : [80, 50, 80]); }
         else { SFX.draw(); callout('Draw');
           vibrate([60, 40, 60]); }
@@ -3317,8 +3317,10 @@
           } else if (ev.type === 'whotPick') {
             const label = ev.value === 5 ? 'Pick Three' : 'Pick Two';
             callout(label);
+          } else if (ev.type === 'whotRequest') {
+            callout(`I need ${ev.shape}`);
           } else if (ev.type === 'whotMarket') {
-            callout(ev.count > 1 ? `Pick ${ev.count}` : 'Market');
+            callout(ev.count > 1 ? `Pick ${ev.count}` : 'Go market');
           }
         if (ev.type === 'timeout') {
           SFX.strike();

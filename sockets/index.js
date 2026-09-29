@@ -132,6 +132,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
         toAll(r, 'game:event', { type: 'whotGeneralMarket', player: i });
       } else if (whotCard?.value === 2 || whotCard?.value === 5) {
         toAll(r, 'game:event', { type: 'whotPick', player: i, value: whotCard.value, defense: whotPending > 0, total: r.state.pendingPick || 0 });
+      } else if (whotCard?.shape === 'whot' && typeof move.calledShape === 'string') {
+        toAll(r, 'game:event', { type: 'whotRequest', player: i, shape: move.calledShape });
       }
     }
     if (r.game === 'chess' && Array.isArray(r.state.active)) {
