@@ -17,7 +17,15 @@ const EMOTE_COUNT = 8;             // keep in sync with EMOTES in public/index.h
 const LUDO_TURN_MS = 15 * 1000;                 // roll or move within this long, or take a strike
 const LUDO_STRIKE_LIMIT = 3;                    // 3 strikes = removed from the room
 const LUDO_STRIKE_FORFEIT_COINS = 15;           // coins lost when removed for strikes
-const LUDO_MATCH_MS = { 2: 4 * 60 * 1000, 4: 8 * 60 * 1000 }; // match clock by room size
+const LUDO_MATCH_MS = { 2: 4 * 60 * 1000, 3: 6 * 60 * 1000, 4: 8 * 60 * 1000 }; // match clock by room size
+
+// ---- Every game gets a visible per-turn clock. Ludo uses its own bespoke
+// strike/elimination system above; every other turn-based game just plays
+// an automatic move (via the engine's botMove) for whoever stalls, so a
+// slow or disconnected player never blocks the match. RPS has no single
+// "turn" (both players pick each round), so it gets its own round clock.
+const TURN_MS = { tictactoe: 20 * 1000, connectfour: 20 * 1000, whot: 25 * 1000 };
+const RPS_ROUND_MS = 15 * 1000;
 
 const rooms = new Map();           // code -> room
 const hits = new Map();            // rate-limit log: "userId:event" -> [timestamps]
@@ -119,7 +127,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     }
 
     const res = e.checkResult(r.state);
-    if (res.status === 'ongoing') { pushAndBot(r); if (r.game === 'ludo') armTurnTimer(r); return; }
+    if (res.status === 'ongoing') { pushAndBot(r); armTurnTimer(r); return; }
     push(r); finish(r, res.status === 'win' ? res.winnerIndex : null, 'normal');
   }
 
@@ -168,14 +176,29 @@ module.exports = function initSockets(io, sessionMiddleware) {
     r.forfeits.clear();
   }
 
-  // ---- Ludo turn clock + match clock ----
+  // ---- Per-turn clock (every game) + Ludo's whole-match clock ----
+  // Dispatches to the right kind of turn clock for the room's game: Ludo's
+  // own strike/elimination system, RPS's simultaneous-pick round clock, or
+  // a plain single-player turn clock for everything else.
   function armTurnTimer(r) {
     clearTimeout(r.turnTimer); r.turnTimer = null; r.turnDeadline = null;
-    if (r.game !== 'ludo' || r.status !== 'playing') return;
-    r.turnDeadline = Date.now() + LUDO_TURN_MS;
-    r.turnTimer = setTimeout(() => turnTimeout(r), LUDO_TURN_MS);
+    if (r.status !== 'playing') return;
+    if (r.game === 'ludo') {
+      r.turnDeadline = Date.now() + LUDO_TURN_MS;
+      r.turnTimer = setTimeout(() => ludoTurnTimeout(r), LUDO_TURN_MS);
+      return;
+    }
+    if (r.game === 'rps') {
+      r.turnDeadline = Date.now() + RPS_ROUND_MS;
+      r.turnTimer = setTimeout(() => rpsRoundTimeout(r), RPS_ROUND_MS);
+      return;
+    }
+    const ms = TURN_MS[r.game];
+    if (!ms) return;
+    r.turnDeadline = Date.now() + ms;
+    r.turnTimer = setTimeout(() => genericTurnTimeout(r), ms);
   }
-  function turnTimeout(r) {
+  function ludoTurnTimeout(r) {
     if (r.status !== 'playing') return;
     const i = r.state.turn;
     if (!r.strikes) r.strikes = Array(r.maxPlayers).fill(0);
@@ -188,6 +211,39 @@ module.exports = function initSockets(io, sessionMiddleware) {
       return;
     }
     r.state = ENG[r.game].forcePass(r.state);
+    pushAndBot(r);
+    armTurnTimer(r);
+  }
+  // Tic-tac-toe, Connect Four, Whot: whoever's turn it is just gets an
+  // automatic move played for them (the same logic bots use), so a stalled
+  // or disconnected human never blocks the match.
+  function genericTurnTimeout(r) {
+    if (r.status !== 'playing') return;
+    const i = r.state.turn;
+    if (!Number.isInteger(i) || !r.players[i] || r.players[i].out) { armTurnTimer(r); return; }
+    toAll(r, 'game:event', { type: 'timeout', player: i });
+    const eng = ENG[r.game];
+    const move = eng.botMove ? eng.botMove(r.state, i) : null;
+    if (move && eng.isValidMove(r.state, i, move)) { applyValidatedMove(r, i, move); return; }
+    armTurnTimer(r); // no safe fallback move available — just keep the clock moving
+  }
+  // RPS: fill in a random pick for anyone who hasn't chosen this round.
+  function rpsRoundTimeout(r) {
+    if (r.status !== 'playing' || r.game !== 'rps') return;
+    const eng = ENG.rps;
+    let acted = false;
+    r.players.forEach((p, i) => {
+      if (p.out || r.state.choices[i] !== null) return;
+      const move = eng.botMove();
+      if (!eng.isValidMove(r.state, i, move)) return;
+      r.state = eng.applyMove(r.state, i, move);
+      acted = true;
+    });
+    if (acted) {
+      toAll(r, 'game:event', { type: 'timeout' });
+      const res = eng.checkResult(r.state);
+      if (res.status !== 'ongoing') { push(r); finish(r, res.status === 'win' ? res.winnerIndex : null, 'normal'); return; }
+    }
     pushAndBot(r);
     armTurnTimer(r);
   }
@@ -255,7 +311,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const res = eng.checkResult ? eng.checkResult(r.state) : { status: 'ongoing' };
     if (res.status !== 'ongoing') { finish(r, res.status === 'win' ? res.winnerIndex : null, reason); return; }
     pushAndBot(r);
-    if (r.game === 'ludo') armTurnTimer(r);
+    armTurnTimer(r);
   }
 
   function removeFromRoom(socket, explicit) {

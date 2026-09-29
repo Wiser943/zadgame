@@ -23,12 +23,15 @@ const SAFE_CELLS = new Set([0, 8, 13, 21, 26, 34, 39, 47]); // starts + star cel
 const TOKENS_PER_PLAYER = 4;
 
 // 2-player games use opposite corners (red/yellow) so both sides are symmetric.
+// 3-player games use red/green/yellow, leaving the blue corner empty.
 function cornersFor(playerCount) {
-  return playerCount === 4 ? [0, 1, 2, 3] : [0, 2];
+  if (playerCount === 4) return [0, 1, 2, 3];
+  if (playerCount === 3) return [0, 1, 2];
+  return [0, 2];
 }
 
 function createInitialState(playerCount) {
-  const n = playerCount === 4 ? 4 : 2;
+  const n = playerCount === 4 ? 4 : playerCount === 3 ? 3 : 2;
   const corners = cornersFor(n);
   return {
     playerCount: n,

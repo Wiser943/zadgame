@@ -677,18 +677,32 @@
     .tmark.p3 { color: #e0b43a }
     
     .ttt-5 {
-      gap: 5px;
-      padding: 8px
+      gap: 7px;
+      padding: 10px
     }
     
     .ttt-5 .cell {
-      font-size: 28px;
+      font-size: 26px;
       border-radius: 10px
+    }
+    
+    .ttt .cell {
+      transition: transform .12s ease, background .12s ease, box-shadow .12s ease
+    }
+    
+    .ttt .cell:not(:disabled):active {
+      transform: scale(.92)
     }
     
     .ttt .cell.win {
       background: #fff3c4;
-      box-shadow: inset 0 0 0 3px var(--gold)
+      box-shadow: inset 0 0 0 3px var(--gold);
+      animation: tttWinGlow 1s ease-in-out infinite alternate
+    }
+    
+    @keyframes tttWinGlow {
+      from { box-shadow: inset 0 0 0 3px var(--gold) }
+      to { box-shadow: inset 0 0 0 3px var(--gold), 0 0 14px var(--gold) }
     }
     
     .ttt .cell:disabled {
@@ -2132,6 +2146,34 @@
       animation: clockpulse 1s infinite
     }
     
+    /* ---- per-turn clock: every game, styled after tt/ reference's #timer-box ---- */
+    .turnclock {
+      font-weight: 800;
+      font-size: 15px;
+      background: rgba(0, 0, 0, .35);
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-radius: 999px;
+      padding: 6px 16px;
+      min-width: 44px;
+      text-align: center
+    }
+    
+    .turnclock.low {
+      border-color: #ef4444;
+      color: #ffdada;
+      animation: clockpulse 1s infinite alternate
+    }
+    
+    .clocks {
+      display: flex;
+      gap: 8px;
+      justify-content: center
+    }
+    
+    .clocks:empty {
+      display: none
+    }
+    
     @keyframes clockpulse {
 
       0%,
@@ -2208,6 +2250,113 @@
       justify-content: center;
       z-index: 15;
       padding: 20px
+    }
+    
+    /* ==== smooth animations & transitions, app-wide ==== */
+    
+    /* Every screen (login/lobby/leaderboard/settings/profile/game) fades and
+       lifts in on mount instead of popping in instantly. */
+    #app > * {
+      animation: viewIn .22s ease both
+    }
+    
+    @keyframes viewIn {
+      from { opacity: 0; transform: translateY(6px) }
+      to { opacity: 1; transform: none }
+    }
+    
+    /* Bottom sheets (game picker, rules) slide up + fade; their scrim fades in. */
+    .sheet-bg {
+      animation: scrimIn .18s ease both
+    }
+    
+    .sheet {
+      animation: sheetUp .24s cubic-bezier(.2, .8, .3, 1) both
+    }
+    
+    @keyframes scrimIn {
+      from { opacity: 0 }
+      to { opacity: 1 }
+    }
+    
+    @keyframes sheetUp {
+      from { opacity: 0; transform: translateY(28px) }
+      to { opacity: 1; transform: none }
+    }
+    
+    /* Match-over card and the leave/rules confirmation scrims scale + fade in. */
+    .over-bg {
+      animation: scrimIn .18s ease both
+    }
+    
+    .over {
+      animation: popIn .24s cubic-bezier(.2, .8, .3, 1) both
+    }
+    
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.92) }
+      to { opacity: 1; transform: scale(1) }
+    }
+    
+    /* Toast slides up + fades instead of appearing instantly. */
+    #toast {
+      animation: toastIn .2s ease both
+    }
+    
+    @keyframes toastIn {
+      from { opacity: 0; transform: translate(-50%, 10px) }
+      to { opacity: 1; transform: translate(-50%, 0) }
+    }
+    
+    /* Tactile press feedback across every tappable surface in the app. */
+    .btn, .game, .room, .pcbtn, .lbrow, .lbstrip, .pl, .cell, .wcard,
+    .wmarket, .ldice, .emotes button, .chatform button {
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease
+    }
+    
+    .btn:not(:disabled):active, .game:active, .room .btn:not(:disabled):active,
+    .pcbtn:not(:disabled):active, .lbrow:active, .wmarket:not(:disabled):active,
+    .emotes button:active {
+      transform: scale(.95)
+    }
+    
+    /* New marks/discs/cards pop or drop into place as they're placed. */
+    .cell.p0, .cell.p1, .cell.p2, .cell.p3 {
+      animation: markPop .22s cubic-bezier(.2, .8, .3, 1) both
+    }
+    
+    @keyframes markPop {
+      from { transform: scale(.4); opacity: 0 }
+      to { transform: scale(1); opacity: 1 }
+    }
+    
+    .cf .cell.a, .cf .cell.b {
+      animation: discDrop .32s cubic-bezier(.34, 1.4, .64, 1) both
+    }
+    
+    @keyframes discDrop {
+      from { transform: translateY(-140%); opacity: 0 }
+      to { transform: translateY(0); opacity: 1 }
+    }
+    
+    .wcard {
+      animation: cardIn .2s ease both
+    }
+    
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(10px) scale(.94) }
+      to { opacity: 1; transform: none }
+    }
+    
+    /* Accessibility: anyone who asks for reduced motion gets near-instant,
+       non-looping transitions everywhere — including everything added above. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important
+      }
     }
   </style>
 </head>
@@ -2609,7 +2758,14 @@
       clearTimeout(toast.t);
       toast.t = setTimeout(() => e.style.display = 'none', 2600) }
     async function api(p) { const r = await fetch(p, { credentials: 'include' }); if (!r.ok) throw new Error(r.status); return r.json() }
-    const avatar = p => esc(p?.avatar || p?.photo || p?.picture || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22/%3E');
+    // Generic person-silhouette placeholder — shown for any player/user without
+    // their own photo, everywhere an avatar renders (lobby, players bar, chat,
+    // leaderboard, profile).
+    const DEFAULT_AVATAR = 'data:image/svg+xml,' + encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="32" fill="#c7c9d1"/>'
+      + '<circle cx="32" cy="25" r="12" fill="#8a8f99"/><path d="M10 55c2.5-14.5 12.5-21 22-21s19.5 6.5 22 21" fill="#8a8f99"/></svg>'
+    );
+    const avatar = p => esc(p?.avatar || p?.photo || p?.picture || DEFAULT_AVATAR);
     const nameOf = p => esc(p?.displayName || p?.name || 'Player');
     
     async function boot() {
@@ -2721,6 +2877,15 @@
     function handleLudoEvent(ev) {
       if (!ev || !room) return;
       const mine = room.you;
+      if (room.game !== 'ludo') {
+        if (ev.type === 'timeout') {
+          SFX.strike();
+          vibrate(20);
+          const p = ev.player != null ? room.players[ev.player] : null;
+          toast(p ? `${nameOf(p)} ran out of time — auto move played` : "Time's up — round auto-resolved");
+        }
+        return;
+      }
       if (ev.type === 'roll') {
         const diceFace = document.querySelector('#roll .ldice-face');
         if (diceFace) { diceFace.classList.add('rolling');
@@ -2835,7 +3000,7 @@
       by = by === 'wins' ? 'wins' : 'coins';
       app.innerHTML = `<div class="lbview">
     <div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="lbBk" aria-label="Back" style="background:#eee;color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
+      <button class="back" id="lbBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
       <h1 style="flex:1;margin:0">Leaderboard</h1><span style="width:38px"></span>
     </div>
     <div class="lbtabs">
@@ -2876,7 +3041,7 @@
     function settingsView() {
       app.innerHTML = `<div class="settings" style="padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 30px;max-width:520px;margin:0 auto">
     <div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="sBk" aria-label="Back" style="background:#eee;color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
+      <button class="back" id="sBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
       <h1 style="flex:1;margin:0">Settings</h1><span style="width:38px"></span>
     </div>
     <div class="swho">
@@ -2941,7 +3106,7 @@
     function staticPageShell(title, bodyHtml, back) {
       app.innerHTML = `<div class="settings" style="padding:calc(env(safe-area-inset-top,0px) + 18px) 18px 40px;max-width:520px;margin:0 auto">
     <div style="display:flex;align-items:center;margin-bottom:16px">
-      <button class="back" id="spBk" aria-label="Back" style="background:#eee;color:var(--ink);width:38px;height:38px;border-radius:50%;flex-shrink:0">‹</button>
+      <button class="back" id="spBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%;flex-shrink:0">‹</button>
       <h1 style="flex:1;margin:0;font-size:22px;text-align:center">${esc(title)}</h1><span style="width:38px;flex-shrink:0"></span>
     </div>
     ${bodyHtml}
@@ -3235,7 +3400,13 @@
         clockEl.textContent = fmtClock(ms);
         clockEl.classList.toggle('low', ms < 30000);
       }
-      const stillTicking = goneIdx !== -1 || (room.game === 'ludo' && room.status === 'playing' && room.matchDeadline);
+      const turnClockEl = $('#turnClock');
+      if (turnClockEl && room.status === 'playing' && room.turnDeadline && !result) {
+        const ms = room.turnDeadline - Date.now();
+        turnClockEl.textContent = Math.max(0, Math.ceil(ms / 1000)) + 's';
+        turnClockEl.classList.toggle('low', ms < 5000);
+      }
+      const stillTicking = goneIdx !== -1 || (room.status === 'playing' && (room.matchDeadline || room.turnDeadline));
       if (!stillTicking) clearInterval(gameView.t);
     }
     
@@ -3280,7 +3451,7 @@
       const forfeits = room.forfeits || {};
       const goneIdx = seats.findIndex((p, i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
       if (goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
-      const ticking = goneIdx !== -1 || (g === 'ludo' && room.status === 'playing' && room.matchDeadline);
+      const ticking = goneIdx !== -1 || (room.status === 'playing' && (room.matchDeadline || room.turnDeadline));
       clearInterval(gameView.t);
       if (ticking) gameView.t = setInterval(tickUpdate, 500);
       if (!waiting && g === 'ludo') startMusic();
@@ -3299,16 +3470,18 @@
     <img src="${avatar(p)}" alt="">${g==='tictactoe'&&maxPlayers>2?`<b class="tmark p${i}">${TTT_MARKS[i]}</b> `:''}${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}${p?wCount(i):''}${g==='ludo'&&p?strikeDots(i):''}</button>`;
       const matchClock = (g === 'ludo' && room.status === 'playing' && room.matchDeadline && !result) ?
         (() => { const ms = room.matchDeadline - Date.now(); return `<div class="matchclock ${ms<30000?'low':''}" id="matchClock">${fmtClock(ms)}</div>`; })() : '';
+      const turnClock = (!waiting && room.status === 'playing' && room.turnDeadline && !result) ?
+        (() => { const ms = room.turnDeadline - Date.now(); return `<div class="turnclock ${ms<5000?'low':''}" id="turnClock" aria-label="Time left this turn">${Math.max(0,Math.ceil(ms/1000))}s</div>`; })() : '';
       const canAddBots = waiting;
       app.innerHTML = `<div class="play">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <div class="code">Room ${esc(room.code)}</div>
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
     <div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>
-    ${matchClock}
+    <div class="clocks">${matchClock}${turnClock}</div>
     ${status ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
-    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine)}</div>
+    <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine, maxPlayers)}</div>
     ${chatBar(mine)}
     ${result ? overCard(mine) : ''}</div>`;
       $('#bk').onclick = () => {
@@ -3354,21 +3527,24 @@
     /* ---------- rules ---------- */
     const REGISTRY_FALLBACK = [
       { key: 'tictactoe', name: 'Tic-Tac-Toe' }, { key: 'connectfour', name: 'Connect Four' },
-      { key: 'rps', name: 'Rock Paper Scissors' }, { key: 'ludo', name: 'Ludo' },
+      { key: 'rps', name: 'Rock Paper Scissors' }, { key: 'ludo', name: 'Ludo', playerCounts: [2, 3, 4] },
       { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }
     ];
     const RULES = {
       tictactoe: ['2 players: X and O take turns marking empty squares on a 3×3 grid. First to line up 3 wins.',
         '4 players: X, O, △ and □ take turns on a 5×5 grid. First to line up 4 of their marks — across, down, or diagonally — wins.',
         'Play 4-player online with friends, or tap “Play vs Bot” to fill the empty seats with bots.',
+        '20 seconds per turn — run out and an automatic move is played for you.',
         'If every square fills up with no line, the game is a draw.'
       ],
       connectfour: ['Take turns dropping a disc into a column — it falls to the lowest empty spot.',
         'First to connect 4 of their own discs in a row (any direction) wins.',
+        '20 seconds per turn — run out and an automatic move is played for you.',
         'If the grid fills up with no connection, it\'s a draw.'
       ],
       rps: ['Everyone picks rock, paper or scissors at the same time — picks are revealed together.',
         'Rock beats scissors, scissors beats paper, paper beats rock.',
+        '15 seconds to pick each round — run out and a random pick is made for you.',
         'Matching picks replay the round.'
       ],
       ludo: ['Roll the die and move a token that many steps along the shared track.',
@@ -3376,6 +3552,8 @@
         'Land exactly on an opponent\'s token (on an unsafe cell) to send it back to their yard.',
         'Star-marked cells are safe — tokens there can\'t be captured.',
         'Roll a 6 and you get to roll again; three 6s in a row forfeits the turn.',
+        'Play with 2, 3 or 4 — with 3 players, the blue corner sits empty.',
+        '15 seconds per turn — miss it 3 times and you\'re out of the match.',
         'Get all 4 tokens all the way around and home to win.'
       ],
       whot: ['Play a card that shares a shape or value with the top card, or play any Whot card.',
@@ -3383,6 +3561,7 @@
         'Hold On (1) gives you another go. Suspension (8) skips the next player — a Star 8 skips two.',
         'General Market (14) makes everyone else draw a card.',
         'Whot (20) is wild — play it anytime and call the shape the next card must match.',
+        '25 seconds per turn — run out and an automatic move is played for you.',
         'First to play their last card wins.'
       ]
     };
@@ -3403,10 +3582,15 @@
     const sym = v => v == null || v === '' ? '' : typeof v === 'number' ? TTT_MARKS[v] ?? '' : String(v);
     const side = v => (typeof v === 'number' ? v : String(v).toUpperCase().charCodeAt(0)) % 2;
     
-    function board(g, myTurn, players, mine) {
+    // Same 2->3x3 / 4->5x5 mapping games/tictactoe.js uses server-side. Used as
+    // the primary source for the grid size so it's never derived from the
+    // board array's length, which can momentarily be wrong (e.g. empty) and
+    // used to collapse a 5×5 board down to a 3-column layout.
+    const TTT_SIZE_BY_PLAYERS = { 2: 3, 4: 5 };
+    function board(g, myTurn, players, mine, maxPlayers) {
       const b = gstate?.board || [];
       if (g === 'tictactoe') {
-        const n = gstate?.size || Math.round(Math.sqrt(b.length)) || 3;
+        const n = gstate?.size || TTT_SIZE_BY_PLAYERS[maxPlayers] || Math.round(Math.sqrt(b.length)) || 3;
         const win = new Set(gstate?.winLine || []);
         return `<div class="board ttt ttt-${n}" style="grid-template-columns:repeat(${n},1fr)">${b.flat().map((v,i)=>`<button class="cell p${v ?? ''}${win.has(i)?' win':''}" data-i="${i}" aria-label="${v==null?'Empty':esc(sym(v))} cell ${i+1}" ${result||!myTurn||sym(v)?'disabled':''}>${esc(sym(v))}</button>`).join('')}</div>`;
       }
