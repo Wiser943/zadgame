@@ -25,7 +25,7 @@ const LUDO_MATCH_MS = { 2: 4 * 60 * 1000, 3: 6 * 60 * 1000, 4: 8 * 60 * 1000 }; 
 // an automatic move (via the engine's botMove) for whoever stalls, so a
 // slow or disconnected player never blocks the match. RPS has no single
 // "turn" (both players pick each round), so it gets its own round clock.
-const TURN_MS = { tictactoe: 20 * 1000, connectfour: 20 * 1000, whot: 25 * 1000 };
+const TURN_MS = { tictactoe: 20 * 1000, connectfour: 20 * 1000, chess: 30 * 1000, whot: 25 * 1000 };
 const RPS_ROUND_MS = 15 * 1000;
 
 const rooms = new Map();           // code -> room

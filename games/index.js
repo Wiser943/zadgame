@@ -3,5 +3,6 @@ module.exports = {
   connectfour: require('./connectfour'),
   rps: require('./rps'),
   ludo: require('./ludo'),
-  whot: require('./whot')
+  whot: require('./whot'),
+  chess: require('./chess')
 };

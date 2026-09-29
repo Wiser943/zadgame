@@ -734,6 +734,18 @@
       background: var(--gold)
     }
     
+
+    /* ---- chess ---- */
+    .board.chess { display:grid; grid-template-columns:repeat(8,1fr); padding:0; gap:0; width:min(94vw,520px); aspect-ratio:1; border-radius:16px; overflow:hidden; background:#b58863; box-shadow:0 12px 28px rgba(0,0,0,.18); }
+    .chess .square { border:0; border-radius:0; min-width:0; min-height:0; aspect-ratio:1; padding:0; position:relative; display:flex; align-items:center; justify-content:center; font-size:clamp(28px,9vw,60px); line-height:1; font-family:"Noto Sans Symbols 2","DejaVu Sans",serif; text-shadow:0 2px 1px rgba(0,0,0,.2); }
+    .chess .square.light { background:#f0d9b5; } .chess .square.dark { background:#b58863; }
+    .chess .square.selected { box-shadow:inset 0 0 0 5px #e8bd3e; background:#d6b34d; }
+    .chess .square.target::after { content:""; width:22%; height:22%; border-radius:50%; background:rgba(40,40,40,.32); position:absolute; }
+    .chess .square.capture::after { width:78%; height:78%; border:5px solid rgba(180,30,35,.72); background:transparent; }
+    .chess .square.check { background:#d45b4d; }
+    .chess .piece.white { color:#fff; } .chess .piece.black { color:#25232a; }
+    .chess-coords { display:flex; justify-content:space-between; width:min(94vw,520px); padding:5px 8px 0; color:var(--mute); font-size:11px; font-weight:700; }
+    .chess-promo { display:flex; gap:8px; justify-content:center; margin-top:10px; }
     .rps {
       display: flex;
       gap: 12px;
@@ -3276,6 +3288,7 @@
     async function lobbyView(navigate = true) {
       room = gstate = result = null;
       ludoRollReady = false;
+      chessSelected = null;
       if (navigate && routePath() !== '/lobby') history.pushState({ page: 'lobby' }, '', '/lobby');
       setLobbyMusic(true);
       let games = [],
@@ -3886,7 +3899,7 @@
     const REGISTRY_FALLBACK = [
       { key: 'tictactoe', name: 'Tic-Tac-Toe' }, { key: 'connectfour', name: 'Connect Four' },
       { key: 'rps', name: 'Rock Paper Scissors' }, { key: 'ludo', name: 'Ludo', playerCounts: [2, 3, 4] },
-      { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }
+      { key: 'whot', name: 'Whot!', playerCounts: [2, 3, 4] }, { key: 'chess', name: 'Chess', playerCounts: [2] }
     ];
     const RULES = {
       tictactoe: ['2 players: X and O take turns marking empty squares on a 3×3 grid. First to line up 3 wins.',
@@ -3914,6 +3927,11 @@
         '15 seconds per turn — miss it 3 times and you\'re out of the match.',
         'Get all 4 tokens all the way around and home to win.'
       ],
+      chess: ['White moves first. Tap one of your pieces, then tap a highlighted legal destination.',
+        'The goal is checkmate: attack the opponent king so it has no legal escape.',
+        'Castling, en passant and pawn promotion are supported. Choose a queen, rook, bishop or knight when promoting.',
+        'A position with no legal move but no check is stalemate and is a draw.',
+        'Each turn has 30 seconds; an automatic legal move is made if the clock expires.'],
       whot: ['Play a card that shares a shape or value with the top card, or play any Whot card.',
         'Pick 2 and Pick 3 cards force the next player to draw — they can counter with a matching Pick card to pass the count along instead.',
         'Hold On (1) gives you another go. Suspension (8) skips the next player — a Star 8 skips two.',
@@ -3964,6 +3982,7 @@
         const canMove = result ? null : !myTurn ? null : st.dice == null ? 'roll' : 'move';
         return ludoBoardHtml(st, mine, canMove, players);
       }
+      if (g === 'chess') return chessBoardHtml(gstate || {}, myTurn, mine);
       if (g === 'whot') return whotBoardHtml(gstate || {}, myTurn, players, mine);
       return '';
     }
@@ -4038,6 +4057,19 @@
     }
     const SHAPES_WHOT = ['circle', 'triangle', 'cross', 'square', 'star'];
     
+    const CHESS_GLYPHS = { K:'♔', Q:'♕', R:'♖', B:'♗', N:'♘', P:'♙', k:'♚', q:'♛', r:'♜', b:'♝', n:'♞', p:'♟' };
+    const CHESS_NAMES = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
+    let chessSelected = null;
+    function chessBoardHtml(st, myTurn, mine) {
+      const board = st.board || [], selected = chessSelected != null ? chessSelected : -1;
+      const targets = new Set((st.legal || []).filter(m => m.from === selected).map(m => m.to));
+      const squares = Array.from({ length: 64 }, (_, view) => {
+        const vr = Math.floor(view / 8), f = view % 8, i = (7 - vr) * 8 + f, p = board[i];
+        const target = targets.has(i), capture = target && p;
+        return `<button class="square ${(vr+f)%2?'dark':'light'} ${selected===i?'selected':''} ${target?'target':''} ${capture?'capture':''}" data-chess="${i}" aria-label="${p ? CHESS_NAMES[p.toLowerCase()] : 'empty'} ${String.fromCharCode(97+f)}${7-vr+1}">${p ? `<span class="piece ${p===p.toUpperCase()?'white':'black'}">${CHESS_GLYPHS[p]}</span>` : ''}</button>`;
+      }).join('');
+      return `<div class="chess-wrap"><div class="board chess">${squares}</div><div class="chess-coords"><span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span></div></div>`;
+    }
     function bindBoard(g, myTurn) {
       const send = m => socket.emit(EV.move, { code: room.code, move: m });
       const act = m => { SFX.move();
@@ -4050,6 +4082,19 @@
         vibrate(18);
         send(MOVE.rps(picked));
         gameView() });
+      if (g === 'chess') app.querySelectorAll('[data-chess]').forEach(e => e.onclick = () => {
+        const to = +e.dataset.chess, board = gstate?.board || [], p = board[to];
+        if (chessSelected == null) { if (p && (p === p.toUpperCase()) === (room.you === 0) && myTurn) { chessSelected = to; gameView(); } return; }
+        if (to === chessSelected) { chessSelected = null; gameView(); return; }
+        const from = chessSelected; chessSelected = null;
+        const moving = board[from];
+        let promotion;
+        if (moving?.toLowerCase() === 'p' && Math.floor(to / 8) % 7 === 0) {
+          promotion = (window.prompt('Promote to: queen, rook, bishop or knight', 'queen') || 'queen').trim().toLowerCase()[0];
+          if (!['q', 'r', 'b', 'n'].includes(promotion)) promotion = 'q';
+        }
+        act({ from, to, ...(promotion ? { promotion } : {}) });
+      });
       $('#roll')?.addEventListener('click', (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
