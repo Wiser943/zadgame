@@ -279,7 +279,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      border: 1px solid #e6e6e6;
+      border: 1px solid var(--line);
       width: calc(100% - 36px);
       text-align: left
     }
@@ -309,7 +309,7 @@
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      border: 2px solid #fff;
+      border: 2px solid var(--card);
       margin-left: -9px;
       object-fit: cover;
       background: #ddd;
@@ -335,7 +335,7 @@
     .lbtabs {
       display: flex;
       gap: 8px;
-      background: #eee;
+      background: var(--line);
       border-radius: 999px;
       padding: 4px;
       margin: 16px 0 6px
@@ -347,11 +347,12 @@
       border-radius: 999px;
       font-weight: 700;
       font-size: 13px;
-      color: #888
+      color: var(--mute);
+      background: none
     }
     
     .lbtabs button.on {
-      background: #fff;
+      background: var(--card);
       color: var(--ink);
       box-shadow: 0 1px 4px rgba(0, 0, 0, .12)
     }
@@ -361,10 +362,11 @@
       align-items: center;
       gap: 12px;
       padding: 11px 6px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid var(--line);
       width: 100%;
       text-align: left;
-      background: none
+      background: none;
+      color: var(--ink)
     }
     
     .lbrow .rank {
@@ -406,13 +408,14 @@
     
     .lbrow .who span {
       font-size: 12px;
-      color: #999
+      color: var(--mute)
     }
     
     .lbrow .val {
       font-weight: 800;
       flex-shrink: 0;
-      white-space: nowrap
+      white-space: nowrap;
+      color: var(--ink)
     }
     
     .lbrow.me {
@@ -422,7 +425,7 @@
     
     .lbsep {
       text-align: center;
-      color: #bbb;
+      color: var(--mute);
       font-size: 13px;
       margin: 6px 0;
       letter-spacing: 2px
@@ -2241,6 +2244,213 @@
       box-shadow: 0 4px 0 #c99a12, 0 6px 14px rgba(0, 0, 0, .35), 0 0 0 4px var(--house, var(--gold))
     }
     
+    /* ---- ludo screen: corner avatars, house score rings, big dice (matches reference art) ---- */
+    .code {
+      cursor: pointer;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      padding: 8px 22px;
+      border-radius: 14px;
+      letter-spacing: .5px
+    }
+    
+    .code:active {
+      transform: scale(.96)
+    }
+    
+    .lscreen {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+    
+    .lrow2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start
+    }
+    
+    .lrow2.bottom {
+      align-items: center
+    }
+    
+    .lrow2 .mid {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-top: 10px
+    }
+    
+    .lcorner {
+      width: 92px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #fff;
+      background: none;
+      text-align: center
+    }
+    
+    .lcorner img {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #22262f;
+      border: 3px solid #fff;
+      box-sizing: border-box;
+      transition: box-shadow .2s, border-color .2s
+    }
+    
+    .lcorner span {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+    
+    .lcorner.empty {
+      visibility: hidden
+    }
+    
+    .lcorner.out {
+      opacity: .45
+    }
+    
+    .lcorner.turn img {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 4px rgba(247, 197, 43, .45)
+    }
+    
+    .lscreen .matchclock {
+      font-size: 24px;
+      padding: 10px 30px;
+      background: rgba(0, 0, 0, .38)
+    }
+    
+    .lgrid-wrap {
+      box-sizing: border-box;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 22px;
+      padding: 3.4%;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .3)
+    }
+    
+    .lgrid {
+      max-width: none;
+      border-radius: 14px;
+      box-shadow: none
+    }
+    
+    .lquad.red { --hc: #c0272d }
+    .lquad.green { --hc: #1f8f4e }
+    .lquad.yellow { --hc: #d8a913 }
+    .lquad.blue { --hc: #1f57b5 }
+    
+    .lquad .ring {
+      width: 56%;
+      height: 56%;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .22)
+    }
+    
+    .lquad .ring .hscore {
+      width: 68%;
+      height: 68%;
+      background: var(--hc);
+      color: #fff;
+      border: 0;
+      box-shadow: none;
+      font-size: clamp(14px, 5.4vw, 24px);
+      transition: background .2s, color .2s
+    }
+    
+    /* the house of whoever's turn it is swaps its score for the turn countdown */
+    .lquad .ring .hscore.counting {
+      background: #fff;
+      color: var(--hc);
+      box-shadow: inset 0 0 0 3px var(--hc)
+    }
+    
+    .lquad .ring .hscore.counting.low {
+      color: #e01e1e;
+      box-shadow: inset 0 0 0 3px #e01e1e;
+      animation: clockpulse .6s infinite alternate
+    }
+    
+    .lquad .slot {
+      position: absolute;
+      width: 19%;
+      height: 19%;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .9);
+      background: rgba(0, 0, 0, .08);
+      box-sizing: border-box;
+      transform: translate(-50%, -50%);
+      pointer-events: none
+    }
+    
+    .lcenter text {
+      font-family: inherit;
+      font-weight: 800;
+      fill: #fff;
+      font-size: 15px;
+      text-anchor: middle;
+      letter-spacing: .5px;
+      paint-order: stroke;
+      stroke: rgba(0, 0, 0, .35);
+      stroke-width: 2px
+    }
+    
+    /* playable tokens: high-contrast double ring, visible on white cells and coloured yards alike */
+    .ltok.movable {
+      z-index: 8;
+      box-shadow: 0 0 0 2px #fff, 0 0 0 5px #1c1c1c, 0 2px 6px rgba(0, 0, 0, .5)
+    }
+    
+    .ldicewrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px
+    }
+    
+    .lscreen .ldice {
+      width: 82px;
+      height: 82px;
+      border-radius: 22px
+    }
+    
+    .lscreen .ldice.ready {
+      animation: diceReady 1s ease-in-out infinite
+    }
+    
+    @keyframes diceReady {
+      0%, 100% { transform: scale(1) }
+      50% { transform: scale(1.07) }
+    }
+    
+    .lturn {
+      font-weight: 700;
+      font-size: 17px;
+      background: rgba(0, 0, 0, .38);
+      border-radius: 999px;
+      padding: 8px 28px;
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+    
+
     .over-bg {
       position: fixed;
       inset: 0;
@@ -2446,6 +2656,9 @@
       authErr = '';
     let GAMES = [];
     let ludoScoreDisplay = {}; // playerIndex -> last-rendered score, used as the animation start point
+    let ludoRollReady = false; // true while it's my turn to roll — used to buzz once when the turn starts
+    let clockSkew = 0; // serverNow - clientNow, so countdowns match the server even if the phone's clock is off
+    const nowMs = () => Date.now() + clockSkew;
     let whotPendingIndex = null; // hand index of a tapped Whot(20) card awaiting a shape choice
     const WHOT_GLYPH = { circle: '●', triangle: '▲', cross: '✚', square: '■', star: '★', whot: '✱' };
     let animUntil = 0; // Date.now() timestamp: don't re-render the board before this, so in-flight animations can play out
@@ -2696,55 +2909,91 @@
       if (steps === 0) rc = LYARD[color][tokenIndex];
       else if (steps >= 1 && steps <= 51) rc = LTRACK[(start + steps - 1) % 52];
       else rc = LHOME[color][Math.min(steps - 52, 5)];
-      const [dx, dy] = LSUB[tokenIndex];
+      const [dx, dy] = steps === 0 ? [0, 0] : LSUB[tokenIndex]; // yard tokens each have their own slot — no stacking offset
       return { left: (rc[1] + 0.5) * CELL_PCT + dx * 0.4 + '%', top: (rc[0] + 0.5) * CELL_PCT + dy * 0.4 + '%' };
     }
     const HOUSE_HEX = { red: '#c0272d', green: '#1f8f4e', yellow: '#d8a913', blue: '#1f57b5' };
+    
+    // Mirrors movableTokens() in games/ludo.js so the UI only outlines tokens that can really move.
+    function ludoMovable(st, pi, dice) {
+      return (st.tokens?.[pi] || []).reduce((out, steps, t) => {
+        if (steps === 57) return out;
+        if (steps === 0 ? dice === 6 : steps + dice <= 57) out.push(t);
+        return out;
+      }, []);
+    }
+    const DICE_PIPS = {
+      1: [[50, 50]],
+      2: [[30, 30], [70, 70]],
+      3: [[30, 30], [50, 50], [70, 70]],
+      4: [[30, 30], [70, 30], [30, 70], [70, 70]],
+      5: [[30, 30], [70, 30], [50, 50], [30, 70], [70, 70]],
+      6: [[30, 26], [70, 26], [30, 50], [70, 50], [30, 74], [70, 74]]
+    };
+    const diceFaceSvg = (n, size = 54) => `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><rect x="8" y="8" width="84" height="84" rx="20" fill="none" stroke="#fff" stroke-width="7"/>${(DICE_PIPS[n] || DICE_PIPS[5]).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8.5" fill="#fff"/>`).join('')}</svg>`;
+    const ludoStrikeDots = (i) => {
+      const n = (room?.strikes && room.strikes[i]) || 0;
+      return n ? `<span class="strikes">${[0, 1, 2].map(k => `<i class="${k < n ? 'hit' : ''}"></i>`).join('')}</span>` : '';
+    };
     
     function ludoBoardHtml(st, mine, canMove, players) {
       const colors = st.colors || [];
       const dice = st.dice;
       const canRoll = !result && canMove === 'roll';
       const turnColor = colors[st.turn];
+      const playing = !!room && room.status === 'playing' && !result;
       const trackCells = LTRACK.map((rc, c) => `<div class="lcell ${LSAFE.has(c)?'safe':''}" style="left:${rc[1]*CELL_PCT}%;top:${rc[0]*CELL_PCT}%"></div>`).join('');
       const homeCells = Object.entries(LHOME).flatMap(([color, cells]) => cells.slice(0, 5).map(([r, c]) =>
         `<div class="lcell home-${color}" style="left:${c*CELL_PCT}%;top:${r*CELL_PCT}%"></div>`)).join('');
+      // After a roll, outline exactly the tokens that can use it (yard tokens on a 6, or on-track ones with room to move).
+      const movable = new Set(canMove === 'move' && dice != null ? ludoMovable(st, mine, dice) : []);
       const tokens = colors.flatMap((color, pi) => (st.tokens[pi] || []).map((steps, ti) => {
         const { left, top } = ltokCoord(color, st.starts[pi], steps, ti);
-        const mineToken = pi === mine;
-        const clickable = mineToken && canMove === 'move' && steps !== 57;
+        const clickable = pi === mine && movable.has(ti);
         const label = steps === 57 ? '★' : '';
         return `<button class="ltok ${color} ${clickable?'movable':''}" data-lt="${ti}" data-color="${color}" data-player="${pi}" ${clickable?'':'disabled'}
-      style="left:${left};top:${top}" aria-label="${color} token ${ti+1}, ${steps===0?'in yard':steps===57?'home':'step '+steps}">${label}</button>`;
+      style="left:${left};top:${top}" aria-label="${color} token ${ti+1}, ${steps===0?'in yard':steps===57?'home':'step '+steps}${clickable?', can move':''}">${label}</button>`;
       })).join('');
+      const slots = [[25, 25], [75, 25], [25, 75], [75, 75]].map(([x, y]) => `<i class="slot" style="left:${x}%;top:${y}%"></i>`).join('');
+      // House centre shows the score — except for whoever's turn it is, where it shows their turn countdown instead.
       const houseScore = (color) => {
         const pi = colors.indexOf(color);
-        if (pi === -1) return `<span class="ring"><i></i></span>`;
+        if (pi === -1) return `<span class="ring"><span class="hscore"></span></span>`;
         const toks = st.tokens[pi] || [];
         // Each token that's raced all the way home earns a +56 bonus on top of its travelled steps.
         const sc = toks.reduce((a, b) => a + b, 0) + toks.filter(s => s === 57).length * 56;
         ludoScoreDisplay[pi] = sc; // cache, used as the "from" value for the next count-up animation
-        return `<span class="hscore" data-hscore="${pi}">${sc}</span>`;
+        const counting = playing && !!room.turnDeadline && st.turn === pi && st.active?.[pi] !== false;
+        if (!counting) return `<span class="ring"><span class="hscore" data-hscore="${pi}">${sc}</span></span>`;
+        const ms = room.turnDeadline - nowMs();
+        return `<span class="ring"><span class="hscore counting ${ms<5000?'low':''}" data-hscore="${pi}">${Math.max(0, Math.ceil(ms / 1000))}</span></span>`;
       };
-      const houseSeat = (color) => {
+      const corner = (color) => {
         const pi = colors.indexOf(color);
-        if (pi === -1) return '';
-        const p = players?.[pi];
-        if (!p) return '';
-        return `<div class="lseat"><img src="${avatar(p)}" alt=""><span>${nameOf(p)}${pi===mine?' (you)':''}</span></div>`;
+        const p = pi === -1 ? null : players?.[pi];
+        if (!p) return `<div class="lcorner empty"><img alt=""><span>&nbsp;</span></div>`;
+        return `<button type="button" class="lcorner ${playing&&st.turn===pi?'turn':''} ${p.out?'out':''}" data-uid="${esc(p.id)}"><img src="${avatar(p)}" alt=""><span>${nameOf(p)}${pi===mine?' (you)':''}${ludoStrikeDots(pi)}</span></button>`;
       };
+      const matchClock = (playing && room.matchDeadline) ?
+        (() => { const ms = room.matchDeadline - nowMs(); return `<div class="matchclock ${ms<30000?'low':''}" id="matchClock">${fmtClock(ms)}</div>`; })() : '';
+      const turnLabel = !playing ? '' : (st.turn === mine ? 'Your turn' : `${nameOf(players?.[st.turn])}’s turn`);
       const rotated = (st.round || 0) % 2 === 1;
-      return `<div class="lgrid-wrap ${rotated?'rot':''}"><div class="lgrid">
-    <div class="lquad red">${houseScore('red')}${houseSeat('red')}</div>
-    <div class="lquad green">${houseScore('green')}${houseSeat('green')}</div>
-    <div class="lquad yellow">${houseScore('yellow')}${houseSeat('yellow')}</div>
-    <div class="lquad blue">${houseScore('blue')}${houseSeat('blue')}</div>
-    <div class="lcenter"><svg viewBox="0 0 100 100"><polygon points="0,0 50,50 100,0" fill="#c0272d"/><polygon points="0,0 50,50 0,100" fill="#d8a913"/><polygon points="100,0 50,50 100,100" fill="#1f8f4e"/><polygon points="0,100 50,50 100,100" fill="#1f57b5"/></svg></div>
+      return `<div class="lscreen">
+  <div class="lrow2">${corner('red')}<div class="mid">${matchClock}</div>${corner('green')}</div>
+  <div class="lgrid-wrap ${rotated?'rot':''}"><div class="lgrid">
+    <div class="lquad red">${slots}${houseScore('red')}</div>
+    <div class="lquad green">${slots}${houseScore('green')}</div>
+    <div class="lquad yellow">${slots}${houseScore('yellow')}</div>
+    <div class="lquad blue">${slots}${houseScore('blue')}</div>
+    <div class="lcenter"><svg viewBox="0 0 100 100"><polygon points="0,0 50,50 100,0" fill="#1f8f4e"/><polygon points="0,0 50,50 0,100" fill="#c0272d"/><polygon points="100,0 50,50 100,100" fill="#d8a913"/><polygon points="0,100 50,50 100,100" fill="#1f57b5"/><text x="50" y="47">GAME</text><text x="50" y="65">HUB</text></svg></div>
     ${trackCells}${homeCells}${tokens}
   </div></div>
-  <div class="dicebar" style="margin-top:6px">
-    <button class="ldice ${turnColor?'myhouse':''}" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice" style="${turnColor?`--house:${HOUSE_HEX[turnColor]}`:''}"><span class="ldice-face">${dice ?? icon('dice',26)}</span></button>
-  </div>`;
+  <div class="lrow2 bottom">${corner('blue')}
+    <div class="ldicewrap">
+      <button class="ldice ${turnColor?'myhouse':''} ${canRoll?'ready':''}" id="roll" ${!canRoll?'disabled':''} aria-label="Roll dice" style="${turnColor?`--house:${HOUSE_HEX[turnColor]}`:''}"><span class="ldice-face">${diceFaceSvg(dice ?? st.lastRoll ?? 5)}</span></button>
+      ${turnLabel ? `<div class="lturn">${turnLabel}</div>` : ''}
+    </div>${corner('yellow')}</div>
+</div>`;
     }
     
     function fmtClock(ms) {
@@ -2835,6 +3084,7 @@
       socket.on('connect', () => { if (room && room.status !== 'over') joinRoom(room.code); });
       socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
       socket.on(EV.room, r => {
+        if (r && r.now) clockSkew = r.now - Date.now();
         room = r;
         if (r.state) gstate = r.state;
         result = r.status === 'over' ? r.result : null;
@@ -2928,6 +3178,7 @@
       const start = st.starts[player];
       const el = document.querySelector(`.ltok[data-color="${color}"][data-lt="${token}"]`);
       const hEl = document.querySelector(`[data-hscore="${player}"]`);
+      if (hEl) hEl.classList.remove('counting', 'low'); // briefly show the score climbing instead of the countdown
       const seq = from === 0 ? [to] : Array.from({ length: Math.max(1, to - from) }, (_, k) => from + 1 + k);
       const stepDur = Math.max(90, Math.min(180, 600 / seq.length));
       animUntil = Math.max(animUntil, Date.now() + seq.length * stepDur + 120);
@@ -2965,6 +3216,7 @@
     /* ---------- lobby ---------- */
     async function lobbyView() {
       room = gstate = result = null;
+      ludoRollReady = false;
       history.replaceState(null, '', '/');
       let games = [],
         lbTop = [];
@@ -3007,13 +3259,13 @@
       <button type="button" data-by="coins" class="${by==='coins'?'on':''}">🪙 Coins</button>
       <button type="button" data-by="wins" class="${by==='wins'?'on':''}">${icon('trophy',13)} Wins</button>
     </div>
-    <div id="lbList"><p style="text-align:center;color:#999;padding:30px 0">Loading…</p></div>
+    <div id="lbList"><p style="text-align:center;color:var(--mute);padding:30px 0">Loading…</p></div>
   </div>`;
       $('#lbBk').onclick = lobbyView;
       app.querySelectorAll('.lbtabs button').forEach(b => b.onclick = () => { if (b.dataset.by !== by) leaderboardView(b.dataset.by); });
       let data;
       try { data = await api('/api/leaderboard?by=' + by + '&limit=50'); }
-      catch { $('#lbList').innerHTML = '<p style="text-align:center;color:#999;padding:30px 0">Could not load the leaderboard.</p>'; return; }
+      catch { $('#lbList').innerHTML = '<p style="text-align:center;color:var(--mute);padding:30px 0">Could not load the leaderboard.</p>'; return; }
       const list = data.leaderboard || [];
       const meId = me.id || me._id;
       const medal = (r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
@@ -3024,7 +3276,7 @@
     <span class="val">${by === 'wins' ? `${esc(p.stats?.wins ?? 0)} wins` : `${esc(p.coins ?? 0)} 🪙`}</span></button>`;
       const html = list.length ?
         list.map(row).join('') + (data.me?.outsideTop ? `<div class="lbsep">···</div>${row(data.me)}` : '') :
-        '<p style="text-align:center;color:#999;padding:30px 0">No players yet — be the first!</p>';
+        '<p style="text-align:center;color:var(--mute);padding:30px 0">No players yet — be the first!</p>';
       $('#lbList').innerHTML = html;
       $('#lbList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
     }
@@ -3392,22 +3644,48 @@
       const goneIdx = seats.findIndex((p, i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
       const statusEl = $('#statusBar');
       if (goneIdx !== -1 && statusEl) {
-        statusEl.textContent = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
+        statusEl.textContent = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - nowMs())/1000))}s if they don’t return.`;
       }
       const clockEl = $('#matchClock');
       if (clockEl && room.game === 'ludo' && room.status === 'playing' && room.matchDeadline && !result) {
-        const ms = room.matchDeadline - Date.now();
+        const ms = room.matchDeadline - nowMs();
         clockEl.textContent = fmtClock(ms);
         clockEl.classList.toggle('low', ms < 30000);
       }
+      if (room.game === 'ludo' && room.status === 'playing' && room.turnDeadline && !result && Date.now() >= animUntil) {
+        const hs = $('.hscore.counting');
+        if (hs) {
+          const ms = room.turnDeadline - nowMs();
+          hs.textContent = Math.max(0, Math.ceil(ms / 1000));
+          hs.classList.toggle('low', ms < 5000);
+        }
+      }
       const turnClockEl = $('#turnClock');
       if (turnClockEl && room.status === 'playing' && room.turnDeadline && !result) {
-        const ms = room.turnDeadline - Date.now();
+        const ms = room.turnDeadline - nowMs();
         turnClockEl.textContent = Math.max(0, Math.ceil(ms / 1000)) + 's';
         turnClockEl.classList.toggle('low', ms < 5000);
       }
       const stillTicking = goneIdx !== -1 || (room.status === 'playing' && (room.matchDeadline || room.turnDeadline));
       if (!stillTicking) clearInterval(gameView.t);
+    }
+    
+    // Copies <site link>?code=<ROOM> so a friend can tap it and land straight in this room.
+    async function copyInviteLink() {
+      if (!room) return;
+      const link = `${location.origin}${location.pathname}?code=${encodeURIComponent(room.code)}`;
+      let ok = false;
+      try { await navigator.clipboard.writeText(link); ok = true; } catch {
+        try { // non-secure-context / older webview fallback
+          const t = document.createElement('textarea');
+          t.value = link; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+          document.body.appendChild(t); t.select();
+          ok = document.execCommand('copy'); t.remove();
+        } catch {}
+      }
+      SFX.tap();
+      vibrate(10);
+      toast(ok ? 'Invite link copied' : link);
     }
     
     /* ---------- game ---------- */
@@ -3429,6 +3707,12 @@
       const myTurn = mine >= 0 && turn === mine;
       const waiting = players.length < maxPlayers || room.status === 'waiting';
       const g = room.game;
+      // Medium buzz once, the moment it becomes my turn to roll (again after a 6 too).
+      if (g === 'ludo') {
+        const ready = !waiting && !result && room.status === 'playing' && myTurn && gstate?.dice == null;
+        if (ready && !ludoRollReady) vibrate(40);
+        ludoRollReady = ready;
+      }
       if (g === 'whot' && (!myTurn || result)) whotPendingIndex = null;
       if (g === 'whot' && (room.round || 0) !== whotLastCardRound) { whotLastCardRound = room.round || 0;
         whotLastCardSeen = {}; }
@@ -3450,10 +3734,10 @@
         myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
       const forfeits = room.forfeits || {};
       const goneIdx = seats.findIndex((p, i) => i !== mine && p && !p.out && !p.connected && forfeits[i] != null);
-      if (goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - Date.now())/1000))}s if they don’t return.`;
+      if (goneIdx !== -1) status = `${nameOf(seats[goneIdx])} disconnected. They forfeit in ${Math.max(0, Math.ceil((forfeits[goneIdx] - nowMs())/1000))}s if they don’t return.`;
       const ticking = goneIdx !== -1 || (room.status === 'playing' && (room.matchDeadline || room.turnDeadline));
       clearInterval(gameView.t);
-      if (ticking) gameView.t = setInterval(tickUpdate, 500);
+      if (ticking) gameView.t = setInterval(tickUpdate, g === 'ludo' ? 250 : 500);
       if (!waiting && g === 'ludo') startMusic();
       else stopMusic();
       const strikeDots = (i) => {
@@ -3469,17 +3753,21 @@
       const pl = (p, i) => `<button class="pl ${!waiting&&!result&&turn===i&&g!=='rps'?'turn':''} ${p?.out?'out':''}" ${p?`data-uid="${esc(p.id)}"`:'disabled'} style="background:none">
     <img src="${avatar(p)}" alt="">${g==='tictactoe'&&maxPlayers>2?`<b class="tmark p${i}">${TTT_MARKS[i]}</b> `:''}${p?nameOf(p)+(i===mine?' (you)':'')+(p.out?' (out)':''):'Waiting…'}${p?wCount(i):''}${g==='ludo'&&p?strikeDots(i):''}</button>`;
       const matchClock = (g === 'ludo' && room.status === 'playing' && room.matchDeadline && !result) ?
-        (() => { const ms = room.matchDeadline - Date.now(); return `<div class="matchclock ${ms<30000?'low':''}" id="matchClock">${fmtClock(ms)}</div>`; })() : '';
+        (() => { const ms = room.matchDeadline - nowMs(); return `<div class="matchclock ${ms<30000?'low':''}" id="matchClock">${fmtClock(ms)}</div>`; })() : '';
       const turnClock = (!waiting && room.status === 'playing' && room.turnDeadline && !result) ?
-        (() => { const ms = room.turnDeadline - Date.now(); return `<div class="turnclock ${ms<5000?'low':''}" id="turnClock" aria-label="Time left this turn">${Math.max(0,Math.ceil(ms/1000))}s</div>`; })() : '';
+        (() => { const ms = room.turnDeadline - nowMs(); return `<div class="turnclock ${ms<5000?'low':''}" id="turnClock" aria-label="Time left this turn">${Math.max(0,Math.ceil(ms/1000))}s</div>`; })() : '';
       const canAddBots = waiting;
+      const isLudo = g === 'ludo';
+      // Ludo draws avatars, match clock and turn label around the board itself, so the
+      // generic players row / clocks / status pill only show while waiting or on a disconnect.
+      const showStatus = status && (!isLudo || waiting || goneIdx !== -1);
       app.innerHTML = `<div class="play">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
-      <div class="code">Room ${esc(room.code)}</div>
+      <button class="code" id="roomCode" type="button" aria-label="Copy invite link for room ${esc(room.code)}">Room ${esc(room.code)}</button>
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
-    <div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>
-    <div class="clocks">${matchClock}${turnClock}</div>
-    ${status ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
+    ${!isLudo || waiting ? `<div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>` : ''}
+    ${isLudo ? '' : `<div class="clocks">${matchClock}${turnClock}</div>`}
+    ${showStatus ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine, maxPlayers)}</div>
     ${chatBar(mine)}
@@ -3491,6 +3779,7 @@
         lobbyView();
       };
       $('#rulesBtn').onclick = () => rulesSheet(g);
+      $('#roomCode').onclick = copyInviteLink;
       $('#addBots')?.addEventListener('click', (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
@@ -3602,15 +3891,9 @@
       if (g === 'rps') return `<div class="board" style="padding:20px"><div class="rps">${[['rock','fist'],['paper','palm'],['scissors','scissors']].map(([k,ic])=>`<button data-k="${k}" class="${picked===k?'sel':''}" ${result?'disabled':''} aria-label="${k}">${icon(ic,36)}</button>`).join('')}</div></div>`;
       if (g === 'ludo') {
         const st = gstate || {};
-        if (!st.starts) return `<div class="board ludo">${ludoBoardHtml({colors:[],tokens:[],starts:[]}, mine, null, players)}</div>`;
+        if (!st.starts) return ludoBoardHtml({ colors: [], tokens: [], starts: [] }, mine, null, players);
         const canMove = result ? null : !myTurn ? null : st.dice == null ? 'roll' : 'move';
-        const legend = (players || []).map((p, i) => `<span class="lname ${st.colors[i]}" style="display:inline-flex;align-items:center;gap:4px;margin-right:10px">${nameOf(p)}${p?.out?' · out':''}</span>`).join('');
-        const turnLabel = result ? '' : (myTurn ? 'Your turn' : `${nameOf(players[st.turn])}’s turn`);
-        return `<div class="board ludo" style="align-items:center">
-      ${ludoBoardHtml(st, mine, canMove, players)}
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:4px">${legend}</div>
-      ${turnLabel ? `<div class="status" style="margin-top:6px;font-size:13px;padding:6px 16px">${esc(turnLabel)}</div>` : ''}
-    </div>`;
+        return ludoBoardHtml(st, mine, canMove, players);
       }
       if (g === 'whot') return whotBoardHtml(gstate || {}, myTurn, players, mine);
       return '';
@@ -3702,7 +3985,7 @@
         const btn = e.currentTarget;
         btn.disabled = true;
         btn.querySelector('.ldice-face')?.classList.add('rolling');
-        vibrate(35);
+        vibrate(15); // small tap — the disabled button never fires this on an opponent's turn
         send({ type: 'roll' });
       });
       app.querySelectorAll('[data-lt]:not([disabled])').forEach(e => e.onclick = () => { vibrate(18);

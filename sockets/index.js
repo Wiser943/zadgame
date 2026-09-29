@@ -80,6 +80,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     round: r.round || 0,
     strikes: r.strikes || [],
     turnDeadline: r.turnDeadline || null,
+    now: Date.now(),                 // lets clients sync their countdowns to the server clock
     matchDeadline: r.matchDeadline || null,
     players: r.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, connected: p.connected, out: !!p.out, bot: !!p.bot })),
     state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state
@@ -127,7 +128,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     }
 
     const res = e.checkResult(r.state);
-    if (res.status === 'ongoing') { pushAndBot(r); armTurnTimer(r); return; }
+    if (res.status === 'ongoing') { armTurnTimer(r); pushAndBot(r); return; } // arm first so the pushed view carries the new deadline
     push(r); finish(r, res.status === 'win' ? res.winnerIndex : null, 'normal');
   }
 
@@ -211,8 +212,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
       return;
     }
     r.state = ENG[r.game].forcePass(r.state);
-    pushAndBot(r);
     armTurnTimer(r);
+    pushAndBot(r);
   }
   // Tic-tac-toe, Connect Four, Whot: whoever's turn it is just gets an
   // automatic move played for them (the same logic bots use), so a stalled
@@ -244,8 +245,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
       const res = eng.checkResult(r.state);
       if (res.status !== 'ongoing') { push(r); finish(r, res.status === 'win' ? res.winnerIndex : null, 'normal'); return; }
     }
-    pushAndBot(r);
     armTurnTimer(r);
+    pushAndBot(r);
   }
   function armMatchTimer(r) {
     clearTimeout(r.matchTimer); r.matchTimer = null; r.matchDeadline = null;
@@ -310,8 +311,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
     if (remaining.length === 1) { finish(r, r.players.indexOf(remaining[0]), reason); return; }
     const res = eng.checkResult ? eng.checkResult(r.state) : { status: 'ongoing' };
     if (res.status !== 'ongoing') { finish(r, res.status === 'win' ? res.winnerIndex : null, reason); return; }
-    pushAndBot(r);
     armTurnTimer(r);
+    pushAndBot(r);
   }
 
   function removeFromRoom(socket, explicit) {
