@@ -121,7 +121,19 @@ module.exports = function initSockets(io, sessionMiddleware) {
   // logic (events, win/draw detection, re-arming the ludo turn clock).
   function applyValidatedMove(r, i, move) {
     const e = ENG[r.game];
+    const whotBefore = r.game === 'whot' ? r.state : null;
+    const whotCard = whotBefore && move.type === 'play' ? whotBefore.hands[i]?.[move.index] : null;
+    const whotPending = whotBefore?.pendingPick || 0;
     r.state = e.applyMove(r.state, i, move);
+    if (r.game === 'whot') {
+      if (move.type === 'market') {
+        toAll(r, 'game:event', { type: 'whotMarket', player: i, count: whotPending || 1, automatic: !!r.players[i]?.bot });
+      } else if (whotCard?.value === 14) {
+        toAll(r, 'game:event', { type: 'whotGeneralMarket', player: i });
+      } else if (whotCard?.value === 2 || whotCard?.value === 5) {
+        toAll(r, 'game:event', { type: 'whotPick', player: i, value: whotCard.value, defense: whotPending > 0, total: r.state.pendingPick || 0 });
+      }
+    }
     if (r.game === 'chess' && Array.isArray(r.state.active)) {
       r.state.active.forEach((active, player) => {
         if (!active && r.players[player]) r.players[player].out = true;

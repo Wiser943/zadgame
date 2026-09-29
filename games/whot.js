@@ -142,7 +142,7 @@ function createInitialState(playerCount) {
 function isValidMove(state, playerIndex, move) {
   if (state.turn !== playerIndex || !state.active[playerIndex] || !move) return false;
 
-  if (move.type === 'market') return state.pendingPick > 0 || !hasPlayableCard(state, playerIndex);
+  if (move.type === 'market') return state.pendingPick > 0 ? !hasPlayableCard(state, playerIndex) : true;
 
   if (move.type === 'play') {
     const card = state.hands[playerIndex][move.index];

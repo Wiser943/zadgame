@@ -882,6 +882,7 @@
       margin-left: -20px;
       transform-origin: 50% 120%
     }
+    .wfan-more { position:relative; z-index:4; align-self:center; margin-left:-8px; min-width:30px; padding:6px 7px; border-radius:999px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; font-weight:800; white-space:nowrap; box-shadow:0 2px 5px rgba(0,0,0,.3); }
     
     .wtable {
       display: flex;
@@ -2792,7 +2793,7 @@
     const IMGBB_API_KEY = '';
     
     /* ---------- preferences: theme + sound/music/vibration ---------- */
-    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true }, (() => {
+    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true }, (() => {
       try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch { return {} }
     })());
     
@@ -2802,6 +2803,11 @@
     applyTheme();
     
     function vibrate(pattern) { if (prefs.vibration && navigator.vibrate) try { navigator.vibrate(pattern) } catch {} }
+    function speak(text) {
+      if (!prefs.voice || !text || !('speechSynthesis' in window)) return;
+      try { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'en-NG'; u.rate = .94; u.pitch = 1; u.volume = .9; window.speechSynthesis.speak(u); } catch {}
+    }
+    function announce(text) { toast(text); speak(text); }
     
     /* ---------- sound effects (synthesized, no audio files needed) ---------- */
     const SFX = (() => {
@@ -3279,11 +3285,23 @@
       if (!ev || !room) return;
       const mine = room.you;
       if (room.game !== 'ludo') {
+        if (room.game === 'whot') {
+          const player = ev.player != null ? room.players[ev.player] : null;
+          const who = player ? nameOf(player) : 'A player';
+          if (ev.type === 'whotGeneralMarket') {
+            announce(`${who} played General Market — everyone else draws one card.`);
+          } else if (ev.type === 'whotPick') {
+            const label = ev.value === 5 ? 'Pick Three' : 'Pick Two';
+            announce(ev.defense ? `${who} defended with ${label} — the penalty is now ${ev.total} cards.` : `${who} played ${label} — defend with another ${label} or draw ${ev.value} cards.`);
+          } else if (ev.type === 'whotMarket') {
+            announce(ev.count > 1 ? `${who} had no defending card and automatically drew ${ev.count} cards.` : `${who} drew from the general market.`);
+          }
         if (ev.type === 'timeout') {
           SFX.strike();
           vibrate(20);
           const p = ev.player != null ? room.players[ev.player] : null;
           toast(p ? `${nameOf(p)} ran out of time — auto move played` : "Time's up — round auto-resolved");
+        }
         }
         return;
       }
@@ -3950,7 +3968,7 @@
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <button class="code" id="roomCode" type="button" aria-label="Copy invite link for room ${esc(room.code)}">Room ${esc(room.code)}</button>
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
-    ${!isLudo || waiting ? `<div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>` : ''}
+    ${(!isLudo && g !== 'whot') || (isLudo && waiting) ? `<div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>` : ''}
     ${isLudo ? '' : `<div class="clocks">${matchClock}${turnClock}</div>`}
     ${showStatus ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
@@ -4026,6 +4044,7 @@
         'Hold On (1) gives you another go. Suspension (8) skips the next player — a Star 8 skips two.',
         'General Market (14) makes everyone else draw a card.',
         'Whot (20) is wild — play it anytime and call the shape the next card must match.',
+        'During a normal turn you may draw from the market even when you have a playable card. During a Pick 2 or Pick 3 penalty, defend with the matching card if you have one; otherwise draw the penalty.',
         '25 seconds per turn — run out and an automatic move is played for you.',
         'First to play their last card wins.'
       ]
@@ -4146,11 +4165,11 @@
       const opps = counts.map((c, i) => i).filter(i => i !== mine);
       if (!opps.length) return '';
       return `<div class="wopps">${opps.map(i => {
-        const n = counts[i], shown = Math.min(n, 7), mid = (shown - 1) / 2;
+        const n = counts[i], shown = Math.min(n, 3), more = Math.max(0, n - shown), mid = (shown - 1) / 2;
         const fan = Array.from({ length: shown }, (_, k) => whotBackHtml(`transform:rotate(${((k - mid) * 7).toFixed(1)}deg)`)).join('');
         const out = st.active && st.active[i] === false;
         return `<div class="wopp${st.turn === i ? ' turn' : ''}"><div class="wopp-name">${esc(nameOf(players[i]))}<small>${out ? 'out' : n + (n === 1 ? ' card' : ' cards')}</small></div>
-        <div class="wfan">${fan}</div></div>`;
+        <div class="wfan">${fan}${more ? `<span class="wfan-more">+${more}</span>` : ''}</div></div>`;
       }).join('')}</div>`;
     }
     
@@ -4169,7 +4188,7 @@
     function whotBoardHtml(st, myTurn, players = [], mine = -1) {
       if (!st.topCard) return `<div class="board whot"></div>`;
       const canAct = myTurn && !result;
-      const marketDisabled = !canAct || !(st.pendingPick > 0 || !whotHasPlayable(st));
+      const marketDisabled = !canAct || (st.pendingPick > 0 && whotHasPlayable(st));
       const hand = st.hand || [];
       const pendingVal = st.pendingType === 'two' ? 2 : 3;
       const handHtml = hand.map((c, i) => {
