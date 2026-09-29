@@ -551,11 +551,11 @@
       min-height: 100vh;
       color: #fff;
       background: repeating-conic-gradient(from 0deg at 50% 45%, #7a0c12 0 7deg, #9c1219 7deg 14deg);
-      padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 24px;
+      padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 70px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px
+      gap: 8px
     }
     
     .bar {
@@ -2264,7 +2264,7 @@
       max-width: 420px;
       display: flex;
       flex-direction: column;
-      gap: 8px
+      gap: 4px
     }
     
     .lrow2 {
@@ -2274,7 +2274,8 @@
     }
     
     .lrow2.bottom {
-      align-items: center
+      align-items: center;
+      margin-top: -4px
     }
     
     .lrow2 .mid {
@@ -2420,13 +2421,13 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px
+      gap: 5px
     }
     
     .lscreen .ldice {
-      width: 82px;
-      height: 82px;
-      border-radius: 22px
+      width: 60px;
+      height: 60px;
+      border-radius: 17px
     }
     
     .lscreen .ldice.ready {
@@ -2440,10 +2441,10 @@
     
     .lturn {
       font-weight: 700;
-      font-size: 17px;
+      font-size: 14px;
       background: rgba(0, 0, 0, .38);
       border-radius: 999px;
-      padding: 8px 28px;
+      padding: 4px 18px;
       white-space: nowrap;
       max-width: 220px;
       overflow: hidden;
@@ -2466,7 +2467,7 @@
     
     /* Every screen (login/lobby/leaderboard/settings/profile/game) fades and
        lifts in on mount instead of popping in instantly. */
-    #app > * {
+    #app > *:not(.play) {
       animation: viewIn .22s ease both
     }
     
@@ -2532,7 +2533,7 @@
     
     /* New marks/discs/cards pop or drop into place as they're placed. */
     .cell.p0, .cell.p1, .cell.p2, .cell.p3 {
-      animation: markPop .22s cubic-bezier(.2, .8, .3, 1) both
+      animation: none
     }
     
     @keyframes markPop {
@@ -2541,7 +2542,7 @@
     }
     
     .cf .cell.a, .cf .cell.b {
-      animation: discDrop .32s cubic-bezier(.34, 1.4, .64, 1) both
+      animation: none
     }
     
     @keyframes discDrop {
@@ -2550,7 +2551,7 @@
     }
     
     .wcard {
-      animation: cardIn .2s ease both
+      animation: none
     }
     
     @keyframes cardIn {
@@ -2558,6 +2559,39 @@
       to { opacity: 1; transform: none }
     }
     
+
+    /* ---- chat: keyboard icon dock + incoming message toasts ---- */
+    #chatDock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 12; pointer-events: none; display: none }
+    #chatDock.on { display: block }
+    .chatkb {
+      position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+      width: 44px; height: 44px; padding: 0; border-radius: 50%;
+      background: rgba(0, 0, 0, .45); color: #fff; border: 2px solid rgba(255, 255, 255, .3);
+      display: flex; align-items: center; justify-content: center; pointer-events: auto
+    }
+    .chatkb:active { transform: scale(.92) }
+    .chatpanel {
+      display: none; pointer-events: auto; margin: 0 auto; max-width: 420px;
+      padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px);
+      background: rgba(30, 0, 4, .88); border-radius: 16px 16px 0 0
+    }
+    #chatDock.open .chatpanel { display: block }
+    #chatDock.open .chatkb { display: none }
+    #chatDock .chatform button { background: #d11f2a; color: #fff; border: 0 }
+    #msgToasts {
+      position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 64px); z-index: 25;
+      display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none
+    }
+    .msgtoast {
+      pointer-events: auto; max-width: 80%; background: rgba(20, 20, 24, .92); color: #fff;
+      padding: 7px 14px; border-radius: 14px; font-size: 13px; display: flex; gap: 6px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .35); animation: toastDown .2s ease both; transition: opacity .25s
+    }
+    .msgtoast b { color: var(--gold); white-space: nowrap }
+    .msgtoast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+    .msgtoast.out { opacity: 0 }
+    @keyframes toastDown { from { opacity: 0; transform: translateY(-8px) } to { opacity: 1; transform: none } }
+
     /* Accessibility: anyone who asks for reduced motion gets near-instant,
        non-looping transitions everywhere — including everything added above. */
     @media (prefers-reduced-motion: reduce) {
@@ -2634,7 +2668,8 @@
       phone: '<svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M11 19h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       moon: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" fill="currentColor"/></svg>',
       logout: '<svg viewBox="0 0 24 24"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 16l4-4-4-4M20 12H9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>',
-      send: '<svg viewBox="0 0 24 24"><path d="M4 20l17-8L4 4l0 6.5L15 12 4 13.5 4 20z" fill="currentColor"/></svg>'
+      send: '<svg viewBox="0 0 24 24"><path d="M4 20l17-8L4 4l0 6.5L15 12 4 13.5 4 20z" fill="currentColor"/></svg>',
+      keyboard: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M6 13.5h.01M18 13.5h.01M9 14h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
     };
     const icon = (name, size = 20) => (ICONS[name] || '').replace('<svg ', `<svg width="${size}" height="${size}" style="display:inline-block;vertical-align:-5px" `);
     const $ = s => document.querySelector(s);
@@ -2930,7 +2965,7 @@
       5: [[30, 30], [70, 30], [50, 50], [30, 70], [70, 70]],
       6: [[30, 26], [70, 26], [30, 50], [70, 50], [30, 74], [70, 74]]
     };
-    const diceFaceSvg = (n, size = 54) => `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><rect x="8" y="8" width="84" height="84" rx="20" fill="none" stroke="#fff" stroke-width="7"/>${(DICE_PIPS[n] || DICE_PIPS[5]).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8.5" fill="#fff"/>`).join('')}</svg>`;
+    const diceFaceSvg = (n, size = 40) => `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><rect x="8" y="8" width="84" height="84" rx="20" fill="none" stroke="#fff" stroke-width="7"/>${(DICE_PIPS[n] || DICE_PIPS[5]).map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8.5" fill="#fff"/>`).join('')}</svg>`;
     const ludoStrikeDots = (i) => {
       const n = (room?.strikes && room.strikes[i]) || 0;
       return n ? `<span class="strikes">${[0, 1, 2].map(k => `<i class="${k < n ? 'hit' : ''}"></i>`).join('')}</span>` : '';
@@ -2954,7 +2989,12 @@
         return `<button class="ltok ${color} ${clickable?'movable':''}" data-lt="${ti}" data-color="${color}" data-player="${pi}" ${clickable?'':'disabled'}
       style="left:${left};top:${top}" aria-label="${color} token ${ti+1}, ${steps===0?'in yard':steps===57?'home':'step '+steps}${clickable?', can move':''}">${label}</button>`;
       })).join('');
-      const slots = [[25, 25], [75, 25], [25, 75], [75, 75]].map(([x, y]) => `<i class="slot" style="left:${x}%;top:${y}%"></i>`).join('');
+      // A yard circle only exists while its token is still in the yard; once the token leaves, the spot is empty.
+      const slotsFor = (color) => {
+        const pi = colors.indexOf(color);
+        const toks = pi === -1 ? [] : (st.tokens[pi] || []);
+        return [[25, 25], [75, 25], [25, 75], [75, 75]].map(([x, y], i) => toks[i] === 0 ? `<i class="slot" style="left:${x}%;top:${y}%"></i>` : '').join('');
+      };
       // House centre shows the score — except for whoever's turn it is, where it shows their turn countdown instead.
       const houseScore = (color) => {
         const pi = colors.indexOf(color);
@@ -2981,10 +3021,10 @@
       return `<div class="lscreen">
   <div class="lrow2">${corner('red')}<div class="mid">${matchClock}</div>${corner('green')}</div>
   <div class="lgrid-wrap ${rotated?'rot':''}"><div class="lgrid">
-    <div class="lquad red">${slots}${houseScore('red')}</div>
-    <div class="lquad green">${slots}${houseScore('green')}</div>
-    <div class="lquad yellow">${slots}${houseScore('yellow')}</div>
-    <div class="lquad blue">${slots}${houseScore('blue')}</div>
+    <div class="lquad red">${slotsFor('red')}${houseScore('red')}</div>
+    <div class="lquad green">${slotsFor('green')}${houseScore('green')}</div>
+    <div class="lquad yellow">${slotsFor('yellow')}${houseScore('yellow')}</div>
+    <div class="lquad blue">${slotsFor('blue')}${houseScore('blue')}</div>
     <div class="lcenter"><svg viewBox="0 0 100 100"><polygon points="0,0 50,50 100,0" fill="#1f8f4e"/><polygon points="0,0 50,50 0,100" fill="#c0272d"/><polygon points="100,0 50,50 100,100" fill="#d8a913"/><polygon points="0,100 50,50 100,100" fill="#1f57b5"/><text x="50" y="47">GAME</text><text x="50" y="65">HUB</text></svg></div>
     ${trackCells}${homeCells}${tokens}
   </div></div>
@@ -3110,17 +3150,28 @@
       if (!room || !m) return;
       chatMessages.push(m);
       if (chatMessages.length > 60) chatMessages.shift();
-      const log = document.getElementById('chatLog');
-      if (log) {
-        const div = document.createElement('div');
-        div.className = 'cmsg' + (m.from === room.you ? ' me' : '');
-        div.dataset.mid = (m.at || 0) + '-' + m.from;
-        div.innerHTML = `${m.replyTo ? `<div class="creply-q"><b>${esc(m.replyTo.name)}</b><span>${esc(m.replyTo.text)}</span></div>` : ''}<b>${esc(m.name)}:</b> ${esc(m.text)}`;
-        log.appendChild(div);
-        log.scrollTop = log.scrollHeight;
-      }
       if (m.from !== room.you) { SFX.tap();
-        vibrate(12); }
+        vibrate(12);
+        showMsgToast(m); }
+    }
+    
+    // Small popup for an incoming chat message; tap it to reply.
+    function showMsgToast(m) {
+      let box = document.getElementById('msgToasts');
+      if (!box) { box = document.createElement('div');
+        box.id = 'msgToasts';
+        document.body.appendChild(box); }
+      const el = document.createElement('div');
+      el.className = 'msgtoast';
+      el.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.text)}</span>`;
+      el.onclick = () => { chatReplyTo = { name: m.name, text: m.text };
+        renderChatReplyBar();
+        openChat();
+        el.remove(); };
+      box.appendChild(el);
+      while (box.children.length > 3) box.firstChild.remove();
+      setTimeout(() => { el.classList.add('out');
+        setTimeout(() => el.remove(), 250); }, 4000);
     }
     
     /* ---------- ludo: sounds, comments and hand-off animations ---------- */
@@ -3593,9 +3644,6 @@
         gameView();
       });
     }
-    const msgId = m => (m.at || 0) + '-' + m.from;
-    const chatLine = (m, mine) => `<div class="cmsg${m.from===mine?' me':''}" data-mid="${esc(msgId(m))}">${m.replyTo ? `<div class="creply-q"><b>${esc(m.replyTo.name)}</b><span>${esc(m.replyTo.text)}</span></div>` : ''}<b>${esc(m.name)}:</b> ${esc(m.text)}</div>`;
-    
     function replyBarHtml() {
       if (!chatReplyTo) return '';
       return `<div class="creplybar"><div class="ctxt"><b>Replying to ${esc(chatReplyTo.name)}</b><span>${esc(chatReplyTo.text)}</span></div><button type="button" id="creplyX" aria-label="Cancel reply">×</button></div>`;
@@ -3608,26 +3656,58 @@
       $('#creplyX')?.addEventListener('click', () => { chatReplyTo = null;
         renderChatReplyBar(); });
     }
-    // WhatsApp-style: double-tap/double-click a message bubble to reply to it.
-    function chatDblClick(e) {
-      if (!room) return;
-      const el = e.target.closest('.cmsg');
-      if (!el) return;
-      const m = chatMessages.find(x => msgId(x) === el.dataset.mid);
-      if (!m) return;
-      chatReplyTo = { name: m.from === room.you ? 'You' : m.name, text: m.text };
-      SFX.reply();
-      vibrate(15);
-      renderChatReplyBar();
+    // Chat lives in a dock outside #app so game re-renders never touch it: a keyboard
+    // icon by default; tapping it swaps in the input + send button; sending (or
+    // dismissing an empty input) folds it back into the keyboard icon.
+    function ensureChatDock() {
+      let d = document.getElementById('chatDock');
+      if (!d) {
+        d = document.createElement('div');
+        d.id = 'chatDock';
+        d.innerHTML = `<button type="button" id="chatKb" class="chatkb" aria-label="Open chat">${icon('keyboard',22)}</button>
+  <div class="chatpanel"><div id="chatReplyBar"></div>
+    <form id="chatForm" class="chatform" autocomplete="off">
+      <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message" enterkeyhint="send">
+      <button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
+    </form></div>`;
+        document.body.appendChild(d);
+        $('#chatKb').onclick = openChat;
+        $('#chatForm').onsubmit = (e) => {
+          e.preventDefault();
+          const inp = $('#chatInput');
+          const text = inp.value.trim();
+          if (!text || !room) return;
+          const payload = { code: room.code, text };
+          if (chatReplyTo) payload.replyTo = { name: chatReplyTo.name, text: chatReplyTo.text };
+          socket.emit('chat:message', payload);
+          inp.value = '';
+          chatReplyTo = null;
+          renderChatReplyBar();
+          SFX.send();
+          vibrate(10);
+          closeChat();
+        };
+        d.addEventListener('focusout', () => setTimeout(() => {
+          const inp = $('#chatInput');
+          if (d.classList.contains('open') && inp && !inp.value.trim() && !chatReplyTo && !d.contains(document.activeElement)) closeChat();
+        }, 150));
+        new MutationObserver(() => { const on = !!$('.play'); d.classList.toggle('on', on); if (!on) closeChat(); })
+          .observe(app, { childList: true });
+      }
+      d.classList.toggle('on', !!$('.play'));
+    }
+    function openChat() {
+      const d = document.getElementById('chatDock');
+      if (!d) return;
+      d.classList.add('open');
       $('#chatInput')?.focus();
     }
-    const chatBar = (mine) => `<div class="chatbox">
-  <div class="chatlog" id="chatLog">${chatMessages.map(m=>chatLine(m,mine)).join('')}</div>
-  <div id="chatReplyBar">${replyBarHtml()}</div>
-  <form id="chatForm" class="chatform" autocomplete="off">
-    <input id="chatInput" type="text" maxlength="200" placeholder="Message… (double-tap to reply)" aria-label="Chat message">
-    <button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
-  </form></div>`;
+    function closeChat() {
+      const d = document.getElementById('chatDock');
+      if (!d) return;
+      d.classList.remove('open');
+      $('#chatInput')?.blur();
+    }
     
     // Updates only the disconnect countdown / match clock text every 500ms.
     // A full gameView() re-render used to run on this same interval, which wiped
@@ -3694,11 +3774,6 @@
       if (chatRoomCode !== room.code) { chatMessages = [];
         chatRoomCode = room.code;
         chatReplyTo = null; }
-      // Preserve whatever the player is mid-typing (and any pending reply) across
-      // a re-render — re-renders happen on every opponent move, not just here.
-      const prevInput = $('#chatInput');
-      const draftText = prevInput ? prevInput.value : '';
-      const draftFocused = !!prevInput && document.activeElement === prevInput;
       const players = room.players || [];
       const maxPlayers = room.maxPlayers || players.length || 2;
       const seats = Array.from({ length: maxPlayers }, (_, i) => players[i] || null);
@@ -3770,7 +3845,6 @@
     ${showStatus ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine, maxPlayers)}</div>
-    ${chatBar(mine)}
     ${result ? overCard(mine) : ''}</div>`;
       $('#bk').onclick = () => {
         if (g === 'ludo' && room.status === 'playing' && !result && !confirm("Leaving now forfeits your coins for this match. Leave anyway?")) return;
@@ -3790,26 +3864,7 @@
       $('#again')?.addEventListener('click', () => { stopMusic();
         lobbyView(); });
       $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
-      const log = $('#chatLog');
-      if (log) { log.scrollTop = log.scrollHeight;
-        log.addEventListener('dblclick', chatDblClick); }
-      const inp = $('#chatInput');
-      if (inp) { inp.value = draftText; if (draftFocused) { inp.focus(); try { inp.setSelectionRange(draftText.length, draftText.length); } catch {} } }
-      $('#chatForm').onsubmit = (e) => {
-        e.preventDefault();
-        const inp = $('#chatInput');
-        const text = inp.value.trim();
-        if (!text) return;
-        const payload = { code: room.code, text };
-        if (chatReplyTo) payload.replyTo = { name: chatReplyTo.name, text: chatReplyTo.text };
-        socket.emit('chat:message', payload);
-        inp.value = '';
-        inp.focus();
-        chatReplyTo = null;
-        renderChatReplyBar();
-        SFX.send();
-        vibrate(10);
-      };
+      ensureChatDock();
       app.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
     }
     
