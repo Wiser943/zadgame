@@ -1602,7 +1602,7 @@
     /* ---- profile ---- */
     .profile {
       min-height: 100vh;
-      background: var(--bg)
+      background: var(--bg); max-width: 720px; margin: 0 auto; box-shadow: 0 0 28px rgba(0,0,0,.08)
     }
     
     .pcover {
@@ -1657,8 +1657,7 @@
     }
     
     .pbody {
-      padding: 58px 22px 30px;
-      text-align: center
+      padding: 58px 22px 30px; text-align: center
     }
     
     .pbody h2 {
@@ -1695,6 +1694,10 @@
       color: var(--mute);
       font-size: 12px
     }
+    .pbody .pname-edit { display:flex; gap:8px; max-width:420px; margin:14px auto 0; }
+    .pbody .pname-edit input { flex:1; min-width:0; border:1px solid var(--line); border-radius:12px; padding:11px 12px; background:var(--card); color:var(--ink); }
+    .pbody .pname-edit input:focus { outline:2px solid rgba(209,31,42,.2); border-color:#d11f2a; }
+    @media (max-width:520px) { .pstats { gap:6px; } .pstat { min-width:0; flex:1; padding:11px 8px; } }
     
     .pname-edit {
       display: flex;
@@ -2646,9 +2649,16 @@
       padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px);
       background: rgba(30, 0, 4, .88); border-radius: 16px 16px 0 0
     }
+    .chatlog { max-height: 190px; overflow-y:auto; margin:0 0 8px; padding:2px 2px 4px; display:flex; flex-direction:column; gap:6px; }
+    .chatline { max-width:86%; align-self:flex-start; padding:7px 10px; border-radius:12px 12px 12px 3px; background:rgba(255,255,255,.12); color:#fff; font-size:13px; line-height:1.3; }
+    .chatline.mine { align-self:flex-end; border-radius:12px 12px 3px 12px; background:#d11f2a; }
+    .chatline b { display:block; color:#ffd36a; font-size:11px; margin-bottom:2px; }
+    .chatline audio { display:block; max-width:210px; height:32px; margin-top:3px; }
     #chatDock.open .chatpanel { display: block }
     #chatDock.open .chatkb { display: none }
     #chatDock .chatform button { background: #d11f2a; color: #fff; border: 0 }
+    .chatform input, .chatform input:focus { outline:none !important; box-shadow:none; }
+    .voicebtn { min-width:42px; padding:0 10px !important; }
     #msgToasts {
       position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 64px); z-index: 25;
       display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none
@@ -2784,6 +2794,7 @@
     let chatMessages = [],
       chatRoomCode = null; // in-room text chat (ephemeral — not persisted server-side)
     let chatReplyTo = null; // { name, text } of the message currently being replied to (WhatsApp-style)
+    let voiceRecorder = null, voiceChunks = [], voiceStartedAt = 0;
     let whotLastCardRound = null,
       whotLastCardSeen = {}; // tracks who we've already announced "last card" for, per match
     
@@ -2808,6 +2819,7 @@
       try { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'en-NG'; u.rate = .94; u.pitch = 1; u.volume = .9; window.speechSynthesis.speak(u); } catch {}
     }
     function announce(text) { toast(text); speak(text); }
+    function callout(text) { toast(text); speak(text); }
     
     /* ---------- sound effects (synthesized, no audio files needed) ---------- */
     const SFX = (() => {
@@ -3242,8 +3254,9 @@
         result = r;
         const won = r.status === 'win' && r.winnerIndex === room?.you;
         if (r.status === 'win') { won ? (SFX.win(), playAudioCue('win')) : (SFX.lose(), playAudioCue('lose'));
+          callout(won ? 'You win' : 'You lose');
           vibrate(won ? [40, 60, 40, 60, 140] : [80, 50, 80]); }
-        else { SFX.draw();
+        else { SFX.draw(); callout('Draw');
           vibrate([60, 40, 60]); }
         scheduleRender();
         toast(r.reason === 'timeup' ? "Time's up — highest score wins!" : '');
@@ -3256,9 +3269,20 @@
       if (!room || !m) return;
       chatMessages.push(m);
       if (chatMessages.length > 60) chatMessages.shift();
+      renderChatLog();
       if (m.from !== room.you) { SFX.tap();
         vibrate(12);
         showMsgToast(m); }
+    }
+    function renderChatLog() {
+      const log = $('#chatLog');
+      if (!log) return;
+      log.innerHTML = chatMessages.slice(-20).map(m => {
+        const mine = m.from === room?.you;
+        const body = m.type === 'voice' ? `<audio controls preload="metadata" src="${esc(m.audio || '')}"></audio>` : esc(m.text || '');
+        return `<div class="chatline ${mine ? 'mine' : ''}"><b>${mine ? 'You' : esc(m.name || 'Player')}</b>${body}</div>`;
+      }).join('');
+      log.scrollTop = log.scrollHeight;
     }
     
     // Small popup for an incoming chat message; tap it to reply.
@@ -3269,7 +3293,7 @@
         document.body.appendChild(box); }
       const el = document.createElement('div');
       el.className = 'msgtoast';
-      el.innerHTML = `<b>${esc(m.name)}</b><span>${esc(m.text)}</span>`;
+      el.innerHTML = `<b>${esc(m.name)}</b><span>${m.type === 'voice' ? 'Voice note' : esc(m.text || '')}</span>`;
       el.onclick = () => { chatReplyTo = { name: m.name, text: m.text };
         renderChatReplyBar();
         openChat();
@@ -3289,18 +3313,18 @@
           const player = ev.player != null ? room.players[ev.player] : null;
           const who = player ? nameOf(player) : 'A player';
           if (ev.type === 'whotGeneralMarket') {
-            announce(`${who} played General Market — everyone else draws one card.`);
+            callout('General Market');
           } else if (ev.type === 'whotPick') {
             const label = ev.value === 5 ? 'Pick Three' : 'Pick Two';
-            announce(ev.defense ? `${who} defended with ${label} — the penalty is now ${ev.total} cards.` : `${who} played ${label} — defend with another ${label} or draw ${ev.value} cards.`);
+            callout(label);
           } else if (ev.type === 'whotMarket') {
-            announce(ev.count > 1 ? `${who} had no defending card and automatically drew ${ev.count} cards.` : `${who} drew from the general market.`);
+            callout(ev.count > 1 ? `Pick ${ev.count}` : 'Market');
           }
         if (ev.type === 'timeout') {
           SFX.strike();
           vibrate(20);
           const p = ev.player != null ? room.players[ev.player] : null;
-          toast(p ? `${nameOf(p)} ran out of time — auto move played` : "Time's up — round auto-resolved");
+          callout("Time's up");
         }
         }
         return;
@@ -3312,7 +3336,7 @@
         animUntil = Math.max(animUntil, Date.now() + 600);
         SFX.dice();
         if (ev.dice === 6) { SFX.six();
-          toast(say(ev.streak >= 2 ? 'doubleSix' : 'six'));
+          callout(ev.streak >= 2 ? 'Lucky double six' : 'Lucky six');
           vibrate(ev.streak >= 2 ? [40, 60, 40, 60, 80] : [40, 60, 40]); }
       }
       if (ev.type === 'move') {
@@ -3489,6 +3513,7 @@
     <div class="grp">
       ${toggleRow('sMusic','Music','note', prefs.music)}
       ${toggleRow('sSound','Game Sound','speaker', prefs.sound)}
+      ${toggleRow('sVoice','Voice Announcements','speaker', prefs.voice)}
       ${toggleRow('sVibe','Vibration','phone', prefs.vibration)}
       ${toggleRow('sDark','Dark Mode','moon', prefs.theme==='dark')}
     </div>
@@ -3510,6 +3535,10 @@
       $('#sSound').onclick = () => { prefs.sound = !prefs.sound;
         savePrefs();
         $('#sSound .tgl').classList.toggle('on', prefs.sound); if (prefs.sound) SFX.move(); };
+      $('#sVoice').onclick = () => { prefs.voice = !prefs.voice;
+        savePrefs();
+        $('#sVoice .tgl').classList.toggle('on', prefs.voice);
+        if (prefs.voice) speak('Voice on'); else if ('speechSynthesis' in window) window.speechSynthesis.cancel(); };
       $('#sVibe').onclick = () => { prefs.vibration = !prefs.vibration;
         savePrefs();
         $('#sVibe .tgl').classList.toggle('on', prefs.vibration);
@@ -3791,13 +3820,14 @@
         d = document.createElement('div');
         d.id = 'chatDock';
         d.innerHTML = `<button type="button" id="chatKb" class="chatkb" aria-label="Open chat">${icon('keyboard',22)}</button>
-  <div class="chatpanel"><div id="chatReplyBar"></div>
+  <div class="chatpanel"><div id="chatLog" class="chatlog"></div><div id="chatReplyBar"></div>
     <form id="chatForm" class="chatform" autocomplete="off">
       <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message" enterkeyhint="send">
-      <button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
+      <button class="btn voicebtn" type="button" id="voiceBtn" aria-label="Record voice note">Mic</button><button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
     </form></div>`;
         document.body.appendChild(d);
         $('#chatKb').onclick = openChat;
+        $('#voiceBtn').onclick = toggleVoiceNote;
         $('#chatForm').onsubmit = (e) => {
           e.preventDefault();
           const inp = $('#chatInput');
@@ -3821,6 +3851,29 @@
           .observe(app, { childList: true });
       }
       d.classList.toggle('on', !!$('.play'));
+      renderChatLog();
+    }
+    async function toggleVoiceNote() {
+      const btn = $('#voiceBtn');
+      if (!btn || !room) return;
+      if (voiceRecorder && voiceRecorder.state === 'recording') { voiceRecorder.stop(); return; }
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('Voice notes are not supported on this device.');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        voiceChunks = []; voiceStartedAt = Date.now();
+        voiceRecorder = new MediaRecorder(stream);
+        voiceRecorder.ondataavailable = e => { if (e.data.size) voiceChunks.push(e.data); };
+        voiceRecorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(voiceChunks, { type: voiceRecorder.mimeType || 'audio/webm' });
+          if (blob.size > 500000) return toast('Voice note is too long. Keep it under 30 seconds.');
+          const reader = new FileReader();
+          reader.onload = () => { socket.emit('chat:voice', { code: room.code, audio: reader.result, mime: blob.type, duration: Math.round((Date.now() - voiceStartedAt) / 1000) }); };
+          reader.readAsDataURL(blob);
+          btn.textContent = 'Mic';
+        };
+        voiceRecorder.start(); btn.textContent = 'Stop'; toast('Recording voice note…');
+      } catch { toast('Microphone permission was not granted.'); }
     }
     function openChat() {
       const d = document.getElementById('chatDock');
@@ -3922,7 +3975,7 @@
         gstate.handCounts.forEach((c, i) => {
           if (c === 1 && !whotLastCardSeen[i]) {
             whotLastCardSeen[i] = true;
-            toast(i === mine ? 'You: Last card!' : `${nameOf(seats[i])}: Last card!`);
+            callout('Last card');
             SFX.lastcard();
             vibrate(i === mine ? [30, 40, 30, 40, 60] : 25);
           } else if (c !== 1) { whotLastCardSeen[i] = false; }

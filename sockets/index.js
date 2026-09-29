@@ -483,6 +483,14 @@ module.exports = function initSockets(io, sessionMiddleware) {
       toAll(r, 'chat:message', msg);
     });
 
+    guard('chat:voice', 6, 60000, ({ code, audio, mime, duration }) => {
+      const [r, from] = myRoom(code);
+      if (!r || typeof audio !== 'string' || !/^data:audio\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/.test(audio) || audio.length > 700000) return;
+      const safeMime = typeof mime === 'string' && /^audio\/[a-z0-9.+-]+$/i.test(mime) ? mime.slice(0, 80) : 'audio/webm';
+      const msg = { type: 'voice', from, name: r.players[from].name, audio, mime: safeMime, duration: Math.min(30, Math.max(1, Number(duration) || 1)), at: Date.now() };
+      toAll(r, 'chat:message', msg);
+    });
+
     guard('game:rematch', 10, 60000, ({ code }) => {
       const [r, i] = myRoom(code);
       if (!r || r.status !== 'over' || r.players.length < r.maxPlayers || !r.players.every((p) => p.connected)) return;
