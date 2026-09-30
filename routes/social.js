@@ -1,0 +1,17 @@
+const express=require('express');
+const ensureAuth=require('../middleware/auth');
+const User=require('../models/User');
+const {Friendship,Report,Tournament}=require('../models/Social');
+const router=express.Router(); router.use(ensureAuth);
+const uid=req=>String(req.user._id||req.user.id);
+router.get('/friends',async(req,res,next)=>{try{const me=uid(req), rows=await Friendship.find({$or:[{requester:me},{recipient:me}]}).lean();const ids=[...new Set(rows.map(x=>x.requester===me?x.recipient:x.requester))];const users=await User.find({_id:{$in:ids}}).select('displayName avatar stats level').lean();res.json({friends:users.map(u=>({...u,id:String(u._id)})),requests:rows.filter(x=>x.recipient===me&&x.status==='pending')});}catch(e){next(e);}});
+router.post('/friends/:id/request',async(req,res,next)=>{try{const me=uid(req),other=String(req.params.id);if(me===other)return res.status(400).json({message:'You cannot add yourself.'});const row=await Friendship.findOneAndUpdate({$or:[{requester:me,recipient:other},{requester:other,recipient:me}]},{$setOnInsert:{requester:me,recipient:other,status:'pending'}},{upsert:true,new:true});res.json({friendship:row});}catch(e){next(e);}});
+router.post('/friends/:id/accept',async(req,res,next)=>{try{const row=await Friendship.findOneAndUpdate({requester:String(req.params.id),recipient:uid(req),status:'pending'},{$set:{status:'accepted'}},{new:true});if(!row)return res.status(404).json({message:'Request not found.'});res.json({friendship:row});}catch(e){next(e);}});
+router.delete('/friends/:id',async(req,res,next)=>{try{await Friendship.deleteMany({$or:[{requester:uid(req),recipient:String(req.params.id)},{requester:String(req.params.id),recipient:uid(req)}]});res.json({ok:true});}catch(e){next(e);}});
+router.post('/block/:id',async(req,res,next)=>{try{await Friendship.findOneAndUpdate({requester:uid(req),recipient:String(req.params.id)},{$set:{status:'blocked'}},{upsert:true});res.json({ok:true});}catch(e){next(e);}});
+router.post('/report',async(req,res,next)=>{try{const target=String(req.body?.target||'');if(!target)return res.status(400).json({message:'Target is required.'});const report=await Report.create({reporter:uid(req),target,roomCode:String(req.body?.roomCode||'').slice(0,8),reason:String(req.body?.reason||'Unspecified').slice(0,240)});res.json({reportId:report.id});}catch(e){next(e);}});
+router.get('/challenges',async(req,res)=>{const day=new Date().toISOString().slice(0,10);res.json({day,challenges:[{id:'play-3',title:'Play 3 matches',target:3,reward:30},{id:'win-1',title:'Win a match',target:1,reward:20}]});});
+router.get('/tournaments',async(req,res,next)=>{try{res.json({tournaments:await Tournament.find({status:'open'}).sort({createdAt:-1}).limit(30).lean()});}catch(e){next(e);}});
+router.post('/tournaments',async(req,res,next)=>{try{const t=await Tournament.create({name:String(req.body?.name||'Daily Cup').slice(0,60),game:String(req.body?.game||'tictactoe'),maxPlayers:Math.min(32,Math.max(4,Number(req.body?.maxPlayers)||8)),players:[uid(req)]});res.json({tournament:t});}catch(e){next(e);}});
+router.post('/tournaments/:id/join',async(req,res,next)=>{try{const t=await Tournament.findById(req.params.id);if(!t)return res.status(404).json({message:'Tournament not found.'});if(t.players.includes(uid(req)))return res.json({tournament:t});if(t.players.length>=t.maxPlayers)return res.status(409).json({message:'Tournament is full.'});t.players.push(uid(req));await t.save();res.json({tournament:t});}catch(e){next(e);}});
+module.exports=router;

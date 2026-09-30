@@ -2683,12 +2683,24 @@
         scroll-behavior: auto !important
       }
     }
+
+    .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.low-power .render-layer{display:none}.render-layer{position:absolute;inset:0;pointer-events:none;display:grid;place-items:center;z-index:0}.render-layer canvas{max-width:100%;border-radius:18px}.renderer-badge{position:absolute;right:8px;top:8px;z-index:3;background:rgba(0,0,0,.38);color:#fff;padding:3px 7px;border-radius:8px;font-size:10px;pointer-events:none}.board{position:relative;z-index:1}
+    /* New plain-JS game boards and progression UI */
+    .newboard{display:grid;gap:3px;width:min(92vw,440px);aspect-ratio:1;background:#371015;padding:6px;border-radius:16px}
+    .checkers{grid-template-columns:repeat(8,1fr)} .ckcell{border:0;border-radius:3px;font-size:clamp(18px,5vw,34px);display:grid;place-items:center;color:#f7c52b;min-width:0}.ckcell.light{background:#e9c9a7}.ckcell.dark{background:#7d3036}.ckcell.p0{color:#f7c52b;text-shadow:0 2px #8f1017}.ckcell.p1{color:#fff;text-shadow:0 2px #333}
+    .mancala{display:grid;grid-template-columns:54px 1fr 54px;gap:8px;align-items:center;width:min(94vw,480px);padding:18px;background:#8f1017;border-radius:20px}.mstore{background:#f7c52b;color:#3b1115;border-radius:28px;min-height:120px;display:grid;place-items:center;font-size:26px;font-weight:800}.mpits{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.mpits button{aspect-ratio:1;border-radius:50%;background:#fff;color:#8f1017;font-weight:800;font-size:18px}
+    .ships{width:min(92vw,420px)}.shipgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;background:#152b57;padding:7px;border-radius:14px}.shipgrid button{aspect-ratio:1;background:#58a7ce;border:0;border-radius:3px;color:#fff;font-size:20px}.shipgrid button.hit{background:#b3141c}
+    .snakegrid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:min(92vw,480px);padding:5px;background:#246b44;border-radius:12px}.snakegrid span{aspect-ratio:1;background:#e9f2d0;color:#244b33;font-size:10px;padding:3px;position:relative}.snakegrid span:nth-child(even){background:#cbe7b8}.snakegrid b{position:absolute;right:2px;bottom:2px;border-radius:50%;padding:3px 5px;color:#fff;background:#8f1017}.snakegrid .p1{background:#1d5fb5}.snakes .btn{margin:12px auto;display:block}
+    .words{width:min(94vw,520px);padding:22px;text-align:center}.wordscore{display:flex;justify-content:space-around;margin-bottom:20px}.words input{padding:12px;border-radius:10px;border:1px solid var(--line);margin-right:8px;text-transform:uppercase}.wordlist{margin-top:18px;color:var(--mute)}
+    .dominoes{width:min(94vw,520px);padding:18px}.domchain{min-height:80px;border:2px dashed var(--line);border-radius:12px;padding:18px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;justify-content:center}.domchain span,.domhand button{background:#fff;border:1px solid #d7c7aa;border-radius:8px;padding:10px;color:#222;font-weight:700}.domhand{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:20px}.spectator-badge{color:#f7c52b}.progress{margin:12px 18px;padding:13px 16px;background:var(--card);border:1px solid var(--line);border-radius:16px}.progress b{color:var(--red2)}
   </style>
 </head>
 
 <body>
   <div id="app"></div>
   <div id="toast" role="status"></div>
+  <script src="/js/renderers.js"></script>
+  <script src="/js/renderer-manager.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script>
     /* ============================================================
@@ -2713,6 +2725,7 @@
     // What you send for a move, per game (adjust to match games/<key>.js):
     const MOVE = {
       tictactoe: i => ({ index: i }),
+      checkers: m => m, mancala: p => ({pit:p}), battleship: m => m, snakes: () => ({type:'roll'}), dominoes: i => ({index:i}), words: w => ({word:w}),
       connectfour: c => ({ column: c }),
       rps: c => ({ choice: c })
       // ludo has two move shapes ({type:'roll'} / {type:'move',token}) so it's
@@ -2804,13 +2817,13 @@
     const IMGBB_API_KEY = '';
     
     /* ---------- preferences: theme + sound/music/vibration ---------- */
-    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true }, (() => {
+    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, winnerReplay: true }, (() => {
       try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch { return {} }
     })());
     
     function savePrefs() { try { localStorage.setItem('ghPrefs', JSON.stringify(prefs)) } catch {} }
     
-    function applyTheme() { document.documentElement.setAttribute('data-theme', prefs.theme === 'dark' ? 'dark' : 'light'); }
+    function applyTheme() { document.documentElement.setAttribute('data-theme', prefs.theme === 'dark' ? 'dark' : 'light'); document.documentElement.classList.toggle('reduced-motion',!!prefs.reducedMotion); document.documentElement.classList.toggle('low-power',!!prefs.lowPower); }
     applyTheme();
     
     function vibrate(pattern) { if (prefs.vibration && navigator.vibrate) try { navigator.vibrate(pattern) } catch {} }
@@ -3228,6 +3241,7 @@
       socket = io({ withCredentials: true });
       socket.on('connect_error', () => toast('Connection problem. Retrying…'));
       socket.on(EV.error, e => toast(e?.message || 'Something went wrong'));
+      socket.on('room:spectator', e => { if(e?.room){ room=e.room; gstate=room.state||null; result=room.status==='over'?room.result:null; gameView(); } });
       socket.on('connect', () => { if (room && room.status !== 'over') joinRoom(room.code, false); });
       socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
       socket.on(EV.room, r => {
@@ -3428,8 +3442,9 @@
       GAMES = games;
       games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
       app.innerHTML = `
-  <div class="top"><div><small>Coins</small><b>${esc(me.coins ?? 0)}</b></div>
+  <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b>${esc(me.coins ?? 0)} 🪙</b></div>
     <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
+  <button class="btn ghost" id="daily" style="margin:12px 18px 0;width:calc(100% - 36px)">Claim daily reward · +25 coins</button>
   <button class="lbstrip" id="lbOpen" aria-label="Open leaderboard">
     <span class="lbtitle">${icon('trophy',20)} Leaderboard</span>
     ${lbTop.length ? `<span class="lbtop3">${lbTop.map(p=>`<img src="${avatar(p)}" alt="">`).join('')}</span>` : ''}
@@ -3441,6 +3456,7 @@
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
       $('#meBtn').onclick = settingsView;
       $('#lbOpen').onclick = () => leaderboardView('coins');
+      $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${d.reward} coins`); lobbyView(false); } catch(e) { toast(e.message || 'Reward already claimed'); } };
       app.querySelectorAll('.game').forEach(b => b.onclick = () =>
         b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
     }
@@ -3511,6 +3527,7 @@
       ${linkRow('sAbout','About Us','info')}
       ${linkRow('sLegal','Legal','legal')}
     </div>
+    <div class="glabel">Game rendering</div><div class="grp"><label class="srow" style="display:flex"><span class="si">◈</span><span class="lbl">Renderer mode</span><select id="rendererMode" style="margin-left:auto;padding:7px;border-radius:8px"><option value="auto">Auto</option><option value="classic">Classic</option><option value="2d">Enhanced 2D</option><option value="3d">3D</option></select></label></div>
     <div class="glabel">Effects</div>
     <div class="grp">
       ${toggleRow('sMusic','Music','note', prefs.music)}
@@ -3518,11 +3535,15 @@
       ${toggleRow('sVoice','Voice Announcements','speaker', prefs.voice)}
       ${toggleRow('sVibe','Vibration','phone', prefs.vibration)}
       ${toggleRow('sDark','Dark Mode','moon', prefs.theme==='dark')}
+      ${toggleRow('sMotion','Reduce Animations','info', prefs.reducedMotion)}
+      ${toggleRow('sPower','Low-power mode','hourglass', prefs.lowPower)}
+      ${toggleRow('sReplay','Winner highlights after matches','trophy', prefs.winnerReplay)}
     </div>
     <button class="logoutbtn" id="sOut">${icon('logout',18)} Log Out</button>
     <div class="ver">Version 1.0.10141</div>
   </div>`;
       $('#sBk').onclick = () => history.back();
+      const rendererMode=$('#rendererMode'); if(rendererMode){rendererMode.value=localStorage.getItem('ghRendererMode')||'auto'; rendererMode.onchange=()=>{localStorage.setItem('ghRendererMode',rendererMode.value); toast('Renderer preference saved');};}
       $('#sEdit').onclick = () => profileView(me.id || me._id);
       $('#sOut').onclick = () => location.href = '/auth/logout';
       $('#sChat').onclick = chatSupportView;
@@ -3545,6 +3566,9 @@
         savePrefs();
         $('#sVibe .tgl').classList.toggle('on', prefs.vibration);
         vibrate(30); };
+      $('#sMotion').onclick = () => { prefs.reducedMotion=!prefs.reducedMotion; savePrefs(); applyTheme(); $('#sMotion .tgl').classList.toggle('on',prefs.reducedMotion); };
+      $('#sPower').onclick = () => { prefs.lowPower=!prefs.lowPower; savePrefs(); applyTheme(); $('#sPower .tgl').classList.toggle('on',prefs.lowPower); };
+      $('#sReplay').onclick = () => { prefs.winnerReplay=!prefs.winnerReplay; savePrefs(); $('#sReplay .tgl').classList.toggle('on',prefs.winnerReplay); };
       $('#sDark').onclick = () => { prefs.theme = prefs.theme === 'dark' ? 'light' : 'dark';
         savePrefs();
         applyTheme();
@@ -3758,10 +3782,10 @@
         $('#rooms').outerHTML = `<div id="rooms" class="empty">Loading…</div>`;
         try {
           const rs = await new Promise((ok, no) => socket.emit(EV.list, { game: key, maxPlayers: n }, r => r && r.ok ? ok(r.rooms) : no()));
-          $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${r.players.map(nameOf).join(', ')} · ${r.players.length}/${r.maxPlayers||2} · ${esc(r.code)}</span><button class="btn" data-c="${esc(r.code)}">Join</button></div>`).join('')}</div>` :
+          $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${r.players.map(nameOf).join(', ')} · ${r.players.length}/${r.maxPlayers||2} · ${esc(r.code)}</span><button class="btn" data-c="${esc(r.code)}">Join</button><button class="btn ghost" data-s="${esc(r.code)}">Watch</button></div>`).join('')}</div>` :
             `<div id="rooms" class="empty">No one is waiting. Create a room and share the code.</div>`;
-          bg.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { bg.remove();
-            joinRoom(b.dataset.c) });
+          bg.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { bg.remove(); joinRoom(b.dataset.c) });
+          bg.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { bg.remove(); spectateRoom(b.dataset.s) });
         } catch { $('#rooms').textContent = 'Could not load rooms.' }
       }
       loadRooms();
@@ -3791,6 +3815,16 @@
       });
     }
     
+    function spectateRoom(code, navigate = true) {
+      code = String(code || '').toUpperCase();
+      socket.emit(EV.spectate, { code }, res => {
+        if (!res || res.ok === false) return toast(res?.error || 'Could not watch this match');
+        room = res.room; result = room.status === 'over' ? room.result : null; gstate = room.state || null;
+        if (navigate) history.pushState({page:'spectator',code}, '', '/?spectate=' + code); else history.replaceState({page:'spectator',code}, '', '/?spectate=' + code);
+        gameView();
+      });
+    }
+
     function quickMatch(game, maxPlayers) {
       socket.emit(EV.quick, { game, maxPlayers }, res => {
         if (!res || res.ok === false) return toast(res?.error || 'Could not find a match');
@@ -4028,7 +4062,7 @@
     ${showStatus ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine, maxPlayers)}</div>
-    ${result ? overCard(mine) : ''}</main><aside class="game-rail"><button class="rail-lobby" id="railLobby">‹ Back to lobby</button><h2>${esc(GAMES.find(x => (x.key || x.id) === g)?.name || g)}</h2><p>${waiting ? 'Waiting room' : 'Live match'}</p><div class="rail-room">Room <b>${esc(room.code)}</b><br><span>${players.length}/${maxPlayers} players</span></div><div class="rail-players">${railPlayers}</div></aside></div></div>`;
+    ${result ? overCard(mine) : ''}</main><aside class="game-rail"><button class="rail-lobby" id="railLobby">‹ Back to lobby</button><h2>${esc(GAMES.find(x => (x.key || x.id) === g)?.name || g)}</h2><p>${spectator ? 'Spectator view' : waiting ? 'Waiting room' : 'Live match'}${room.spectatorCount ? ` · ${room.spectatorCount} watching` : ''}</p><div class="rail-room">Room <b>${esc(room.code)}</b><br><span>${players.length}/${maxPlayers} players</span></div><div class="rail-players">${railPlayers}</div></aside></div></div>`;
       $('#railLobby').onclick = () => $('#bk').click();
       $('#bk').onclick = async () => {
         if (g === 'ludo' && room.status === 'playing' && !result && !await askDialog('Leave this match?', 'Leaving now forfeits your coins for this match. Do you want to leave?', 'Leave match')) return;
@@ -4045,6 +4079,8 @@
             btn.disabled = false; } });
       });
       bindBoard(g, myTurn);
+      window.GameHubRenderers?.mount($('#bd'), g, gstate || {});
+      if (result?.highlights?.length && prefs.winnerReplay && room.you != null) setupWinnerReplay(result.highlights, result.winnerIndex);
       $('#again')?.addEventListener('click', () => { stopMusic();
         goBackToLobby(); });
       $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
@@ -4194,6 +4230,7 @@
       }
       if (g === 'chess') return chessBoardHtml(gstate || {}, myTurn, mine, players);
       if (g === 'whot') return whotBoardHtml(gstate || {}, myTurn, players, mine);
+      if (['checkers','mancala','battleship','snakes','dominoes'].includes(g)) return newGameBoardHtml(g, gstate || {}, myTurn, mine, players);
       return '';
     }
     
@@ -4293,6 +4330,16 @@
       const coords = Array.from({length:size}, (_, i) => `<span>${String.fromCharCode(97 + i)}</span>`).join('');
       return `<div class="chess-wrap">${chessSeats}<div class="board chess" style="grid-template-columns:repeat(${size},1fr)">${squares}</div><div class="chess-coords">${coords}</div></div>`;
     }
+    function newGameBoardHtml(g, st, myTurn, mine, players) {
+      if (g === 'checkers') { const b=st.board||[]; return `<div class="board newboard checkers">${b.flat().map((v,i)=>`<button class="ckcell ${(Math.floor(i/8)+i)%2?'dark':'light'} ${v?'p'+v.player:''}" data-ck="${i}" ${!myTurn?'disabled':''}>${v?(v.king?'♛':'●'):''}</button>`).join('')}</div>`; }
+      if (g === 'mancala') return `<div class="board mancala"><div class="mstore">${st.stores?.[1]||0}</div><div class="mpits">${(st.pits?.[1]||[]).slice().reverse().map((n,j)=>`<button data-mpit="${5-j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}${(st.pits?.[0]||[]).map((n,j)=>`<button data-mpit="${j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}</div><div class="mstore">${st.stores?.[0]||0}</div></div>`;
+      if (g === 'battleship') return `<div class="board ships"><div class="shipgrid">${Array.from({length:100},(_,i)=>{const r=Math.floor(i/10),c=i%10,hit=st.shots?.[mine]?.some(x=>x[0]===r&&x[1]===c);return `<button data-ship="${r},${c}" class="${hit?'hit':''}" ${!myTurn?'disabled':''}>${hit?(st.boards?.[1-mine]?.[r]?.[c]?'×':'·'):''}</button>`}).join('')}</div><p class="muted">Fire at a coordinate to find the fleet.</p></div>`;
+      if (g === 'snakes') return `<div class="board snakes"><div class="snakegrid">${Array.from({length:100},(_,i)=>`<span>${i+1}${(st.positions||[]).map((p,n)=>p===i+1?`<b class="p${n}">${n+1}</b>`:'').join('')}</span>`).join('')}</div><button class="btn" id="rollSnake" ${!myTurn||result?'disabled':''}>Roll ${st.lastRoll?`(last ${st.lastRoll})`:''}</button></div>`;
+      if (g === 'dominoes') return `<div class="board dominoes"><div class="domchain">${(st.chain||[]).map(t=>`<span>[${t[0]}|${t[1]}]</span>`).join(' ')||'Start the chain'}</div><div class="domhand">${(st.hand?.[mine]||[]).map((t,i)=>`<button data-dom="${i}" ${!myTurn?'disabled':''}>${t[0]} | ${t[1]}</button>`).join('')}</div></div>`;
+      if (g === 'words') return `<div class="board words"><div class="wordscore">${(st.scores||[]).map((x,i)=>`<span>${nameOf(players[i])}: <b>${x}</b></span>`).join('')}</div><p>Letters: <b>${(st.hands?.[mine]||[]).join(' ')}</b></p><input id="wordInput" maxlength="7" placeholder="TYPE A WORD" ${!myTurn?'disabled':''}><button class="btn" id="wordPlay" ${!myTurn?'disabled':''}>Play word</button><div class="wordlist">${(st.words||[]).slice(-8).map(w=>`<span>${w.word}</span>`).join(' ')}</div></div>`;
+      return '';
+    }
+
     function bindBoard(g, myTurn) {
       const send = m => socket.emit(EV.move, { code: room.code, move: m });
       const act = m => { SFX.move();
@@ -4320,6 +4367,12 @@
         SFX.send(); vibrate(18); send({ type:'play', index:jokerPendingIndex, calledSuit:e.dataset.jsuit }); jokerPendingIndex = null;
       });
       $('[data-jmarket]')?.addEventListener('click', () => { SFX.draw(); vibrate(18); send({ type:'market' }); });
+      app.querySelectorAll('[data-ck]').forEach(e => e.onclick = () => { const from=window.ghCheckersFrom; if(from==null){window.ghCheckersFrom=+e.dataset.ck; gameView();}else{act({from,to:+e.dataset.ck});window.ghCheckersFrom=null;} });
+      app.querySelectorAll('[data-mpit]').forEach(e => e.onclick = () => act(MOVE.mancala(+e.dataset.mpit)));
+      app.querySelectorAll('[data-ship]').forEach(e => e.onclick = () => { const [row,col]=e.dataset.ship.split(',').map(Number); act(MOVE.battleship({row,col})); });
+      $('#rollSnake')?.addEventListener('click', () => act(MOVE.snakes()));
+      app.querySelectorAll('[data-dom]').forEach(e => e.onclick = () => act(MOVE.dominoes(+e.dataset.dom)));
+      $('#wordPlay')?.addEventListener('click', () => { const w=$('#wordInput')?.value?.trim(); if(w) act(MOVE.words(w)); });
       if (g === 'chess') app.querySelectorAll('[data-chess]').forEach(e => e.onclick = async () => {
         const to = +e.dataset.chess, board = gstate?.board || [], p = board[to];
         if (chessSelected == null) { if (p && p.player === room.you && myTurn) { chessSelected = to; gameView(); } return; }
@@ -4367,13 +4420,39 @@
         send({ type: 'market' }); });
     }
     
+    let replayTimer = null;
+    function formatHighlight(game, item) {
+      const m=item?.move||{};
+      if(game==='chess'||game==='checkers') return `Move ${m.from ?? '?'} → ${m.to ?? '?'}`;
+      if(game==='connectfour') return `Dropped a disc in column ${(m.column??0)+1}`;
+      if(game==='ludo') return m.type==='roll' ? `Rolled ${m.dice||'the die'}` : `Moved token ${(m.token??0)+1}`;
+      if(game==='rps') return `Locked in ${m.choice||'a choice'}`;
+      if(game==='words') return `Played “${m.word||''}”`;
+      if(game==='battleship') return `Fired at ${String.fromCharCode(65+(m.col||0))}${(m.row||0)+1}`;
+      if(game==='mancala') return `Sowed pit ${(m.pit??0)+1}`;
+      if(game==='dominoes') return `Played tile ${(m.index??0)+1}`;
+      return m.type ? `${m.type} — highlight move` : 'Strong move';
+    }
+    function setupWinnerReplay(highlights, winnerIndex) {
+      const box=$('#winnerReplay'); if(!box) return;
+      clearTimeout(replayTimer); box.classList.add('playing');
+      const list=box.querySelector('#replayMoves'); let i=0;
+      const step=()=>{ if(!box.isConnected || !box.classList.contains('playing')) return; const item=highlights[i]; if(item){ window.GameHubRenderers?.mount($('#replayStage'), room.game, item.state || {}); list.innerHTML=highlights.map((x,n)=>`<div class="replay-move ${n===i?'active':''}"><span>${n+1}</span>${esc(formatHighlight(room.game,x))}</div>`).join('');i++;replayTimer=setTimeout(step,900); } else {box.classList.add('complete');} };
+      step();
+      replayTimer=setTimeout(()=>{const skip=$('#skipReplay');if(skip)skip.hidden=false;},5000);
+      $('#skipReplay')?.addEventListener('click',()=>{clearTimeout(replayTimer);box.classList.remove('playing');box.classList.add('skipped');box.querySelector('#replayTitle').textContent='Winner highlights skipped';});
+    }
+
     function overCard(mine) {
       const w = result.winnerIndex ?? result.winner;
       const draw = w == null || result.status === 'draw';
-      const won = !draw && w === mine;
+      const won = !draw && mine != null && w === mine;
+      if (mine == null) return `<div class="over-bg"><div class="over"><h2>Match complete</h2><p>Thanks for watching.</p><button class="btn ghost" id="again">Lobby</button></div></div>`;
       const maxPlayers = room.maxPlayers || room.players.length || 2;
       const canRe = room.players.length === maxPlayers && room.players.every(p => p.connected) && !room.rematch?.includes(mine);
-      return `<div class="over-bg"><div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>
+      const highlights = result.highlights || [];
+      const replay = (!draw && highlights.length && prefs.winnerReplay) ? `<section id="winnerReplay" class="winner-replay"><div class="replay-head"><span id="replayTitle">Winner highlights</span><span class="replay-live">AUTO PLAY</span></div><div id="replayStage" class="replay-stage"></div><div id="replayStage" class="replay-stage"></div><div id="replayMoves" class="replay-moves"></div><button id="skipReplay" class="btn ghost skip-replay" hidden>Skip replay</button></section>` : '';
+      return `<div class="over-bg"><div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>${replay}
     <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Someone left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
     <button class="btn" id="rm" style="margin-right:8px" ${canRe ? '' : 'disabled'}>${room.rematch?.includes(mine) ? 'Waiting…' : 'Rematch'}</button>
     <button class="btn ghost" id="again">Lobby</button></div></div>`;

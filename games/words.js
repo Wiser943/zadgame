@@ -1,0 +1,7 @@
+const DICTIONARY = new Set(['CAT','DOG','GAME','PLAY','WIN','WORD','FUN','CODE','BOARD','GO','JAVA','NODE','JS','LUDO','CHESS','CARD','COIN','STAR','HOME','BLUE','RED','SUN','MOON','TREE','BOOK','TEAM','ACE','TWO','ONE']);
+function createInitialState(){return {hands:[['C','A','T','G','O','M','E'],['D','O','G','P','L','A','Y']],scores:[0,0],turn:0,words:[]};}
+function isValidMove(s,i,m){const word=String(m?.word||'').trim().toUpperCase();return s.turn===i&&word.length>=2&&word.length<=7&&DICTIONARY.has(word)&&[...word].every(ch=>s.hands[i].includes(ch));}
+function applyMove(s,i,m){const word=String(m.word).trim().toUpperCase(),h=s.hands.map(x=>x.slice()),used=[...word];for(const ch of used)h[i].splice(h[i].indexOf(ch),1);while(h[i].length<7)h[i].push('ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)]);return {...s,hands:h,scores:s.scores.map((x,n)=>n===i?x+word.length*word.length:x),words:[...s.words,{player:i,word}],turn:1-i};}
+function checkResult(s){const i=s.hands.findIndex((h,n)=>h.length===0&&s.words.some(w=>w.player===n));return i>=0?{status:'win',winnerIndex:i}:s.words.length>=20?(s.scores[0]===s.scores[1]?{status:'draw'}:{status:'win',winnerIndex:s.scores[0]>s.scores[1]?0:1}):{status:'ongoing'};}
+function botMove(s,i){for(const w of DICTIONARY)if(isValidMove(s,i,{word:w}))return {word:w};return {word:'GO'};}
+module.exports={createInitialState,isValidMove,applyMove,checkResult,botMove};

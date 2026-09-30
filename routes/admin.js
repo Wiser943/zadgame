@@ -5,10 +5,14 @@ const registry = require('../games/registry');
 const ensureAdmin = require('../middleware/admin');
 const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/gameSettings');
 const router = express.Router();
-const ADMIN_PHONE = String(process.env.ADMIN_PHONE || '07016122223');
-const ADMIN_PIN = String(process.env.ADMIN_PIN || '1234567890');
+const ADMIN_PHONE = String(process.env.ADMIN_PHONE || '');
+const ADMIN_PIN = String(process.env.ADMIN_PIN || '');
+const loginHits = new Map();
+function allowed(ip){ const now=Date.now(), a=(loginHits.get(ip)||[]).filter(t=>now-t<15*60*1000); if(a.length>=10){loginHits.set(ip,a);return false;} a.push(now);loginHits.set(ip,a);return true; }
 function same(a, b) { const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || '')); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 router.post('/login', (req, res) => {
+  if (!ADMIN_PHONE || !ADMIN_PIN) return res.status(503).json({ message: 'Admin login is not configured.' });
+  if (!allowed(req.ip)) return res.status(429).json({ message: 'Too many login attempts. Try again later.' });
   const { phone, pin } = req.body || {};
   if (!same(phone, ADMIN_PHONE) || !same(pin, ADMIN_PIN)) return res.status(401).json({ message: 'Invalid admin credentials.' });
   req.session.isAdmin = true;

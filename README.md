@@ -8,9 +8,7 @@ just a bragging-rights score.
 and a plain HTML/CSS/JS front end (no build step required).
 
 **Games included and working right now:** Tic-Tac-Toe (2 players = 3×3, 4 players = 5×5 connect-4, bots can fill seats), Connect Four, Rock Paper
-Scissors (best of 5). Ludo, Chess and Whot! are listed in the lobby as
-**"Coming soon"** — clicking them tells the user honestly that the game isn't
-built yet instead of pretending it works. See "Adding a new game" below to
+Scissors (best of 5). Ludo, Chess, Whot!, Joker, Checkers, Ayo/Mancala, Battleship, Snakes & Ladders, and Dominoes are available in the lobby. New games use server-authoritative JavaScript engines. See "Adding a new game" below to
 build one out.
 
 ---
@@ -156,8 +154,17 @@ This is a solid, working foundation, not a finished consumer product:
 - Sessions/rooms are held in memory per server process, so this runs on a
   single Node instance as-is. To scale horizontally you'd move `activeRooms`
   into Redis (or a Socket.io Redis adapter) and add sticky sessions.
-- There's no rate limiting, profanity filter, or abuse reporting — add before
-  opening this up to strangers on the open internet.
+- Basic socket throttling and admin login throttling are included, but add a reverse-proxy rate limit, profanity filter, abuse reporting and moderation workflow before opening this up to strangers.
 - Reconnect handling is basic: a disconnected player's opponent is notified
   but there's no forced-forfeit timer yet; add one if you want abandoned
   matches to resolve automatically.
+
+## Upgrade notes
+
+The UI remains plain JavaScript. The backend now exposes `/api/daily-claim` and `/api/matches`, records completed matches, supports spectator sockets via `room:spectate`, and includes Checkers, Ayo/Mancala, Battleship, Snakes & Ladders and Dominoes. Phaser, PixiJS and Three.js should be loaded lazily only for games that need richer rendering; the existing CSS/DOM boards remain the fallback.
+
+## Renderer and product expansion
+
+The browser remains framework-free JavaScript. `public/js/renderer-manager.js` selects Classic DOM, Phaser, PixiJS, or Three.js based on the user's Settings choice and WebGL availability. The enhanced renderers are lazy-loaded from CDN and the original DOM boards remain usable when offline or on low-power devices.
+
+Social endpoints are available under `/api/social`: friends, requests, blocking, reports, daily challenges, and tournaments. These are foundations for the full social/competitive UI and should be paired with a moderation dashboard before public launch.

@@ -13,10 +13,12 @@ const configurePassport = require('./config/passport');
 const authRoutes = require('./routes/auth');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
+const socialRoutes = require('./routes/social');
 const initSockets = require('./sockets');
 const { loadGameSettings } = require('./config/gameSettings');
 
 const PORT = process.env.PORT || 3000;
+if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) throw new Error('SESSION_SECRET must be at least 32 characters in production.');
 
 async function main() {
   await connectDB();
@@ -27,6 +29,8 @@ async function main() {
   const server = http.createServer(app);
   const io = new Server(server);
 
+  app.disable('x-powered-by');
+  app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); next(); });
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
 
   const sessionMiddleware = session({
@@ -34,7 +38,7 @@ async function main() {
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } // 7 days
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } // 7 days
   });
   app.use(sessionMiddleware);
 
@@ -44,6 +48,8 @@ async function main() {
   app.use('/auth', authRoutes);
   app.use('/api', apiRoutes);
   app.use('/admin-api', adminRoutes);
+  app.use('/api/social', socialRoutes);
+  app.get('/health', (req,res) => res.json({ ok: true, service: 'gamehub', time: new Date().toISOString() }));
   app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
   app.use('/assets', express.static(path.join(__dirname, 'assets')));

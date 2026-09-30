@@ -7,6 +7,8 @@ const passport = require('passport');
 const games = require('../games');
 const { effectiveGame } = require('../config/gameSettings');
 const User = require('../models/User');
+const Match = require('../models/Match');
+const { selectHighlights } = require('../utils/highlights');
 
 const ENG = games.ENGINES || games;
 const FORFEIT_MS = 75 * 1000;
@@ -28,7 +30,8 @@ const LUDO_MATCH_MS = { 2: 4 * 60 * 1000, 3: 6 * 60 * 1000, 4: 8 * 60 * 1000 }; 
 const TURN_MS = { tictactoe: 20 * 1000, connectfour: 20 * 1000, chess: 30 * 1000, whot: 25 * 1000 };
 const RPS_ROUND_MS = 15 * 1000;
 
-const rooms = new Map();           // code -> room
+const rooms = new Map();
+const spectators = new Map();           // code -> room
 const hits = new Map();            // rate-limit log: "userId:event" -> [timestamps]
 setInterval(() => hits.clear(), 10 * 60 * 1000).unref();
 
@@ -83,6 +86,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     // playerIndex -> ms-epoch they forfeit at, for anyone currently disconnected-but-not-yet-eliminated
     forfeits: r.forfeits ? Object.fromEntries([...r.forfeits].map(([idx, f]) => [idx, f.forfeitAt])) : {},
     result: r.result || null,
+    spectatorCount: r.spectators ? r.spectators.size : 0,
     rematch: r.rematch ? [...r.rematch] : [],
     round: r.round || 0,
     strikes: r.strikes || [],
@@ -92,8 +96,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
     players: r.players.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, connected: p.connected, out: !!p.out, bot: !!p.bot })),
     state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state
   });
-  const push = (r) => r.players.forEach((p, i) => p.sid && io.to(p.sid).emit('room:update', view(r, i)));
-  const toAll = (r, ev, payload) => r.players.forEach((p) => p.sid && io.to(p.sid).emit(ev, payload));
+  const push = (r) => { r.players.forEach((p, i) => p.sid && io.to(p.sid).emit('room:update', view(r, i))); if (r.spectators) for (const sid of r.spectators) io.to(sid).emit('room:update', view(r, null)); };
+  const toAll = (r, ev, payload) => { r.players.forEach((p) => p.sid && io.to(p.sid).emit(ev, payload)); if (r.spectators) for (const sid of r.spectators) io.to(sid).emit(ev, payload); };
 
   // Fills every open seat in a still-waiting room with a bot player and,
   // once full, starts the match — lets a lone player (or a room nobody else
@@ -108,7 +112,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       });
     }
     if (r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.state = ENG[r.game].createInitialState(r.maxPlayers);
+      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers);
       r.round = (r.round || 0) + 1;
       r.strikes = Array(r.maxPlayers).fill(0);
       armTurnTimer(r); armMatchTimer(r);
@@ -125,6 +129,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const whotCard = whotBefore && move.type === 'play' ? whotBefore.hands[i]?.[move.index] : null;
     const whotPending = whotBefore?.pendingPick || 0;
     r.state = e.applyMove(r.state, i, move);
+    r.moves = r.moves || []; r.moves.push({ player:i, move, at:Date.now(), state: JSON.parse(JSON.stringify(r.state)) });
     if (r.game === 'whot') {
       if (move.type === 'market') {
         toAll(r, 'game:event', { type: 'whotMarket', player: i, count: whotPending || 1, automatic: !!r.players[i]?.bot });
@@ -294,7 +299,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     clearTimeout(r.matchTimer); r.matchTimer = null; r.matchDeadline = null;
     clearTimeout(r.botTimer); r.botTimer = null;
     r.status = 'over'; r.rematch = new Set();
-    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal' };
+    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights: selectHighlights(r.game, r.moves, winnerIndex) };
     r.players.forEach((p, i) => {
       if (p.bot) return; // bots have no User document — nothing to update
       const won = winnerIndex === i, draw = winnerIndex == null;
@@ -303,6 +308,10 @@ module.exports = function initSockets(io, sessionMiddleware) {
         'stats.losses': !won && !draw ? 1 : 0, 'stats.draws': draw ? 1 : 0
       } }).catch((e) => console.error('[stats]', e.message));
     });
+    Match.create({ game:r.game, roomCode:r.code, players:r.players.map(p=>({userId:p.id,name:p.name,bot:!!p.bot})), winnerIndex, result:r.result.status, reason, durationMs:r.startedAt?Date.now()-r.startedAt:undefined, ranked:!!r.ranked, moves:r.moves||[] }).catch(e=>console.error('[match]',e.message));
+    if (r.ranked && r.players.length === 2 && winnerIndex != null) { r.players.forEach((p,i)=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ rating: i===winnerIndex?25:-18 } }).catch(()=>{}); }); }
+    const xpGain = winnerIndex == null ? 8 : 20;
+    r.players.forEach(p=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ xp:xpGain, coins: winnerIndex==null?2:0 } }).catch(()=>{}); });
     toAll(r, 'game:over', r.result);
     push(r);
   }
@@ -382,7 +391,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     socket.data.code = r.code;
     if (r.status === 'playing') clearForfeit(r, i);
     if (r.status === 'waiting' && r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.state = ENG[r.game].createInitialState(r.maxPlayers);
+      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers);
       r.round = (r.round || 0) + 1;
       r.strikes = Array(r.maxPlayers).fill(0);
       armTurnTimer(r); armMatchTimer(r);
@@ -391,8 +400,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
     return true;
   }
 
-  function createRoom(socket, game, maxPlayers, vsBot) {
-    const r = { code: newCode(), game, maxPlayers, status: 'waiting', players: [], state: null, forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
+  function createRoom(socket, game, maxPlayers, vsBot, mode) {
+    const r = { code: newCode(), game, maxPlayers, status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
     rooms.set(r.code, r); attach(socket, r);
     if (vsBot) fillWithBots(r);
     return r;
@@ -415,10 +424,18 @@ module.exports = function initSockets(io, sessionMiddleware) {
       return i === -1 ? [null, -1] : [r, i];
     };
 
-    guard('room:create', 6, 60000, ({ game, maxPlayers, vsBot }, ack) => {
+    guard('room:spectate', 20, 60000, ({ code }, ack) => {
+      const r = isCode(code) ? rooms.get(code) : null;
+      if (!r) return ack({ok:false,error:'Room not found'});
+      if (socket.data.code) removeFromRoom(socket, true);
+      r.spectators = r.spectators || new Set(); r.spectators.add(socket.id); socket.data.spectating = r.code;
+      socket.emit('room:spectator', { room: view(r, null) }); push(r); ack({ok:true, room:view(r,null)});
+    });
+
+    guard('room:create', 6, 60000, ({ game, maxPlayers, vsBot, mode }, ack) => {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
-      const r = createRoom(socket, game, resolveMaxPlayers(game, maxPlayers), !!vsBot);
+      const r = createRoom(socket, game, resolveMaxPlayers(game, maxPlayers), !!vsBot, mode);
       ack({ ok: true, room: view(r, 0) });
     });
 
@@ -437,13 +454,13 @@ module.exports = function initSockets(io, sessionMiddleware) {
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
     });
 
-    guard('room:quick', 6, 60000, ({ game, maxPlayers }, ack) => {
+    guard('room:quick', 6, 60000, ({ game, maxPlayers, mode }, ack) => {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
       const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting'
         && r.players.length < mp && !r.players.some((p) => p.id === uid));
-      const r = open && attach(socket, open) ? open : createRoom(socket, game, mp);
+      const r = open && attach(socket, open) ? open : createRoom(socket, game, mp, false, mode);
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
     });
 
@@ -461,7 +478,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     guard('game:move', 120, 60000, ({ code, move }) => {
       const [r, i] = myRoom(code);
       if (!r || r.status !== 'playing' || r.players[i].out) return;
-      if (!r.players.every((p) => p.out || p.connected)) return;
+      if (!r.players[i].connected) return;
       const e = ENG[r.game];
       if (!e.isValidMove(r.state, i, move)) return socket.emit('error', { message: 'That move isn’t allowed.' });
       applyValidatedMove(r, i, move);
@@ -509,6 +526,6 @@ module.exports = function initSockets(io, sessionMiddleware) {
       pushAndBot(r);
     });
 
-    socket.on('disconnect', () => removeFromRoom(socket, false));
+    socket.on('disconnect', () => { const code=socket.data.spectating; const r=code&&rooms.get(code); if(r?.spectators) { r.spectators.delete(socket.id); push(r); } removeFromRoom(socket, false); });
   });
 };

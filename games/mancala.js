@@ -1,0 +1,5 @@
+function createInitialState(){return {pits:[[4,4,4,4,4,4],[4,4,4,4,4,4]],stores:[0,0],turn:0};}
+function isValidMove(s,i,m){return s.turn===i&&Number.isInteger(m?.pit)&&m.pit>=0&&m.pit<6&&s.pits[i][m.pit]>0}
+function applyMove(s,i,m){const pits=s.pits.map(r=>r.slice()),stores=s.stores.slice();let hand=pits[i][m.pit];pits[i][m.pit]=0;let side=i,pos=m.pit;while(hand--){pos++;if(pos===6){if(side===i){stores[i]++;if(!hand)return {pits,stores,turn:i};}side=1-side;pos=-1;}else pits[side][pos]++;}let turn=1-i;if(stores[i]>24||stores[0]+stores[1]===48)turn=i;return {pits,stores,turn};}
+function checkResult(s){if(s.stores[0]>24)return {status:'win',winnerIndex:0};if(s.stores[1]>24)return {status:'win',winnerIndex:1};if(s.pits[0].every(x=>!x)||s.pits[1].every(x=>!x)){const totals=s.stores.map((x,i)=>x+s.pits[i].reduce((a,b)=>a+b,0));return totals[0]===totals[1]?{status:'draw'}:{status:'win',winnerIndex:totals[0]>totals[1]?0:1};}return {status:'ongoing'};}
+function botMove(s,i){const a=s.pits[i].map((x,p)=>x?{pit:p}:null).filter(Boolean);return a[0]||null}module.exports={createInitialState,isValidMove,applyMove,checkResult,botMove};

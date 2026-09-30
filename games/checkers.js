@@ -1,0 +1,8 @@
+const SIZE=8;
+function createInitialState(){const board=Array.from({length:SIZE},()=>Array(SIZE).fill(null)); for(let r=0;r<3;r++)for(let c=0;c<SIZE;c++)if((r+c)%2)board[r][c]={player:1,king:false}; for(let r=5;r<8;r++)for(let c=0;c<SIZE;c++)if((r+c)%2)board[r][c]={player:0,king:false}; return {board,turn:0};}
+function inside(r,c){return r>=0&&r<SIZE&&c>=0&&c<SIZE}
+function isValidMove(st,i,m){if(st.turn!==i||!Number.isInteger(m?.from)||!Number.isInteger(m?.to))return false;const fr=Math.floor(m.from/8),fc=m.from%8,tr=Math.floor(m.to/8),tc=m.to%8,p=st.board[fr]?.[fc];if(!p||p.player!==i||st.board[tr]?.[tc])return false;const dr=tr-fr,dc=tc-fc;if(Math.abs(dc)!==Math.abs(dr))return false;const dir=i===0?-1:1;if(!p.king&&dr!==dir&&Math.abs(dr)!==2*dir)return false;if(Math.abs(dr)===2){const mr=fr+dr/2,mc=fc+dc/2;return !!st.board[mr][mc]&&st.board[mr][mc].player!==i}return Math.abs(dr)===1;}
+function applyMove(st,i,m){const b=st.board.map(r=>r.map(x=>x&&({...x})));const fr=Math.floor(m.from/8),fc=m.from%8,tr=Math.floor(m.to/8),tc=m.to%8;const p=b[fr][fc];b[fr][fc]=null;b[tr][tc]=p;if(Math.abs(tr-fr)===2)b[fr+(tr-fr)/2][fc+(tc-fc)/2]=null;if((i===0&&tr===0)||(i===1&&tr===7))p.king=true;return {board:b,turn:1-i};}
+function checkResult(st){let n=[0,0];st.board.flat().forEach(p=>{if(p)n[p.player]++});if(!n[0]||!n[1])return {status:'win',winnerIndex:n[0]?0:1};return {status:'ongoing'};}
+function botMove(st,i){for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=st.board[r][c];if(!p||p.player!==i)continue;for(const dr of [-2,-1,1,2])for(const dc of [-2,-1,1,2]){const m={from:r*8+c,to:(r+dr)*8+c+dc};if(isValidMove(st,i,m))return m;}}return null;}
+module.exports={createInitialState,isValidMove,applyMove,checkResult,botMove};
