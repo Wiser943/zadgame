@@ -237,7 +237,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     r.strikes[i] = (r.strikes[i] || 0) + 1;
     toAll(r, 'game:event', { type: 'timeout', player: i, strikes: r.strikes[i] });
     if (r.strikes[i] >= LUDO_STRIKE_LIMIT) {
-      if (!r.players[i].bot) User.updateOne({ _id: r.players[i].id }, { $inc: { coins: -LUDO_STRIKE_FORFEIT_COINS } }).catch((e) => console.error('[coins]', e.message));
+      if (!r.players[i].bot) User.updateOne({ _id: r.players[i].id }, [{ $set: { coins: { $max: [0, { $subtract: [{ $ifNull: ['$coins', 0] }, LUDO_STRIKE_FORFEIT_COINS] }] } } }]).catch((e) => console.error('[coins]', e.message));
       toAll(r, 'game:event', { type: 'strikeout', player: i, coinsLost: LUDO_STRIKE_FORFEIT_COINS });
       eliminatePlayer(r, i, 'strikes'); // re-arms the turn timer itself if the match continues
       return;
@@ -333,7 +333,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     r.players[i].out = true;
     clearForfeit(r, i);
     if (r.game === 'ludo' && reason === 'forfeit') {
-      if (!r.players[i].bot) User.updateOne({ _id: r.players[i].id }, { $inc: { coins: -LUDO_STRIKE_FORFEIT_COINS } }).catch((e) => console.error('[coins]', e.message));
+      if (!r.players[i].bot) User.updateOne({ _id: r.players[i].id }, [{ $set: { coins: { $max: [0, { $subtract: [{ $ifNull: ['$coins', 0] }, LUDO_STRIKE_FORFEIT_COINS] }] } } }]).catch((e) => console.error('[coins]', e.message));
     }
     const eng = ENG[r.game];
     if (eng.markOut) r.state = eng.markOut(r.state, i);

@@ -50,8 +50,9 @@ router.post('/users/:id/penalize', async (req, res, next) => {
     if (!coins && !suspendMinutes) return res.status(400).json({ message: 'Add a coin penalty or suspension duration.' });
     const update = { $inc: { coins: -coins, penaltyPoints: 1 }, $set: { adminNote: reason } };
     if (suspendMinutes) update.$set.suspendedUntil = new Date(Date.now() + suspendMinutes * 60000);
-    const user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).select('displayName coins suspendedUntil penaltyPoints adminNote');
+    let user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).select('displayName coins suspendedUntil penaltyPoints adminNote');
     if (!user) return res.status(404).json({ message: 'User not found.' });
+    if (user.coins < 0) { user.coins = 0; await user.save(); } // never leave a negative balance
     res.json({ user: { id: user.id, displayName: user.displayName, coins: user.coins, suspendedUntil: user.suspendedUntil, penaltyPoints: user.penaltyPoints, adminNote: user.adminNote } });
   } catch (err) { next(err); }
 });

@@ -24,4 +24,10 @@ module.exports = async function connectDB() {
   } catch (err) {
     console.error('[db] failed to sync User indexes — auth may misbehave until this is fixed:', err.message);
   }
+
+  // One-off cleanup: earlier penalties could push balances below zero.
+  try {
+    const fixed = await User.updateMany({ coins: { $lt: 0 } }, { $set: { coins: 0 } });
+    if (fixed.modifiedCount) console.log(`[db] reset ${fixed.modifiedCount} negative coin balance(s) to 0`);
+  } catch (err) { console.error('[db] negative-coin cleanup failed:', err.message); }
 };

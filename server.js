@@ -29,12 +29,16 @@ async function main() {
   const server = http.createServer(app);
   const io = new Server(server);
 
+  // Render (and most hosts) terminate HTTPS at a proxy. Without this, Express
+  // thinks requests are plain HTTP and refuses to set the Secure session cookie.
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); next(); });
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
 
   const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'dev_secret_change_me',
+    proxy: true, // honour X-Forwarded-Proto (also applies to the Socket.io handshake)
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
