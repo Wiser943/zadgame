@@ -44,6 +44,7 @@ window.GameHubRenderers = (() => {
     const count=game==='mancala'?12:game==='checkers'?24:16; for(let i=0;i<count;i++){const mesh=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.12,24),new THREE.MeshStandardMaterial({color:i%2?0xf7c52b:0x3d8de8}));mesh.position.set((i%8)-3.5,.25,Math.floor(i/8)-1.5);scene.add(mesh);} 
     let t=0;(function loop(){if(!host.isConnected)return;t+=.01;board.rotation.y=Math.sin(t)*.04;renderer.render(scene,camera);requestAnimationFrame(loop);})(); badge(root,'Three.js'); active=renderer;
   }
-  async function mount(root,game,state){ if(!root)return; if(active?.destroy)try{active.destroy(true)}catch{}; root.querySelectorAll('.render-layer,.renderer-badge').forEach(x=>x.remove()); const c=choice(game); if(c==='dom'){badge(root,'dom');return;} try{if(c==='phaser')phaser(root,game,state);else if(c==='pixi')await pixi(root,game,state);else await three(root,game,state);}catch(e){console.warn('[renderer]',e.message);root.querySelectorAll('.render-layer').forEach(x=>x.remove());badge(root,'dom fallback');} }
+  const ENHANCED=new Set(); // games with a real overlay here; Snakes & Ladders has its own renderer (js/snakes.js) that uses load('phaser')
+  async function mount(root,game,state){ if(!root||!ENHANCED.has(game))return; if(active?.destroy)try{active.destroy(true)}catch{}; root.querySelectorAll('.render-layer,.renderer-badge').forEach(x=>x.remove()); const c=choice(game); if(c==='dom'){badge(root,'dom');return;} try{if(c==='phaser')phaser(root,game,state);else if(c==='pixi')await pixi(root,game,state);else await three(root,game,state);}catch(e){console.warn('[renderer]',e.message);root.querySelectorAll('.render-layer').forEach(x=>x.remove());badge(root,'dom fallback');} }
   return {mount,choice,canWebGL,load};
 })();
