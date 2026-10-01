@@ -356,6 +356,16 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (r.status === 'waiting' && !r.players.some((p) => p.connected)) rooms.delete(r.code);
     }, WAITING_ROOM_RETENTION_MS);
   }
+  // Spectators aren't seated, so removeFromRoom() never sees them. Without this
+  // they stay subscribed after leaving and keep receiving the old room's
+  // updates (which then overwrite whatever room they open next).
+  function stopSpectating(socket) {
+    const code = socket.data.spectating;
+    socket.data.spectating = null;
+    const r = code && rooms.get(code);
+    if (r && r.spectators && r.spectators.delete(socket.id)) push(r);
+  }
+
   function removeFromRoom(socket, explicit) {
     const r = rooms.get(socket.data.code);
     socket.data.code = null;
@@ -378,6 +388,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   }
 
   function attach(socket, r) {
+    stopSpectating(socket);
     const u = socket.request.user, uid = String(u._id || u.id);
     if (socket.data.code && socket.data.code !== r.code) removeFromRoom(socket, true);
     clearTimeout(r.waitingCleanupTimer); r.waitingCleanupTimer = null;
@@ -428,6 +439,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       const r = isCode(code) ? rooms.get(code) : null;
       if (!r) return ack({ok:false,error:'Room not found'});
       if (socket.data.code) removeFromRoom(socket, true);
+      stopSpectating(socket);
       r.spectators = r.spectators || new Set(); r.spectators.add(socket.id); socket.data.spectating = r.code;
       socket.emit('room:spectator', { room: view(r, null) }); push(r); ack({ok:true, room:view(r,null)});
     });
@@ -468,12 +480,19 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
-      const list = [...rooms.values()].filter((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting' && r.players.length < mp)
-        .slice(0, 20).map((r) => ({ code: r.code, maxPlayers: r.maxPlayers, players: r.players.map((p) => ({ name: p.name })) }));
+      // Open seats first (joinable), then live matches (watch only).
+      const same = [...rooms.values()].filter((r) => r.game === game && r.maxPlayers === mp);
+      const open = same.filter((r) => r.status === 'waiting' && r.players.length < mp);
+      const live = same.filter((r) => r.status === 'playing' && r.players.some((p) => !p.bot && p.connected));
+      const list = [...open, ...live].slice(0, 20).map((r) => ({
+        code: r.code, maxPlayers: r.maxPlayers, status: r.status === 'playing' ? 'playing' : 'waiting',
+        spectators: r.spectators ? r.spectators.size : 0,
+        players: r.players.map((p) => ({ name: p.name }))
+      }));
       ack({ ok: true, rooms: list });
     });
 
-    guard('room:leave', 10, 60000, () => removeFromRoom(socket, true));
+    guard('room:leave', 10, 60000, () => { stopSpectating(socket); removeFromRoom(socket, true); });
 
     guard('game:move', 120, 60000, ({ code, move }) => {
       const [r, i] = myRoom(code);

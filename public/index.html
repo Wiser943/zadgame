@@ -2720,7 +2720,8 @@
       list: 'rooms:list', // emit({game}, ack)      ack -> {ok, rooms:[{code, players:[{name}]}]}
       emote: 'chat:emote', // emit({code, i}) / on({from, name, i})
       rematch: 'game:rematch', // emit({code})
-      addBots: 'room:addBots' // emit({code}, ack) — fills empty seats in a waiting room with bots
+      addBots: 'room:addBots', // emit({code}, ack) — fills empty seats in a waiting room with bots
+      spectate: 'room:spectate' // emit({code}, ack) — watch a room without taking a seat
     };
     // What you send for a move, per game (adjust to match games/<key>.js):
     const MOVE = {
@@ -2770,14 +2771,16 @@
     const app = $('#app');
     function routePath() { return location.pathname.replace(/\/$/, '') || '/'; }
     function goBackToLobby() {
-      if (history.state?.page === 'game' && history.length > 1) history.back();
+      if ((history.state?.page === 'game' || history.state?.page === 'spectator') && history.length > 1) history.back();
       else lobbyView(false);
     }
     window.addEventListener('popstate', () => {
       const path = routePath();
       if (path === '/settings') return settingsView(false);
       if (path === '/leaderboard') return leaderboardView(new URLSearchParams(location.search).get('by') || 'coins', false);
-      const code = new URLSearchParams(location.search).get('code');
+      const qs = new URLSearchParams(location.search);
+      if (qs.get('spectate')) return spectateRoom(qs.get('spectate'), false);
+      const code = qs.get('code');
       if (code) return joinRoom(code, false);
       lobbyView(false);
     });
@@ -3182,8 +3185,10 @@
         me = me.user || me; } catch { return loginView(); }
       if (!me || (!me._id && !me.id && !me.displayName && !me.name)) return loginView();
       connect();
-      const code = new URLSearchParams(location.search).get('code');
-      if (code) joinRoom(code, false); else { history.replaceState({ page: 'lobby' }, '', '/lobby'); lobbyView(false); }
+      const qs = new URLSearchParams(location.search);
+      const code = qs.get('code'), watch = qs.get('spectate');
+      if (watch) spectateRoom(watch, false);
+      else if (code) joinRoom(code, false); else { history.replaceState({ page: 'lobby' }, '', '/lobby'); lobbyView(false); }
     }
     
     function loginView() {
@@ -3242,7 +3247,7 @@
       socket.on('connect_error', () => toast('Connection problem. Retrying…'));
       socket.on(EV.error, e => toast(e?.message || 'Something went wrong'));
       socket.on('room:spectator', e => { if(e?.room){ room=e.room; gstate=room.state||null; result=room.status==='over'?room.result:null; gameView(); } });
-      socket.on('connect', () => { if (room && room.status !== 'over') joinRoom(room.code, false); });
+      socket.on('connect', () => { if (room && room.status !== 'over') { if (room.you == null) spectateRoom(room.code, false); else joinRoom(room.code, false); } });
       socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
       socket.on(EV.room, r => {
         const previousStatus = room?.status;
@@ -3782,8 +3787,8 @@
         $('#rooms').outerHTML = `<div id="rooms" class="empty">Loading…</div>`;
         try {
           const rs = await new Promise((ok, no) => socket.emit(EV.list, { game: key, maxPlayers: n }, r => r && r.ok ? ok(r.rooms) : no()));
-          $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${r.players.map(nameOf).join(', ')} · ${r.players.length}/${r.maxPlayers||2} · ${esc(r.code)}</span><button class="btn" data-c="${esc(r.code)}">Join</button><button class="btn ghost" data-s="${esc(r.code)}">Watch</button></div>`).join('')}</div>` :
-            `<div id="rooms" class="empty">No one is waiting. Create a room and share the code.</div>`;
+          $('#rooms').outerHTML = rs.length ? `<div id="rooms">${rs.map(r => `<div class="room"><span>${r.status === 'playing' ? '🔴 Live · ' : ''}${r.players.map(nameOf).join(' vs ')} · ${r.players.length}/${r.maxPlayers||2} · ${esc(r.code)}</span>${r.status === 'playing' ? '' : `<button class="btn" data-c="${esc(r.code)}">Join</button>`}<button class="btn ghost" data-s="${esc(r.code)}">Watch</button></div>`).join('')}</div>` :
+            `<div id="rooms" class="empty">No open or live rooms right now. Create a room and share the code.</div>`;
           bg.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { bg.remove(); joinRoom(b.dataset.c) });
           bg.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { bg.remove(); spectateRoom(b.dataset.s) });
         } catch { $('#rooms').textContent = 'Could not load rooms.' }
@@ -3995,6 +4000,7 @@
       const mine = room.you ?? players.findIndex(p => [p?._id, p?.id, p?.userId].some(x => x && x === (me._id || me.id)));
       const turn = gstate?.turn ?? gstate?.currentPlayer;
       const myTurn = mine >= 0 && turn === mine;
+      const spectator = mine < 0; // watching only (not seated in this room)
       const waiting = players.length < maxPlayers || room.status === 'waiting';
       const g = room.game;
       // Medium buzz once, the moment it becomes my turn to roll (again after a 6 too).
