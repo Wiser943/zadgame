@@ -2547,7 +2547,7 @@
     #hlCinema.out { animation:hlFadeOut .4s ease both; }
     @keyframes hlFadeIn { from{opacity:0} to{opacity:1} }
     @keyframes hlFadeOut { from{opacity:1} to{opacity:0} }
-    #hlCinema .hl-bg { position:absolute; inset:-10%; background:radial-gradient(circle at 50% 45%, rgba(247,197,43,.22), transparent 55%), repeating-conic-gradient(from 0deg at 50% 45%, #1a0508 0 6deg, #2a0a10 6deg 12deg); animation:hlSpin 24s linear infinite; }
+    #hlCinema .hl-bg { position:absolute; left:50%; top:50%; width:240vmax; height:240vmax; margin:-120vmax 0 0 -120vmax; background:radial-gradient(circle at 50% 50%, rgba(247,197,43,.22), transparent 14%), repeating-conic-gradient(from 0deg at 50% 50%, #1a0508 0 6deg, #2a0a10 6deg 12deg); animation:hlSpin 24s linear infinite; }
     @keyframes hlSpin { to { transform:rotate(360deg) } }
     #hlCinema .hl-vig { position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.8) 100%); pointer-events:none; z-index:3; }
     #hlCinema .hl-scan { position:absolute; inset:0; background:repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px); pointer-events:none; z-index:3; mix-blend-mode:overlay; }
@@ -2559,10 +2559,10 @@
     @keyframes hlBlink { 50% { opacity:.2 } }
     #hlCinema .hl-ttl { flex:1; text-align:center; color:#f7c52b; }
     #hlCinema .hl-tc { font-variant-numeric:tabular-nums; opacity:.85; }
-    #hlCinema .hl-stage { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:2; padding:16% 14px; }
-    #hlCinema .hl-board { width:min(92vw,520px); max-height:100%; pointer-events:none; filter:drop-shadow(0 18px 40px rgba(0,0,0,.7)); transform-origin:50% 55%; }
+    #hlCinema .hl-stage { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:2; padding:calc(13% + 30px) 14px calc(13% + 140px); box-sizing:border-box; }
+    #hlCinema .hl-board { width:min(86vw,480px); max-height:100%; display:flex; justify-content:center; pointer-events:none; filter:drop-shadow(0 18px 40px rgba(0,0,0,.7)); transform-origin:50% 55%; }
     #hlCinema .hl-board.go { animation:hlPush 3s cubic-bezier(.2,.6,.3,1) both, hlSlam .35s cubic-bezier(.2,.9,.3,1.2) both; }
-    @keyframes hlPush { from{transform:scale(1) rotate(-.6deg)} to{transform:scale(1.1) rotate(.6deg)} }
+    @keyframes hlPush { from{transform:scale(1) rotate(-.4deg)} to{transform:scale(1.04) rotate(.4deg)} }
     @keyframes hlSlam { from{opacity:0; filter:blur(8px) brightness(2.2)} to{opacity:1; filter:none} }
     #hlCinema .hl-flash { position:absolute; inset:0; background:#fff; opacity:0; z-index:7; pointer-events:none; }
     #hlCinema .hl-flash.go { animation:hlFlash .45s ease-out both; }
@@ -2590,6 +2590,7 @@
     #hlCinema .hl-card p { margin:0; font-size:15px; font-weight:700; letter-spacing:2px; opacity:.9; animation:hlSlideIn .6s .15s both; }
     @keyframes hlBoom { from{opacity:0; transform:scale(2.4); filter:blur(10px)} to{opacity:1; transform:none; filter:none} }
     .reduced-motion #hlCinema .hl-bg, .reduced-motion #hlCinema .hl-board.go { animation:none; }
+    #hlCinema .wcard, #hlCinema .wcard:disabled, #hlCinema .wmarket:disabled { opacity:1 !important; filter:none !important; }
     .btn.hl-watch { margin:0 8px 10px 0; background:#f7c52b; color:#1a0508; font-weight:800; }
 
     /* ==== smooth animations & transitions, app-wide ==== */
@@ -4628,9 +4629,18 @@
       el.classList.add('out'); setTimeout(() => el.remove(), 380);
     }
     let ctxWinner = null;
+    function hlPublicView(game, st, seat) {
+      st = st || {};
+      if ((game === 'whot' || game === 'joker') && !st.topCard && Array.isArray(st.pile) && Array.isArray(st.hands)) {
+        return { playerCount: st.playerCount, turn: st.turn, active: st.active, topCard: st.pile[st.pile.length - 1],
+          calledShape: st.calledShape, calledSuit: st.calledSuit, pendingPick: st.pendingPick, pendingType: st.pendingType,
+          marketCount: (st.market || []).length, handCounts: st.hands.map(h => h.length), hand: (st.hands[seat] || []).slice(), lastAction: st.lastAction };
+      }
+      return st;
+    }
     function boardSnapshot(game, state, players, mine, maxPlayers) {
       const pg = gstate;
-      try { gstate = state || {}; board.readonly = true; return board(game, false, players, game === 'words' ? (ctxWinner ?? mine) : mine, maxPlayers); }
+      try { gstate = hlPublicView(game, state, ctxWinner ?? mine); board.readonly = true; return board(game, false, players, ctxWinner ?? mine, maxPlayers); }
       catch (e) { return ''; } finally { gstate = pg; board.readonly = false; }
     }
     function openHighlightCinema(highlights, winnerIndex, ctx) {

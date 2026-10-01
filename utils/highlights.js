@@ -9,12 +9,18 @@ function moveScore(game, entry) {
   if (game === 'mancala') return 2;
   return 1;
 }
-function selectHighlights(game, moves, winnerIndex) {
+function selectHighlights(game, moves, winnerIndex, publicState) {
   const source = (moves || []).filter(x => winnerIndex == null || x.player === winnerIndex);
   return source.map(x => ({ ...x, score: moveScore(game, x) }))
     .sort((a,b) => b.score - a.score || a.at - b.at)
     .slice(0, 6)
     .sort((a,b) => a.at - b.at)
-    .map((x,i) => ({ index:i+1, player:x.player, move:x.move, state:x.state, at:x.at, score:x.score }));
+    .map((x,i) => {
+      // Recorded states are raw engine states. Clients render the per-player public view
+      // (e.g. Whot needs topCard/hand), so convert to the winner's point of view here.
+      let state = x.state;
+      if (typeof publicState === 'function' && winnerIndex != null) { try { state = publicState(x.state, winnerIndex); } catch { state = x.state; } }
+      return { index:i+1, player:x.player, move:x.move, state, at:x.at, score:x.score };
+    });
 }
 module.exports = { selectHighlights };

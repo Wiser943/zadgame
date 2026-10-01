@@ -299,7 +299,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     clearTimeout(r.matchTimer); r.matchTimer = null; r.matchDeadline = null;
     clearTimeout(r.botTimer); r.botTimer = null;
     r.status = 'over'; r.rematch = new Set();
-    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights: selectHighlights(r.game, r.moves, winnerIndex) };
+    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights: selectHighlights(r.game, r.moves, winnerIndex, ENG[r.game].publicState) };
     r.players.forEach((p, i) => {
       if (p.bot) return; // bots have no User document — nothing to update
       const won = winnerIndex === i, draw = winnerIndex == null;
