@@ -16,6 +16,17 @@ const UserSchema = new mongoose.Schema({
   achievements: { type: [String], default: [] },
   lastDailyClaim: { type: Date, default: null },
   cosmetics: { type: [String], default: ['default'] },
+  equipped: {
+    roomBg: { type: String, default: 'classic' },
+    boardSkin: { type: String, default: 'classic' },
+    tokenSkin: { type: String, default: 'classic' }
+  },
+  bestMoment: {
+    matchId: { type: String },
+    game: { type: String },
+    score: { type: Number },
+    at: { type: Date }
+  },
   friends: { type: [String], default: [] },
   friendRequests: { type: [String], default: [] },
   blocked: { type: [String], default: [] },

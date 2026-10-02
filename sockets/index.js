@@ -8,6 +8,7 @@ const games = require('../games');
 const { effectiveGame } = require('../config/gameSettings');
 const User = require('../models/User');
 const Match = require('../models/Match');
+const mongoose = require('mongoose');
 const { selectHighlights } = require('../utils/highlights');
 
 const ENG = games.ENGINES || games;
@@ -112,7 +113,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       });
     }
     if (r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers);
+      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers); r.moves = [];
       r.round = (r.round || 0) + 1;
       r.strikes = Array(r.maxPlayers).fill(0);
       armTurnTimer(r); armMatchTimer(r);
@@ -128,8 +129,10 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const whotBefore = r.game === 'whot' ? r.state : null;
     const whotCard = whotBefore && move.type === 'play' ? whotBefore.hands[i]?.[move.index] : null;
     const whotPending = whotBefore?.pendingPick || 0;
+    r.moves = r.moves || [];
+    const before = r.moves.length ? undefined : JSON.parse(JSON.stringify(r.state)); // first move: remember the opening position so it can be animated too
     r.state = e.applyMove(r.state, i, move);
-    r.moves = r.moves || []; r.moves.push({ player:i, move, at:Date.now(), state: JSON.parse(JSON.stringify(r.state)) });
+    r.moves.push({ player:i, move, at:Date.now(), state: JSON.parse(JSON.stringify(r.state)), ...(before ? { before } : {}) });
     if (r.game === 'whot') {
       if (move.type === 'market') {
         toAll(r, 'game:event', { type: 'whotMarket', player: i, count: whotPending || 1, automatic: !!r.players[i]?.bot });
@@ -299,7 +302,10 @@ module.exports = function initSockets(io, sessionMiddleware) {
     clearTimeout(r.matchTimer); r.matchTimer = null; r.matchDeadline = null;
     clearTimeout(r.botTimer); r.botTimer = null;
     r.status = 'over'; r.rematch = new Set();
-    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights: selectHighlights(r.game, r.moves, winnerIndex, ENG[r.game].publicState) };
+    const matchId = new mongoose.Types.ObjectId();
+    const highlights = selectHighlights(r.game, r.moves, winnerIndex, ENG[r.game].publicState);
+    const momentScore = highlights.reduce((a, h) => a + (h.score || 0) * 100, 0);
+    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights, matchId: String(matchId) };
     r.players.forEach((p, i) => {
       if (p.bot) return; // bots have no User document — nothing to update
       const won = winnerIndex === i, draw = winnerIndex == null;
@@ -308,7 +314,13 @@ module.exports = function initSockets(io, sessionMiddleware) {
         'stats.losses': !won && !draw ? 1 : 0, 'stats.draws': draw ? 1 : 0
       } }).catch((e) => console.error('[stats]', e.message));
     });
-    Match.create({ game:r.game, roomCode:r.code, players:r.players.map(p=>({userId:p.id,name:p.name,bot:!!p.bot})), winnerIndex, result:r.result.status, reason, durationMs:r.startedAt?Date.now()-r.startedAt:undefined, ranked:!!r.ranked, moves:r.moves||[] }).catch(e=>console.error('[match]',e.message));
+    Match.create({ _id:matchId, highlights: winnerIndex == null ? [] : highlights, momentScore, game:r.game, roomCode:r.code, players:r.players.map(p=>({userId:p.id,name:p.name,bot:!!p.bot})), winnerIndex, result:r.result.status, reason, durationMs:r.startedAt?Date.now()-r.startedAt:undefined, ranked:!!r.ranked, moves:r.moves||[] }).catch(e=>console.error('[match]',e.message));
+    const winner = winnerIndex != null ? r.players[winnerIndex] : null;
+    if (winner && !winner.bot && momentScore > 0) {
+      // Keep the player's single best highlight reel (highest total clip score) for their profile badge.
+      User.updateOne({ _id: winner.id, 'bestMoment.score': { $not: { $gte: momentScore } } },
+        { $set: { bestMoment: { matchId: String(matchId), game: r.game, score: momentScore, at: new Date() } } }).catch(e => console.error('[bestMoment]', e.message));
+    }
     if (r.ranked && r.players.length === 2 && winnerIndex != null) { r.players.forEach((p,i)=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ rating: i===winnerIndex?25:-18 } }).catch(()=>{}); }); }
     const xpGain = winnerIndex == null ? 8 : 20;
     r.players.forEach(p=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ xp:xpGain, coins: winnerIndex==null?2:0 } }).catch(()=>{}); });
@@ -402,7 +414,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     socket.data.code = r.code;
     if (r.status === 'playing') clearForfeit(r, i);
     if (r.status === 'waiting' && r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers);
+      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers); r.moves = [];
       r.round = (r.round || 0) + 1;
       r.strikes = Array(r.maxPlayers).fill(0);
       armTurnTimer(r); armMatchTimer(r);
@@ -499,7 +511,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!r || r.status !== 'playing' || r.players[i].out) return;
       if (!r.players[i].connected) return;
       const e = ENG[r.game];
-      if (!e.isValidMove(r.state, i, move)) return socket.emit('error', { message: 'That move isn’t allowed.' });
+      if (!e.isValidMove(r.state, i, move)) return socket.emit('error', { message: r.game === 'words' ? 'Not a valid word for your rack — try another.' : 'That move isn’t allowed.' });
       applyValidatedMove(r, i, move);
     });
 
@@ -537,7 +549,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (r.rematch.size === r.maxPlayers) {
         r.rematch = new Set(); r.result = null; r.status = 'playing';
         r.players.forEach((p) => { p.out = false; });
-        r.state = ENG[r.game].createInitialState(r.maxPlayers);
+        r.state = ENG[r.game].createInitialState(r.maxPlayers); r.moves = [];
         r.round = (r.round || 0) + 1;
         r.strikes = Array(r.maxPlayers).fill(0);
         armTurnTimer(r); armMatchTimer(r);

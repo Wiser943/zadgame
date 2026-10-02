@@ -8,6 +8,8 @@ const MatchSchema = new mongoose.Schema({
   reason: String,
   ranked: { type: Boolean, default: false },
   moves: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  highlights: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  momentScore: { type: Number, default: 0 },
   durationMs: Number,
   createdAt: { type: Date, default: Date.now, index: true }
 });
