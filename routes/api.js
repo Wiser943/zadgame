@@ -16,8 +16,34 @@ const MAX_AVATAR_BYTES = 900 * 1024; // ~900KB of base64 (~650KB image) — plen
 
 router.post('/daily-claim', ensureAuth, async (req,res,next)=>{ try { const u=await User.findById(req.user.id); const now=new Date(); if(u.lastDailyClaim && now-u.lastDailyClaim < 24*60*60*1000) return res.status(409).json({message:'Daily reward already claimed.', nextAt:new Date(u.lastDailyClaim.getTime()+24*60*60*1000)}); u.lastDailyClaim=now; u.coins+=25; u.xp=(u.xp||0)+10; u.level=Math.floor(u.xp/100)+1; await u.save(); res.json({coins:u.coins,xp:u.xp,level:u.level,reward:25}); } catch(e){next(e);} });
 router.get('/matches/:id/replay', ensureAuth, async (req,res,next)=>{try{const row=await Match.findOne({_id:req.params.id,'players.userId':String(req.user.id)}).select('game players result winnerIndex moves createdAt');if(!row)return res.status(404).json({message:'Replay not found.'});res.json({replay:row});}catch(e){next(e);}});
-router.get('/matches', ensureAuth, async (req,res,next)=>{ try { const rows=await Match.find({'players.userId':String(req.user.id)}).sort({createdAt:-1}).limit(30).lean(); res.json({matches:rows}); } catch(e){next(e);} });
+router.get('/matches', ensureAuth, async (req,res,next)=>{ try { const rows=await Match.find({'players.userId':String(req.user.id)}).sort({createdAt:-1}).limit(30).select('game players winnerIndex result reason ranked durationMs createdAt').lean(); res.json({matches:rows}); } catch(e){next(e);} });
 
+
+// ---------- Phase 2 rewards: COMING SOON (pre-registration only, no money movement) ----------
+const REWARDS_LAUNCH_LABEL = 'Late December';
+const rewardsStatus = (u) => {
+  const r = u.rewardsInterest || {};
+  return { launch: REWARDS_LAUNCH_LABEL, live: false, registered: !!r.registered, legalName: r.legalName || '', country: r.country || '', method: r.method || '', notify: r.notify !== false };
+};
+router.get('/rewards/status', ensureAuth, (req, res) => res.json(rewardsStatus(req.user)));
+router.post('/rewards/register', ensureAuth, async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const legalName = String(b.legalName || '').trim().replace(/\s+/g, ' ');
+    const country = String(b.country || '').trim();
+    const method = String(b.method || '');
+    if (legalName.length < 2 || legalName.length > 80) return res.status(400).json({ message: 'Enter your full name (2-80 characters).' });
+    if (!/^[A-Za-z]{2}$/.test(country)) return res.status(400).json({ message: 'Choose your country.' });
+    if (!['bank', 'mobile_money', 'crypto'].includes(method)) return res.status(400).json({ message: 'Choose a payout method.' });
+    if (b.over18 !== true) return res.status(400).json({ message: 'You must be 18 or older to register.' });
+    if (b.termsAccepted !== true) return res.status(400).json({ message: 'Please accept the terms to continue.' });
+    const u = await User.findByIdAndUpdate(req.user.id, { $set: { rewardsInterest: {
+      registered: true, legalName, country: country.toUpperCase(), over18: true, method,
+      notify: b.notify !== false, termsAccepted: true, registeredAt: new Date()
+    } } }, { new: true });
+    res.json(rewardsStatus(u));
+  } catch (e) { next(e); }
+});
 
 // ---------- coin shop: room backgrounds, board skins, token skins ----------
 const shopView = (u) => ({
@@ -93,9 +119,9 @@ router.post('/me/profile', ensureAuth, async (req, res) => {
 // avatar in a room so you can see their photo, name and win record.
 router.get('/users/:id', ensureAuth, async (req, res) => {
   try {
-    const u = await User.findById(req.params.id).select('displayName avatar stats createdAt bestMoment');
+    const u = await User.findById(req.params.id).select('displayName avatar stats createdAt bestMoment level bestStreak');
     if (!u) return res.status(404).json({ message: 'Player not found.' });
-    res.json({ user: { id: u.id, displayName: u.displayName, avatar: u.avatar, stats: u.stats, since: u.createdAt, bestMoment: u.bestMoment?.matchId ? u.bestMoment : null } });
+    res.json({ user: { id: u.id, displayName: u.displayName, avatar: u.avatar, stats: u.stats, level: u.level || 1, bestStreak: u.bestStreak || 0, since: u.createdAt, bestMoment: u.bestMoment?.matchId ? u.bestMoment : null } });
   } catch { res.status(404).json({ message: 'Player not found.' }); }
 });
 

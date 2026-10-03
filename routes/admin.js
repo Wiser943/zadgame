@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const registry = require('../games/registry');
 const ensureAdmin = require('../middleware/admin');
+const { Report } = require('../models/Social');
 const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/gameSettings');
 const router = express.Router();
 const ADMIN_PHONE = String(process.env.ADMIN_PHONE || '');
@@ -54,6 +55,39 @@ router.post('/users/:id/penalize', async (req, res, next) => {
     if (!user) return res.status(404).json({ message: 'User not found.' });
     if (user.coins < 0) { user.coins = 0; await user.save(); } // never leave a negative balance
     res.json({ user: { id: user.id, displayName: user.displayName, coins: user.coins, suspendedUntil: user.suspendedUntil, penaltyPoints: user.penaltyPoints, adminNote: user.adminNote } });
+  } catch (err) { next(err); }
+});
+
+// ---------- report inbox ----------
+const REPORT_STATUSES = ['open', 'resolved', 'dismissed', 'warned', 'suspended'];
+router.get('/reports', async (req, res, next) => {
+  try {
+    const status = String(req.query.status || 'open');
+    const filter = status === 'all' ? {} : { status: REPORT_STATUSES.includes(status) ? status : 'open' };
+    const rows = await Report.find(filter).sort({ createdAt: -1 }).limit(100).lean();
+    const ids = [...new Set(rows.flatMap(r => [r.reporter, r.target]))].filter(x => /^[a-f\d]{24}$/i.test(x));
+    const users = await User.find({ _id: { $in: ids } }).select('displayName penaltyPoints suspendedUntil').lean();
+    const name = new Map(users.map(u => [String(u._id), u]));
+    res.json({ reports: rows.map(r => ({ id: String(r._id), status: r.status, reason: r.reason, roomCode: r.roomCode, createdAt: r.createdAt,
+      reporter: { id: r.reporter, name: name.get(r.reporter)?.displayName || 'Unknown' },
+      target: { id: r.target, name: name.get(r.target)?.displayName || 'Unknown', penaltyPoints: name.get(r.target)?.penaltyPoints || 0 },
+      note: r.note || '', resolvedAt: r.resolvedAt || null })) });
+  } catch (err) { next(err); }
+});
+router.post('/reports/:id/action', async (req, res, next) => {
+  try {
+    const action = String(req.body?.action || '');
+    const note = String(req.body?.note || '').trim().slice(0, 240);
+    if (!['dismiss', 'resolve', 'warn', 'suspend'].includes(action)) return res.status(400).json({ message: 'Unknown action.' });
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'Report not found.' });
+    if (action === 'warn') await User.updateOne({ _id: report.target }, { $inc: { penaltyPoints: 1 }, $set: { adminNote: note || 'Warned after a report.' } });
+    if (action === 'suspend') await User.updateOne({ _id: report.target }, { $inc: { penaltyPoints: 1 }, $set: { suspendedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000), adminNote: note || 'Suspended for 24h after a report.' } });
+    report.status = { dismiss: 'dismissed', resolve: 'resolved', warn: 'warned', suspend: 'suspended' }[action];
+    report.note = note; report.resolvedAt = new Date(); report.action = action;
+    await report.save();
+    console.log('[moderation]', JSON.stringify({ report: String(report._id), action, target: report.target, at: report.resolvedAt })); // audit trail in logs
+    res.json({ ok: true, status: report.status });
   } catch (err) { next(err); }
 });
 module.exports = router;

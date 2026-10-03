@@ -10,6 +10,10 @@ const User = require('../models/User');
 const Match = require('../models/Match');
 const mongoose = require('mongoose');
 const { selectHighlights } = require('../utils/highlights');
+const presence = require('../utils/presence');
+const ChallengeProgress = require('../models/Challenge');
+const challenges = require('../utils/challenges');
+const { Friendship } = require('../models/Social');
 
 const ENG = games.ENGINES || games;
 const FORFEIT_MS = 75 * 1000;
@@ -324,6 +328,25 @@ module.exports = function initSockets(io, sessionMiddleware) {
     if (r.ranked && r.players.length === 2 && winnerIndex != null) { r.players.forEach((p,i)=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ rating: i===winnerIndex?25:-18 } }).catch(()=>{}); }); }
     const xpGain = winnerIndex == null ? 8 : 20;
     r.players.forEach(p=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ xp:xpGain, coins: winnerIndex==null?2:0 } }).catch(()=>{}); });
+    // Win streaks (anti-exploit: only matches with 2+ human players count)
+    if (r.players.filter(p => !p.bot).length >= 2) {
+      r.players.forEach((p, i) => {
+        if (p.bot || winnerIndex == null) return;
+        const upd = winnerIndex === i
+          ? [{ $set: { winStreak: { $add: [{ $ifNull: ['$winStreak', 0] }, 1] } } }, { $set: { bestStreak: { $max: [{ $ifNull: ['$bestStreak', 0] }, '$winStreak'] } } }]
+          : { $set: { winStreak: 0 } };
+        User.updateOne({ _id: p.id }, upd).catch(e => console.error('[streak]', e.message));
+      });
+    }
+    // Persistent daily challenge progress (server-side only, per user per UTC day)
+    try {
+      const day = challenges.today();
+      challenges.matchDeltas(r.players, winnerIndex).forEach(d => {
+        ChallengeProgress.updateOne({ userId: d.userId, day },
+          { $inc: { 'progress.play': d.play, 'progress.win': d.win } }, { upsert: true })
+          .catch(e => console.error('[challenge]', e.message));
+      });
+    } catch (e) { console.error('[challenge]', e.message); }
     toAll(r, 'game:over', r.result);
     push(r);
   }
@@ -433,6 +456,9 @@ module.exports = function initSockets(io, sessionMiddleware) {
   io.on('connection', (socket) => {
     const uid = String(socket.request.user._id || socket.request.user.id);
     socket.data.code = null;
+    presence.connect(uid);
+    socket.join('user:' + uid);
+    socket.on('disconnect', () => presence.disconnect(uid));
 
     // guard = validate shape + rate limit + never crash the process
     const guard = (ev, max, ms, fn) => socket.on(ev, (payload, ack) => {
@@ -557,6 +583,19 @@ module.exports = function initSockets(io, sessionMiddleware) {
       pushAndBot(r);
     });
 
+
+    // Invite an accepted friend into the room you are in
+    guard('invite:send', 6, 30000, async (p, ack) => { try {
+      const to = String(p.to || ''), code = String(p.code || '').toUpperCase();
+      const r = rooms.get(code);
+      if (!r || !r.players.some(x => String(x.id) === uid)) return ack({ ok: false, error: 'You are not in that room.' });
+      if (r.status !== 'waiting') return ack({ ok: false, error: 'That match already started.' });
+      const ok = await Friendship.exists({ status: 'accepted', $or: [{ requester: uid, recipient: to }, { requester: to, recipient: uid }] });
+      if (!ok) return ack({ ok: false, error: 'You can only invite friends.' });
+      if (!presence.isOnline(to)) return ack({ ok: false, error: 'Your friend is offline.' });
+      io.to('user:' + to).emit('invite:received', { from: { id: uid, name: socket.request.user.displayName || 'A friend' }, code, game: r.game });
+      ack({ ok: true });
+    } catch (e) { console.error('[invite]', e.message); ack({ ok: false, error: 'Server error' }); } });
     socket.on('disconnect', () => { const code=socket.data.spectating; const r=code&&rooms.get(code); if(r?.spectators) { r.spectators.delete(socket.id); push(r); } removeFromRoom(socket, false); });
   });
 };

@@ -31,9 +31,22 @@ const UserSchema = new mongoose.Schema({
   friends: { type: [String], default: [] },
   friendRequests: { type: [String], default: [] },
   blocked: { type: [String], default: [] },
+  winStreak: { type: Number, default: 0 },
+  bestStreak: { type: Number, default: 0 },
   rating: { type: Number, default: 1000 },
   gameRatings: { type: Map, of: Number, default: {} },
   adminNote: { type: String, default: '' },
+  // Phase 2 pre-registration. Coming-soon only: no balances, no payouts, and NO bank/wallet/ID numbers are stored here.
+  rewardsInterest: {
+    registered: { type: Boolean, default: false },
+    legalName: { type: String, default: '' },
+    country: { type: String, default: '' },
+    over18: { type: Boolean, default: false },
+    method: { type: String, enum: ['', 'bank', 'mobile_money', 'crypto'], default: '' },
+    notify: { type: Boolean, default: true },
+    termsAccepted: { type: Boolean, default: false },
+    registeredAt: { type: Date, default: null }
+  },
   stats: {
     gamesPlayed: { type: Number, default: 0 },
     wins: { type: Number, default: 0 },
