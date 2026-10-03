@@ -21,17 +21,22 @@ const CATALOG = [
   { id: 'glass',    cat: 'tokenSkin', name: 'Glass',        price: 50,  colors: ['#8fd3ff', '#ffffff'] },
   { id: 'gem',      cat: 'tokenSkin', name: 'Gem',          price: 80,  colors: ['#ff4b8b', '#3dd6c6'] },
   { id: 'neon',     cat: 'tokenSkin', name: 'Neon Ring',    price: 100, colors: ['#39ff88', '#ff3df2'] },
-  { id: 'gold',     cat: 'tokenSkin', name: 'Gold Metal',   price: 150, colors: ['#ffd84a', '#b8860b'] }
+  { id: 'gold',     cat: 'tokenSkin', name: 'Gold Metal',   price: 150, colors: ['#ffd84a', '#b8860b'] },
+  // ---- announcer styles (what the in-game voice says and how it sounds) ----
+  { id: 'classic',  cat: 'announcer', name: 'Classic Host',  price: 0,   colors: ['#7a0c12', '#c0272d'], blurb: 'Clear and friendly.' },
+  { id: 'hype',     cat: 'announcer', name: 'Hype Man',      price: 60,  colors: ['#d4571f', '#f7c52b'], blurb: 'Loud, fast and excited.' },
+  { id: 'calm',     cat: 'announcer', name: 'Smooth Host',   price: 60,  colors: ['#0a1b3f', '#1d3f85'], blurb: 'Slow, deep and cool.' },
+  { id: 'naija',    cat: 'announcer', name: 'Naija Vibes',   price: 100, colors: ['#08382a', '#12744f'], blurb: 'Pidgin one-liners.' }
 ];
-const CATS = ['roomBg', 'boardSkin', 'tokenSkin'];
+const CATS = ['roomBg', 'boardSkin', 'tokenSkin', 'announcer'];
 const key = (cat, id) => `${cat}:${id}`;
 const find = (cat, id) => CATALOG.find(x => x.cat === cat && x.id === id);
 const isFree = item => item && item.price === 0;
-const DEFAULTS = { roomBg: 'classic', boardSkin: 'classic', tokenSkin: 'classic' };
+const DEFAULTS = { roomBg: 'classic', boardSkin: 'classic', tokenSkin: 'classic', announcer: 'classic' };
 function owns(user, cat, id) { const it = find(cat, id); return !!it && (isFree(it) || (user.cosmetics || []).includes(key(cat, id))); }
 function sanitizeEquipped(user) {
   const eq = { ...DEFAULTS, ...(user.equipped?.toObject ? user.equipped.toObject() : user.equipped || {}) };
   for (const c of CATS) if (!owns(user, c, eq[c])) eq[c] = DEFAULTS[c];
-  return { roomBg: eq.roomBg, boardSkin: eq.boardSkin, tokenSkin: eq.tokenSkin };
+  return { roomBg: eq.roomBg, boardSkin: eq.boardSkin, tokenSkin: eq.tokenSkin, announcer: eq.announcer };
 }
 module.exports = { CATALOG, CATS, key, find, isFree, DEFAULTS, owns, sanitizeEquipped };

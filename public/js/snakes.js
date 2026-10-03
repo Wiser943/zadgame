@@ -317,7 +317,8 @@ window.GHSnakes = (() => {
   function mount(el, st, opts) {
     if (!el || !st) return;
     opts = opts || {};
-    const code = opts.code || 'local', count = Math.max(2, (st.positions || []).length || 2);
+    // The board is rebuilt whenever the room OR its snake/ladder layout changes (each match gets a fresh random layout, rematches included).
+    const code = (opts.code || 'local') + '|' + JSON.stringify(jumpsOf(st)), count = Math.max(2, (st.positions || []).length || 2);
     if (mem.code !== code || !mem.m) {
       if (mem.m && mem.m.ph && mem.m.ph.game) { try { mem.m.ph.game.destroy(true); } catch (e) { /* ignore */ } }
       mem.code = code; mem.m = build(code, st, count);

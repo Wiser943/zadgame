@@ -19,7 +19,8 @@ const UserSchema = new mongoose.Schema({
   equipped: {
     roomBg: { type: String, default: 'classic' },
     boardSkin: { type: String, default: 'classic' },
-    tokenSkin: { type: String, default: 'classic' }
+    tokenSkin: { type: String, default: 'classic' },
+    announcer: { type: String, default: 'classic' }
   },
   bestMoment: {
     matchId: { type: String },

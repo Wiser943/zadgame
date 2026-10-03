@@ -158,12 +158,26 @@
       opacity: .85
     }
     
-    .login .btn {
+    .login {
+      --ink: #1b1b1f; --mute: #6b6b76; --card: #fff; --line: #e6e6e6; --input-bg: #fff;
+      color-scheme: light
+    }
+    .login .btn, html[data-theme="dark"] .login .btn {
       background: #fff;
-      color: var(--ink);
+      color: #1b1b1f;
       box-shadow: none;
       padding: 14px 26px
     }
+    .login .btn:disabled { opacity: .6 }
+    .login input.plain, html[data-theme="dark"] .login input.plain {
+      background: #fff;
+      color: #1b1b1f;
+      border: 0;
+      width: 100%;
+      -webkit-text-fill-color: #1b1b1f
+    }
+    .login input.plain::placeholder { color: #8a8a93; opacity: 1; -webkit-text-fill-color: #8a8a93 }
+    .login input.plain:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px #fff inset; -webkit-text-fill-color: #1b1b1f }
     
     .divider {
       display: flex;
@@ -1999,8 +2013,14 @@
       font-size: 14px;
       z-index: 20;
       display: none;
-      max-width: 90%
+      width: max-content;
+      max-width: 90%;
+      box-sizing: border-box;
+      text-align: center;
+      line-height: 1.3;
+      white-space: nowrap
     }
+    #toast.wrap { white-space: normal; border-radius: 20px; overflow-wrap: anywhere }
     
     @media (prefers-reduced-motion:no-preference) {
       .pl.turn img {
@@ -2544,19 +2564,19 @@
     [data-boardskin="marble"] .chess .square.light:not(.selected):not(.check) { background:#eceff3; } [data-boardskin="marble"] .chess .square.dark:not(.selected):not(.check) { background:#8a93a0; }
     [data-boardskin="marble"] .ckcell.light { background:#e6eaf0; } [data-boardskin="marble"] .ckcell.dark { background:#6b7380; }
     [data-boardskin="marble"] .board.whot { background:radial-gradient(ellipse at 50% 35%,#5d6878 0%,#363f4d 55%,#1d232d 100%); }
-    [data-boardskin="marble"] .cf, [data-boardskin="marble"] .mancala { background:#4a5568; }
+    [data-boardskin="marble"] .cf, [data-boardskin="marble"] .mboard { background:#4a5568; }
     [data-boardskin="forest"] .chess .square.light:not(.selected):not(.check) { background:#eef0d2; } [data-boardskin="forest"] .chess .square.dark:not(.selected):not(.check) { background:#4f7a43; }
     [data-boardskin="forest"] .ckcell.light { background:#eef0d2; } [data-boardskin="forest"] .ckcell.dark { background:#4f7a43; }
     [data-boardskin="forest"] .board.whot { background:radial-gradient(ellipse at 50% 35%,#3f8a3a 0%,#245a26 55%,#10351a 100%); }
-    [data-boardskin="forest"] .cf, [data-boardskin="forest"] .mancala { background:#3b5d2c; }
+    [data-boardskin="forest"] .cf, [data-boardskin="forest"] .mboard { background:#3b5d2c; }
     [data-boardskin="neon"] .chess .square.light:not(.selected):not(.check) { background:#1d1f3a; box-shadow:inset 0 0 0 1px #3d8dff55; } [data-boardskin="neon"] .chess .square.dark:not(.selected):not(.check) { background:#0e0f22; box-shadow:inset 0 0 0 1px #ff3df233; }
     [data-boardskin="neon"] .ckcell.light { background:#1d1f3a; } [data-boardskin="neon"] .ckcell.dark { background:#0e0f22; box-shadow:inset 0 0 0 1px #3d8dff66; }
     [data-boardskin="neon"] .board.whot { background:radial-gradient(ellipse at 50% 35%,#26246b 0%,#12113a 55%,#06061a 100%); box-shadow:0 0 22px #3d8dff55, inset 0 0 0 8px rgba(0,0,0,.12); }
-    [data-boardskin="neon"] .cf, [data-boardskin="neon"] .mancala { background:#14143a; box-shadow:0 0 18px #3d8dff66; }
+    [data-boardskin="neon"] .cf, [data-boardskin="neon"] .mboard { background:#14143a; box-shadow:0 0 18px #3d8dff66; }
     [data-boardskin="regal"] .chess .square.light:not(.selected):not(.check) { background:#f6e2a3; } [data-boardskin="regal"] .chess .square.dark:not(.selected):not(.check) { background:#7a4a1a; }
     [data-boardskin="regal"] .ckcell.light { background:#f6e2a3; } [data-boardskin="regal"] .ckcell.dark { background:#7a4a1a; }
     [data-boardskin="regal"] .board.whot { background:radial-gradient(ellipse at 50% 35%,#8a2433 0%,#55121d 55%,#2a070d 100%); border-color:#e6c25a55; }
-    [data-boardskin="regal"] .cf, [data-boardskin="regal"] .mancala { background:#7a4a1a; }
+    [data-boardskin="regal"] .cf, [data-boardskin="regal"] .mboard { background:#7a4a1a; }
 
     /* ---- token skins (bought in the Shop): Ludo tokens, Connect Four discs, Checkers pieces ---- */
     [data-tokenskin="glass"] .ltok, [data-tokenskin="glass"] .cf .cell.a, [data-tokenskin="glass"] .cf .cell.b { background-image:radial-gradient(circle at 32% 26%,rgba(255,255,255,.95) 0 14%,rgba(255,255,255,.25) 36%,rgba(255,255,255,0) 60%),linear-gradient(160deg,rgba(255,255,255,.28),rgba(0,0,0,.18)); border-color:rgba(255,255,255,.9); }
@@ -2662,6 +2682,8 @@
     #hlCinema .snake-svg { width:auto; max-width:100%; max-height:calc(100vh - 26% - 300px); min-height:200px; margin:0 auto; }
     #hlCinema .snake-roll { display:none; }
     #hlCinema .snake-info { margin-top:6px; }
+    .micbtn.on { background:#e64e4e !important; color:#fff !important; animation:micPulse 1s ease-in-out infinite; }
+    @keyframes micPulse { 50% { box-shadow:0 0 0 7px rgba(230,78,78,.28) } }
     .btn.hl-watch { margin:0 8px 10px 0; background:#f7c52b; color:#1a0508; font-weight:800; }
 
     /* ==== smooth animations & transitions, app-wide ==== */
@@ -2818,13 +2840,16 @@
       }
     }
 
-    .snake-stage{position:relative;width:min(94vw,520px);margin:0 auto}.snake-svg{width:100%;height:auto;display:block;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.snake-svg.ph-on .gh-tokens{display:none}.snake-info{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0 4px}.snake-pl{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.06);font-size:13px;font-weight:600}.snake-pl i{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}.snake-pl.on{background:#f7c52b33;outline:2px solid #f7c52b}.snake-roll{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px}.snake-die{font-size:46px;line-height:1}.snake-roll .btn{min-width:120px}
+    .board.snakes{max-width:min(94vw,520px);box-sizing:border-box}.snake-stage{position:relative;width:100%;max-width:100%;margin:0 auto}.snake-svg{width:100%;max-width:100%;height:auto;display:block;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.25)}.snake-svg.ph-on .gh-tokens{display:none}.snake-info{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:12px 0 4px}.snake-pl{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.06);font-size:13px;font-weight:600}.snake-pl i{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}.snake-pl.on{background:#f7c52b33;outline:2px solid #f7c52b}.snake-roll{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px}.snake-die{font-size:46px;line-height:1}.snake-roll .btn{min-width:120px}
     .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.low-power .render-layer{display:none}.render-layer{position:absolute;inset:0;pointer-events:none;display:grid;place-items:center;z-index:0}.render-layer canvas{max-width:100%;border-radius:18px}.renderer-badge{position:absolute;right:8px;top:8px;z-index:3;background:rgba(0,0,0,.38);color:#fff;padding:3px 7px;border-radius:8px;font-size:10px;pointer-events:none}.board{position:relative;z-index:1}
     /* New plain-JS game boards and progression UI */
-    .newboard{display:grid;gap:3px;width:min(92vw,440px);aspect-ratio:1;background:#371015;padding:6px;border-radius:16px}
-    .checkers{grid-template-columns:repeat(8,1fr)} .ckcell{border:0;border-radius:3px;font-size:clamp(18px,5vw,34px);display:grid;place-items:center;color:#f7c52b;min-width:0}.ckcell.light{background:#e9c9a7}.ckcell.dark{background:#7d3036}.ckcell.p0{color:#f7c52b;text-shadow:0 2px #8f1017}.ckcell.p1{color:#fff;text-shadow:0 2px #333}
-    .mancala{display:grid;grid-template-columns:54px 1fr 54px;gap:8px;align-items:center;width:min(94vw,480px);padding:18px;background:#8f1017;border-radius:20px}.mstore{background:#f7c52b;color:#3b1115;border-radius:28px;min-height:120px;display:grid;place-items:center;font-size:26px;font-weight:800}.mpits{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.mpits button{aspect-ratio:1;border-radius:50%;background:#fff;color:#8f1017;font-weight:800;font-size:18px}
-    .ships{width:min(92vw,420px)}.shipgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;background:#152b57;padding:7px;border-radius:14px}.shipgrid button{aspect-ratio:1;background:#58a7ce;border:0;border-radius:3px;color:#fff;font-size:20px}.shipgrid button.hit{background:#b3141c}
+    /* ---- all game boards live inside the same white card (.board) and never grow past it ---- */
+    .board { box-sizing: border-box; width: 100%; margin-left: auto; margin-right: auto }
+    .board.checkers, .board.mancala, .board.ships { display: block; padding: 10px; max-width: min(94vw, 480px) }
+    .ckgrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));gap:3px;width:100%;aspect-ratio:1;background:#371015;padding:6px;border-radius:14px}
+    .ckcell{border:0;border-radius:3px;font-size:clamp(16px,5vw,32px);display:grid;place-items:center;color:#f7c52b;min-width:0;min-height:0;padding:0;overflow:hidden;line-height:1}.ckcell.light{background:#e9c9a7}.ckcell.dark{background:#7d3036}.ckcell.p0{color:#f7c52b;text-shadow:0 2px #8f1017}.ckcell.p1{color:#fff;text-shadow:0 2px #333}
+    .mboard{display:grid;grid-template-columns:minmax(36px,54px) minmax(0,1fr) minmax(36px,54px);gap:8px;align-items:center;width:100%;padding:12px;background:#8f1017;border-radius:16px}.mstore{background:#f7c52b;color:#3b1115;border-radius:28px;min-height:110px;min-width:0;display:grid;place-items:center;font-size:clamp(18px,6vw,26px);font-weight:800}.mpits{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;min-width:0}.mpits button{aspect-ratio:1;border-radius:50%;background:#fff;color:#8f1017;font-weight:800;font-size:clamp(12px,4vw,18px);min-width:0;padding:0}
+    .shipgrid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px;width:100%;background:#152b57;padding:7px;border-radius:14px}.shipgrid button{aspect-ratio:1;min-width:0;min-height:0;padding:0;background:#58a7ce;border:0;border-radius:3px;color:#fff;font-size:clamp(11px,4vw,20px);line-height:1;overflow:hidden}.shipgrid button.hit{background:#b3141c}
     .snakegrid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:min(92vw,480px);padding:5px;background:#246b44;border-radius:12px}.snakegrid span{aspect-ratio:1;background:#e9f2d0;color:#244b33;font-size:10px;padding:3px;position:relative}.snakegrid span:nth-child(even){background:#cbe7b8}.snakegrid b{position:absolute;right:2px;bottom:2px;border-radius:50%;padding:3px 5px;color:#fff;background:#8f1017}.snakegrid .p1{background:#1d5fb5}.snakes .btn{margin:12px auto;display:block}
     .words{width:min(94vw,520px);padding:18px 16px 20px;text-align:center;display:flex;flex-direction:column;gap:14px}
     .wordscore{display:flex;justify-content:space-around;gap:8px}
@@ -2980,7 +3005,7 @@
     const IMGBB_API_KEY = '';
     
     /* ---------- preferences: theme + sound/music/vibration ---------- */
-    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, winnerReplay: true }, (() => {
+    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, winnerReplay: true, voiceCmd: false, voiceURI: '', voiceRate: 1 }, (() => {
       try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch { return {} }
     })());
     
@@ -2990,12 +3015,254 @@
     applyTheme();
     
     function vibrate(pattern) { if (prefs.vibration && navigator.vibrate) try { navigator.vibrate(pattern) } catch {} }
-    function speak(text) {
-      if (!prefs.voice || !text || !('speechSynthesis' in window)) return;
-      try { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = 'en-NG'; u.rate = .94; u.pitch = 1; u.volume = .9; window.speechSynthesis.speak(u); } catch {}
+    /* ---------- voice: announcer (speech synthesis) + voice commands (speech recognition) ---------- */
+    const MUSIC_VOL = 0.22;
+    const ANNOUNCERS = {
+      classic: { name: 'Classic Host', rateMul: 1, pitch: 1, lang: ['en-NG', 'en-GB', 'en-US'], lines: {
+        six: ['Lucky six!', 'Nice six!', 'Six! Roll again.'],
+        doubleSix: ['Double six!', 'Double six! On fire!', 'Unstoppable! Two sixes!'],
+        capture: ['Captured!', 'Sent them home!', 'Ouch! Gotcha!'],
+        home: ['Safe at home!', 'One token home!', 'Great run!'],
+        win: ['You win!', 'Victory! Well played!', 'Amazing! You won!'],
+        lose: ['You lost. Good game.', 'Better luck next time.', 'Defeat. Rematch?'],
+        draw: ['It is a draw.', 'Draw game.'],
+        lastCard: ['Last card!', 'Last card! Watch out!'],
+        generalMarket: ['General market!', 'General market for everyone!'],
+        pick: d => d.count >= 3 ? 'Pick three!' : 'Pick two!',
+        request: d => `I need ${d.shape}`,
+        market: d => d.count > 1 ? `Pick ${d.count}` : 'Go to market',
+        timeUp: ["Time's up!"],
+        yourTurn: ['Your turn.', 'It is your turn.', 'Waiting for you.'],
+        check: ['Check!', 'Check! Protect your king.'],
+        checkmate: ['Checkmate!', 'Checkmate! What a game.'],
+        fourRow: ['Four in a row!', 'Connect four! Winner!'],
+        ladder: ['Ladder! Up you go!', 'A ladder! Lucky climb!', 'Climbing high!'],
+        snake: ['Snake! Down you slide!', 'Oh no, a snake!', 'Sssslide!'],
+        word: d => `${d.word}, ${d.pts} points`,
+        voiceOn: ['Voice on.'],
+        clip: ['Clean move!', 'Beautiful play!', 'Smooth!', 'Great timing!'],
+        finisher: ['And that seals it!', 'The finishing blow!', 'Game over!'],
+        hlIntro: d => `Play of the match. ${d.name}.`,
+        hlOutro: d => `${d.name} takes the win!`
+      } },
+      hype: { name: 'Hype Man', rateMul: 1.12, pitch: 1.25, lang: ['en-US', 'en-GB', 'en-NG'], lines: {
+        six: ['Six! Let’s go!', 'Six! Roll again, roll again!', 'Big six! Big energy!'],
+        doubleSix: ['Double six! Are you kidding me!', 'Two sixes! Absolutely on fire!', 'Double six! Unstoppable!'],
+        capture: ['Boom! Sent them home!', 'Gotcha! Straight back to base!', 'Captured! Savage!'],
+        home: ['Home safe! Let’s go!', 'Token home! Beautiful!'],
+        win: ['Victory! You are the champion!', 'You won! Absolute legend!'],
+        lose: ['Ouch! Shake it off, rematch!', 'Defeat! Come back stronger!'],
+        draw: ['A draw! Dead even!'],
+        lastCard: ['Last card! Danger!', 'Last card! Somebody stop them!'],
+        generalMarket: ['General market! Everybody picks!'],
+        yourTurn: ['Hey! Your turn! Move!', 'The clock is ticking! Your turn!'],
+        check: ['Check! King in danger!'],
+        checkmate: ['Checkmate! Game over!'],
+        fourRow: ['Four in a row! Boom!'],
+        ladder: ['Ladder! Climb, climb, climb!', 'Up you go! Huge ladder!'],
+        snake: ['Snake! Down you go!', 'Oh no! Snake attack!'],
+        clip: ['Look at that move!', 'Insane play!', 'Cold blooded!', 'Absolutely clean!'],
+        finisher: ['And that is the finisher!', 'Boom! Game over!'],
+        hlIntro: d => `Play of the match! ${d.name}!`,
+        hlOutro: d => `${d.name} takes the win!`,
+        word: d => `${d.word}! ${d.pts} points!`
+      } },
+      calm: { name: 'Smooth Host', rateMul: 0.85, pitch: 0.8, lang: ['en-GB', 'en-US', 'en-NG'], lines: {
+        six: ['A six. Nicely done.', 'Six. Roll again.'],
+        doubleSix: ['Two sixes. Impressive.'],
+        capture: ['Captured. Back to start.', 'Sent home. Smooth.'],
+        home: ['Safely home.', 'One token home.'],
+        win: ['Victory. Well played.', 'You won. Beautifully done.'],
+        lose: ['Defeat. Good game.', 'Not this time.'],
+        draw: ['A draw. Evenly matched.'],
+        lastCard: ['Last card.', 'One card left.'],
+        generalMarket: ['General market. Everyone picks.'],
+        yourTurn: ['Your turn, whenever you are ready.', 'Take your time. Your turn.'],
+        check: ['Check.'],
+        checkmate: ['Checkmate. Well played.'],
+        fourRow: ['Four in a row. Lovely.'],
+        ladder: ['A ladder. Enjoy the climb.'],
+        snake: ['A snake. Down you go.'],
+        clip: ['Elegant.', 'Well played.', 'Smooth move.'],
+        finisher: ['And that settles it.'],
+        hlIntro: d => `Play of the match. ${d.name}.`,
+        hlOutro: d => `${d.name} takes the win.`
+      } },
+      naija: { name: 'Naija Vibes', rateMul: 1, pitch: 1.05, lang: ['en-NG', 'en-GB', 'en-US'], lines: {
+        six: ['Na six be that!', 'Oya, six! Roll again.', 'Six dey your side o!'],
+        doubleSix: ['Double six! Na wa o!', 'Chai! Double six!', 'Double six! Who send you?'],
+        capture: ['Gbam! Dem don send am go house!', 'Wahala! Dem don catch am!', 'Chai! Na to run!'],
+        home: ['E don reach house!', 'Home safe, no wahala!'],
+        win: ['You don win! Congratulations!', 'Na you be the champion! Gbosa!'],
+        lose: ['No wahala, e go better next time.', 'Sorry o, we go run am back.'],
+        draw: ['Na draw be that o.'],
+        lastCard: ['Last card o!', 'Last card! Better watch am!'],
+        generalMarket: ['General market! Everybody go pick!'],
+        pick: d => d.count >= 3 ? 'Pick three o!' : 'Pick two o!',
+        yourTurn: ['Oya, na your turn!', 'Abeg, na your turn o!'],
+        check: ['Check! Cover your king o!'],
+        checkmate: ['Checkmate! E don finish!'],
+        fourRow: ['Four in a row! Na so e be!'],
+        ladder: ['Ladder! Climb go up!', 'You see ladder! Oya climb!'],
+        snake: ['Snake! E don swallow you!', 'Chai! Snake bite! Slide go down!'],
+        clip: ['Na so we dey do am!', 'Correct move!', 'See play o!'],
+        finisher: ['Na so we finish am!', 'E don end! Gbam!'],
+        hlIntro: d => `Play of the match! Na ${d.name}!`,
+        hlOutro: d => `${d.name} don win am!`,
+        word: d => `${d.word}! ${d.pts} points!`
+      } }
+    };
+    Object.entries(ANNOUNCERS).forEach(([id, a]) => { a.id = id; });
+    const currentAnnouncer = () => ANNOUNCERS[(typeof me !== 'undefined' && me && me.equipped && me.equipped.announcer) || 'classic'] || ANNOUNCERS.classic;
+    function pickLine(ev, data = {}, ann = currentAnnouncer()) {
+      const pool = ann.lines[ev] || ANNOUNCERS.classic.lines[ev]; if (!pool) return '';
+      if (typeof pool === 'function') return pool(data);
+      const key = ann.id + ':' + ev; let i = Math.floor(Math.random() * pool.length);
+      if (pool.length > 1 && i === VQ.lastIdx[key]) i = (i + 1) % pool.length;   // never repeat the same line twice in a row
+      VQ.lastIdx[key] = i; const l = pool[i]; return typeof l === 'function' ? l(data) : l;
     }
+    // Speech queue: priority 2 interrupts, 1 queues (max 2 waiting), 0 only plays if nothing else is talking.
+    const VQ = { voices: [], queue: [], busy: false, cur: null, lastText: '', lastAt: 0, busyTimer: null, lastIdx: {} };
+    function loadVoices() { try { VQ.voices = window.speechSynthesis.getVoices() || []; } catch { VQ.voices = []; } }
+    if ('speechSynthesis' in window) { loadVoices(); try { window.speechSynthesis.addEventListener('voiceschanged', () => { loadVoices(); document.dispatchEvent(new Event('gh-voices')); }); } catch {} }
+    function pickVoice(ann) {
+      if (prefs.voiceURI) { const v = VQ.voices.find(x => x.voiceURI === prefs.voiceURI); if (v) return v; }
+      const norm = l => String(l || '').replace('_', '-').toLowerCase();
+      for (const lang of (ann.lang || ['en-NG', 'en-GB', 'en-US'])) { const v = VQ.voices.find(x => norm(x.lang) === lang.toLowerCase()); if (v) return v; }
+      return VQ.voices.find(x => /^en/i.test(x.lang || '')) || null;
+    }
+    const cleanForSpeech = t => String(t || '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').replace(/\s+/g, ' ').trim();
+    function duck(on) { try { if (!musicAudio.paused) musicAudio.volume = on ? 0.07 : MUSIC_VOL; } catch {} }
+    function sayNow(job) {
+      try {
+        const u = new SpeechSynthesisUtterance(job.t), v = pickVoice(job.ann);
+        if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-NG';
+        u.rate = Math.min(1.6, Math.max(.5, (job.rate || prefs.voiceRate || 1) * (job.ann.rateMul || 1) * 0.95));
+        u.pitch = job.ann.pitch || 1; u.volume = .95;
+        const done = () => { if (VQ.cur !== job) return; clearTimeout(VQ.busyTimer); VQ.busy = false; VQ.cur = null; const n = VQ.queue.shift(); if (n) sayNow(n); else duck(false); };
+        u.onend = done; u.onerror = done;
+        VQ.cur = job; VQ.busy = true; duck(true);
+        clearTimeout(VQ.busyTimer); VQ.busyTimer = setTimeout(done, 9000);   // some Android builds never fire onend
+        window.speechSynthesis.speak(u);
+      } catch { VQ.busy = false; VQ.cur = null; duck(false); }
+    }
+    function speak(text, opts = {}) {
+      if (!('speechSynthesis' in window)) return;
+      if (!opts.force && !prefs.voice) return;
+      const prio = opts.prio ?? 1, t = cleanForSpeech(text); if (!t) return;
+      if (prefs.lowPower && prio === 0 && !opts.force) return;
+      const now = Date.now(); if (!opts.force && t === VQ.lastText && now - VQ.lastAt < 2500) return;
+      VQ.lastText = t; VQ.lastAt = now;
+      const job = { t, ann: opts.style || currentAnnouncer(), rate: opts.rate };
+      if (prio >= 2 || opts.force) { VQ.queue = []; VQ.cur = null; try { window.speechSynthesis.cancel(); } catch {} VQ.busy = false; return sayNow(job); }
+      if (VQ.busy) { if (prio === 0) return; VQ.queue.push(job); if (VQ.queue.length > 2) VQ.queue.shift(); return; }
+      sayNow(job);
+    }
+    function stopSpeaking() { VQ.queue = []; VQ.cur = null; VQ.busy = false; clearTimeout(VQ.busyTimer); try { window.speechSynthesis.cancel(); } catch {} duck(false); }
+    function sayEv(ev, data, prio = 1, opts = {}) { const ann = opts.style || currentAnnouncer(), line = pickLine(ev, data || {}, ann); if (line) speak(line, { prio, ...opts, style: ann }); return line; }
     function announce(text) { toast(text); speak(text); }
-    function callout(text) { toast(text); speak(text); }
+    function callout(text, ev, data, prio = 1) { toast(text); if (ev) sayEv(ev, data, prio); else speak(text, { prio }); }
+
+    // Spoken reactions that come from comparing the previous and new game state (games whose server sends no events).
+    let voiceSig = '';
+    function voiceFromState(prev, next, game) {
+      if (!prev || !next || !room || room.status === 'over') return;
+      const mine = room.you;
+      try {
+        if (game === 'snakes' && next.lastRoll != null && Array.isArray(next.positions) && Array.isArray(prev.positions)) {
+          next.positions.forEach((pos, i) => {
+            const old = prev.positions[i]; if (old === pos || pos === 100) return;
+            const expected = Math.min(100, old + next.lastRoll), sig = `sn|${i}|${old}|${pos}|${next.lastRoll}`;
+            if (sig === voiceSig) return;
+            if (pos > expected) { voiceSig = sig; sayEv('ladder', { me: i === mine }, 1); }
+            else if (pos < expected) { voiceSig = sig; sayEv('snake', { me: i === mine }, 1); }
+          });
+        }
+        if (game === 'chess' && next.check != null && next.check !== prev.check) { const sig = 'ck|' + next.check + '|' + (next.turn ?? ''); if (sig !== voiceSig) { voiceSig = sig; sayEv('check', {}, 1); } }
+        if (game === 'words' && (next.words?.length || 0) > (prev.words?.length || 0)) {
+          const w = next.words[next.words.length - 1], sig = 'wd|' + next.words.length + w.word;
+          if (sig !== voiceSig) { voiceSig = sig; sayEv('word', { word: w.word, pts: w.pts, mine: w.player === mine }, 1); }
+        }
+      } catch {}
+    }
+    // "Your turn" reminder if the player hasn't moved for 12 seconds.
+    let nudgeT = null, nudgeKey = '';
+    const hashStr = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return h; };
+    function voiceTurnNudge(active) {
+      if (!active || !room) { clearTimeout(nudgeT); nudgeKey = ''; return; }
+      let key; try { key = room.code + '|' + hashStr(JSON.stringify(gstate || {})); } catch { key = room.code; }
+      if (key === nudgeKey) return;
+      nudgeKey = key; clearTimeout(nudgeT);
+      nudgeT = setTimeout(() => { if (nudgeKey === key && room && !result && room.status === 'playing') sayEv('yourTurn', {}, 1); }, 12000);
+    }
+
+    /* voice commands (push-to-talk). Uses the browser's speech recognition, so it needs Chrome/Android or similar. */
+    const VOICE_SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    const NUM_WORDS = { one: 1, won: 1, first: 1, two: 2, to: 2, too: 2, second: 2, three: 3, tree: 3, third: 3, four: 4, for: 4, fourth: 4, five: 5, six: 6, seven: 7, eight: 8, ate: 8, nine: 9, ten: 10 };
+    function numIn(t) { const m = t.match(/\b(\d+)\b/); if (m) return +m[1]; for (const w of t.trim().split(/\s+/)) if (NUM_WORDS[w]) return NUM_WORDS[w]; return null; }
+    const VOICE_HELP = { ludo: 'Try: roll, or token 1.', whot: 'Try: market, play 2, or a shape name.', snakes: 'Try: roll.', connectfour: 'Try: column 4.', tictactoe: 'Try: square 5.', rps: 'Try: rock, paper or scissors.', words: 'Try: play, shuffle or delete.', joker: 'Try: market.' };
+    function parseVoiceCommand(game, text) {
+      const t = ' ' + String(text).toLowerCase().replace(/[.,!?]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+      const has = re => re.test(t), n = numIn(t);
+      if (game === 'ludo') {
+        if (has(/ (roll|dice|throw|shake) /)) return { sel: '#roll', label: 'Roll' };
+        if (has(/ (token|piece|pawn|move) /)) {
+          if (n) return { sel: `[data-lt="${n - 1}"]`, label: `Token ${n}` };
+          const en = [...document.querySelectorAll('[data-lt]:not([disabled])')];
+          return en.length === 1 ? { el: en[0], label: 'Move' } : { msg: 'Which token? Say “token 1” to “token 4”.' };
+        }
+      }
+      if (game === 'snakes' && has(/ (roll|dice|throw|go) /)) return { sel: '#rollSnake', label: 'Roll' };
+      if (game === 'whot') {
+        const shape = ['circle', 'triangle', 'cross', 'square', 'star'].find(s => t.includes(' ' + s));
+        if (shape && document.querySelector('[data-wshape]')) return { sel: `[data-wshape="${shape}"]`, label: shape };
+        if (has(/ (market|draw|pick|take) /)) return { sel: '[data-wmarket]', label: 'Market' };
+        if (n && has(/ (play|card|number|throw) /)) return { sel: `[data-wi="${n - 1}"]`, label: `Card ${n}` };
+      }
+      if (game === 'joker' && has(/ (market|draw|pick) /)) return { sel: '[data-jmarket]', label: 'Market' };
+      if (game === 'connectfour' && n && n >= 1 && n <= 7) return { sel: `[data-c="${n - 1}"]`, label: `Column ${n}` };
+      if (game === 'tictactoe' && n && n >= 1 && n <= 9) return { sel: `[data-i="${n - 1}"]`, label: `Square ${n}` };
+      if (game === 'rps') { const k = has(/ rock /) ? 'rock' : has(/ paper /) ? 'paper' : has(/ scissor/) ? 'scissors' : null; if (k) return { sel: `[data-rps="${k}"]`, label: k, then: '#rpsSubmit' }; }
+      if (game === 'words') {
+        if (has(/ (play|submit|send|done) /)) return { sel: '#wordPlay', label: 'Play word' };
+        if (has(/ (shuffle|mix) /)) return { sel: '#wordShuf', label: 'Shuffle' };
+        if (has(/ (delete|back|undo|clear) /)) return { sel: '#wordBack', label: 'Delete' };
+        if (has(/ (swap|new letters|pass) /)) return { msg: 'Tap Swap yourself — it skips your turn.' };
+      }
+      return null;
+    }
+    function runVoiceCommand(alts) {
+      const game = room?.game; if (!game || !alts.length) return;
+      for (const text of alts) {
+        const cmd = parseVoiceCommand(game, text); if (!cmd) continue;
+        if (cmd.msg) return toast(cmd.msg);
+        const el = cmd.el || document.querySelector(cmd.sel);
+        if (!el || el.disabled) return toast(`${cmd.label}: can’t do that right now`);
+        toast(`🎤 ${cmd.label}`); el.click();
+        if (cmd.then) setTimeout(() => document.querySelector(cmd.then)?.click(), 300);
+        return;
+      }
+      toast(VOICE_HELP[game] ? `Didn’t catch “${alts[0]}”. ${VOICE_HELP[game]}` : 'Voice commands work in Ludo, Whot, Snakes & Ladders, Connect Four, Tic-Tac-Toe, Rock Paper Scissors and Word Clash.');
+    }
+    let srRec = null, srActive = false;
+    function voiceCommandToggle() {
+      if (!VOICE_SR) return toast('Voice commands need a browser with speech recognition, such as Chrome.');
+      if (srActive && srRec) { try { srRec.stop(); } catch {} return; }
+      stopSpeaking();
+      const rec = new VOICE_SR(); srRec = rec;
+      rec.lang = 'en-NG'; rec.interimResults = false; rec.maxAlternatives = 4; rec.continuous = false;
+      const btn = () => document.getElementById('micBtn');
+      rec.onstart = () => { srActive = true; btn()?.classList.add('on'); toast('Listening… say a command'); };
+      rec.onresult = e => runVoiceCommand(Array.from(e.results[0] || []).map(a => a.transcript));
+      rec.onerror = e => { srActive = false; btn()?.classList.remove('on');
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Microphone permission is blocked for this site.');
+        else if (e.error === 'no-speech') toast('Didn’t hear anything — try again.');
+        else if (e.error === 'network') toast('Voice commands need an internet connection.');
+        else if (e.error !== 'aborted') toast('Voice command failed — try again.'); };
+      rec.onend = () => { srActive = false; btn()?.classList.remove('on'); };
+      try { rec.start(); } catch { srActive = false; }
+    }
+
     
     /* ---------- sound effects (synthesized, no audio files needed) ---------- */
     const SFX = (() => {
@@ -3324,9 +3591,13 @@
     }
     const askDialog = (title, message, confirmText = 'Continue') => customDialog({ title, message, confirmText, cancelText: 'Cancel' });
     const chooseDialog = (title, message, choices) => customDialog({ title, message, choices, cancelText: 'Cancel' });
-    function toast(t) { const e = $('#toast');
-      e.textContent = t;
+    // Toast: stays on ONE line up to 90% of the screen; if the text is longer the font shrinks 14 → 11px; only then does it wrap.
+    function toast(t) { const e = $('#toast'); if (!e) return;
+      e.classList.remove('wrap'); e.style.whiteSpace = ''; e.textContent = t;
       e.style.display = 'block';
+      let fit = false;
+      for (const px of [14, 13, 12, 11]) { e.style.fontSize = px + 'px'; if (e.scrollWidth <= e.clientWidth + 1) { fit = true; break; } }
+      if (!fit) e.classList.add('wrap');
       clearTimeout(toast.t);
       toast.t = setTimeout(() => e.style.display = 'none', 2600) }
     async function api(p) { const r = await fetch(p, { credentials: 'include' }); if (!r.ok) throw new Error(r.status); return r.json() }
@@ -3414,6 +3685,7 @@
       socket.on(EV.room, r => {
         const previousStatus = room?.status;
         const previousRpsRound = gstate?.lastRound?.id;
+        const prevStateForVoice = gstate, prevCodeForVoice = room?.code;
         if (r && r.now) clockSkew = r.now - Date.now();
         room = r;
         if (r?.status === 'playing' && previousStatus !== 'playing') playAudioCue('start');
@@ -3424,20 +3696,23 @@
             r.state.lastRound.tie ? SFX.draw() : r.state.lastRound.winner === r.you ? SFX.win() : SFX.lose();
             vibrate(r.state.lastRound.tie ? [40, 30, 40] : r.state.lastRound.winner === r.you ? [35, 45, 90] : [80, 45, 35]);
           }
+          if (prevCodeForVoice === r.code) voiceFromState(prevStateForVoice, r.state, r.game);
           gstate = r.state;
         }
         result = r.status === 'over' ? r.result : null;
         scheduleRender();
       });
-      socket.on(EV.state, s => { gstate = s.state || s;
+      socket.on(EV.state, s => { { const nx = s.state || s; if (room) voiceFromState(gstate, nx, room.game); } gstate = s.state || s;
         picked = null; if (room) scheduleRender(); });
       socket.on(EV.over, r => {
         result = r;
         const won = r.status === 'win' && r.winnerIndex === room?.you;
         if (r.status === 'win') { won ? (SFX.win(), playAudioCue('win')) : (SFX.lose(), playAudioCue('lose'));
-          callout(won ? 'You win' : 'You lost');
+          { const gk = room?.game, reelComing = prefs.winnerReplay && r.highlights?.length && r.status === 'win';
+            const txt = won ? 'You win' : 'You lost', ev = won ? (gk === 'chess' ? 'checkmate' : gk === 'connectfour' ? 'fourRow' : 'win') : 'lose';
+            reelComing ? toast(txt) : callout(txt, ev, {}, 2); }
           vibrate(won ? [40, 60, 40, 60, 140] : [80, 50, 80]); }
-        else { SFX.draw(); callout('Draw');
+        else { SFX.draw(); callout('Draw', 'draw', {}, 2);
           vibrate([60, 40, 60]); }
         scheduleRender();
         toast(r.reason === 'timeup' ? "Time's up — highest score wins!" : '');
@@ -3494,20 +3769,20 @@
           const player = ev.player != null ? room.players[ev.player] : null;
           const who = player ? nameOf(player) : 'A player';
           if (ev.type === 'whotGeneralMarket') {
-            callout('General Market');
+            callout('General Market', 'generalMarket', {}, 2);
           } else if (ev.type === 'whotPick') {
             const label = ev.value === 5 ? 'Pick Three' : 'Pick Two';
-            callout(label);
+            callout(label, 'pick', { count: ev.value === 5 ? 3 : 2 }, 1);
           } else if (ev.type === 'whotRequest') {
-            callout(`I need ${ev.shape}`);
+            callout(`I need ${ev.shape}`, 'request', { shape: ev.shape }, 1);
           } else if (ev.type === 'whotMarket') {
-            callout(ev.count > 1 ? `Pick ${ev.count}` : 'Go market');
+            callout(ev.count > 1 ? `Pick ${ev.count}` : 'Go market', 'market', { count: ev.count }, 1);
           }
         if (ev.type === 'timeout') {
           SFX.strike();
           vibrate(20);
           const p = ev.player != null ? room.players[ev.player] : null;
-          callout("Time's up");
+          callout("Time's up", 'timeUp', {}, 1);
         }
         }
         return;
@@ -3519,7 +3794,7 @@
         animUntil = Math.max(animUntil, Date.now() + 600);
         SFX.dice();
         if (ev.dice === 6) { SFX.six();
-          callout(ev.streak >= 2 ? 'Lucky double six' : 'Lucky six');
+          callout(ev.streak >= 2 ? 'Lucky double six' : 'Lucky six', ev.streak >= 2 ? 'doubleSix' : 'six', {}, 1);
           vibrate(ev.streak >= 2 ? [40, 60, 40, 60, 80] : [40, 60, 40]); }
       }
       if (ev.type === 'move') {
@@ -3528,11 +3803,12 @@
       if (ev.type === 'capture') {
         SFX.capture();
         vibrate([60, 40, 60]);
-        if (ev.captured?.length) toast((ev.by === mine ? 'You: ' : '') + say('capture'));
+        if (ev.captured?.length) { toast((ev.by === mine ? 'You: ' : '') + say('capture')); sayEv('capture', {}, 1); }
       }
       if (ev.type === 'tokenHome') {
         SFX.home();
         if (ev.player === mine) toast(say('home'));
+        sayEv('home', {}, ev.player === mine ? 1 : 0);
       }
       if (ev.type === 'timeout') {
         SFX.strike();
@@ -3591,7 +3867,7 @@
     
     /* ---------- lobby ---------- */
     async function lobbyView(navigate = true) {
-      closeHighlightCinema(true);
+      closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
       room = gstate = result = null;
       ludoRollReady = false;
       chessSelected = null;
@@ -3670,16 +3946,18 @@
     
 
     /* ---------- shop: backgrounds, board skins, token skins (coins) ---------- */
-    const SHOP_TABS = [['roomBg', 'Backgrounds'], ['boardSkin', 'Boards'], ['tokenSkin', 'Tokens']];
+    const SHOP_TABS = [['roomBg', 'Rooms'], ['boardSkin', 'Boards'], ['tokenSkin', 'Tokens'], ['announcer', 'Voices']];
     const SHOP_HINT = {
       roomBg: 'Changes the backdrop of every game room.',
       boardSkin: 'Restyles Chess, Checkers, Whot, Connect Four and Mancala boards.',
-      tokenSkin: 'Restyles Ludo tokens, Connect Four discs and Checkers pieces.'
+      tokenSkin: 'Restyles Ludo tokens, Connect Four discs and Checkers pieces.',
+      announcer: 'Changes what the in-game voice says and how it sounds. Tap Preview to hear it before you buy.'
     };
     let shopTab = 'roomBg';
     function shopPreview(it) {
       if (it.cat === 'roomBg') return `<div class="shop-prev" style="background:repeating-conic-gradient(from 0deg at 50% 50%, ${it.colors[0]} 0 14deg, ${it.colors[1]} 14deg 28deg)"></div>`;
       if (it.cat === 'boardSkin') return `<div class="shop-prev" style="background:var(--bg)" data-boardskin="${esc(it.id)}"><div class="chess mini-board">${Array.from({ length: 8 }, (_, i) => `<span class="square ${((i % 4) + Math.floor(i / 4)) % 2 ? 'dark' : 'light'}"></span>`).join('')}</div></div>`;
+      if (it.cat === 'announcer') return `<div class="shop-prev" style="background:linear-gradient(135deg,${it.colors[0]},${it.colors[1]});flex-direction:column;gap:6px"><span style="font-size:28px">🎙️</span><button type="button" class="act own" data-prev="${esc(it.id)}" style="padding:6px 14px">▶ Preview</button></div>`;
       return `<div class="shop-prev skin-prev" style="background:#3a3f4b" data-tokenskin="${esc(it.id)}"><span class="ltok red"></span><span class="ltok blue"></span><span class="ltok yellow"></span></div>`;
     }
     async function shopView(navigate = true, tab) {
@@ -3701,9 +3979,10 @@
         const btn = eq ? `<button class="act on" disabled>Equipped ✓</button>`
           : it.owned ? `<button class="act own" data-equip="${esc(it.id)}">Equip</button>`
           : `<button class="act ${poor ? 'poor' : ''}" data-buy="${esc(it.id)}" data-price="${it.price}">Buy · ${it.price} 🪙</button>`;
-        return `<div class="shop-card ${eq ? 'eq' : ''}">${shopPreview(it)}<b>${esc(it.name)}</b><span class="price">${it.price === 0 ? 'Free' : it.owned ? 'Owned' : it.price + ' coins'}</span>${btn}</div>`;
+        return `<div class="shop-card ${eq ? 'eq' : ''}">${shopPreview(it)}<b>${esc(it.name)}</b>${it.blurb ? `<span class="price">${esc(it.blurb)}</span>` : ''}<span class="price">${it.price === 0 ? 'Free' : it.owned ? 'Owned' : it.price + ' coins'}</span>${btn}</div>`;
       }).join('')}</div></div>`;
       $('#shBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
+      app.querySelectorAll('[data-prev]').forEach(b => b.onclick = () => { const ann = ANNOUNCERS[b.dataset.prev] || ANNOUNCERS.classic; speak(pickLine('doubleSix', {}, ann), { force: true, prio: 2, style: ann }); });
       app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => shopView(false, b.dataset.tab));
       app.querySelectorAll('[data-equip]').forEach(b => b.onclick = async () => {
         try { const r = await apiPost('/api/shop/equip', { cat: shopTab, id: b.dataset.equip }); me.equipped = r.equipped; applyTheme(); SFX.tap?.(); shopView(false); }
@@ -3723,6 +4002,11 @@
     }
 
     /* ---------- settings ---------- */
+    function voiceOptionsHtml() {
+      if (!('speechSynthesis' in window)) return '<option value="">Not supported on this device</option>';
+      const vs = VQ.voices.slice().sort((a, b) => (/^en/i.test(b.lang) ? 1 : 0) - (/^en/i.test(a.lang) ? 1 : 0) || a.name.localeCompare(b.name));
+      return '<option value="">Auto (best available)</option>' + vs.map(v => `<option value="${esc(v.voiceURI)}" ${v.voiceURI === prefs.voiceURI ? 'selected' : ''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('');
+    }
     function toggleRow(id, label, iconName, on) {
       return `<button type="button" class="srow" id="${id}"><span class="si">${icon(iconName,20)}</span><span class="lbl">${esc(label)}</span><span class="tgl ${on?'on':''}" data-t><i></i></span></button>`;
     }
@@ -3766,6 +4050,14 @@
       ${toggleRow('sPower','Low-power mode','hourglass', prefs.lowPower)}
       ${toggleRow('sReplay','Cinematic winner highlights','trophy', prefs.winnerReplay)}
     </div>
+    <div class="glabel">Voice</div>
+    <div class="grp">
+      ${toggleRow('sMic','Voice commands · “Say” button in rooms','speaker', prefs.voiceCmd)}
+      <label class="srow" style="display:flex"><span class="si">${icon('speaker',20)}</span><span class="lbl">Voice</span><select id="voiceSel" style="margin-left:auto;max-width:52%;padding:7px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)">${voiceOptionsHtml()}</select></label>
+      <label class="srow" style="display:flex"><span class="si">${icon('hourglass',20)}</span><span class="lbl">Speed</span><input type="range" id="voiceRate" min="0.7" max="1.3" step="0.05" value="${prefs.voiceRate || 1}" style="margin-left:auto;width:46%"></label>
+      ${linkRow('sVoiceTest','Test announcer · '+currentAnnouncer().name,'speaker')}
+      ${linkRow('sAnn','Get more announcer styles','trophy')}
+    </div>
     <button class="logoutbtn" id="sOut">${icon('logout',18)} Log Out</button>
     <div class="ver">Version 1.0.10141</div>
   </div>`;
@@ -3789,7 +4081,16 @@
       $('#sVoice').onclick = () => { prefs.voice = !prefs.voice;
         savePrefs();
         $('#sVoice .tgl').classList.toggle('on', prefs.voice);
-        if (prefs.voice) speak('Voice on'); else if ('speechSynthesis' in window) window.speechSynthesis.cancel(); };
+        if (prefs.voice) sayEv('voiceOn', {}, 2, { force: true }); else stopSpeaking(); };
+      $('#sMic').onclick = () => { if (!VOICE_SR) return toast('Voice commands need Chrome or another browser with speech recognition.');
+        prefs.voiceCmd = !prefs.voiceCmd; savePrefs(); $('#sMic .tgl').classList.toggle('on', prefs.voiceCmd);
+        toast(prefs.voiceCmd ? 'A “Say” button now appears in game rooms' : 'Voice commands off'); };
+      $('#voiceSel').onchange = e => { prefs.voiceURI = e.target.value; savePrefs(); sayEv('voiceOn', {}, 2, { force: true }); };
+      $('#voiceRate').onchange = e => { prefs.voiceRate = +e.target.value; savePrefs(); sayEv('six', {}, 2, { force: true }); };
+      $('#sVoiceTest').onclick = () => sayEv('doubleSix', {}, 2, { force: true });
+      $('#sAnn').onclick = () => shopView(true, 'announcer');
+      const refreshVoices = () => { const sel = $('#voiceSel'); if (sel) sel.innerHTML = voiceOptionsHtml(); else document.removeEventListener('gh-voices', refreshVoices); };
+      document.addEventListener('gh-voices', refreshVoices);
       $('#sVibe').onclick = () => { prefs.vibration = !prefs.vibration;
         savePrefs();
         $('#sVibe .tgl').classList.toggle('on', prefs.vibration);
@@ -3931,7 +4232,7 @@
       let data;
       try {
         if (isMe) { try { Object.assign(me, (await api('/api/me')).user || {}); } catch {} }
-        data = isMe ? { user: me } : (await api('/api/users/' + uid)).user;
+        data = isMe ? me : (await api('/api/users/' + uid)).user;
       } catch { $('#pBody').innerHTML = '<p>Could not load this profile.</p>'; return; }
       $('#pPic').src = avatar(data);
       const s = data.stats || {};
@@ -3965,7 +4266,7 @@
               } catch { toast('Photo host unavailable, saved locally instead.'); }
             }
             const res = await apiPost('/api/me/profile', { avatar: avatarUrl });
-            me = res.user;
+            Object.assign(me, res.user || {});
             toast('Photo updated');
           } catch (err) { toast(err.message || 'Could not upload photo'); }
         };
@@ -3973,7 +4274,7 @@
           const name = $('#pNameInput').value.trim();
           if (!name) return toast('Enter a name first');
           try { const res = await apiPost('/api/me/profile', { displayName: name });
-            me = res.user;
+            Object.assign(me, res.user || {});
             $('#pName').textContent = me.displayName;
             toast('Name updated'); }
           catch (err) { toast(err.message || 'Could not update name'); }
@@ -4229,6 +4530,7 @@
       const spectator = mine < 0; // watching only (not seated in this room)
       const waiting = players.length < maxPlayers || room.status === 'waiting';
       const g = room.game;
+      voiceTurnNudge(!!(myTurn && !waiting && !result && room.status === 'playing' && g !== 'rps'));
       // Medium buzz once, the moment it becomes my turn to roll (again after a 6 too).
       if (g === 'ludo') {
         const ready = !waiting && !result && room.status === 'playing' && myTurn && gstate?.dice == null;
@@ -4243,7 +4545,7 @@
         gstate.handCounts.forEach((c, i) => {
           if (c === 1 && !whotLastCardSeen[i]) {
             whotLastCardSeen[i] = true;
-            callout('Last card');
+            callout('Last card', 'lastCard', {}, 2);
             SFX.lastcard();
             vibrate(i === mine ? [30, 40, 30, 40, 60] : 25);
           } else if (c !== 1) { whotLastCardSeen[i] = false; }
@@ -4288,6 +4590,7 @@
       app.innerHTML = `<div class="play"><div class="play-layout"><main class="game-main">
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <button class="code" id="roomCode" type="button" aria-label="Copy invite link for room ${esc(room.code)}">Room ${esc(room.code)}</button>
+      ${(prefs.voiceCmd && VOICE_SR && !spectator && !waiting && !result) ? `<button class="rules-btn micbtn ${srActive ? 'on' : ''}" id="micBtn" type="button" aria-label="Speak a voice command">${icon('speaker',14)} Say</button>` : ''}
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
     ${(!isLudo && g !== 'whot') || (isLudo && waiting) ? `<div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>` : ''}
     ${isLudo ? '' : `<div class="clocks">${matchClock}${turnClock}</div>`}
@@ -4303,6 +4606,7 @@
         goBackToLobby();
       };
       $('#rulesBtn').onclick = () => rulesSheet(g);
+      $('#micBtn')?.addEventListener('click', voiceCommandToggle);
       $('#roomCode').onclick = copyInviteLink;
       $('#addBots')?.addEventListener('click', (e) => {
         const btn = e.currentTarget;
@@ -4645,8 +4949,8 @@
       return `<div class="chess-wrap">${chessSeats}<div class="board chess" style="grid-template-columns:repeat(${size},1fr)">${squares}</div><div class="chess-coords">${coords}</div></div>`;
     }
     function newGameBoardHtml(g, st, myTurn, mine, players) {
-      if (g === 'checkers') { const b=st.board||[]; return `<div class="board newboard checkers">${b.flat().map((v,i)=>`<button class="ckcell ${(Math.floor(i/8)+i)%2?'dark':'light'} ${v?'p'+v.player:''}" data-ck="${i}" ${!myTurn?'disabled':''}>${v?(v.king?'♛':'●'):''}</button>`).join('')}</div>`; }
-      if (g === 'mancala') return `<div class="board mancala"><div class="mstore">${st.stores?.[1]||0}</div><div class="mpits">${(st.pits?.[1]||[]).slice().reverse().map((n,j)=>`<button data-mpit="${5-j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}${(st.pits?.[0]||[]).map((n,j)=>`<button data-mpit="${j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}</div><div class="mstore">${st.stores?.[0]||0}</div></div>`;
+      if (g === 'checkers') { const b=st.board||[]; return `<div class="board checkers"><div class="ckgrid">${b.flat().map((v,i)=>`<button class="ckcell ${(Math.floor(i/8)+i)%2?'dark':'light'} ${v?'p'+v.player:''}" data-ck="${i}" ${!myTurn?'disabled':''}>${v?(v.king?'♛':'●'):''}</button>`).join('')}</div></div>`; }
+      if (g === 'mancala') return `<div class="board mancala"><div class="mboard"><div class="mstore">${st.stores?.[1]||0}</div><div class="mpits">${(st.pits?.[1]||[]).slice().reverse().map((n,j)=>`<button data-mpit="${5-j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}${(st.pits?.[0]||[]).map((n,j)=>`<button data-mpit="${j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}</div><div class="mstore">${st.stores?.[0]||0}</div></div></div>`;
       if (g === 'battleship') return `<div class="board ships"><div class="shipgrid">${Array.from({length:100},(_,i)=>{const r=Math.floor(i/10),c=i%10,hit=st.shots?.[mine]?.some(x=>x[0]===r&&x[1]===c);return `<button data-ship="${r},${c}" class="${hit?'hit':''}" ${!myTurn?'disabled':''}>${hit?(st.boards?.[1-mine]?.[r]?.[c]?'×':'·'):''}</button>`}).join('')}</div><p class="muted">Fire at a coordinate to find the fleet.</p></div>`;
       if (g === 'snakes') { const pos = st.positions || [], face = ['⚀','⚁','⚂','⚃','⚄','⚅'][(st.lastRoll || 0) - 1] || '🎲', dots = ['#f7c52b','#3d8de8','#44b86b','#e64e4e'];
         return `<div class="board snakes"><div id="snakeStage" class="snake-stage"></div><div class="snake-info">${pos.map((p, n) => `<span class="snake-pl ${st.turn === n && !result ? 'on' : ''}"><i style="background:${dots[n % 4]}"></i>${esc(nameOf(players[n]))} · ${p || 'start'}</span>`).join('')}</div><div class="snake-roll"><span class="snake-die" id="snakeDie" aria-label="Last roll">${face}</span><button class="btn" id="rollSnake" ${!myTurn || result ? 'disabled' : ''}>${myTurn && !result ? 'Roll the dice' : 'Waiting…'}</button></div></div>`; }
@@ -4768,8 +5072,8 @@
     function closeHighlightCinema(immediate) {
       hlTimers.forEach(clearTimeout); hlTimers = [];
       const el = document.getElementById('hlCinema'); if (!el) return;
-      if (immediate) { el.remove(); try { window.GHSnakes?.dispose?.(); } catch {} return; }
-      el.classList.add('out'); setTimeout(() => { el.remove(); try { window.GHSnakes?.dispose?.(); } catch {} }, 380);
+      if (immediate) { stopSpeaking(); el.remove(); try { window.GHSnakes?.dispose?.(); } catch {} return; }
+      stopSpeaking(); el.classList.add('out'); setTimeout(() => { el.remove(); try { window.GHSnakes?.dispose?.(); } catch {} }, 380);
     }
     // Recorded states are raw engine states; rebuild the public (per-player) view if an old/raw one slips through.
     function hlPublicView(game, st, seat) {
@@ -4785,6 +5089,16 @@
       const pg = gstate;
       try { gstate = hlPublicView(game, state, ctxWinner ?? mine); board.readonly = true; return board(game, false, players, ctxWinner ?? mine, maxPlayers); }
       catch (e) { return ''; } finally { gstate = pg; board.readonly = false; }
+    }
+    function hlVoiceEvent(game, item, tag) {
+      const m = item?.move || {};
+      if (tag.fin) return { ev: 'finisher' };
+      if (/CAPTURE/.test(tag.t)) return { ev: 'capture' };
+      if (/HOME/.test(tag.t)) return { ev: 'home' };
+      if (/LADDER/.test(tag.t)) return { ev: 'ladder' };
+      if (/SIX/.test(tag.t)) return { ev: 'six' };
+      if (game === 'words' && m.word) return { ev: 'word', data: { word: m.word, pts: wordPts(item.state, String(m.word).toUpperCase()) } };
+      return { ev: 'clip' };
     }
     function hlBurst(host) { if (!host) return; const d = document.createElement('i'); d.className = 'hl-burst'; host.appendChild(d); setTimeout(() => d.remove(), 750); }
     function hlShake() { const st = document.querySelector('#hlCinema .hl-stage'); if (!st) return; st.classList.remove('hl-shake'); void st.offsetWidth; st.classList.add('hl-shake'); }
@@ -4926,6 +5240,7 @@
         card(won ? 'GAME OVER' : 'MATCH COMPLETE', won ? 'VICTORY' : 'DEFEAT', won ? 'You took the win' : `${wName} took the win`);
         $e('hlSkip').textContent = 'CLOSE ✕';
         won ? SFX.win?.() : SFX.lose?.();
+        won ? sayEv('win', {}, 2) : sayEv('hlOutro', { name: wName }, 2);
         hlLater(finish, OUTRO);
       };
       const clip = i => {
@@ -4946,12 +5261,13 @@
         prog.forEach((p, n) => { p.classList.toggle('done', n < i); p.classList.remove('cur'); });
         prog[i].style.setProperty('--d', CLIP + 'ms'); void prog[i].offsetWidth; prog[i].classList.add('cur');
         if (animate) hlLater(() => { if (el.isConnected) { SFX.move?.(); hlMoveAnim(game, item, b, snap, stage); } }, PRE);
+        hlLater(() => { if (!el.isConnected) return; const hv = hlVoiceEvent(game, item, tag); sayEv(hv.ev, hv.data, 2); }, PRE + 150);
         hlLater(() => clip(i + 1), CLIP);
       };
       // intro title card, then the reel
       $e('hlBoard').style.visibility = 'hidden';
       card('PLAY OF THE MATCH', wName, gname);
-      SFX.win?.();
+      SFX.win?.(); sayEv('hlIntro', { name: wName, game: gname }, 2);
       hlLater(() => clip(0), INTRO);
     }
 

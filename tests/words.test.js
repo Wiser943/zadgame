@@ -43,3 +43,26 @@ test('shop: free defaults owned, paid items locked until bought', () => {
   assert.ok(shop.owns({ cosmetics: ['roomBg:sunset'] }, 'roomBg', 'sunset'));
   assert.strictEqual(shop.sanitizeEquipped({ cosmetics: [], equipped: { roomBg: 'sunset' } }).roomBg, 'classic');
 });
+
+test('snakes: every game gets a fresh, valid random board', () => {
+  const S = require('../games/snakes');
+  const seen = new Set();
+  for (let g = 0; g < 200; g++) {
+    const j = S.createInitialState().jumps, ks = Object.keys(j).map(Number);
+    seen.add(JSON.stringify(j));
+    const squares = new Set([...ks, ...Object.values(j)]);
+    assert.strictEqual(squares.size, ks.length * 2, 'no square used twice');
+    assert.ok(!squares.has(1) && !squares.has(100), 'nothing on start/finish');
+    assert.ok(ks.every(k => Math.abs(j[k] - k) >= 10), 'no tiny hops');
+    assert.ok(ks.filter(k => j[k] < k).length >= 5 && ks.filter(k => j[k] > k).length >= 5, 'both snakes and ladders');
+  }
+  assert.ok(seen.size > 190, 'boards differ between games');
+  let s = S.createInitialState(), n = 0; while (S.checkResult(s).status === 'ongoing' && n++ < 5000) s = S.applyMove(s, s.turn, { type: 'roll' });
+  assert.strictEqual(S.checkResult(s).status, 'win');
+});
+test('shop: announcer styles are a purchasable category', () => {
+  assert.ok(shop.owns({ cosmetics: [] }, 'announcer', 'classic'));
+  assert.ok(!shop.owns({ cosmetics: [] }, 'announcer', 'hype'));
+  assert.strictEqual(shop.sanitizeEquipped({ cosmetics: ['announcer:naija'], equipped: { announcer: 'naija' } }).announcer, 'naija');
+  assert.strictEqual(shop.sanitizeEquipped({ cosmetics: [], equipped: { announcer: 'naija' } }).announcer, 'classic');
+});
