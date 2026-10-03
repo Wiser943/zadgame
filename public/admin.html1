@@ -388,7 +388,7 @@
     let games = [],
       users = [];
     
-    function layout(page) { root.innerHTML = `<div class="shell"><aside class="side"><div class="brand">GameHub Admin</div><nav class="nav"><button data-page="overview">Overview</button><button data-page="games">Games & Rules</button><button data-page="users">Users & Penalties</button><button data-page="reports">Reports</button></nav><button class="btn danger logout" id="logout">Log out</button></aside><main class="main" id="content"></main></div>`;
+    function layout(page) { root.innerHTML = `<div class="shell"><aside class="side"><div class="brand">GameHub Admin</div><nav class="nav"><button data-page="overview">Overview</button><button data-page="games">Games & Rules</button><button data-page="users">Users & Penalties</button></nav><button class="btn danger logout" id="logout">Log out</button></aside><main class="main" id="content"></main></div>`;
       document.querySelectorAll('[data-page]').forEach(b => b.onclick = () => { location.hash = b.dataset.page;
         show(b.dataset.page) });
       logout.onclick = async () => { await api('/admin-api/logout', { method: 'POST' });
@@ -397,27 +397,7 @@
     
     function show(page) { document.querySelectorAll('[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === page)); if (page === 'games') gamesPage();
       else if (page === 'users') usersPage();
-      else if (page === 'reports') reportsPage();
       else overviewPage() }
-    
-    let reportFilter = 'open';
-    async function reportsPage() {
-      content.innerHTML = head('Reports', 'Review player reports. Every action is logged.') + `<section class="card"><div class="inline">${['open','warned','suspended','resolved','dismissed','all'].map(f=>`<button class="btn ${f===reportFilter?'':'secondary'}" data-rf="${f}">${f}</button>`).join('')}</div><div id="repList"><p class="muted">Loading...</p></div></section>`;
-      document.querySelectorAll('[data-rf]').forEach(b => b.onclick = () => { reportFilter = b.dataset.rf;
-        reportsPage() });
-      let d;
-      try { d = await api('/admin-api/reports?status=' + reportFilter) } catch (e) { repList.innerHTML = '<p class="muted">Could not load reports.</p>'; return }
-      const rows = d.reports || [];
-      repList.innerHTML = rows.length ? rows.map(r => `<div class="user" data-rep="${esc(r.id)}"><div><b>${esc(r.target.name)}</b> <span class="muted">reported by ${esc(r.reporter.name)} · room ${esc(r.roomCode||'-')} · ${new Date(r.createdAt).toLocaleString()}</span><div>${esc(r.reason)}</div><div class="muted">Target warnings: ${r.target.penaltyPoints} · Status: ${esc(r.status)}${r.note?' · Note: '+esc(r.note):''}</div></div>${r.status==='open'?`<div class="inline"><input class="input" placeholder="Note (optional)" maxlength="240"><button class="btn secondary" data-act="dismiss">Dismiss</button><button class="btn secondary" data-act="resolve">Resolve</button><button class="btn" data-act="warn">Warn</button><button class="btn danger" data-act="suspend">Suspend 24h</button></div>`:''}</div>`).join('') : '<p class="muted">No reports here.</p>';
-      document.querySelectorAll('[data-rep] [data-act]').forEach(b => b.onclick = async () => {
-        const row = b.closest('[data-rep]'),
-          act = b.dataset.act;
-        if ((act === 'suspend' || act === 'warn') && !confirm('Confirm: ' + act + ' this player?')) return;
-        try { await api('/admin-api/reports/' + row.dataset.rep + '/action', { method: 'POST', body: JSON.stringify({ action: act, note: row.querySelector('input').value }) });
-          adminNotice('Done');
-          reportsPage() } catch (e) { adminNotice(e.message || 'Failed', true) }
-      });
-    }
     
     function head(title, sub, action = '') { return `<div class="top"><div><h1>${title}</h1><div class="muted">${sub}</div></div>${action}</div>` }
     

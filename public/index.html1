@@ -129,96 +129,6 @@
     .btn:disabled {
       opacity: .5
     }
-
-    .dash { margin:12px 18px 0; padding:14px 16px; border-radius:20px; background:var(--card); border:1px solid var(--line) }
-    .dash .row1 { display:flex; align-items:center; gap:10px; justify-content:space-between }
-    .dash .lvl { font-weight:800; font-size:15px }
-    .dash .xpbar { height:8px; border-radius:99px; background:var(--line); overflow:hidden; margin:8px 0 4px }
-    .dash .xpbar i { display:block; height:100%; background:linear-gradient(90deg,#f7c52b,#ff9d2e) }
-    .dash small { color:var(--mute); font-size:12px }
-    .rankchip { font-size:12px; font-weight:800; padding:4px 10px; border-radius:99px; background:rgba(247,197,43,.2); color:#c98f00 }
-    .dstats { display:flex; gap:8px; margin-top:10px }
-    .dstats > div { flex:1; text-align:center; padding:8px 4px; border-radius:12px; background:var(--line) }
-    .dstats b { display:block; font-size:16px }
-    .dstats span { font-size:11px; color:var(--mute) }
-    .dform { display:flex; gap:6px; margin-top:10px; align-items:center; font-size:12px; color:var(--mute); flex-wrap:wrap }
-    .dform .res { font-size:11px }
-    .dlink { margin-top:10px; width:100%; padding:9px; border-radius:12px; background:var(--line); color:var(--ink); font-weight:700; font-size:13px }
-    .invbanner { position:fixed; left:12px; right:12px; top:12px; z-index:9999; max-width:496px; margin:0 auto; padding:12px 14px; border-radius:16px; background:#1b1c22; color:#fff; box-shadow:0 8px 30px rgba(0,0,0,.4); display:flex; align-items:center; gap:10px }
-    .invbanner span { flex:1; font-size:14px }
-    .invbanner button { padding:8px 14px; border-radius:99px; font-weight:700; font-size:12px; background:#f7c52b; color:#1a0508 }
-    .invbanner button.x { background:transparent; color:#fff; opacity:.7 }
-    .tierbadge { display:inline-block; font-size:11px; font-weight:800; padding:3px 9px; border-radius:99px }
-    .tier-Bronze { background:#cd7f3233; color:#cd7f32 } .tier-Silver { background:#c0c0c033; color:#9aa0a6 } .tier-Gold { background:#f7c52b33; color:#c98f00 } .tier-Legendary { background:#a855f733; color:#a855f7 } .tier-none { background:var(--line); color:var(--mute) }
-
-    /* friends / history / challenges */
-    .chcard { margin:16px 18px 0; padding:14px 16px; border-radius:20px; background:var(--card); border:1px solid var(--line) }
-    .chcard h3 { margin:0 0 8px; font-size:15px }
-    .chrow { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line) }
-    .chrow:first-of-type { border-top:0 }
-    .chrow .t { flex:1; min-width:0; font-size:14px } .chrow .t small { display:block; color:var(--mute); font-size:12px }
-    .chbar { height:6px; border-radius:99px; background:var(--line); overflow:hidden; margin-top:5px }
-    .chbar i { display:block; height:100%; background:#f7c52b }
-    .chbtn { padding:7px 12px; border-radius:99px; font-size:12px; font-weight:700; background:var(--red2); color:#fff }
-    .chbtn:disabled { opacity:.45 }
-    .soc { padding:18px } .soc h1 { margin:0; flex:1; font-size:22px }
-    .soctabs { display:flex; gap:6px; margin:12px 0; overflow-x:auto }
-    .soctabs button { padding:8px 14px; border-radius:99px; background:var(--card); border:1px solid var(--line); color:var(--ink); font-size:13px; font-weight:600; white-space:nowrap }
-    .soctabs button.on { background:var(--red2); color:#fff; border-color:var(--red2) }
-    .prow { display:flex; align-items:center; gap:12px; padding:10px 12px; margin-bottom:8px; border-radius:16px; background:var(--card); border:1px solid var(--line) }
-    .prow img { width:44px; height:44px; border-radius:50%; object-fit:cover; flex:none }
-    .prow .t { flex:1; min-width:0 } .prow .t b { display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .prow .t small { color:var(--mute); font-size:12px }
-    .prow .acts { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end }
-    .prow .acts button { padding:7px 11px; border-radius:99px; font-size:12px; font-weight:700; background:var(--red2); color:#fff }
-    .prow .acts button.alt { background:var(--line); color:var(--ink) }
-    .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#9aa0a6; margin-right:5px }
-    .dot.on { background:#2eb872 }
-    .socsearch { width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:15px; margin-bottom:10px }
-    .socempty { text-align:center; color:var(--mute); padding:28px 0; font-size:14px }
-    .res { font-weight:800; font-size:12px; padding:4px 9px; border-radius:99px }
-    .res.w { background:rgba(40,160,90,.18); color:#2eb872 } .res.l { background:rgba(220,60,60,.18); color:#e05555 } .res.d { background:var(--line); color:var(--mute) }
-
-    /* rewards: coming soon */
-    .rwstrip { margin:16px 18px 0; width:calc(100% - 36px); display:flex; align-items:center; gap:12px; text-align:left;
-      padding:14px 16px; border-radius:20px; border:1px dashed #d9a441; background:linear-gradient(135deg, rgba(247,197,43,.14), rgba(247,197,43,.04)); color:var(--ink) }
-    .rwstrip .rwico { font-size:24px }
-    .rwstrip .rwtxt { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0 }
-    .rwstrip small { font-size:12px; opacity:.75 }
-    .rwbadge { background:#f7c52b; color:#1a0508; font-weight:800; font-size:11px; padding:5px 10px; border-radius:999px; white-space:nowrap }
-    .rwview { padding:18px }
-    .rwview h1 { margin:0; flex:1; font-size:22px }
-    .rwhero { margin:14px 0; padding:18px; border-radius:20px; background:var(--card); border:1px solid var(--line); text-align:center }
-    .rwhero .big { font-size:40px } .rwhero p { margin:8px 0 0; color:var(--mute); font-size:14px; line-height:1.45 }
-    .rwform { display:flex; flex-direction:column; gap:12px; margin-top:6px }
-    .rwform label { font-size:13px; font-weight:600; display:flex; flex-direction:column; gap:6px }
-    .rwform input[type=text], .rwform select { padding:12px 14px; border-radius:14px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:15px }
-    .rwform .chk { flex-direction:row; align-items:flex-start; gap:10px; font-weight:500; line-height:1.35 }
-    .rwform .chk input { margin-top:3px }
-    .rwnote { font-size:12px; color:var(--mute); line-height:1.45; padding:10px 12px; border-radius:12px; background:var(--card); border:1px solid var(--line) }
-    .rwdone { padding:12px 14px; border-radius:14px; background:rgba(40,160,90,.12); border:1px solid rgba(40,160,90,.4); font-size:14px }
-
-    /* quick actions: side-by-side tiles */
-    .quickgrid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin: 12px 18px 0;
-    }
-    .btn.qtile {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: 14px 10px;
-      border-radius: 18px;
-      text-align: center;
-      min-height: 92px;
-    }
-    .qtile .qico { font-size: 22px; line-height: 1; display: inline-flex; }
-    .qtile b { font-size: 15px; font-weight: 700; }
-    .qtile small { font-size: 12px; opacity: .75; line-height: 1.25; }
-    html[data-theme="dark"] .qtile small { opacity: .8; }
     
     /* login */
     .login {
@@ -3052,10 +2962,6 @@
       const path = routePath();
       if (path === '/settings') return settingsView(false);
       if (path === '/shop') return shopView(false);
-      if (path === '/rewards') return rewardsView(false);
-      if (path === '/friends') return friendsView(false);
-      if (path === '/history') return historyView(false);
-      if (path === '/achievements') return achievementsView(false);
       if (path === '/leaderboard') return leaderboardView(new URLSearchParams(location.search).get('by') || 'coins', false);
       const qs = new URLSearchParams(location.search);
       if (qs.get('spectate')) return spectateRoom(qs.get('spectate'), false);
@@ -3813,7 +3719,6 @@
       });
       socket.on('game:event', handleLudoEvent);
       socket.on('chat:message', appendChatMessage);
-      socket.on('invite:received', showInvite);
     }
     
     function appendChatMessage(m) {
@@ -3984,20 +3889,8 @@
       app.innerHTML = `
   <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b>${esc(me.coins ?? 0)} 🪙</b></div>
     <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
-  <div class="dash" id="dashCard"></div>
-  <div class="quickgrid">
-    <button class="btn ghost qtile" id="daily"><span class="qico">🎁</span><b>Daily reward</b><small>+25 coins</small></button>
-    <button class="btn ghost qtile" id="shopOpen"><span class="qico">${icon('trophy',22)}</span><b>Shop</b><small>Themes, boards &amp; tokens</small></button>
-  </div>
-  <div class="quickgrid">
-    <button class="btn ghost qtile" id="friendsOpen"><span class="qico">👥</span><b>Friends</b><small>Add, invite &amp; chat</small></button>
-    <button class="btn ghost qtile" id="historyOpen"><span class="qico">🕘</span><b>History</b><small>Your recent matches</small></button>
-  </div>
-  <div class="chcard" id="chCard"></div>
-  <button class="rwstrip" id="rewardsOpen" aria-label="Rewards and payouts, coming soon">
-    <span class="rwico">💰</span>
-    <span class="rwtxt"><b>Rewards &amp; Payouts</b><small>Verify your details to be ready for launch</small></span>
-    <span class="rwbadge">Coming soon</span></button>
+  <button class="btn ghost" id="daily" style="margin:12px 18px 0;width:calc(100% - 36px)">Claim daily reward · +25 coins</button>
+  <button class="btn ghost" id="shopOpen" style="margin:10px 18px 0;width:calc(100% - 36px)">${icon('trophy',16)} Shop · themes, boards &amp; tokens</button>
   <button class="lbstrip" id="lbOpen" aria-label="Open leaderboard">
     <span class="lbtitle">${icon('trophy',20)} Leaderboard</span>
     ${lbTop.length ? `<span class="lbtop3">${lbTop.map(p=>`<img src="${avatar(p)}" alt="">`).join('')}</span>` : ''}
@@ -4009,11 +3902,6 @@
       <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
       $('#meBtn').onclick = settingsView;
       $('#lbOpen').onclick = () => leaderboardView('coins');
-      $('#rewardsOpen').onclick = () => rewardsView();
-      $('#friendsOpen').onclick = () => friendsView();
-      $('#historyOpen').onclick = () => historyView();
-      loadChallengesCard();
-      loadDashboard();
       $('#shopOpen').onclick = () => shopView();
       $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${d.reward} coins`); lobbyView(false); } catch(e) { toast(e.message || 'Reward already claimed'); } };
       app.querySelectorAll('.game').forEach(b => b.onclick = () =>
@@ -4071,168 +3959,6 @@
       if (it.cat === 'boardSkin') return `<div class="shop-prev" style="background:var(--bg)" data-boardskin="${esc(it.id)}"><div class="chess mini-board">${Array.from({ length: 8 }, (_, i) => `<span class="square ${((i % 4) + Math.floor(i / 4)) % 2 ? 'dark' : 'light'}"></span>`).join('')}</div></div>`;
       if (it.cat === 'announcer') return `<div class="shop-prev" style="background:linear-gradient(135deg,${it.colors[0]},${it.colors[1]});flex-direction:column;gap:6px"><span style="font-size:28px">🎙️</span><button type="button" class="act own" data-prev="${esc(it.id)}" style="padding:6px 14px">▶ Preview</button></div>`;
       return `<div class="shop-prev skin-prev" style="background:#3a3f4b" data-tokenskin="${esc(it.id)}"><span class="ltok red"></span><span class="ltok blue"></span><span class="ltok yellow"></span></div>`;
-    }
-    async function loadDashboard() {
-      const box = $('#dashCard'); if (!box) return;
-      let d;
-      try { d = await api('/api/social/dashboard'); } catch { box.remove(); return; }
-      const names = Object.fromEntries((GAMES || []).map(g => [g.key || g.id, g.name]));
-      const toNext = d.rank.next ? `${d.rank.next.at - d.rank.rating} to ${esc(d.rank.next.tier)}` : 'Top tier';
-      box.innerHTML = `<div class="row1"><span class="lvl">Level ${esc(d.level)}</span><span class="rankchip">${esc(d.rank.tier)} · ${esc(d.rank.rating)}</span></div>
-    <div class="xpbar" role="progressbar" aria-valuenow="${d.xpInLevel}" aria-valuemin="0" aria-valuemax="${d.xpForNext}"><i style="width:${d.xpInLevel}%"></i></div>
-    <small>${d.xpForNext - d.xpInLevel} XP to level ${esc(d.level + 1)} · ${toNext}</small>
-    <div class="dstats"><div><b>${esc(d.winStreak)}</b><span>Win streak</span></div><div><b>${esc(d.bestStreak)}</b><span>Best streak</span></div><div><b>${esc(d.friendsOnline)}/${esc(d.friendsTotal)}</b><span>Friends online</span></div></div>
-    ${d.recent.length ? `<div class="dform">Recent: ${d.recent.map(m => `<span class="res ${m.result === 'win' ? 'w' : m.result === 'loss' ? 'l' : 'd'}">${m.result === 'win' ? 'W' : m.result === 'loss' ? 'L' : 'D'}</span> ${esc(names[m.game] || m.game)}`).join(' · ')}</div>` : ''}
-    <button class="dlink" id="achOpen">🏅 Achievements</button>`;
-      $('#achOpen').onclick = () => achievementsView();
-    }
-    async function achievementsView(navigate = true) {
-      if (navigate) history.pushState({ page: 'achievements' }, '', '/achievements');
-      setLobbyMusic(true);
-      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="acBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Achievements</h1><span style="width:38px"></span></div><div id="acList"><p class="socempty">Loading…</p></div></div>`;
-      $('#acBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
-      let list = [];
-      try { list = (await api('/api/social/achievements')).achievements; } catch { $('#acList').innerHTML = '<p class="socempty">Could not load achievements.</p>'; return; }
-      $('#acList').innerHTML = list.map(a => {
-        const prev = a.tierIndex ? a.steps[a.tierIndex - 1] : 0, pct = a.next ? Math.round(100 * (a.value - prev) / (a.next - prev)) : 100;
-        return `<div class="prow" style="flex-direction:column;align-items:stretch;gap:6px"><div style="display:flex;align-items:center;gap:8px"><b style="flex:1">${esc(a.title)}</b><span class="tierbadge tier-${a.tier || 'none'}">${a.tier || 'Locked'}</span></div>
-      <small style="color:var(--mute)">${esc(a.desc)} · ${esc(a.value)}${a.next ? ' / ' + esc(a.next) : ' (max tier)'}</small><div class="chbar"><i style="width:${pct}%"></i></div></div>`;
-      }).join('');
-    }
-    function showInvite(inv) {
-      document.querySelector('.invbanner')?.remove();
-      const el = document.createElement('div'); el.className = 'invbanner'; el.setAttribute('role', 'alert');
-      const g = (GAMES || []).find(x => (x.key || x.id) === inv.game);
-      el.innerHTML = `<span><b>${esc(inv.from?.name || 'A friend')}</b> invited you to play ${esc(g?.name || inv.game)}</span><button data-j>Join</button><button class="x" data-x aria-label="Dismiss">✕</button>`;
-      document.body.appendChild(el);
-      el.querySelector('[data-j]').onclick = () => { el.remove(); joinRoom(inv.code); };
-      el.querySelector('[data-x]').onclick = () => el.remove();
-      setTimeout(() => el.remove(), 30000);
-    }
-    async function loadChallengesCard() {
-      const box = $('#chCard'); if (!box) return;
-      let data;
-      try { data = await api('/api/social/challenges'); } catch { box.remove(); return; }
-      const render = (d) => {
-        box.innerHTML = `<h3>Daily challenges</h3>` + d.challenges.map(c => {
-          const done = c.progress >= c.target;
-          const btn = c.claimed ? `<button class="chbtn" disabled>Claimed ✓</button>`
-            : `<button class="chbtn" data-claim="${esc(c.id)}" ${done ? '' : 'disabled'}>+${c.reward} 🪙</button>`;
-          return `<div class="chrow"><div class="t">${esc(c.title)}<small>${c.progress}/${c.target}</small><div class="chbar"><i style="width:${Math.round(100 * c.progress / c.target)}%"></i></div></div>${btn}</div>`;
-        }).join('');
-        box.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
-          b.disabled = true;
-          try { const r = await apiPost('/api/social/challenges/' + b.dataset.claim + '/claim', {}); toast('+' + r.reward + ' coins'); me.coins = r.coins; lobbyView(false); }
-          catch (e) { toast(e.message || 'Could not claim'); b.disabled = false; }
-        });
-      };
-      render(data);
-    }
-    function personRow(p, acts) {
-      return `<div class="prow" data-uid="${esc(p.id)}"><img src="${avatar(p)}" alt=""><div class="t"><b>${esc(p.displayName || 'Player')}</b><small><span class="dot ${p.online ? 'on' : ''}"></span>${p.online ? 'Online' : 'Offline'} · Level ${esc(p.level || 1)}</small></div><div class="acts">${acts}</div></div>`;
-    }
-    async function friendsView(navigate = true, tab = 'friends') {
-      if (navigate) history.pushState({ page: 'friends' }, '', '/friends');
-      setLobbyMusic(true);
-      let data = { friends: [], incoming: [], outgoing: [], blocked: [] };
-      const load = async () => { try { data = await api('/api/social/friends'); } catch { toast('Could not load friends'); } };
-      await load();
-      let results = [], q = '';
-      const act = async (url, method) => {
-        try {
-          const r = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: method === 'DELETE' ? undefined : '{}' });
-          if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || 'Failed');
-          await load(); draw();
-        } catch (e) { toast(e.message || 'Failed'); }
-      };
-      function draw() {
-        const TABS = [['friends', 'Friends (' + data.friends.length + ')'], ['requests', 'Requests' + (data.incoming.length ? ' (' + data.incoming.length + ')' : '')], ['search', 'Find players'], ['blocked', 'Blocked']];
-        let body = '';
-        if (tab === 'friends') body = data.friends.length ? data.friends.map(f => personRow(f, `${room && room.code && room.status === 'waiting' && f.online ? `<button data-inv="${esc(f.id)}">Invite</button>` : ''}<button class="alt" data-view="${esc(f.id)}">Profile</button><button class="alt" data-rm="${esc(f.id)}">Remove</button><button class="alt" data-blk="${esc(f.id)}">Block</button>`)).join('') : '<p class="socempty">No friends yet. Use "Find players" to add some.</p>';
-        if (tab === 'requests') body = (data.incoming.map(f => personRow(f, `<button data-acc="${esc(f.id)}">Accept</button><button class="alt" data-rm="${esc(f.id)}">Decline</button>`)).join('') || '<p class="socempty">No incoming requests.</p>')
-          + (data.outgoing.length ? '<p style="margin:14px 0 8px;font-size:13px;color:var(--mute)">Sent</p>' + data.outgoing.map(f => personRow(f, `<button class="alt" data-rm="${esc(f.id)}">Cancel</button>`)).join('') : '');
-        if (tab === 'blocked') body = data.blocked.length ? data.blocked.map(f => personRow(f, `<button class="alt" data-rm="${esc(f.id)}">Unblock</button>`)).join('') : '<p class="socempty">You have not blocked anyone.</p>';
-        if (tab === 'search') body = `<input class="socsearch" id="socQ" placeholder="Search by display name" value="${esc(q)}" maxlength="30">` + (results.length ? results.map(u => personRow(u,
-          u.relation === 'friend' ? '<button class="alt" disabled>Friends</button>' : u.relation === 'sent' ? '<button class="alt" disabled>Requested</button>'
-          : u.relation === 'received' ? `<button data-acc="${esc(u.id)}">Accept</button>` : `<button data-add="${esc(u.id)}">Add friend</button>`)).join('') : `<p class="socempty">${q.length >= 2 ? 'No players found.' : 'Type at least 2 letters.'}</p>`);
-        app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="scBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Friends</h1><span style="width:38px"></span></div>
-      <div class="soctabs">${TABS.map(([k, n]) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>${body}</div>`;
-        $('#scBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
-        app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; draw(); });
-        app.querySelectorAll('[data-view]').forEach(b => b.onclick = () => profileView(b.dataset.view));
-        app.querySelectorAll('[data-inv]').forEach(b => b.onclick = () => { b.disabled = true; socket.emit('invite:send', { to: b.dataset.inv, code: room.code }, r => { toast(r && r.ok ? 'Invite sent' : (r?.error || 'Could not send invite')); b.disabled = false; }); });
-        app.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => { await act('/api/social/friends/' + b.dataset.add + '/request', 'POST'); await runSearch(); });
-        app.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => act('/api/social/friends/' + b.dataset.acc + '/accept', 'POST'));
-        app.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => act('/api/social/friends/' + b.dataset.rm, 'DELETE'));
-        app.querySelectorAll('[data-blk]').forEach(b => b.onclick = () => { if (confirm('Block this player?')) act('/api/social/block/' + b.dataset.blk, 'POST'); });
-        const si = $('#socQ');
-        if (si) { si.oninput = () => { q = si.value.trim(); clearTimeout(friendsView._t); friendsView._t = setTimeout(runSearch, 300); }; }
-      }
-      async function runSearch() {
-        if (q.length < 2) { results = []; return draw(); }
-        try { results = (await api('/api/social/search?q=' + encodeURIComponent(q))).users; } catch { results = []; }
-        const keep = $('#socQ') ? $('#socQ').selectionStart : 0; draw(); const si = $('#socQ'); if (si) { si.focus(); si.setSelectionRange(keep, keep); }
-      }
-      draw();
-    }
-    async function historyView(navigate = true) {
-      if (navigate) history.pushState({ page: 'history' }, '', '/history');
-      setLobbyMusic(true);
-      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="hsBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Match history</h1><span style="width:38px"></span></div>
-      <div id="hsList"><p class="socempty">Loading…</p></div></div>`;
-      $('#hsBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
-      let rows = [];
-      try { rows = (await api('/api/matches')).matches || []; } catch { $('#hsList').innerHTML = '<p class="socempty">Could not load your matches.</p>'; return; }
-      if (!rows.length) { $('#hsList').innerHTML = '<p class="socempty">No matches yet. Go play one!</p>'; return; }
-      const meId = String(me.id || me._id);
-      $('#hsList').innerHTML = rows.map(m => {
-        const idx = (m.players || []).findIndex(p => String(p.userId) === meId);
-        const res = m.winnerIndex == null ? ['d', 'Draw'] : m.winnerIndex === idx ? ['w', 'Win'] : ['l', 'Loss'];
-        const opp = (m.players || []).filter((p, i) => i !== idx).map(p => p.name || 'Player').join(', ') || 'Solo';
-        const g = (GAMES || []).find(x => (x.key || x.id) === m.game);
-        const mins = m.durationMs ? Math.max(1, Math.round(m.durationMs / 60000)) + ' min · ' : '';
-        return `<div class="prow"><div class="t"><b>${esc(g?.name || m.game)}${m.ranked ? ' · Ranked' : ''}</b><small>vs ${esc(opp)} · ${mins}${esc(new Date(m.createdAt).toLocaleDateString())}</small></div><span class="res ${res[0]}">${res[1]}</span></div>`;
-      }).join('');
-    }
-    async function rewardsView(navigate = true) {
-      if (navigate) history.pushState({ page: 'rewards' }, '', '/rewards');
-      setLobbyMusic(true);
-      let st = { launch: 'Late December', registered: false };
-      try { st = await api('/api/rewards/status'); } catch {}
-      const COUNTRIES = [['NG','Nigeria'],['GH','Ghana'],['KE','Kenya'],['ZA','South Africa'],['UG','Uganda'],['TZ','Tanzania'],['GB','United Kingdom'],['US','United States'],['CA','Canada'],['IN','India'],['OT','Other']];
-      const METHODS = [['bank','Local bank transfer'],['mobile_money','Mobile money'],['crypto','Crypto wallet']];
-      app.innerHTML = `<div class="rwview">
-    <div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="rwBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
-      <h1>Rewards &amp; Payouts</h1><span style="width:38px"></span></div>
-    <div class="rwhero"><div class="big">🚀</div><b>Coming soon · ${esc(st.launch)}</b>
-      <p>Soon you will be able to turn approved rewards into real payouts. Your coins stay as in-game points and are not cash. Verify your details now so you are ready on launch day.</p></div>
-    ${st.registered ? `<div class="rwdone">✅ You are on the list${st.legalName ? ', ' + esc(st.legalName) : ''}. We will notify you before launch. You can update your details below.</div>` : ''}
-    <form class="rwform" id="rwForm" onsubmit="return false">
-      <label>Full name (as on your ID)<input type="text" id="rwName" maxlength="80" autocomplete="name" value="${esc(st.legalName || '')}"></label>
-      <label>Country<select id="rwCountry"><option value="">Select…</option>${COUNTRIES.map(([c, n]) => `<option value="${c}" ${st.country === c ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-      <label>Preferred payout method<select id="rwMethod"><option value="">Select…</option>${METHODS.map(([c, n]) => `<option value="${c}" ${st.method === c ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-      <label class="chk"><input type="checkbox" id="rwAge"> I am 18 years or older</label>
-      <label class="chk"><input type="checkbox" id="rwTerms"> I understand rewards are not available yet and may only be offered in supported countries after identity verification</label>
-      <label class="chk"><input type="checkbox" id="rwNotify" ${st.notify === false ? '' : 'checked'}> Notify me when rewards go live</label>
-      <button class="btn" id="rwSave" type="button">${st.registered ? 'Update my details' : 'Verify &amp; keep my spot'}</button>
-    </form>
-    <p class="rwnote">Never enter bank numbers, wallet addresses, passwords or seed phrases here. We do not collect them now. Identity and payout details will be verified securely through a licensed provider at launch.</p>
-  </div>`;
-      $('#rwBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
-      $('#rwSave').onclick = async () => {
-        const btn = $('#rwSave'); btn.disabled = true;
-        try {
-          const d = await apiPost('/api/rewards/register', {
-            legalName: $('#rwName').value, country: $('#rwCountry').value, method: $('#rwMethod').value,
-            over18: $('#rwAge').checked, termsAccepted: $('#rwTerms').checked, notify: $('#rwNotify').checked });
-          toast('Saved. You are on the list for ' + d.launch);
-          rewardsView(false);
-        } catch (e) { toast(e.message || 'Could not save'); btn.disabled = false; }
-      };
     }
     async function shopView(navigate = true, tab) {
       if (tab) shopTab = tab;
@@ -4518,28 +4244,8 @@
       <div class="pstat"><b>${esc(s.wins ?? 0)}</b><span>Wins</span></div>
       <div class="pstat"><b>${esc(s.losses ?? 0)}</b><span>Losses</span></div>
     </div>
-    ${!isMe ? `<div class="acts" id="pRel" style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap"></div>` : ''}
     ${data.bestMoment?.matchId ? `<button class="bm-badge" id="bmWatch" type="button">🏆 Best moment · ${esc(GAMES.find(x => (x.key || x.id) === data.bestMoment.game)?.name || data.bestMoment.game)} · ${esc(data.bestMoment.score)} pts ▶</button>` : ''}`;
       $('#bmWatch')?.addEventListener('click', () => watchSavedHighlight(data.bestMoment.matchId));
-      if (!isMe) {
-        const box = $('#pRel');
-        const drawRel = async () => {
-          let rel = 'none'; try { rel = (await api('/api/social/relation/' + uid)).relation; } catch {}
-          const B = (id, t, alt) => `<button class="btn ${alt ? 'ghost' : ''}" id="${id}" style="padding:9px 16px">${t}</button>`;
-          box.innerHTML = rel === 'friend' ? B('rFr', 'Friends ✓', 1) + B('rRm', 'Remove', 1) + B('rBl', 'Block', 1)
-            : rel === 'sent' ? B('rSent', 'Request sent', 1) + B('rBl', 'Block', 1)
-            : rel === 'received' ? B('rAcc', 'Accept request') + B('rBl', 'Block', 1)
-            : rel === 'blocked' ? B('rUn', 'Unblock', 1) : B('rAdd', 'Add friend') + B('rBl', 'Block', 1);
-          const call = async (url, method) => { try { const r = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: method === 'DELETE' ? undefined : '{}' }); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || 'Failed'); drawRel(); } catch (e) { toast(e.message || 'Failed'); } };
-          $('#rAdd') && ($('#rAdd').onclick = () => call('/api/social/friends/' + uid + '/request', 'POST'));
-          $('#rAcc') && ($('#rAcc').onclick = () => call('/api/social/friends/' + uid + '/accept', 'POST'));
-          $('#rRm') && ($('#rRm').onclick = () => call('/api/social/friends/' + uid, 'DELETE'));
-          $('#rUn') && ($('#rUn').onclick = () => call('/api/social/friends/' + uid, 'DELETE'));
-          $('#rBl') && ($('#rBl').onclick = () => { if (confirm('Block this player?')) call('/api/social/block/' + uid, 'POST'); });
-          $('#rSent') && ($('#rSent').disabled = true);
-        };
-        drawRel();
-      }
       if (isMe) {
         $('#pFile').onchange = async (e) => {
           const file = e.target.files[0];
