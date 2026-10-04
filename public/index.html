@@ -129,6 +129,46 @@
     .btn:disabled {
       opacity: .5
     }
+    .ckcell.can { box-shadow: inset 0 0 0 3px #f7c52b; }
+
+    .rpbox { display:flex; justify-content:center; margin:10px 0; pointer-events:none; overflow:auto }
+    .rpbar { display:flex; gap:8px; align-items:center; justify-content:center; margin:8px 0 }
+    .rpbar button { padding:9px 14px; border-radius:99px; background:var(--red2); color:#fff; font-weight:700; font-size:14px }
+    .rpbar button.alt { background:var(--line); color:var(--ink) }
+    .rprange { width:100%; margin:6px 0 }
+
+    /* accessibility */
+    html.hc { --bg:#000; --ink:#fff; --mute:#e6e6e6; --card:#0b0b0b; --line:#fff; --input-bg:#000; --gold:#ffe14d }
+    html.hc .btn { box-shadow: inset 0 0 0 3px #fff }
+    html.hc .prow, html.hc .chcard, html.hc .dash, html.hc .rwstrip { border:2px solid #fff }
+    html.largetext { font-size: 118% }
+    html.largetext .btn, html.largetext .prow { font-size: 1.05em }
+    html.cb-safe .res.w, html.cb-safe .tier-Gold { background:#0072b233; color:#56b4e9 }
+    html.cb-safe .res.l { background:#d55e0033; color:#e69f00 }
+    html:focus-within :focus-visible, :focus-visible { outline:3px solid #f7c52b; outline-offset:2px }
+    /* tournaments, ranked queue, bot level */
+    .qoverlay { position:fixed; inset:0; z-index:10000; background:rgba(8,8,12,.88); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; color:#fff; text-align:center; padding:24px }
+    .qoverlay .spin { width:54px; height:54px; border-radius:50%; border:5px solid rgba(255,255,255,.2); border-top-color:#f7c52b; animation:qspin 1s linear infinite }
+    @keyframes qspin { to { transform:rotate(360deg) } }
+    .reduced-motion .qoverlay .spin { animation:none }
+    .diffrow { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px }
+    .diffrow select { flex:1; padding:10px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink) }
+    .tcard { padding:12px 14px; margin-bottom:8px; border-radius:16px; background:var(--card); border:1px solid var(--line); cursor:pointer }
+    .tcard .tt { display:flex; justify-content:space-between; gap:8px; font-weight:700; font-size:14px }
+    .tcard small { color:var(--mute); font-size:12px }
+    .tstat { font-size:11px; font-weight:800; padding:3px 9px; border-radius:99px; background:var(--line) }
+    .tstat.open { background:rgba(46,184,114,.2); color:#2eb872 } .tstat.running { background:rgba(247,197,43,.25); color:#c98f00 }
+    .bracket { display:flex; gap:14px; overflow-x:auto; padding-bottom:8px }
+    .bround { min-width:150px; display:flex; flex-direction:column; justify-content:space-around; gap:10px }
+    .bround h4 { margin:0 0 4px; font-size:12px; color:var(--mute); text-align:center }
+    .bmatch { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--card); font-size:13px }
+    .bmatch.mine { border-color:#f7c52b; box-shadow:0 0 0 1px #f7c52b }
+    .bmatch div { padding:7px 10px; display:flex; justify-content:space-between; gap:6px }
+    .bmatch div + div { border-top:1px solid var(--line) }
+    .bmatch .win { font-weight:800; color:#2eb872 } .bmatch .tbd { color:var(--mute); font-style:italic }
+    .tform { display:flex; flex-direction:column; gap:10px; margin:10px 0 16px; padding:14px; border-radius:16px; background:var(--card); border:1px solid var(--line) }
+    .tform select, .tform input { padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:14px }
+    .mutebtn { margin-left:6px; font-size:11px; opacity:.6; background:transparent; color:inherit; text-decoration:underline }
 
     .dash { margin:12px 18px 0; padding:14px 16px; border-radius:20px; background:var(--card); border:1px solid var(--line) }
     .dash .row1 { display:flex; align-items:center; gap:10px; justify-content:space-between }
@@ -3056,6 +3096,7 @@
       if (path === '/friends') return friendsView(false);
       if (path === '/history') return historyView(false);
       if (path === '/achievements') return achievementsView(false);
+      if (path === '/tournaments') return tournamentsView(false);
       if (path === '/leaderboard') return leaderboardView(new URLSearchParams(location.search).get('by') || 'coins', false);
       const qs = new URLSearchParams(location.search);
       if (qs.get('spectate')) return spectateRoom(qs.get('spectate'), false);
@@ -3099,10 +3140,16 @@
     const IMGBB_API_KEY = '';
     
     /* ---------- preferences: theme + sound/music/vibration ---------- */
-    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, winnerReplay: true, voiceCmd: false, voiceURI: '', voiceRate: 1 }, (() => {
+    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, highContrast: false, largeText: false, colorSafe: false, winnerReplay: true, voiceCmd: false, voiceURI: '', voiceRate: 1 }, (() => {
       try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch { return {} }
     })());
     
+    function applyA11y() {
+      const H = document.documentElement;
+      H.classList.toggle('hc', !!prefs.highContrast); H.classList.toggle('largetext', !!prefs.largeText); H.classList.toggle('cb-safe', !!prefs.colorSafe);
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches && prefs.reducedMotion === false && !localStorage.getItem('ghPrefs')) { prefs.reducedMotion = true; H.classList.add('reduced-motion'); }
+    }
+    applyA11y();
     function savePrefs() { try { localStorage.setItem('ghPrefs', JSON.stringify(prefs)) } catch {} }
     
     function applyTheme() { document.documentElement.setAttribute('data-theme', prefs.theme === 'dark' ? 'dark' : 'light'); { const eq = (typeof me !== 'undefined' && me && me.equipped) || {}; const H = document.documentElement; H.setAttribute('data-roombg', eq.roomBg || 'classic'); H.setAttribute('data-boardskin', eq.boardSkin || 'classic'); H.setAttribute('data-tokenskin', eq.tokenSkin || 'classic'); } document.documentElement.classList.toggle('reduced-motion',!!prefs.reducedMotion); document.documentElement.classList.toggle('low-power',!!prefs.lowPower); }
@@ -3814,6 +3861,9 @@
       socket.on('game:event', handleLudoEvent);
       socket.on('chat:message', appendChatMessage);
       socket.on('invite:received', showInvite);
+      socket.on('queue:matched', m => { closeQueue(); toast('Opponent found: ' + (m.opponent?.name || 'Player') + ' (' + m.opponent?.rating + ')'); joinRoom(m.code); });
+      socket.on('rating:update', r => toast('Rating ' + r.after + ' (' + (r.delta >= 0 ? '+' : '') + r.delta + ')'));
+      socket.on('tournament:match', m => showInvite({ from: { name: m.name + ' · ' + m.stage }, code: m.code, game: m.game, tournament: true }));
     }
     
     function appendChatMessage(m) {
@@ -3831,9 +3881,12 @@
       log.innerHTML = chatMessages.slice(-20).map(m => {
         const mine = m.from === room?.you;
         const body = m.type === 'voice' ? `<audio controls preload="metadata" src="${esc(m.audio || '')}"></audio>` : esc(m.text || '');
-        return `<div class="chatline ${mine ? 'mine' : ''}"><b>${mine ? 'You' : esc(m.name || 'Player')}</b>${body}</div>`;
+        return `<div class="chatline ${mine ? 'mine' : ''}"><b>${mine ? 'You' : esc(m.name || 'Player')}</b>${body}${mine ? '' : `<button class="mutebtn" data-mute="${esc(m.from)}" aria-label="Mute ${esc(m.name || 'player')}">mute</button>`}</div>`;
       }).join('');
       log.scrollTop = log.scrollHeight;
+      log.querySelectorAll('[data-mute]').forEach(b => b.onclick = () => {
+        socket.emit('chat:mute', { code: room.code, index: Number(b.dataset.mute), on: true }, r => { if (r && r.ok) { chatMessages = chatMessages.filter(x => x.from !== Number(b.dataset.mute)); renderChatLog(); toast('Player muted for this match'); } });
+      });
     }
     
     // Small popup for an incoming chat message; tap it to reply.
@@ -3993,6 +4046,10 @@
     <button class="btn ghost qtile" id="friendsOpen"><span class="qico">👥</span><b>Friends</b><small>Add, invite &amp; chat</small></button>
     <button class="btn ghost qtile" id="historyOpen"><span class="qico">🕘</span><b>History</b><small>Your recent matches</small></button>
   </div>
+  <div class="quickgrid" style="margin-top:10px">
+    <button class="btn ghost qtile" id="tourOpen"><span class="qico">🏆</span><b>Tournaments</b><small>Brackets &amp; cups</small></button>
+    <button class="btn ghost qtile" id="a11yOpen"><span class="qico">♿</span><b>Accessibility</b><small>Text, contrast, motion</small></button>
+  </div>
   <div class="chcard" id="chCard"></div>
   <button class="rwstrip" id="rewardsOpen" aria-label="Rewards and payouts, coming soon">
     <span class="rwico">💰</span>
@@ -4011,6 +4068,8 @@
       $('#lbOpen').onclick = () => leaderboardView('coins');
       $('#rewardsOpen').onclick = () => rewardsView();
       $('#friendsOpen').onclick = () => friendsView();
+      $('#tourOpen').onclick = () => tournamentsView();
+      $('#a11yOpen').onclick = () => settingsView();
       $('#historyOpen').onclick = () => historyView();
       loadChallengesCard();
       loadDashboard();
@@ -4083,6 +4142,7 @@
     <small>${d.xpForNext - d.xpInLevel} XP to level ${esc(d.level + 1)} · ${toNext}</small>
     <div class="dstats"><div><b>${esc(d.winStreak)}</b><span>Win streak</span></div><div><b>${esc(d.bestStreak)}</b><span>Best streak</span></div><div><b>${esc(d.friendsOnline)}/${esc(d.friendsTotal)}</b><span>Friends online</span></div></div>
     ${d.recent.length ? `<div class="dform">Recent: ${d.recent.map(m => `<span class="res ${m.result === 'win' ? 'w' : m.result === 'loss' ? 'l' : 'd'}">${m.result === 'win' ? 'W' : m.result === 'loss' ? 'L' : 'D'}</span> ${esc(names[m.game] || m.game)}`).join(' · ')}</div>` : ''}
+${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(r => `<span class="rankchip">${esc(names[r.game] || r.game)} ${esc(r.rating)}${r.placement ? ' (placement ' + esc(r.games) + '/10)' : ''}</span>`).join(' ')}</div>` : ''}
     <button class="dlink" id="achOpen">🏅 Achievements</button>`;
       $('#achOpen').onclick = () => achievementsView();
     }
@@ -4104,11 +4164,80 @@
       document.querySelector('.invbanner')?.remove();
       const el = document.createElement('div'); el.className = 'invbanner'; el.setAttribute('role', 'alert');
       const g = (GAMES || []).find(x => (x.key || x.id) === inv.game);
-      el.innerHTML = `<span><b>${esc(inv.from?.name || 'A friend')}</b> invited you to play ${esc(g?.name || inv.game)}</span><button data-j>Join</button><button class="x" data-x aria-label="Dismiss">✕</button>`;
+      el.innerHTML = `<span><b>${esc(inv.from?.name || 'A friend')}</b> ${inv.tournament ? 'Your tournament match is ready: ' : 'invited you to play '}${esc(g?.name || inv.game)}</span><button data-j>${inv.tournament ? 'Play now' : 'Join'}</button><button class="x" data-x aria-label="Dismiss">✕</button>`;
       document.body.appendChild(el);
       el.querySelector('[data-j]').onclick = () => { el.remove(); joinRoom(inv.code); };
       el.querySelector('[data-x]').onclick = () => el.remove();
-      setTimeout(() => el.remove(), 30000);
+      setTimeout(() => el.remove(), inv.tournament ? 170000 : 30000);
+    }
+    let queueTimer = null;
+    function closeQueue() { clearInterval(queueTimer); queueTimer = null; document.getElementById('qOverlay')?.remove(); }
+    function rankedQueue(game, name) {
+      socket.emit('queue:join', { game }, res => {
+        if (!res || !res.ok) return toast(res?.error || 'Could not start matchmaking');
+        const el = document.createElement('div'); el.id = 'qOverlay'; el.className = 'qoverlay'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-label', 'Finding opponent');
+        el.innerHTML = `<div class="spin" aria-hidden="true"></div><h2 style="margin:0">Finding opponent…</h2><div>${esc(name || game)} · your rating ${esc(res.rating)}</div><div id="qTime">0:00</div><small style="opacity:.75">The search range widens the longer you wait.</small><button class="btn ghost" id="qCancel">Cancel</button>`;
+        document.body.appendChild(el);
+        const t0 = Date.now();
+        queueTimer = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); const q = document.getElementById('qTime'); if (q) q.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }, 500);
+        $('#qCancel').onclick = () => { socket.emit('queue:leave', {}, () => {}); closeQueue(); };
+      });
+    }
+    async function tournamentsView(navigate = true) {
+      if (navigate) history.pushState({ page: 'tournaments' }, '', '/tournaments');
+      setLobbyMusic(true);
+      let data = { tournaments: [], recent: [] };
+      try { data = await api('/api/tournaments'); } catch { toast('Could not load tournaments'); }
+      const games = (GAMES || []).filter(g => !g.playerCounts || g.playerCounts.includes(2));
+      const row = t => { const g = (GAMES || []).find(x => (x.key || x.id) === t.game);
+        return `<div class="tcard" data-t="${esc(t.id)}" tabindex="0" role="button"><div class="tt"><span>${esc(t.name)}</span><span class="tstat ${esc(t.status)}">${esc(t.status)}</span></div><small>${esc(g?.name || t.game)} · ${t.count}/${t.maxPlayers} players${t.minLevel > 1 ? ' · level ' + t.minLevel + '+' : ''}${t.startsAt ? ' · starts ' + esc(new Date(t.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}${t.champion ? ' · 🏆 ' + esc(t.champion) : ''}</small></div>`; };
+      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
+      <button class="back" id="trBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Tournaments</h1><span style="width:38px"></span></div>
+      <button class="btn" id="trNew" style="width:100%;margin:8px 0">Create a tournament</button>
+      <div id="trForm"></div>
+      <div class="glabel" style="margin:10px 0 6px;font-weight:700">Open &amp; live</div>
+      ${data.tournaments.length ? data.tournaments.map(row).join('') : '<p class="socempty">No tournaments right now. Create one!</p>'}
+      ${data.recent.length ? '<div class="glabel" style="margin:14px 0 6px;font-weight:700">Recent champions</div>' + data.recent.map(row).join('') : ''}
+      <p class="rwnote">Prizes are cosmetic coins and XP only. Entries lock when the bracket starts.</p></div>`;
+      $('#trBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
+      app.querySelectorAll('[data-t]').forEach(c => { c.onclick = () => tournamentView(c.dataset.t); c.onkeydown = e => { if (e.key === 'Enter') tournamentView(c.dataset.t); }; });
+      $('#trNew').onclick = () => {
+        $('#trForm').innerHTML = `<div class="tform"><input id="tfName" maxlength="40" placeholder="Name (optional)">
+        <select id="tfGame">${games.map(g => `<option value="${esc(g.key || g.id)}">${esc(g.name)}</option>`).join('')}</select>
+        <select id="tfSize"><option value="4">4 players</option><option value="8" selected>8 players</option><option value="16">16 players</option></select>
+        <select id="tfStart"><option value="0">Start when full (or when I start it)</option><option value="10">Starts in 10 minutes</option><option value="30">Starts in 30 minutes</option><option value="60">Starts in 1 hour</option></select>
+        <select id="tfLvl"><option value="1">Everyone can enter</option><option value="3">Level 3+</option><option value="5">Level 5+</option><option value="10">Level 10+</option></select>
+        <button class="btn" id="tfGo">Create</button></div>`;
+        $('#tfGo').onclick = async () => { try { const r = await apiPost('/api/tournaments', { name: $('#tfName').value, game: $('#tfGame').value, maxPlayers: +$('#tfSize').value, startInMinutes: +$('#tfStart').value, minLevel: +$('#tfLvl').value }); tournamentView(r.tournament.id); } catch (e) { toast(e.message || 'Could not create'); } };
+      };
+    }
+    async function tournamentView(id) {
+      history.pushState({ page: 'tournament', id }, '', '/tournaments');
+      let d;
+      try { d = await api('/api/tournaments/' + id); } catch (e) { toast(e.message || 'Could not load'); return tournamentsView(false); }
+      const t = d.tournament, g = (GAMES || []).find(x => (x.key || x.id) === t.game);
+      const post = async (path) => { try { await apiPost('/api/tournaments/' + id + path, {}); } catch (e) { toast(e.message || 'Failed'); } tournamentView(id); };
+      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
+      <button class="back" id="tvBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>${esc(t.name)}</h1><span style="width:38px"></span></div>
+      <p style="margin:4px 0 10px;color:var(--mute);font-size:13px">${esc(g?.name || t.game)} · ${t.count}/${t.maxPlayers} players · <span class="tstat ${esc(t.status)}">${esc(t.status)}</span></p>
+      ${t.status === 'done' ? `<div class="rwdone">🏆 Champion: <b>${esc(t.champion || '?')}</b>${t.runnerUp ? ' · Runner-up: ' + esc(t.runnerUp) : ''}<br><small>Prizes: ${t.prizes.champion.coins} coins + ${t.prizes.champion.xp} XP for the champion.</small></div>` : ''}
+      ${d.myMatch ? `<button class="btn" id="tvPlay" style="width:100%;margin:8px 0">▶ Play your ${esc(d.myMatch.round)} match vs ${esc(d.myMatch.opponent)}</button>` : ''}
+      <div class="acts" style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">
+        ${t.status === 'open' && !t.joined ? '<button class="btn" id="tvJoin">Join</button>' : ''}
+        ${t.status === 'open' && t.joined ? '<button class="btn ghost" id="tvLeave">Leave</button>' : ''}
+        ${t.status === 'open' && t.mine && t.count >= t.minPlayers ? '<button class="btn" id="tvStart">Start now</button>' : ''}
+        <button class="btn ghost" id="tvRef">Refresh</button></div>
+      ${d.rounds.length ? `<div class="bracket" role="group" aria-label="Bracket">${d.rounds.map(r => `<div class="bround"><h4>${esc(r.name)}</h4>${r.matches.map(m => `<div class="bmatch ${m.mine ? 'mine' : ''}">
+        <div class="${m.winner && m.winner === m.a ? 'win' : ''}"><span class="${m.a ? '' : 'tbd'}">${esc(m.a || (m.bye ? 'bye' : 'TBD'))}</span></div>
+        <div class="${m.winner && m.winner === m.b ? 'win' : ''}"><span class="${m.b ? '' : 'tbd'}">${esc(m.b || (m.bye ? 'bye' : 'TBD'))}</span>${m.live ? '<span>🔴</span>' : ''}</div></div>`).join('')}</div>`).join('')}</div>`
+        : `<div class="glabel" style="margin:10px 0 6px;font-weight:700">Players</div>${t.players.map(p => `<div class="prow"><div class="t"><b>${esc(p.name)}</b></div></div>`).join('') || '<p class="socempty">Nobody yet.</p>'}`}
+      <p class="rwnote">Bracket starts automatically when full or at the start time. If a player does not show within 3 minutes, their opponent advances. Drawn matches are replayed.</p></div>`;
+      $('#tvBk').onclick = () => tournamentsView(false);
+      $('#tvRef').onclick = () => tournamentView(id);
+      $('#tvJoin') && ($('#tvJoin').onclick = () => post('/join'));
+      $('#tvLeave') && ($('#tvLeave').onclick = () => post('/leave'));
+      $('#tvStart') && ($('#tvStart').onclick = () => post('/start'));
+      $('#tvPlay') && ($('#tvPlay').onclick = () => joinRoom(d.myMatch.code));
     }
     async function loadChallengesCard() {
       const box = $('#chCard'); if (!box) return;
@@ -4177,6 +4306,48 @@
       }
       draw();
     }
+    async function replayView(matchId, navigate = true) {
+      if (navigate) history.pushState({ page: 'replay', id: matchId }, '', '/history');
+      setLobbyMusic(true);
+      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
+      <button class="back" id="rpBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Replay</h1><span style="width:38px"></span></div><div id="rpBody"><p class="socempty">Loading…</p></div></div>`;
+      $('#rpBk').onclick = () => historyView(false);
+      let rp;
+      try { rp = (await api('/api/matches/' + encodeURIComponent(matchId) + '/replay')).replay; } catch { $('#rpBody').innerHTML = '<p class="socempty">Replay not available.</p>'; return; }
+      const moves = rp.moves || [];
+      if (!moves.length) { $('#rpBody').innerHTML = '<p class="socempty">This match has no recorded moves.</p>'; return; }
+      const frames = [];
+      if (moves[0].before) frames.push({ state: moves[0].before, label: 'Start' });
+      moves.forEach((m, k) => frames.push({ state: m.state, label: 'Move ' + (k + 1), player: m.player }));
+      const meId = String(me.id || me._id), mine = (rp.players || []).findIndex(p => String(p.userId) === meId);
+      const players = (rp.players || []).map(p => ({ id: p.userId, name: p.name, displayName: p.name }));
+      const g = (GAMES || []).find(x => (x.key || x.id) === rp.game);
+      let pos = frames.length - 1, timer = null;
+      $('#rpBody').innerHTML = `<p style="margin:0 0 6px;color:var(--mute);font-size:13px">${esc(g?.name || rp.game)} · ${esc(players.map(p => p.name).join(' vs '))}</p>
+        <div class="rpbox" id="rpBoard" aria-live="polite"></div><div id="rpLabel" style="text-align:center;font-weight:700;font-size:14px"></div>
+        <input type="range" class="rprange" id="rpRange" min="0" max="${frames.length - 1}" value="${pos}" aria-label="Jump to move">
+        <div class="rpbar"><button class="alt" id="rpFirst" aria-label="First">⏮</button><button class="alt" id="rpPrev" aria-label="Previous move">◀</button><button id="rpPlay" aria-label="Play">▶</button><button class="alt" id="rpNext" aria-label="Next move">▶|</button><button class="alt" id="rpLast" aria-label="Last">⏭</button></div>`;
+      const draw = () => {
+        const f = frames[pos]; ctxWinner = rp.winnerIndex;
+        $('#rpBoard').innerHTML = boardSnapshot(rp.game, f.state, players, mine, rp.players.length);
+        if (rp.game === 'snakes' && window.GHSnakes) { const host = $('#rpBoard').querySelector('#snakeStage'); if (host) { try { window.GHSnakes.mount(host, f.state, { code: 'rp-' + matchId }); } catch {} } }
+        $('#rpLabel').textContent = f.label + (f.player != null ? ' · ' + (players[f.player]?.name || 'Player') : '') + '  (' + pos + '/' + (frames.length - 1) + ')';
+        $('#rpRange').value = pos;
+      };
+      const stop = () => { clearInterval(timer); timer = null; $('#rpPlay').textContent = '▶'; };
+      const go = n => { pos = Math.max(0, Math.min(frames.length - 1, n)); draw(); };
+      $('#rpFirst').onclick = () => { stop(); go(0); }; $('#rpLast').onclick = () => { stop(); go(frames.length - 1); };
+      $('#rpPrev').onclick = () => { stop(); go(pos - 1); }; $('#rpNext').onclick = () => { stop(); go(pos + 1); };
+      $('#rpRange').oninput = e => { stop(); go(+e.target.value); };
+      $('#rpPlay').onclick = () => {
+        if (timer) return stop();
+        if (pos >= frames.length - 1) pos = 0;
+        $('#rpPlay').textContent = '⏸';
+        timer = setInterval(() => { if (!document.getElementById('rpBoard')) return stop(); if (pos >= frames.length - 1) return stop(); go(pos + 1); }, 1100);
+        go(pos);
+      };
+      draw();
+    }
     async function historyView(navigate = true) {
       if (navigate) history.pushState({ page: 'history' }, '', '/history');
       setLobbyMusic(true);
@@ -4194,8 +4365,9 @@
         const opp = (m.players || []).filter((p, i) => i !== idx).map(p => p.name || 'Player').join(', ') || 'Solo';
         const g = (GAMES || []).find(x => (x.key || x.id) === m.game);
         const mins = m.durationMs ? Math.max(1, Math.round(m.durationMs / 60000)) + ' min · ' : '';
-        return `<div class="prow"><div class="t"><b>${esc(g?.name || m.game)}${m.ranked ? ' · Ranked' : ''}</b><small>vs ${esc(opp)} · ${mins}${esc(new Date(m.createdAt).toLocaleDateString())}</small></div><span class="res ${res[0]}">${res[1]}</span></div>`;
+        return `<div class="prow"><div class="t"><b>${esc(g?.name || m.game)}${m.ranked ? ' · Ranked' : ''}</b><small>vs ${esc(opp)} · ${mins}${esc(new Date(m.createdAt).toLocaleDateString())}</small></div><span class="res ${res[0]}">${res[1]}</span><button class="chbtn" data-replay="${esc(m._id)}" aria-label="Watch replay">▶ Replay</button></div>`;
       }).join('');
+      $('#hsList').querySelectorAll('[data-replay]').forEach(b => b.onclick = () => replayView(b.dataset.replay));
     }
     async function rewardsView(navigate = true) {
       if (navigate) history.pushState({ page: 'rewards' }, '', '/rewards');
@@ -4321,6 +4493,9 @@
       ${toggleRow('sVibe','Vibration','phone', prefs.vibration)}
       ${toggleRow('sDark','Dark Mode','moon', prefs.theme==='dark')}
       ${toggleRow('sMotion','Reduce Animations','info', prefs.reducedMotion)}
+      ${toggleRow('sHC','High contrast','info', prefs.highContrast)}
+      ${toggleRow('sLarge','Larger text','info', prefs.largeText)}
+      ${toggleRow('sCB','Colour-blind friendly colours','info', prefs.colorSafe)}
       ${toggleRow('sPower','Low-power mode','hourglass', prefs.lowPower)}
       ${toggleRow('sReplay','Cinematic winner highlights','trophy', prefs.winnerReplay)}
     </div>
@@ -4369,6 +4544,9 @@
         savePrefs();
         $('#sVibe .tgl').classList.toggle('on', prefs.vibration);
         vibrate(30); };
+      $('#sHC').onclick = () => { prefs.highContrast=!prefs.highContrast; savePrefs(); applyA11y(); $('#sHC .tgl').classList.toggle('on',prefs.highContrast); };
+      $('#sLarge').onclick = () => { prefs.largeText=!prefs.largeText; savePrefs(); applyA11y(); $('#sLarge .tgl').classList.toggle('on',prefs.largeText); };
+      $('#sCB').onclick = () => { prefs.colorSafe=!prefs.colorSafe; savePrefs(); applyA11y(); $('#sCB .tgl').classList.toggle('on',prefs.colorSafe); };
       $('#sMotion').onclick = () => { prefs.reducedMotion=!prefs.reducedMotion; savePrefs(); applyTheme(); $('#sMotion .tgl').classList.toggle('on',prefs.reducedMotion); };
       $('#sPower').onclick = () => { prefs.lowPower=!prefs.lowPower; savePrefs(); applyTheme(); $('#sPower .tgl').classList.toggle('on',prefs.lowPower); };
       $('#sReplay').onclick = () => { prefs.winnerReplay=!prefs.winnerReplay; savePrefs(); $('#sReplay .tgl').classList.toggle('on',prefs.winnerReplay); };
@@ -4587,6 +4765,12 @@
     <button class="btn" id="qk" style="width:100%">Quick match</button>
     <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">Create a room</button>
     <button class="btn ghost" id="vb" style="width:100%;margin-top:10px">${icon('controller',16)} Play vs Bot</button>
+    <div class="diffrow"><label for="diff">Bot level</label><select id="diff"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option><option value="expert">Expert</option></select></div>
+    ${(!counts || counts.includes(2)) ? `<button class="btn" id="rk" style="width:100%;margin-top:10px">🏆 Ranked match (real players)</button>` : ''}
+    ${key === 'ludo' ? `<fieldset class="rwnote" style="margin:12px 0;border:1px solid var(--line)"><legend style="font-weight:700;font-size:12px;padding:0 6px">Ludo rules (rooms &amp; bot games)</legend>
+      <label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" id="lBlock"> Blockades: two of your tokens on one cell can't be passed</label>
+      <label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" id="lBonus"> Bonus roll after a capture or reaching home</label>
+      <label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" id="lStar" checked> Star squares are safe</label></fieldset>` : ''}
     <div class="row"><input id="cd" placeholder="ROOM CODE" maxlength="8" aria-label="Room code"><button class="btn ghost" id="jn">Join</button></div>
     <h3 style="margin:18px 0 0;font-size:15px">Open rooms</h3><div id="rooms" class="empty">Loading…</div></div>`;
       document.body.appendChild(bg);
@@ -4598,10 +4782,12 @@
       });
       $('#qk').onclick = () => { bg.remove();
         quickMatch(key, n) };
-      $('#mk').onclick = () => { bg.remove();
-        createRoom(key, n) };
-      $('#vb').onclick = () => { bg.remove();
-        createRoom(key, n, true) };
+      const ludoOpts = () => key === 'ludo' ? { blockades: $('#lBlock').checked, bonusRolls: $('#lBonus').checked, safeStars: $('#lStar').checked } : undefined;
+      $('#mk').onclick = () => { const o = ludoOpts(); bg.remove();
+        createRoom(key, n, false, undefined, o) };
+      $('#vb').onclick = () => { const lvl = $('#diff').value, o = ludoOpts(); bg.remove();
+        createRoom(key, n, true, lvl, o) };
+      if ($('#rk')) $('#rk').onclick = () => { bg.remove(); rankedQueue(key, name); };
       $('#jn').onclick = () => { const c = $('#cd').value.trim(); if (c) { bg.remove();
           joinRoom(c) } };
       async function loadRooms() {
@@ -4617,8 +4803,8 @@
       loadRooms();
     }
     
-    function createRoom(game, maxPlayers, vsBot) {
-      socket.emit(EV.create, { game, maxPlayers, vsBot: !!vsBot }, res => {
+    function createRoom(game, maxPlayers, vsBot, difficulty, options) {
+      socket.emit(EV.create, { game, maxPlayers, vsBot: !!vsBot, difficulty, options }, res => {
         if (res && res.ok === false) return toast(res.error || 'Could not create room');
         room = res?.room || res;
         result = gstate = null;
@@ -5243,12 +5429,30 @@
       return `<div class="chess-wrap">${chessSeats}<div class="board chess" style="grid-template-columns:repeat(${size},1fr)">${squares}</div><div class="chess-coords">${coords}</div></div>`;
     }
     function newGameBoardHtml(g, st, myTurn, mine, players) {
-      if (g === 'checkers') { const b=st.board||[]; return `<div class="board checkers"><div class="ckgrid">${b.flat().map((v,i)=>`<button class="ckcell ${(Math.floor(i/8)+i)%2?'dark':'light'} ${v?'p'+v.player:''}" data-ck="${i}" ${!myTurn?'disabled':''}>${v?(v.king?'♛':'●'):''}</button>`).join('')}</div></div>`; }
+      if (g === 'checkers') { const b=st.board||[]; const can=new Set(myTurn?(st.legal||[]).map(m=>m.from):[]); const hint=myTurn&&st.mustCapture?`<p class="rwnote" style="text-align:center;margin:0 0 8px">Capture is compulsory${st.mustContinue!=null?' - keep jumping with the same piece':''}.</p>`:''; return `<div class="board checkers">${hint}<div class="ckgrid">${b.flat().map((v,i)=>`<button class="ckcell ${(Math.floor(i/8)+i)%2?'dark':'light'} ${v?'p'+v.player:''} ${can.has(i)?'can':''}" data-ck="${i}" ${!myTurn?'disabled':''} ${can.has(i)?'aria-label="Piece that can move"':''}>${v?(v.king?'♛':'●'):''}</button>`).join('')}</div></div>`; }
       if (g === 'mancala') return `<div class="board mancala"><div class="mboard"><div class="mstore">${st.stores?.[1]||0}</div><div class="mpits">${(st.pits?.[1]||[]).slice().reverse().map((n,j)=>`<button data-mpit="${5-j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}${(st.pits?.[0]||[]).map((n,j)=>`<button data-mpit="${j}" ${!myTurn?'disabled':''}>${n}</button>`).join('')}</div><div class="mstore">${st.stores?.[0]||0}</div></div></div>`;
-      if (g === 'battleship') return `<div class="board ships"><div class="shipgrid">${Array.from({length:100},(_,i)=>{const r=Math.floor(i/10),c=i%10,hit=st.shots?.[mine]?.some(x=>x[0]===r&&x[1]===c);return `<button data-ship="${r},${c}" class="${hit?'hit':''}" ${!myTurn?'disabled':''}>${hit?(st.boards?.[1-mine]?.[r]?.[c]?'×':'·'):''}</button>`}).join('')}</div><p class="muted">Fire at a coordinate to find the fleet.</p></div>`;
+      if (g === 'battleship') {
+        const ls = st.lastShot, mineShot = ls && ls.by === mine;
+        const msg = ls ? (ls.sunk ? (mineShot ? `You sank their ${esc(ls.sunk)}!` : `They sank your ${esc(ls.sunk)}!`) : ls.hit ? (mineShot ? 'Hit!' : 'They hit one of your ships') : (mineShot ? 'Miss' : 'They missed')) : 'Fire at a coordinate to find the fleet.';
+        const theirShots = new Set((st.shots?.[1 - mine] || []).map(x => x[0] * 10 + x[1]));
+        const sunkSet = new Set((st.sunkEnemy || []).flatMap(sh => sh.cells.map(x => x[0] * 10 + x[1])));
+        const own = Array.from({ length: 100 }, (_, k) => { const r = Math.floor(k / 10), c = k % 10, ship = st.boards?.[mine]?.[r]?.[c], shot = theirShots.has(k);
+          return `<i style="display:block;aspect-ratio:1;border-radius:3px;background:${ship ? (shot ? '#d9363e' : '#5b6b82') : (shot ? '#9aa0a655' : 'var(--line)')}" ${shot ? 'title="Shot"' : ''}></i>`; }).join('');
+        return `<div class="board ships"><div class="shipgrid">${Array.from({length:100},(_,i)=>{const r=Math.floor(i/10),c=i%10,hit=st.shots?.[mine]?.some(x=>x[0]===r&&x[1]===c);const isHit=hit&&st.boards?.[1-mine]?.[r]?.[c];return `<button data-ship="${r},${c}" class="${hit?'hit':''}" ${!myTurn?'disabled':''} aria-label="Row ${r+1} column ${c+1}${hit?(isHit?', hit':', miss'):''}" style="${sunkSet.has(i)?'background:#d9363e;color:#fff':''}">${hit?(isHit?'×':'·'):''}</button>`}).join('')}</div>
+          <p class="muted" role="status" style="margin:8px 0 2px;font-weight:700">${msg}</p>
+          <p class="muted" style="margin:0 0 8px;font-size:12px">Enemy ships left: ${esc(st.remaining ?? 5)} of ${esc(st.fleetSize ?? 5)}${st.sunkEnemy?.length ? ' · Sunk: ' + st.sunkEnemy.map(x => esc(x.name)).join(', ') : ''}</p>
+          <p class="muted" style="margin:6px 0 4px;font-size:12px">Your fleet</p><div style="display:grid;grid-template-columns:repeat(10,1fr);gap:2px;max-width:200px">${own}</div></div>`; }
       if (g === 'snakes') { const pos = st.positions || [], face = ['⚀','⚁','⚂','⚃','⚄','⚅'][(st.lastRoll || 0) - 1] || '🎲', dots = ['#f7c52b','#3d8de8','#44b86b','#e64e4e'];
         return `<div class="board snakes"><div id="snakeStage" class="snake-stage"></div><div class="snake-info">${pos.map((p, n) => `<span class="snake-pl ${st.turn === n && !result ? 'on' : ''}"><i style="background:${dots[n % 4]}"></i>${esc(nameOf(players[n]))} · ${p || 'start'}</span>`).join('')}</div><div class="snake-roll"><span class="snake-die" id="snakeDie" aria-label="Last roll">${face}</span><button class="btn" id="rollSnake" ${!myTurn || result ? 'disabled' : ''}>${myTurn && !result ? 'Roll the dice' : 'Waiting…'}</button></div></div>`; }
-      if (g === 'dominoes') return `<div class="board dominoes"><div class="domchain">${(st.chain||[]).map(t=>`<span>[${t[0]}|${t[1]}]</span>`).join(' ')||'Start the chain'}</div><div class="domhand">${(st.hand?.[mine]||[]).map((t,i)=>`<button data-dom="${i}" ${!myTurn?'disabled':''}>${t[0]} | ${t[1]}</button>`).join('')}</div></div>`;
+      if (g === 'dominoes') {
+        const legal = st.legal || [], playableIdx = new Set(myTurn ? legal.map(m => m.index) : []);
+        const e = st.ends, counts = st.counts || [], names = (players || []).map((p, k) => k === mine ? 'You' : (p?.displayName || p?.name || 'Player ' + (k + 1)));
+        const note = st.lastEvent?.drew ? `<p class="muted" style="margin:6px 0;text-align:center">${esc(names[st.lastEvent.drew.player] || 'A player')} drew ${esc(st.lastEvent.drew.count)} from the boneyard</p>` : '';
+        const opening = !(st.chain || []).length && st.opening ? `<p class="muted" style="text-align:center;margin:6px 0">Highest double opens: play ${esc(st.opening[0])}|${esc(st.opening[1])}</p>` : '';
+        return `<div class="board dominoes"><div class="muted" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px">${counts.map((n, k) => `<span>${esc(names[k])}: ${esc(n)} tiles${st.out?.[k] ? ' (out)' : ''}`).join('</span><span>')}</span><span>Boneyard: ${esc(st.boneyardCount ?? 0)}</span></div>
+          <div class="domchain" aria-label="Domino line">${(st.chain||[]).map(t=>`<span>[${t[0]}|${t[1]}]</span>`).join(' ')||'Start the chain'}</div>
+          ${e ? `<p class="muted" style="text-align:center;margin:6px 0;font-size:12px">Open ends: ${esc(e[0])} and ${esc(e[1])}</p>` : ''}${opening}${note}
+          <div class="domhand">${(st.hand?.[mine]||[]).map((t,i)=>`<button data-dom="${i}" ${!myTurn||!playableIdx.has(i)?'disabled':''} ${playableIdx.has(i)?'style="outline:3px solid #f7c52b"':''} aria-label="Tile ${t[0]} ${t[1]}">${t[0]} | ${t[1]}</button>`).join('')}</div><div id="domEnd"></div></div>`; }
       if (g === 'words') return wordsBoardHtml(gstate || {}, myTurn, players, mine, !!board.readonly);
       return '';
     }
@@ -5284,7 +5488,14 @@
       app.querySelectorAll('[data-mpit]').forEach(e => e.onclick = () => act(MOVE.mancala(+e.dataset.mpit)));
       app.querySelectorAll('[data-ship]').forEach(e => e.onclick = () => { const [row,col]=e.dataset.ship.split(',').map(Number); act(MOVE.battleship({row,col})); });
       $('#rollSnake')?.addEventListener('click', () => act(MOVE.snakes()));
-      app.querySelectorAll('[data-dom]').forEach(e => e.onclick = () => act(MOVE.dominoes(+e.dataset.dom)));
+      app.querySelectorAll('[data-dom]').forEach(e => e.onclick = () => {
+        const idx = +e.dataset.dom, opts = (gstate?.legal || []).filter(m => m.index === idx).map(m => m.end);
+        if (opts.length > 1) {
+          const box = document.getElementById('domEnd'); if (!box) return act({ index: idx, end: opts[0] });
+          box.innerHTML = '<div class="row" style="justify-content:center;gap:8px;margin-top:10px"><button class="btn ghost" data-end="left">◀ Play on left</button><button class="btn ghost" data-end="right">Play on right ▶</button></div>';
+          box.querySelectorAll('[data-end]').forEach(b => b.onclick = () => act({ index: idx, end: b.dataset.end }));
+        } else act({ index: idx, end: opts[0] });
+      });
       if (g === 'words') bindWords(myTurn, act);
       if (g === 'chess') app.querySelectorAll('[data-chess]').forEach(e => e.onclick = async () => {
         const to = +e.dataset.chess, board = gstate?.board || [], p = board[to];

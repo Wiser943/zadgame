@@ -388,7 +388,7 @@
     let games = [],
       users = [];
     
-    function layout(page) { root.innerHTML = `<div class="shell"><aside class="side"><div class="brand">GameHub Admin</div><nav class="nav"><button data-page="overview">Overview</button><button data-page="games">Games & Rules</button><button data-page="users">Users & Penalties</button><button data-page="reports">Reports</button></nav><button class="btn danger logout" id="logout">Log out</button></aside><main class="main" id="content"></main></div>`;
+    function layout(page) { root.innerHTML = `<div class="shell"><aside class="side"><div class="brand">GameHub Admin</div><nav class="nav"><button data-page="overview">Overview</button><button data-page="games">Games & Rules</button><button data-page="users">Users & Penalties</button><button data-page="reports">Reports</button><button data-page="metrics">Analytics</button></nav><button class="btn danger logout" id="logout">Log out</button></aside><main class="main" id="content"></main></div>`;
       document.querySelectorAll('[data-page]').forEach(b => b.onclick = () => { location.hash = b.dataset.page;
         show(b.dataset.page) });
       logout.onclick = async () => { await api('/admin-api/logout', { method: 'POST' });
@@ -398,8 +398,19 @@
     function show(page) { document.querySelectorAll('[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === page)); if (page === 'games') gamesPage();
       else if (page === 'users') usersPage();
       else if (page === 'reports') reportsPage();
+      else if (page === 'metrics') metricsPage();
       else overviewPage() }
     
+    
+    async function metricsPage() {
+      content.innerHTML = head('Analytics', 'Last 7 days. Aggregate counts only.') + '<section class="card" id="mBox"><p class="muted">Loading...</p></section>';
+      let m;
+      try { m = await api('/admin-api/metrics') } catch (e) { mBox.innerHTML = '<p class="muted">Could not load metrics.</p>'; return }
+      const stat = (l, v) => `<div class="card" style="flex:1;min-width:140px;text-align:center"><div style="font-size:24px;font-weight:800">${esc(v)}</div><div class="muted">${esc(l)}</div></div>`;
+      const max = Math.max(1, ...m.games.map(g => g.matches));
+      mBox.innerHTML = `<div class="inline" style="flex-wrap:wrap">${stat('Online now',m.onlineNow)}${stat('Active players (24h)',m.activePlayers24h)}${stat('New users',m.newUsers)}${stat('Matches',m.matches)}${stat('Ranked matches',m.rankedMatches)}${stat('Matches with a bot',m.botMatchShare+'%')}${stat('Abandoned / forfeited',m.abandonRate+'%')}${stat('Open reports',m.openReports)}${stat('Tournaments open / live',m.tournaments.open+' / '+m.tournaments.running)}</div>
+  <h3>Game popularity</h3>${m.games.length?m.games.map(g=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between"><span>${esc(g.game)}</span><span class="muted">${g.matches} matches${g.avgMinutes!=null?' · avg '+g.avgMinutes+' min':''}</span></div><div style="height:8px;border-radius:99px;background:#ddd;overflow:hidden"><div style="height:100%;width:${Math.round(100*g.matches/max)}%;background:#b3141c"></div></div></div>`).join(''):'<p class="muted">No matches yet.</p>'}`;
+    }
     let reportFilter = 'open';
     async function reportsPage() {
       content.innerHTML = head('Reports', 'Review player reports. Every action is logged.') + `<section class="card"><div class="inline">${['open','warned','suspended','resolved','dismissed','all'].map(f=>`<button class="btn ${f===reportFilter?'':'secondary'}" data-rf="${f}">${f}</button>`).join('')}</div><div id="repList"><p class="muted">Loading...</p></div></section>`;

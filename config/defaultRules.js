@@ -10,6 +10,6 @@ module.exports = {
   battleship: ['Place five ship cells on your hidden board.', 'Call a row and column to fire at your opponent.', 'Sink five enemy ship cells to win.'],
   snakes: ['Roll to move toward square 100.', 'Ladders move you up; snakes slide you down.', 'First player to reach 100 wins.'],
   words: ['Tap tiles from your rack to build a real English word (2–7 letters), then press Play word.', 'Each letter has its own value (Q and Z are worth 10, vowels 1). Longer words earn a length bonus.', 'Used tiles are refilled from a shared bag. Stuck? Swap your rack for a fresh one and skip your turn.', 'After 24 words the higher score wins — or empty your rack once the bag runs out to win instantly.'],
-  dominoes: ['Play a tile matching either end of the chain.', 'The first player to empty their hand wins.', 'If no one can move, the match is a draw.'],
+  dominoes: ['The player with the highest double opens. Play a tile matching either end of the chain.', 'If you cannot play, you draw from the boneyard until you can, or pass when it is empty.', 'The first player to empty their hand wins. If everyone is blocked, the lowest pip total wins.'],
   joker: ['Match the top card by rank or suit; Jokers are wild.', 'Choose a suit after playing a Joker.', 'Every numbered card 2–10 can stack a draw penalty by its value.', 'If you cannot play, draw the current penalty or one card from the market.', 'First player to empty their hand wins.']
 };

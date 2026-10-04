@@ -8,18 +8,22 @@
 //   52-57    = in the private home stretch (can't be captured here)
 //   57       = home (finished)
 //
-// Simplifications vs. a full board-game ruleset: no "blocking" when two of
-// a player's own tokens share a cell, and a wasted 6 (no legal move) still
-// ends the turn rather than granting a free reroll. Everything else —
-// needing a 6 to leave the yard, exact rolls to reach home, capturing
-// opponents off the shared track, safe squares, and three-sixes forfeiting
-// the turn — follows standard rules.
+// Rules (room creator can pick variants, see DEFAULT_RULES):
+//  - needs a 6 to leave the yard, exact roll to reach home, three 6s in a row forfeit the turn
+//  - capturing sends opponent tokens on that cell back to their yard (not on safe cells)
+//  - blockades (optional): two or more of a player's tokens on one non-safe cell cannot be passed or landed on by opponents
+//  - bonusRolls (optional): an extra roll after a capture or after getting a token home (a 6 always gives one)
+//  - safeStars (default on): the star cells 8, 21, 34, 47 are safe as well as the start cells
 
 const TRACK_LEN = 52;
 const HOME_STEPS = 57;                 // steps value once a token is home
 const CORNER_STARTS = [0, 13, 26, 39]; // shared-track entry cell per corner
 const CORNER_COLORS = ['red', 'green', 'yellow', 'blue'];
-const SAFE_CELLS = new Set([0, 8, 13, 21, 26, 34, 39, 47]); // starts + star cells
+const START_CELLS = new Set([0, 13, 26, 39]);
+const STAR_CELLS = new Set([8, 21, 34, 47]);
+const DEFAULT_RULES = { blockades: false, bonusRolls: false, safeStars: true };
+const cleanRules = (r) => ({ blockades: !!(r && r.blockades), bonusRolls: !!(r && r.bonusRolls), safeStars: r && r.safeStars === false ? false : true });
+const isSafe = (state, cell) => START_CELLS.has(cell) || ((state.rules?.safeStars ?? true) && STAR_CELLS.has(cell));
 const TOKENS_PER_PLAYER = 4;
 
 // 2-player games use opposite corners (red/yellow) so both sides are symmetric.
@@ -30,7 +34,7 @@ function cornersFor(playerCount) {
   return [0, 2];
 }
 
-function createInitialState(playerCount) {
+function createInitialState(playerCount, options) {
   const n = playerCount === 4 ? 4 : playerCount === 3 ? 3 : 2;
   const corners = cornersFor(n);
   return {
@@ -39,6 +43,7 @@ function createInitialState(playerCount) {
     colors: corners.map((c) => CORNER_COLORS[c]),
     tokens: Array.from({ length: n }, () => Array(TOKENS_PER_PLAYER).fill(0)),
     active: Array(n).fill(true),
+    rules: cleanRules(options),
     turn: 0,
     dice: null,
     sixStreak: 0
@@ -57,12 +62,29 @@ function nextActive(state, from) {
   return from;
 }
 
+// Is there an opponent blockade (2+ tokens of one other player, same non-safe track cell) on this cell?
+function blockadeAt(state, mover, cell) {
+  if (!state.rules?.blockades || isSafe(state, cell)) return false;
+  for (let p = 0; p < state.playerCount; p++) {
+    if (p === mover) continue;
+    let n = 0;
+    for (const st of state.tokens[p]) if (st >= 1 && st <= TRACK_LEN - 1 && globalCell(state, p, st) === cell) n++;
+    if (n >= 2) return true;
+  }
+  return false;
+}
+function pathBlocked(state, playerIndex, steps, dice) {
+  for (let k = 1; k <= dice; k++) { const to = steps + k; if (to <= TRACK_LEN - 1 && blockadeAt(state, playerIndex, globalCell(state, playerIndex, to))) return true; }
+  return false;
+}
 function movableTokens(state, playerIndex, dice) {
   const out = [];
   state.tokens[playerIndex].forEach((steps, t) => {
     if (steps === HOME_STEPS) return;                          // already home
     if (steps === 0) { if (dice === 6) out.push(t); return; }   // needs a 6 to leave the yard
-    if (steps + dice <= HOME_STEPS) out.push(t);                // no overshooting home
+    if (steps + dice > HOME_STEPS) return;                      // no overshooting home
+    if (pathBlocked(state, playerIndex, steps, dice)) return;   // cannot pass or land on a blockade
+    out.push(t);
   });
   return out;
 }
@@ -115,7 +137,7 @@ function applyMove(state, playerIndex, move) {
   // Capture: landing on a shared, non-safe cell occupied by exactly one opponent sends it home.
   if (steps >= 1 && steps <= TRACK_LEN - 1) {
     const cell = globalCell(s, playerIndex, steps);
-    if (!SAFE_CELLS.has(cell)) {
+    if (!isSafe(s, cell)) {
       const captured = [];
       for (let p = 0; p < s.playerCount; p++) {
         if (p === playerIndex) continue;
@@ -131,7 +153,8 @@ function applyMove(state, playerIndex, move) {
   if (steps === HOME_STEPS) s.lastHome = { player: playerIndex, token: move.token };
   else s.lastHome = null;
 
-  if (dice === 6 && s.sixStreak < 3) s.dice = null;   // extra roll for the same player
+  const bonus = s.rules?.bonusRolls && (s.lastCapture || steps === HOME_STEPS);
+  if ((dice === 6 && s.sixStreak < 3) || bonus) s.dice = null;   // extra roll for the same player
   else passTurn(s);
   return s;
 }
@@ -209,7 +232,7 @@ function botMove(state, playerIndex) {
     if (steps === 0 && dice === 6) score += 20;
     if (toSteps >= 1 && toSteps <= TRACK_LEN - 1) {
       const cell = globalCell(state, playerIndex, toSteps);
-      if (!SAFE_CELLS.has(cell)) {
+      if (!isSafe(state, cell)) {
         for (let p = 0; p < state.playerCount; p++) {
           if (p === playerIndex) continue;
           if (state.tokens[p].some((st) => st >= 1 && st <= TRACK_LEN - 1 && globalCell(state, p, st) === cell)) score += 50;
@@ -222,6 +245,7 @@ function botMove(state, playerIndex) {
 }
 
 module.exports = {
+  DEFAULT_RULES, cleanRules, movableTokens,
   createInitialState, isValidMove, applyMove, checkResult, markOut,
   forcePass, score, scores, highestScoreWinner, botMove
 };

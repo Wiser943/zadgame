@@ -1,7 +1,7 @@
 const express=require('express');
 const ensureAuth=require('../middleware/auth');
 const User=require('../models/User');
-const {Friendship,Report,Tournament}=require('../models/Social');
+const {Friendship,Report}=require('../models/Social');
 const presence=require('../utils/presence');
 const ChallengeProgress=require('../models/Challenge');
 const challenges=require('../utils/challenges');
@@ -59,7 +59,7 @@ router.post('/challenges/:id/claim',async(req,res,next)=>{try{
 router.get('/dashboard',async(req,res,next)=>{try{
   const me=uid(req);
   const [u,rows,recent]=await Promise.all([
-    User.findById(me).select('xp level rating winStreak bestStreak stats').lean(),
+    User.findById(me).select('xp level rating winStreak bestStreak stats gameRatings gameGames tournamentWins').lean(),
     Friendship.find({status:'accepted',$or:[{requester:me},{recipient:me}]}).lean(),
     Match.find({'players.userId':me}).sort({createdAt:-1}).limit(3).select('game players winnerIndex createdAt').lean()
   ]);
@@ -68,13 +68,14 @@ router.get('/dashboard',async(req,res,next)=>{try{
   res.json({
     level:u?.level||1,xpInLevel:xp%100,xpForNext:100,
     winStreak:u?.winStreak||0,bestStreak:u?.bestStreak||0,
-    rank:rankFor(u?.rating),
+    rank:rankFor(u?.rating),tournamentWins:u?.tournamentWins||0,
+    ratings:Object.entries(u?.gameRatings||{}).map(([game,rating])=>({game,rating,games:(u?.gameGames||{})[game]||0,tier:rankFor(rating).tier,placement:((u?.gameGames||{})[game]||0)<10})),
     friendsOnline:friendIds.filter(id=>presence.isOnline(id)).length,friendsTotal:friendIds.length,
     recent:recent.map(m=>{const i=m.players.findIndex(p=>String(p.userId)===me);return{game:m.game,result:m.winnerIndex==null?'draw':m.winnerIndex===i?'win':'loss',at:m.createdAt};})
   });
 }catch(e){next(e);}});
 router.get('/achievements',async(req,res,next)=>{try{
-  const u=await User.findById(uid(req)).select('stats bestStreak').lean();
+  const u=await User.findById(uid(req)).select('stats bestStreak tournamentWins').lean();
   res.json({achievements:achievementsFor(u||{})});
 }catch(e){next(e);}});
 router.get('/relation/:id',async(req,res,next)=>{try{
@@ -89,7 +90,4 @@ router.post('/friends/:id/accept',async(req,res,next)=>{try{const row=await Frie
 router.delete('/friends/:id',async(req,res,next)=>{try{await Friendship.deleteMany({$or:[{requester:uid(req),recipient:String(req.params.id)},{requester:String(req.params.id),recipient:uid(req)}]});res.json({ok:true});}catch(e){next(e);}});
 router.post('/block/:id',async(req,res,next)=>{try{await Friendship.deleteMany({$or:[{requester:String(req.params.id),recipient:uid(req)},{requester:uid(req),recipient:String(req.params.id),status:{$ne:'blocked'}}]});await Friendship.findOneAndUpdate({requester:uid(req),recipient:String(req.params.id)},{$set:{status:'blocked'}},{upsert:true});res.json({ok:true});}catch(e){next(e);}});
 router.post('/report',async(req,res,next)=>{try{const target=String(req.body?.target||'');if(!target)return res.status(400).json({message:'Target is required.'});const report=await Report.create({reporter:uid(req),target,roomCode:String(req.body?.roomCode||'').slice(0,8),reason:String(req.body?.reason||'Unspecified').slice(0,240)});res.json({reportId:report.id});}catch(e){next(e);}});
-router.get('/tournaments',async(req,res,next)=>{try{res.json({tournaments:await Tournament.find({status:'open'}).sort({createdAt:-1}).limit(30).lean()});}catch(e){next(e);}});
-router.post('/tournaments',async(req,res,next)=>{try{const t=await Tournament.create({name:String(req.body?.name||'Daily Cup').slice(0,60),game:String(req.body?.game||'tictactoe'),maxPlayers:Math.min(32,Math.max(4,Number(req.body?.maxPlayers)||8)),players:[uid(req)]});res.json({tournament:t});}catch(e){next(e);}});
-router.post('/tournaments/:id/join',async(req,res,next)=>{try{const t=await Tournament.findById(req.params.id);if(!t)return res.status(404).json({message:'Tournament not found.'});if(t.players.includes(uid(req)))return res.json({tournament:t});if(t.players.length>=t.maxPlayers)return res.status(409).json({message:'Tournament is full.'});t.players.push(uid(req));await t.save();res.json({tournament:t});}catch(e){next(e);}});
 module.exports=router;

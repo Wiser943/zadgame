@@ -10,6 +10,6 @@ module.exports = [
   { key: 'mancala', name: 'Ayo / Mancala', description: 'Sow seeds and collect the most stones.', available: true, playerCounts: [2] },
   { key: 'battleship', name: 'Battleship', description: 'Find and sink your opponent’s fleet.', available: true, playerCounts: [2] },
   { key: 'snakes', name: 'Snakes & Ladders', description: 'Roll the dice and race to square 100.', available: true, playerCounts: [2] },
-  { key: 'dominoes', name: 'Dominoes', description: 'Match the ends and empty your hand.', available: true, playerCounts: [2] },
+  { key: 'dominoes', name: 'Dominoes', description: 'Match the ends and empty your hand.', available: true, playerCounts: [2, 3, 4] },
   { key: 'words', name: 'Word Clash', description: 'Build words from your letter rack and score points.', available: true, playerCounts: [2] }
 ];

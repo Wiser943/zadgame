@@ -3,7 +3,9 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const registry = require('../games/registry');
 const ensureAdmin = require('../middleware/admin');
-const { Report } = require('../models/Social');
+const { Report, Tournament } = require('../models/Social');
+const Match = require('../models/Match');
+const presence = require('../utils/presence');
 const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/gameSettings');
 const router = express.Router();
 const ADMIN_PHONE = String(process.env.ADMIN_PHONE || '');
@@ -55,6 +57,31 @@ router.post('/users/:id/penalize', async (req, res, next) => {
     if (!user) return res.status(404).json({ message: 'User not found.' });
     if (user.coins < 0) { user.coins = 0; await user.save(); } // never leave a negative balance
     res.json({ user: { id: user.id, displayName: user.displayName, coins: user.coins, suspendedUntil: user.suspendedUntil, penaltyPoints: user.penaltyPoints, adminNote: user.adminNote } });
+  } catch (err) { next(err); }
+});
+
+// ---------- analytics (privacy-conscious: aggregate counts only, no message content) ----------
+router.get('/metrics', async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 7 * 864e5), day = new Date(Date.now() - 864e5);
+    const [byGame, totals, newUsers, active24, openReports, tourOpen, tourRunning] = await Promise.all([
+      Match.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: '$game', matches: { $sum: 1 }, avgMs: { $avg: '$durationMs' } } }, { $sort: { matches: -1 } }]),
+      Match.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: null, total: { $sum: 1 }, ranked: { $sum: { $cond: ['$ranked', 1, 0] } },
+        withBot: { $sum: { $cond: [{ $gt: [{ $size: { $filter: { input: '$players', as: 'p', cond: '$$p.bot' } } }, 0] }, 1, 0] } },
+        forfeits: { $sum: { $cond: [{ $in: ['$reason', ['forfeit', 'strikes']] }, 1, 0] } } } }]),
+      User.countDocuments({ createdAt: { $gte: since } }),
+      Match.distinct('players.userId', { createdAt: { $gte: day } }),
+      Report.countDocuments({ status: 'open' }),
+      Tournament.countDocuments({ status: 'open' }), Tournament.countDocuments({ status: 'running' })
+    ]);
+    const t = totals[0] || { total: 0, ranked: 0, withBot: 0, forfeits: 0 };
+    res.json({
+      windowDays: 7, matches: t.total, rankedMatches: t.ranked, botMatchShare: t.total ? Math.round(100 * t.withBot / t.total) : 0,
+      abandonRate: t.total ? Math.round(100 * t.forfeits / t.total) : 0, newUsers,
+      activePlayers24h: active24.filter((x) => !String(x).startsWith('bot:')).length, onlineNow: presence.count ? presence.count() : 0,
+      openReports, tournaments: { open: tourOpen, running: tourRunning },
+      games: byGame.map((g) => ({ game: g._id, matches: g.matches, avgMinutes: g.avgMs ? Math.round(g.avgMs / 6000) / 10 : null }))
+    });
   } catch (err) { next(err); }
 });
 

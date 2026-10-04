@@ -14,6 +14,8 @@ const authRoutes = require('./routes/auth');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
 const socialRoutes = require('./routes/social');
+const tournamentRoutes = require('./routes/tournaments');
+const tournamentService = require('./services/tournaments');
 const initSockets = require('./sockets');
 const { loadGameSettings } = require('./config/gameSettings');
 
@@ -53,6 +55,7 @@ async function main() {
   app.use('/api', apiRoutes);
   app.use('/admin-api', adminRoutes);
   app.use('/api/social', socialRoutes);
+  app.use('/api/tournaments', tournamentRoutes);
   app.get('/health', (req,res) => res.json({ ok: true, service: 'gamehub', time: new Date().toISOString() }));
   app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
@@ -82,6 +85,7 @@ async function main() {
 
   initSockets(io, sessionMiddleware);
 
+  setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   server.listen(PORT, () => {
     console.log(`[server] GameHub running on http://localhost:${PORT}`);
   });

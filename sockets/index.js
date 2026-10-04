@@ -14,6 +14,14 @@ const presence = require('../utils/presence');
 const ChallengeProgress = require('../models/Challenge');
 const challenges = require('../utils/challenges');
 const { Friendship } = require('../models/Social');
+const botlevels = require('../games/botlevels');
+const elo = require('../utils/elo');
+const profanity = require('../utils/profanity');
+const tournaments = require('../services/tournaments');
+const hub = require('../utils/tournamentHub');
+const NOSHOW_MS = 3 * 60 * 1000;           // tournament no-show: opponent gets a walkover
+const QUEUE_TICK_MS = 2000;
+const RANKED_GAMES_MIN_PLAYERS = 2;
 
 const ENG = games.ENGINES || games;
 const FORFEIT_MS = 75 * 1000;
@@ -87,7 +95,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   });
 
   const view = (r, i) => ({
-    code: r.code, game: r.game, status: r.status, you: i, maxPlayers: r.maxPlayers,
+    code: r.code, game: r.game, status: r.status, you: i, maxPlayers: r.maxPlayers, difficulty: r.difficulty || 'normal', ranked: !!r.ranked, options: r.options || null,
     // playerIndex -> ms-epoch they forfeit at, for anyone currently disconnected-but-not-yet-eliminated
     forfeits: r.forfeits ? Object.fromEntries([...r.forfeits].map(([idx, f]) => [idx, f.forfeitAt])) : {},
     result: r.result || null,
@@ -102,6 +110,11 @@ module.exports = function initSockets(io, sessionMiddleware) {
     state: r.state && ENG[r.game].publicState ? ENG[r.game].publicState(r.state, i) : r.state
   });
   const push = (r) => { r.players.forEach((p, i) => p.sid && io.to(p.sid).emit('room:update', view(r, i))); if (r.spectators) for (const sid of r.spectators) io.to(sid).emit('room:update', view(r, null)); };
+  // Chat delivery that respects each player's personal mute list.
+  const toAllChat = (r, from, ev, payload) => {
+    r.players.forEach((p, idx) => { if (p.sid && !(r.mutes?.get(String(p.id))?.has(from))) io.to(p.sid).emit(ev, payload); });
+    if (r.spectators) for (const sid of r.spectators) io.to(sid).emit(ev, payload);
+  };
   const toAll = (r, ev, payload) => { r.players.forEach((p) => p.sid && io.to(p.sid).emit(ev, payload)); if (r.spectators) for (const sid of r.spectators) io.to(sid).emit(ev, payload); };
 
   // Fills every open seat in a still-waiting room with a bot player and,
@@ -117,7 +130,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       });
     }
     if (r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers); r.moves = [];
+      r.status = 'playing'; r.startedAt = Date.now(); r.state = initState(r); r.moves = [];
       r.round = (r.round || 0) + 1;
       r.strikes = Array(r.maxPlayers).fill(0);
       armTurnTimer(r); armMatchTimer(r);
@@ -188,7 +201,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     if (r.status !== 'playing' || !r.players[i] || r.players[i].out || !r.players[i].bot) return;
     const eng = ENG[r.game];
     if (!eng.botMove) return;
-    const move = eng.botMove(r.state, i);
+    const move = botlevels.botMoveLevel(r.game, eng, r.state, i, r.difficulty);
     if (!move || !eng.isValidMove(r.state, i, move)) return; // safety net — shouldn't happen
     applyValidatedMove(r, i, move);
   }
@@ -325,7 +338,11 @@ module.exports = function initSockets(io, sessionMiddleware) {
       User.updateOne({ _id: winner.id, 'bestMoment.score': { $not: { $gte: momentScore } } },
         { $set: { bestMoment: { matchId: String(matchId), game: r.game, score: momentScore, at: new Date() } } }).catch(e => console.error('[bestMoment]', e.message));
     }
-    if (r.ranked && r.players.length === 2 && winnerIndex != null) { r.players.forEach((p,i)=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ rating: i===winnerIndex?25:-18 } }).catch(()=>{}); }); }
+    if (r.ranked && r.players.length === 2 && r.players.every((p) => !p.bot)) applyRanked(r, winnerIndex, reason).catch((e) => console.error('[ranked]', e.message));
+    if (r.tournament) {
+      const wid = winnerIndex != null && !r.players[winnerIndex].bot ? r.players[winnerIndex].id : null;
+      tournaments.onMatchResult(r.tournament, wid).catch((e) => console.error('[tournament]', e.message));
+    }
     const xpGain = winnerIndex == null ? 8 : 20;
     r.players.forEach(p=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ xp:xpGain, coins: winnerIndex==null?2:0 } }).catch(()=>{}); });
     // Win streaks (anti-exploit: only matches with 2+ human players count)
@@ -386,6 +403,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   }
 
   function scheduleWaitingRoomCleanup(r) {
+    if (r.reserved) return; // reserved rooms are cleaned up by their own no-show timer
     clearTimeout(r.waitingCleanupTimer);
     r.waitingCleanupTimer = setTimeout(() => {
       if (r.status === 'waiting' && !r.players.some((p) => p.connected)) rooms.delete(r.code);
@@ -429,6 +447,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     clearTimeout(r.waitingCleanupTimer); r.waitingCleanupTimer = null;
     let i = r.players.findIndex((p) => p.id === uid);
     if (i === -1) {
+      if (r.reserved && !r.reserved.includes(uid)) return false;   // private/tournament/ranked rooms: invited players only
       if (r.players.length >= r.maxPlayers) return false;
       r.players.push({ id: uid, name: u.displayName || u.name || 'Player', avatar: u.avatar || u.photo || u.picture || '', sid: null, connected: false, out: false });
       i = r.players.length - 1;
@@ -437,7 +456,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     socket.data.code = r.code;
     if (r.status === 'playing') clearForfeit(r, i);
     if (r.status === 'waiting' && r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.startedAt = Date.now(); r.state = ENG[r.game].createInitialState(r.maxPlayers); r.moves = [];
+      r.status = 'playing'; r.startedAt = Date.now(); r.state = initState(r); r.moves = [];
       r.round = (r.round || 0) + 1;
       r.strikes = Array(r.maxPlayers).fill(0);
       armTurnTimer(r); armMatchTimer(r);
@@ -446,11 +465,78 @@ module.exports = function initSockets(io, sessionMiddleware) {
     return true;
   }
 
-  function createRoom(socket, game, maxPlayers, vsBot, mode) {
-    const r = { code: newCode(), game, maxPlayers, status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
+  function createRoom(socket, game, maxPlayers, vsBot, mode, difficulty, options) {
+    const r = { code: newCode(), game, maxPlayers, difficulty: botlevels.normLevel(difficulty), options: game === 'ludo' ? ENG.ludo.cleanRules(options) : null, status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
     rooms.set(r.code, r); attach(socket, r);
     if (vsBot) fillWithBots(r);
     return r;
+  }
+
+  // Initial state; Ludo accepts creator-chosen rule variants, other engines ignore options.
+  const initState = (r) => (r.game === 'ludo' ? ENG.ludo.createInitialState(r.maxPlayers, r.options) : ENG[r.game].createInitialState(r.maxPlayers));
+  // Server-created private room for specific players (tournament pairings, ranked matches).
+  function createReservedRoom({ game, players, ranked = false, tournament = null }) {
+    const r = { code: newCode(), game, maxPlayers: 2, difficulty: 'normal', status: 'waiting', mode: ranked ? 'ranked' : 'casual', ranked,
+      reserved: players.map(String), tournament, players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
+    rooms.set(r.code, r);
+    if (tournament) {
+      r.noShowTimer = setTimeout(() => {
+        if (rooms.get(r.code) !== r || r.status !== 'waiting') return;
+        const here = r.players.filter((p) => p.connected);
+        const winner = here.length === 1 ? here[0].id : r.reserved[0]; // nobody came: higher seed advances
+        rooms.delete(r.code);
+        tournaments.onMatchResult(tournament, winner).catch((e) => console.error('[tournament walkover]', e.message));
+      }, NOSHOW_MS);
+    }
+    else {
+      // Ranked pairing: if the opponent never shows, free the room.
+      r.noShowTimer = setTimeout(() => { if (rooms.get(r.code) === r && r.status === 'waiting') rooms.delete(r.code); }, 90 * 1000);
+    }
+    return r;
+  }
+  hub.createMatchRoom = ({ id, round, slot, game, players }) => createReservedRoom({ game, players, tournament: { id, round, slot } }).code;
+  hub.notify = (uid, ev, payload) => io.to('user:' + uid).emit(ev, payload);
+
+  // ---- ranked matchmaking queue ----
+  const queues = new Map(); // game -> [{ uid, rating, since, blocked:Set, name }]
+  const inQueue = (uid) => { for (const [g, q] of queues) if (q.some((e) => e.uid === uid)) return g; return null; };
+  const leaveQueue = (uid) => { for (const [g, q] of queues) queues.set(g, q.filter((e) => e.uid !== uid)); };
+  setInterval(() => {
+    const now = Date.now();
+    for (const [game, q] of queues) {
+      const used = new Set();
+      for (const a of q) {
+        if (used.has(a.uid)) continue;
+        const b = q.find((x) => x.uid !== a.uid && !used.has(x.uid) && !a.blocked.has(x.uid) && !x.blocked.has(a.uid) && elo.canPair(a, x, now));
+        if (!b) continue;
+        used.add(a.uid); used.add(b.uid);
+        const r = createReservedRoom({ game, players: [a.uid, b.uid], ranked: true });
+        io.to('user:' + a.uid).emit('queue:matched', { code: r.code, game, opponent: { name: b.name, rating: b.rating } });
+        io.to('user:' + b.uid).emit('queue:matched', { code: r.code, game, opponent: { name: a.name, rating: a.rating } });
+      }
+      queues.set(game, q.filter((e) => !used.has(e.uid)));
+    }
+  }, QUEUE_TICK_MS).unref();
+
+  // Elo update for ranked 2-human matches (per-game rating + overall rating used for tiers).
+  async function applyRanked(r, winnerIndex, reason) {
+    const ids = r.players.map((p) => p.id);
+    const users = await User.find({ _id: { $in: ids } }).select('rating gameRatings gameGames').lean();
+    const get = (id) => users.find((u) => String(u._id) === String(id));
+    const [ua, ub] = [get(ids[0]), get(ids[1])];
+    if (!ua || !ub) return;
+    const gr = (u) => (u.gameRatings && u.gameRatings[r.game]) || elo.START;
+    const gg = (u) => (u.gameGames && u.gameGames[r.game]) || 0;
+    const score = winnerIndex == null ? 0.5 : winnerIndex === 0 ? 1 : 0;
+    const [da, db] = elo.eloDeltas(gr(ua), gr(ub), score, gg(ua), gg(ub));
+    const deltas = [da, db];
+    // Disconnect/forfeit penalty on top of the normal loss
+    if (winnerIndex != null && (reason === 'forfeit' || reason === 'strikes')) deltas[1 - winnerIndex] -= 8;
+    await Promise.all([ua, ub].map((u, i) => {
+      const before = gr(u), after = Math.max(100, before + deltas[i]);
+      io.to('user:' + ids[i]).emit('rating:update', { game: r.game, before, after, delta: after - before });
+      return User.updateOne({ _id: ids[i] }, { $set: { ['gameRatings.' + r.game]: after }, $inc: { rating: after - before, ['gameGames.' + r.game]: 1 } });
+    }));
   }
 
   io.on('connection', (socket) => {
@@ -458,7 +544,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     socket.data.code = null;
     presence.connect(uid);
     socket.join('user:' + uid);
-    socket.on('disconnect', () => presence.disconnect(uid));
+    socket.on('disconnect', () => { presence.disconnect(uid); if (!presence.isOnline(uid)) leaveQueue(uid); });
 
     // guard = validate shape + rate limit + never crash the process
     const guard = (ev, max, ms, fn) => socket.on(ev, (payload, ack) => {
@@ -482,10 +568,11 @@ module.exports = function initSockets(io, sessionMiddleware) {
       socket.emit('room:spectator', { room: view(r, null) }); push(r); ack({ok:true, room:view(r,null)});
     });
 
-    guard('room:create', 6, 60000, ({ game, maxPlayers, vsBot, mode }, ack) => {
+    guard('room:create', 6, 60000, ({ game, maxPlayers, vsBot, mode, difficulty, options }, ack) => {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
-      const r = createRoom(socket, game, resolveMaxPlayers(game, maxPlayers), !!vsBot, mode);
+      if (mode === 'ranked' && vsBot) return ack({ ok: false, error: 'Ranked matches are against real players only.' });
+      const r = createRoom(socket, game, resolveMaxPlayers(game, maxPlayers), !!vsBot, mode, difficulty, mode === 'ranked' ? null : options);
       ack({ ok: true, room: view(r, 0) });
     });
 
@@ -493,6 +580,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       const [r, i] = myRoom(code);
       if (!r) return ack({ ok: false, error: 'Room not found' });
       if (r.status !== 'waiting') return ack({ ok: false, error: 'Room already started' });
+      if (r.ranked) return ack({ ok: false, error: 'Bots are not allowed in ranked rooms.' });
       fillWithBots(r);
       ack({ ok: true, room: view(r, i) });
     });
@@ -508,7 +596,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
-      const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting'
+      const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting' && !r.reserved && !r.ranked
         && r.players.length < mp && !r.players.some((p) => p.id === uid));
       const r = open && attach(socket, open) ? open : createRoom(socket, game, mp, false, mode);
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
@@ -519,7 +607,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
       // Open seats first (joinable), then live matches (watch only).
-      const same = [...rooms.values()].filter((r) => r.game === game && r.maxPlayers === mp);
+      const same = [...rooms.values()].filter((r) => r.game === game && r.maxPlayers === mp && !(r.reserved && r.status === 'waiting'));
       const open = same.filter((r) => r.status === 'waiting' && r.players.length < mp);
       const live = same.filter((r) => r.status === 'playing' && r.players.some((p) => !p.bot && p.connected));
       const list = [...open, ...live].slice(0, 20).map((r) => ({
@@ -528,6 +616,30 @@ module.exports = function initSockets(io, sessionMiddleware) {
         players: r.players.map((p) => ({ name: p.name }))
       }));
       ack({ ok: true, rooms: list });
+    });
+
+    guard('queue:join', 6, 60000, async ({ game }, ack) => { try {
+      if (!engineFor(game) || !gameEnabled(game)) return ack({ ok: false, error: 'This game is not available.' });
+      if (!playerCountsFor(game).includes(2)) return ack({ ok: false, error: 'Ranked is for two-player games.' });
+      if (inQueue(uid)) return ack({ ok: false, error: 'You are already searching.' });
+      const u = await User.findById(uid).select('rating gameRatings displayName').lean();
+      const bl = await Friendship.find({ status: 'blocked', $or: [{ requester: uid }, { recipient: uid }] }).lean();
+      const blocked = new Set(bl.map((x) => (x.requester === uid ? x.recipient : x.requester)));
+      const rating = (u?.gameRatings && u.gameRatings[game]) || elo.START;
+      if (!queues.has(game)) queues.set(game, []);
+      queues.get(game).push({ uid, rating, since: Date.now(), blocked, name: u?.displayName || 'Player' });
+      ack({ ok: true, rating });
+    } catch (e) { console.error('[queue]', e.message); ack({ ok: false, error: 'Server error' }); } });
+    guard('queue:leave', 20, 60000, (p, ack) => { leaveQueue(uid); ack({ ok: true }); });
+
+    guard('chat:mute', 30, 60000, ({ code, index, on }, ack) => {
+      const [r] = myRoom(code);
+      if (!r || !Number.isInteger(index) || index < 0 || index >= r.players.length) return ack({ ok: false });
+      if (!r.mutes) r.mutes = new Map();
+      const set = r.mutes.get(uid) || new Set();
+      if (on === false) set.delete(index); else set.add(index);
+      r.mutes.set(uid, set);
+      ack({ ok: true, muted: [...set] });
     });
 
     guard('room:leave', 10, 60000, () => { stopSpectating(socket); removeFromRoom(socket, true); });
@@ -544,19 +656,23 @@ module.exports = function initSockets(io, sessionMiddleware) {
     guard('chat:emote', 20, 10000, ({ code, i }) => {
       const [r, from] = myRoom(code);
       if (!r || !Number.isInteger(i) || i < 0 || i >= EMOTE_COUNT) return;
-      toAll(r, 'chat:emote', { from, name: r.players[from].name, i });
+      toAllChat(r, from, 'chat:emote', { from, name: r.players[from].name, i });
     });
 
     guard('chat:message', 20, 15000, ({ code, text, replyTo }) => {
       const [r, from] = myRoom(code);
       if (!r || typeof text !== 'string') return;
-      const clean = text.trim().slice(0, 200);
+      let clean = text.trim().slice(0, 200);
       if (!clean) return;
+      const last = r.players[from].lastChat;
+      if (last && last.text === clean && Date.now() - last.at < 10000) return socket.emit('error', { message: 'Please do not repeat the same message.' });
+      r.players[from].lastChat = { text: clean, at: Date.now() };
+      clean = profanity.clean(clean);
       const msg = { from, name: r.players[from].name, text: clean, at: Date.now() };
       if (replyTo && typeof replyTo === 'object' && typeof replyTo.name === 'string' && typeof replyTo.text === 'string') {
         msg.replyTo = { name: replyTo.name.slice(0, 40), text: replyTo.text.slice(0, 200) };
       }
-      toAll(r, 'chat:message', msg);
+      toAllChat(r, from, 'chat:message', msg);
     });
 
     guard('chat:voice', 6, 60000, ({ code, audio, mime, duration }) => {
@@ -564,18 +680,18 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!r || typeof audio !== 'string' || !/^data:audio\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/.test(audio) || audio.length > 700000) return;
       const safeMime = typeof mime === 'string' && /^audio\/[a-z0-9.+-]+$/i.test(mime) ? mime.slice(0, 80) : 'audio/webm';
       const msg = { type: 'voice', from, name: r.players[from].name, audio, mime: safeMime, duration: Math.min(30, Math.max(1, Number(duration) || 1)), at: Date.now() };
-      toAll(r, 'chat:message', msg);
+      toAllChat(r, from, 'chat:message', msg);
     });
 
     guard('game:rematch', 10, 60000, ({ code }) => {
       const [r, i] = myRoom(code);
-      if (!r || r.status !== 'over' || r.players.length < r.maxPlayers || !r.players.every((p) => p.connected)) return;
+      if (!r || r.tournament || r.status !== 'over' || r.players.length < r.maxPlayers || !r.players.every((p) => p.connected)) return;
       r.rematch.add(i);
       r.players.forEach((p, idx) => { if (p.bot) r.rematch.add(idx); }); // bots always agree to a rematch
       if (r.rematch.size === r.maxPlayers) {
         r.rematch = new Set(); r.result = null; r.status = 'playing';
         r.players.forEach((p) => { p.out = false; });
-        r.state = ENG[r.game].createInitialState(r.maxPlayers); r.moves = [];
+        r.state = initState(r); r.moves = [];
         r.round = (r.round || 0) + 1;
         r.strikes = Array(r.maxPlayers).fill(0);
         armTurnTimer(r); armMatchTimer(r);
