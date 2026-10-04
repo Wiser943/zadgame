@@ -129,6 +129,14 @@
     .btn:disabled {
       opacity: .5
     }
+
+    /* lobby tabs */
+    .lobtabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px; background: var(--bg); border-bottom: 1px solid var(--line); }
+    .lobtabs [role=tab] { flex: 1; padding: 11px 6px; border-radius: 999px; font-weight: 700; font-size: 14px; background: var(--card); color: var(--ink); border: 1px solid var(--line); white-space: nowrap; }
+    .lobtabs [role=tab].on { background: var(--red2); color: #fff; border-color: var(--red2); }
+    .lobtabs [role=tab]:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+    [role=tabpanel][hidden] { display: none; }
+    #pnTour .soc { padding-top: 6px; }
     .ckcell.can { box-shadow: inset 0 0 0 3px #f7c52b; }
 
     .rpbox { display:flex; justify-content:center; margin:10px 0; pointer-events:none; overflow:auto }
@@ -4014,6 +4022,7 @@
     
     
     /* ---------- lobby ---------- */
+    let lobbyTab = 'lobby';
     async function lobbyView(navigate = true) {
       closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
       room = gstate = result = null;
@@ -4037,6 +4046,12 @@
       app.innerHTML = `
   <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b>${esc(me.coins ?? 0)} 🪙</b></div>
     <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
+  <div class="lobtabs" role="tablist" aria-label="Home sections">
+    <button role="tab" id="tabLobby" data-tab="lobby" aria-controls="pnLobby">Lobby</button>
+    <button role="tab" id="tabTour" data-tab="tour" aria-controls="pnTour">Tournaments</button>
+    <button role="tab" id="tabUtil" data-tab="util" aria-controls="pnUtil">Utility</button>
+  </div>
+  <section id="pnUtil" role="tabpanel" aria-labelledby="tabUtil" hidden>
   <div class="dash" id="dashCard"></div>
   <div class="quickgrid">
     <button class="btn ghost qtile" id="daily"><span class="qico">🎁</span><b>Daily reward</b><small>+25 coins</small></button>
@@ -4047,10 +4062,12 @@
     <button class="btn ghost qtile" id="historyOpen"><span class="qico">🕘</span><b>History</b><small>Your recent matches</small></button>
   </div>
   <div class="quickgrid" style="margin-top:10px">
-    <button class="btn ghost qtile" id="tourOpen"><span class="qico">🏆</span><b>Tournaments</b><small>Brackets &amp; cups</small></button>
-    <button class="btn ghost qtile" id="a11yOpen"><span class="qico">♿</span><b>Accessibility</b><small>Text, contrast, motion</small></button>
+    <button class="btn ghost qtile" id="a11yOpen" style="grid-column:1/-1"><span class="qico">♿</span><b>Accessibility</b><small>Text, contrast, motion</small></button>
   </div>
   <div class="chcard" id="chCard"></div>
+  </section>
+  <section id="pnTour" role="tabpanel" aria-labelledby="tabTour" hidden><div class="soc" id="tourMount" style="padding:0 18px 18px"></div></section>
+  <section id="pnLobby" role="tabpanel" aria-labelledby="tabLobby">
   <button class="rwstrip" id="rewardsOpen" aria-label="Rewards and payouts, coming soon">
     <span class="rwico">💰</span>
     <span class="rwtxt"><b>Rewards &amp; Payouts</b><small>Verify your details to be ready for launch</small></span>
@@ -4063,12 +4080,21 @@
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
       <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
-      <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>`;
+      <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>
+  </section>`;
       $('#meBtn').onclick = settingsView;
+      const showTab = (name, focus) => {
+        lobbyTab = name;
+        app.querySelectorAll('.lobtabs [role=tab]').forEach(t => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; t.classList.toggle('on', on); if (on && focus) t.focus(); });
+        $('#pnLobby').hidden = name !== 'lobby'; $('#pnTour').hidden = name !== 'tour'; $('#pnUtil').hidden = name !== 'util';
+        if (name === 'tour') tournamentsView(false, $('#tourMount'));
+      };
+      const tabEls = [...app.querySelectorAll('.lobtabs [role=tab]')];
+      tabEls.forEach((t, i) => { t.onclick = () => showTab(t.dataset.tab); t.onkeydown = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); showTab(tabEls[(i + (e.key === 'ArrowRight' ? 1 : tabEls.length - 1)) % tabEls.length].dataset.tab, true); } }; });
+      showTab(lobbyTab);
       $('#lbOpen').onclick = () => leaderboardView('coins');
       $('#rewardsOpen').onclick = () => rewardsView();
       $('#friendsOpen').onclick = () => friendsView();
-      $('#tourOpen').onclick = () => tournamentsView();
       $('#a11yOpen').onclick = () => settingsView();
       $('#historyOpen').onclick = () => historyView();
       loadChallengesCard();
@@ -4183,23 +4209,23 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         $('#qCancel').onclick = () => { socket.emit('queue:leave', {}, () => {}); closeQueue(); };
       });
     }
-    async function tournamentsView(navigate = true) {
-      if (navigate) history.pushState({ page: 'tournaments' }, '', '/tournaments');
+    async function tournamentsView(navigate = true, mount = null) {
+      if (navigate && !mount) history.pushState({ page: 'tournaments' }, '', '/tournaments');
       setLobbyMusic(true);
       let data = { tournaments: [], recent: [] };
       try { data = await api('/api/tournaments'); } catch { toast('Could not load tournaments'); }
       const games = (GAMES || []).filter(g => !g.playerCounts || g.playerCounts.includes(2));
       const row = t => { const g = (GAMES || []).find(x => (x.key || x.id) === t.game);
         return `<div class="tcard" data-t="${esc(t.id)}" tabindex="0" role="button"><div class="tt"><span>${esc(t.name)}</span><span class="tstat ${esc(t.status)}">${esc(t.status)}</span></div><small>${esc(g?.name || t.game)} · ${t.count}/${t.maxPlayers} players${t.minLevel > 1 ? ' · level ' + t.minLevel + '+' : ''}${t.startsAt ? ' · starts ' + esc(new Date(t.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}${t.champion ? ' · 🏆 ' + esc(t.champion) : ''}</small></div>`; };
-      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="trBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Tournaments</h1><span style="width:38px"></span></div>
+      (mount || app).innerHTML = `${mount ? '' : `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
+      <button class="back" id="trBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Tournaments</h1><span style="width:38px"></span></div>`}
       <button class="btn" id="trNew" style="width:100%;margin:8px 0">Create a tournament</button>
       <div id="trForm"></div>
       <div class="glabel" style="margin:10px 0 6px;font-weight:700">Open &amp; live</div>
       ${data.tournaments.length ? data.tournaments.map(row).join('') : '<p class="socempty">No tournaments right now. Create one!</p>'}
       ${data.recent.length ? '<div class="glabel" style="margin:14px 0 6px;font-weight:700">Recent champions</div>' + data.recent.map(row).join('') : ''}
-      <p class="rwnote">Prizes are cosmetic coins and XP only. Entries lock when the bracket starts.</p></div>`;
-      $('#trBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
+      <p class="rwnote">Prizes are cosmetic coins and XP only. Entries lock when the bracket starts.</p>${mount ? '' : '</div>'}`;
+      if ($('#trBk')) $('#trBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
       app.querySelectorAll('[data-t]').forEach(c => { c.onclick = () => tournamentView(c.dataset.t); c.onkeydown = e => { if (e.key === 'Enter') tournamentView(c.dataset.t); }; });
       $('#trNew').onclick = () => {
         $('#trForm').innerHTML = `<div class="tform"><input id="tfName" maxlength="40" placeholder="Name (optional)">
@@ -4232,7 +4258,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         <div class="${m.winner && m.winner === m.b ? 'win' : ''}"><span class="${m.b ? '' : 'tbd'}">${esc(m.b || (m.bye ? 'bye' : 'TBD'))}</span>${m.live ? '<span>🔴</span>' : ''}</div></div>`).join('')}</div>`).join('')}</div>`
         : `<div class="glabel" style="margin:10px 0 6px;font-weight:700">Players</div>${t.players.map(p => `<div class="prow"><div class="t"><b>${esc(p.name)}</b></div></div>`).join('') || '<p class="socempty">Nobody yet.</p>'}`}
       <p class="rwnote">Bracket starts automatically when full or at the start time. If a player does not show within 3 minutes, their opponent advances. Drawn matches are replayed.</p></div>`;
-      $('#tvBk').onclick = () => tournamentsView(false);
+      $('#tvBk').onclick = () => { lobbyTab = 'tour'; lobbyView(false); };
       $('#tvRef').onclick = () => tournamentView(id);
       $('#tvJoin') && ($('#tvJoin').onclick = () => post('/join'));
       $('#tvLeave') && ($('#tvLeave').onclick = () => post('/leave'));
