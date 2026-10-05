@@ -32,6 +32,7 @@ const UserSchema = new mongoose.Schema({
   friendRequests: { type: [String], default: [] },
   blocked: { type: [String], default: [] },
   tournamentWins: { type: Number, default: 0 },
+  shareHighlights: { type: Boolean, default: false },   // opt-in: show my winning highlight reels in the public gallery
   winStreak: { type: Number, default: 0 },
   bestStreak: { type: Number, default: 0 },
   rating: { type: Number, default: 1000 },

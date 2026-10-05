@@ -76,6 +76,24 @@ router.post('/shop/equip', ensureAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ---------- public highlight gallery (opt-in per player) ----------
+router.get('/gallery/privacy', ensureAuth, async (req, res, next) => { try { const u = await User.findById(req.user.id).select('shareHighlights').lean(); res.json({ share: !!u?.shareHighlights }); } catch (e) { next(e); } });
+router.post('/gallery/privacy', ensureAuth, async (req, res, next) => {
+  try { const share = req.body?.share === true; await User.updateOne({ _id: req.user.id }, { $set: { shareHighlights: share } }); res.json({ share }); } catch (e) { next(e); }
+});
+router.get('/gallery', ensureAuth, async (req, res, next) => {
+  try {
+    const sharers = await User.find({ shareHighlights: true }).select('_id displayName').limit(500).lean();
+    const ids = new Set(sharers.map((u) => String(u._id)));
+    if (!ids.size) return res.json({ items: [] });
+    const rows = await Match.find({ 'players.userId': { $in: [...ids] }, winnerIndex: { $ne: null }, 'highlights.0': { $exists: true } })
+      .sort({ createdAt: -1 }).limit(120).select('game players winnerIndex momentScore createdAt').lean();
+    const items = rows.filter((m) => { const w = m.players[m.winnerIndex]; return w && !w.bot && ids.has(String(w.userId)); }).slice(0, 24)
+      .map((m) => ({ id: String(m._id), game: m.game, winner: m.players[m.winnerIndex].name || 'Player', score: m.momentScore || 0, at: m.createdAt }));
+    res.json({ items });
+  } catch (e) { next(e); }
+});
+
 // Public (no login) so a shared highlight link opens straight into the reel.
 router.get('/highlight/:id', async (req, res, next) => {
   try {

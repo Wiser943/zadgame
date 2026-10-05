@@ -35,12 +35,27 @@ function generateJumps(snakeCount = 7, ladderCount = 7) {
   return { ...CLASSIC };
 }
 
-function createInitialState() { return { positions: [0, 0], turn: 0, lastRoll: null, jumps: generateJumps() }; }
+// Room options: board 'random' (default) | 'classic' | 'gentle' (few snakes) | 'brutal' (many snakes),
+// exactFinish (you must roll the exact number to land on 100), sixAgain (a 6 gives another roll, max 2 in a row).
+const BOARDS = { random: [7, 7], gentle: [4, 9], brutal: [10, 5] };
+const DEFAULT_RULES = { board: 'random', exactFinish: false, sixAgain: false };
+const cleanRules = (r) => ({ board: ['random', 'classic', 'gentle', 'brutal'].includes(r && r.board) ? r.board : 'random', exactFinish: !!(r && r.exactFinish), sixAgain: !!(r && r.sixAgain) });
+function createInitialState(_n, options) {
+  const rules = cleanRules(options);
+  const jumps = rules.board === 'classic' ? { ...CLASSIC } : generateJumps(...(BOARDS[rules.board] || BOARDS.random));
+  return { positions: [0, 0], turn: 0, lastRoll: null, jumps, rules, sixes: 0 };
+}
 function isValidMove(s, i, m) { return s.turn === i && m?.type === 'roll'; }
 function applyMove(s, i) {
-  const roll = 1 + crypto.randomInt(6), p = Math.min(100, s.positions[i] + roll), jumps = s.jumps || CLASSIC;
-  return { ...s, positions: s.positions.map((x, n) => n === i ? (jumps[p] || p) : x), turn: 1 - i, lastRoll: roll };
+  const roll = 1 + crypto.randomInt(6), jumps = s.jumps || CLASSIC, rules = s.rules || DEFAULT_RULES;
+  let p = s.positions[i] + roll;
+  if (p > 100) p = rules.exactFinish ? s.positions[i] : 100;            // exact finish: overshoot = stay put
+  else if (p === 100 && !rules.exactFinish) p = 100;
+  const landed = p === s.positions[i] ? p : (jumps[p] || p);
+  const sixes = roll === 6 ? (s.sixes || 0) + 1 : 0;
+  const again = rules.sixAgain && roll === 6 && sixes < 3 && landed !== 100;
+  return { ...s, positions: s.positions.map((x, n) => n === i ? landed : x), turn: again ? i : 1 - i, lastRoll: roll, sixes: again ? sixes : 0 };
 }
 function checkResult(s) { const i = s.positions.findIndex(x => x === 100); return i >= 0 ? { status: 'win', winnerIndex: i } : { status: 'ongoing' }; }
 function botMove() { return { type: 'roll' }; }
-module.exports = { createInitialState, isValidMove, applyMove, checkResult, botMove, generateJumps, J: CLASSIC };
+module.exports = { DEFAULT_RULES, cleanRules, createInitialState, isValidMove, applyMove, checkResult, botMove, generateJumps, J: CLASSIC };

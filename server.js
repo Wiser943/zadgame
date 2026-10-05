@@ -9,6 +9,8 @@ const passport = require('passport');
 const { Server } = require('socket.io');
 
 const connectDB = require('./config/db');
+const { attachRedis, redisHealth, closeRedis } = require('./config/redis');
+const mongoose = require('mongoose');
 const configurePassport = require('./config/passport');
 const authRoutes = require('./routes/auth');
 const apiRoutes = require('./routes/api');
@@ -30,6 +32,7 @@ async function main() {
   const app = express();
   const server = http.createServer(app);
   const io = new Server(server);
+  await attachRedis(io);
 
   // Render (and most hosts) terminate HTTPS at a proxy. Without this, Express
   // thinks requests are plain HTTP and refuses to set the Secure session cookie.
@@ -57,6 +60,12 @@ async function main() {
   app.use('/api/social', socialRoutes);
   app.use('/api/tournaments', tournamentRoutes);
   app.get('/health', (req,res) => res.json({ ok: true, service: 'gamehub', time: new Date().toISOString() }));
+  // Readiness: only "ready" when MongoDB is connected (and Redis too, when it is configured).
+  app.get('/ready', async (req, res) => {
+    const db = mongoose.connection.readyState === 1, redis = await redisHealth();
+    const ok = db && (!redis.configured || redis.ok);
+    res.status(ok ? 200 : 503).json({ ok, db, redis, time: new Date().toISOString() });
+  });
   app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
@@ -89,6 +98,21 @@ async function main() {
   server.listen(PORT, () => {
     console.log(`[server] GameHub running on http://localhost:${PORT}`);
   });
+
+  // Graceful shutdown: stop accepting connections, close sockets, then the databases.
+  let closing = false;
+  const shutdown = async (sig) => {
+    if (closing) return; closing = true;
+    console.log(`[server] ${sig} received, shutting down`);
+    const force = setTimeout(() => process.exit(1), 10000); force.unref();
+    try { io.close(); } catch {}
+    await new Promise((r) => server.close(() => r()));
+    await closeRedis();
+    try { await mongoose.disconnect(); } catch {}
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 main().catch((err) => {

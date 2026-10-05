@@ -466,14 +466,16 @@ module.exports = function initSockets(io, sessionMiddleware) {
   }
 
   function createRoom(socket, game, maxPlayers, vsBot, mode, difficulty, options) {
-    const r = { code: newCode(), game, maxPlayers, difficulty: botlevels.normLevel(difficulty), options: game === 'ludo' ? ENG.ludo.cleanRules(options) : null, status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
+    const r = { code: newCode(), game, maxPlayers, difficulty: botlevels.normLevel(difficulty), options: cleanOptions(game, options), status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
     rooms.set(r.code, r); attach(socket, r);
     if (vsBot) fillWithBots(r);
     return r;
   }
 
   // Initial state; Ludo accepts creator-chosen rule variants, other engines ignore options.
-  const initState = (r) => (r.game === 'ludo' ? ENG.ludo.createInitialState(r.maxPlayers, r.options) : ENG[r.game].createInitialState(r.maxPlayers));
+  const OPTION_GAMES = new Set(['ludo', 'rps', 'snakes', 'whot', 'joker', 'words']);
+  const cleanOptions = (game, o) => (OPTION_GAMES.has(game) && ENG[game].cleanRules ? ENG[game].cleanRules(o) : null);
+  const initState = (r) => (OPTION_GAMES.has(r.game) ? ENG[r.game].createInitialState(r.maxPlayers, r.options) : ENG[r.game].createInitialState(r.maxPlayers));
   // Server-created private room for specific players (tournament pairings, ranked matches).
   function createReservedRoom({ game, players, ranked = false, tournament = null }) {
     const r = { code: newCode(), game, maxPlayers: 2, difficulty: 'normal', status: 'waiting', mode: ranked ? 'ranked' : 'casual', ranked,

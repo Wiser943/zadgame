@@ -130,6 +130,23 @@
       opacity: .5
     }
 
+    /* spotlight tour */
+    #tourLayer { position: fixed; inset: 0; z-index: 10000; }
+    #tourLayer .tour-block { position: absolute; inset: 0; }
+    #tourLayer .tour-hole { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(8, 4, 6, .72); outline: 3px solid #f7c52b; pointer-events: none; transition: top .25s, left .25s, width .25s, height .25s; }
+    #tourLayer .tour-card { position: fixed; background: var(--card); color: var(--ink); border-radius: 18px; padding: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, .45); }
+    #tourLayer .tour-card h3 { margin: 4px 0 6px; font-size: 18px; }
+    #tourLayer .tour-card p { margin: 0 0 12px; font-size: 14px; line-height: 1.45; color: var(--mute); }
+    #tourLayer .tour-step { font-size: 12px; color: var(--mute); font-weight: 700; }
+    #tourLayer .tour-dots { display: flex; gap: 5px; margin-bottom: 12px; }
+    #tourLayer .tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+    #tourLayer .tour-dots i.on { background: var(--red2); }
+    #tourLayer .tour-actions { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    #tourLayer .tour-skip { background: none; color: var(--mute); font-weight: 700; padding: 10px 6px; }
+    #tourLayer .tour-next { padding: 11px 24px; }
+    html.reduced-motion #tourLayer .tour-hole { transition: none; }
+    @media (prefers-reduced-motion: reduce) { #tourLayer .tour-hole { transition: none; } }
+
     /* lobby tabs */
     .lobtabs { position: sticky; top: 0; z-index: 20; display: flex; gap: 6px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 18px 10px; background: var(--bg); border-bottom: 1px solid var(--line); }
     .lobtabs [role=tab] { flex: 1; padding: 11px 6px; border-radius: 999px; font-weight: 700; font-size: 14px; background: var(--card); color: var(--ink); border: 1px solid var(--line); white-space: nowrap; }
@@ -3105,6 +3122,7 @@
       if (path === '/history') return historyView(false);
       if (path === '/achievements') return achievementsView(false);
       if (path === '/tournaments') return tournamentsView(false);
+      if (path === '/gallery') return galleryView(false);
       if (path === '/leaderboard') return leaderboardView(new URLSearchParams(location.search).get('by') || 'coins', false);
       const qs = new URLSearchParams(location.search);
       if (qs.get('spectate')) return spectateRoom(qs.get('spectate'), false);
@@ -3148,7 +3166,7 @@
     const IMGBB_API_KEY = '';
     
     /* ---------- preferences: theme + sound/music/vibration ---------- */
-    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, highContrast: false, largeText: false, colorSafe: false, winnerReplay: true, voiceCmd: false, voiceURI: '', voiceRate: 1 }, (() => {
+    const prefs = Object.assign({ theme: 'light', music: true, sound: true, vibration: true, voice: true, lowPower: false, reducedMotion: false, highContrast: false, largeText: false, colorSafe: false, winnerReplay: true, voiceCmd: false, voiceURI: '', voiceRate: 1, lang: '' }, (() => {
       try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch { return {} }
     })());
     
@@ -4022,7 +4040,7 @@
     
     
     /* ---------- lobby ---------- */
-    let lobbyTab = 'lobby';
+    let lobbyTab = 'lobby', lobbyShowTab = null;
     async function lobbyView(navigate = true) {
       closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
       room = gstate = result = null;
@@ -4046,23 +4064,24 @@
       app.innerHTML = `
   <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b>${esc(me.coins ?? 0)} 🪙</b></div>
     <button id="meBtn" class="mebtn" aria-label="Settings"><img src="${avatar(me)}" alt=""><span>${esc(me.displayName || me.name || 'Player')}</span></button></div>
-  <div class="lobtabs" role="tablist" aria-label="Home sections">
-    <button role="tab" id="tabLobby" data-tab="lobby" aria-controls="pnLobby">Lobby</button>
-    <button role="tab" id="tabTour" data-tab="tour" aria-controls="pnTour">Tournaments</button>
-    <button role="tab" id="tabUtil" data-tab="util" aria-controls="pnUtil">Utility</button>
+  <div class="lobtabs" role="tablist" aria-label="${esc(t('tabs.label'))}">
+    <button role="tab" id="tabLobby" data-tab="lobby" aria-controls="pnLobby">${esc(t('tab.lobby'))}</button>
+    <button role="tab" id="tabTour" data-tab="tour" aria-controls="pnTour">${esc(t('tab.tournaments'))}</button>
+    <button role="tab" id="tabUtil" data-tab="util" aria-controls="pnUtil">${esc(t('tab.utility'))}</button>
   </div>
   <section id="pnUtil" role="tabpanel" aria-labelledby="tabUtil" hidden>
   <div class="dash" id="dashCard"></div>
   <div class="quickgrid">
-    <button class="btn ghost qtile" id="daily"><span class="qico">🎁</span><b>Daily reward</b><small>+25 coins</small></button>
-    <button class="btn ghost qtile" id="shopOpen"><span class="qico">${icon('trophy',22)}</span><b>Shop</b><small>Themes, boards &amp; tokens</small></button>
+    <button class="btn ghost qtile" id="daily"><span class="qico">🎁</span><b>${esc(t('daily'))}</b><small>${esc(t('daily.sub'))}</small></button>
+    <button class="btn ghost qtile" id="shopOpen"><span class="qico">${icon('trophy',22)}</span><b>${esc(t('shop'))}</b><small>${esc(t('shop.sub'))}</small></button>
   </div>
   <div class="quickgrid">
-    <button class="btn ghost qtile" id="friendsOpen"><span class="qico">👥</span><b>Friends</b><small>Add, invite &amp; chat</small></button>
-    <button class="btn ghost qtile" id="historyOpen"><span class="qico">🕘</span><b>History</b><small>Your recent matches</small></button>
+    <button class="btn ghost qtile" id="friendsOpen"><span class="qico">👥</span><b>${esc(t('friends'))}</b><small>${esc(t('friends.sub'))}</small></button>
+    <button class="btn ghost qtile" id="historyOpen"><span class="qico">🕘</span><b>${esc(t('history'))}</b><small>${esc(t('history.sub'))}</small></button>
   </div>
   <div class="quickgrid" style="margin-top:10px">
-    <button class="btn ghost qtile" id="a11yOpen" style="grid-column:1/-1"><span class="qico">♿</span><b>Accessibility</b><small>Text, contrast, motion</small></button>
+    <button class="btn ghost qtile" id="galleryOpen"><span class="qico">🎬</span><b>${esc(t('gallery'))}</b><small>${esc(t('gallery.sub'))}</small></button>
+    <button class="btn ghost qtile" id="a11yOpen"><span class="qico">♿</span><b>${esc(t('a11y'))}</b><small>${esc(t('a11y.sub'))}</small></button>
   </div>
   <div class="chcard" id="chCard"></div>
   </section>
@@ -4070,17 +4089,17 @@
   <section id="pnLobby" role="tabpanel" aria-labelledby="tabLobby">
   <button class="rwstrip" id="rewardsOpen" aria-label="Rewards and payouts, coming soon">
     <span class="rwico">💰</span>
-    <span class="rwtxt"><b>Rewards &amp; Payouts</b><small>Verify your details to be ready for launch</small></span>
-    <span class="rwbadge">Coming soon</span></button>
+    <span class="rwtxt"><b>${esc(t('rewards'))}</b><small>${esc(t('rewards.sub'))}</small></span>
+    <span class="rwbadge">${esc(t('soon'))}</span></button>
   <button class="lbstrip" id="lbOpen" aria-label="Open leaderboard">
-    <span class="lbtitle">${icon('trophy',20)} Leaderboard</span>
+    <span class="lbtitle">${icon('trophy',20)} ${esc(t('leaderboard'))}</span>
     ${lbTop.length ? `<span class="lbtop3">${lbTop.map(p=>`<img src="${avatar(p)}" alt="">`).join('')}</span>` : ''}
     <span class="chev">›</span></button>
   <div class="list">${games.map(g => `
     <button class="game ${g.available?'':'soon'}" data-k="${esc(g.key||g.id)}" data-a="${g.available?1:0}" data-n="${esc(g.name)}">
       <div style="display:flex;align-items:center"><span class="ico">${icon(ICON[g.key||g.id]||'controller',30)}</span>
       <div><h3>${esc(g.name)}</h3><span>${esc(g.description||'')}</span></div></div>
-      <span class="tag">${g.available?'Play':'Coming soon'}</span></button>`).join('')}</div>
+      <span class="tag">${g.available?esc(t('play')):esc(t('soon'))}</span></button>`).join('')}</div>
   </section>`;
       $('#meBtn').onclick = settingsView;
       const showTab = (name, focus) => {
@@ -4091,11 +4110,14 @@
       };
       const tabEls = [...app.querySelectorAll('.lobtabs [role=tab]')];
       tabEls.forEach((t, i) => { t.onclick = () => showTab(t.dataset.tab); t.onkeydown = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); showTab(tabEls[(i + (e.key === 'ArrowRight' ? 1 : tabEls.length - 1)) % tabEls.length].dataset.tab, true); } }; });
+      lobbyShowTab = showTab;
       showTab(lobbyTab);
+      maybeStartTour();
       $('#lbOpen').onclick = () => leaderboardView('coins');
       $('#rewardsOpen').onclick = () => rewardsView();
       $('#friendsOpen').onclick = () => friendsView();
       $('#a11yOpen').onclick = () => settingsView();
+      $('#galleryOpen').onclick = () => galleryView();
       $('#historyOpen').onclick = () => historyView();
       loadChallengesCard();
       loadDashboard();
@@ -4265,16 +4287,31 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       $('#tvStart') && ($('#tvStart').onclick = () => post('/start'));
       $('#tvPlay') && ($('#tvPlay').onclick = () => joinRoom(d.myMatch.code));
     }
+    async function galleryView(navigate = true) {
+      if (navigate) history.pushState({ page: 'gallery' }, '', '/gallery');
+      setLobbyMusic(true);
+      app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px"><button class="back" id="glBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>${esc(t('gallery'))}</h1><span style="width:38px"></span></div>
+        <label class="rwnote chk" style="display:flex;gap:10px;align-items:flex-start;margin:8px 0"><input type="checkbox" id="glShare"> <span>Share my winning highlights in this public gallery. Only wins against real players are listed, with your display name. You can turn this off at any time.</span></label>
+        <div id="glList"><p class="socempty">Loading…</p></div></div>`;
+      $('#glBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
+      try { $('#glShare').checked = (await api('/api/gallery/privacy')).share; } catch {}
+      $('#glShare').onchange = async e => { try { await apiPost('/api/gallery/privacy', { share: e.target.checked }); toast(e.target.checked ? 'Your highlights are now public' : 'Your highlights are private'); } catch { toast('Could not save'); e.target.checked = !e.target.checked; } };
+      let items = [];
+      try { items = (await api('/api/gallery')).items; } catch { $('#glList').innerHTML = '<p class="socempty">Could not load highlights.</p>'; return; }
+      const names = Object.fromEntries((GAMES || []).map(g => [g.key || g.id, g.name]));
+      $('#glList').innerHTML = items.length ? items.map(m => `<div class="prow"><div class="t"><b>${esc(names[m.game] || m.game)}</b><small>${esc(m.winner)} won · ${esc(new Date(m.at).toLocaleDateString())}</small></div><div class="acts"><button data-watch="${esc(m.id)}">▶ Watch</button></div></div>`).join('') : '<p class="socempty">No public highlights yet. Win a match and share yours!</p>';
+      $('#glList').querySelectorAll('[data-watch]').forEach(b => b.onclick = () => watchSavedHighlight(b.dataset.watch));
+    }
     async function loadChallengesCard() {
       const box = $('#chCard'); if (!box) return;
       let data;
       try { data = await api('/api/social/challenges'); } catch { box.remove(); return; }
       const render = (d) => {
-        box.innerHTML = `<h3>Daily challenges</h3>` + d.challenges.map(c => {
+        box.innerHTML = `<h3>${esc(t('challenges'))}</h3>` + d.challenges.map(c => {
           const done = c.progress >= c.target;
-          const btn = c.claimed ? `<button class="chbtn" disabled>Claimed ✓</button>`
+          const btn = c.claimed ? `<button class="chbtn" disabled>${esc(t('claimed'))}</button>`
             : `<button class="chbtn" data-claim="${esc(c.id)}" ${done ? '' : 'disabled'}>+${c.reward} 🪙</button>`;
-          return `<div class="chrow"><div class="t">${esc(c.title)}<small>${c.progress}/${c.target}</small><div class="chbar"><i style="width:${Math.round(100 * c.progress / c.target)}%"></i></div></div>${btn}</div>`;
+          return `<div class="chrow"><div class="t">${esc(t('ch.' + c.id, c.title))}<small>${c.progress}/${c.target}</small><div class="chbar"><i style="width:${Math.round(100 * c.progress / c.target)}%"></i></div></div>${btn}</div>`;
         }).join('');
         box.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
           b.disabled = true;
@@ -4522,6 +4559,8 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       ${toggleRow('sHC','High contrast','info', prefs.highContrast)}
       ${toggleRow('sLarge','Larger text','info', prefs.largeText)}
       ${toggleRow('sCB','Colour-blind friendly colours','info', prefs.colorSafe)}
+      <div class="row" style="align-items:center;justify-content:space-between;padding:10px 4px"><label for="sLang" style="font-weight:600">${esc(t('lang'))}</label><select id="sLang" style="padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)">${Object.entries(I18N).map(([c, d]) => `<option value="${c}" ${c === LANG ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></div>
+      <button class="btn ghost" id="sTour" style="width:100%;margin:8px 0">${esc(t('tour.replay'))}</button>
       ${toggleRow('sPower','Low-power mode','hourglass', prefs.lowPower)}
       ${toggleRow('sReplay','Cinematic winner highlights','trophy', prefs.winnerReplay)}
     </div>
@@ -4570,6 +4609,8 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         savePrefs();
         $('#sVibe .tgl').classList.toggle('on', prefs.vibration);
         vibrate(30); };
+      $('#sTour').onclick = () => { try { localStorage.removeItem(TOUR_KEY); } catch {} lobbyView(false); setTimeout(startTour, 400); };
+      $('#sLang').onchange = e => { setLang(e.target.value); settingsView(false); };
       $('#sHC').onclick = () => { prefs.highContrast=!prefs.highContrast; savePrefs(); applyA11y(); $('#sHC .tgl').classList.toggle('on',prefs.highContrast); };
       $('#sLarge').onclick = () => { prefs.largeText=!prefs.largeText; savePrefs(); applyA11y(); $('#sLarge .tgl').classList.toggle('on',prefs.largeText); };
       $('#sCB').onclick = () => { prefs.colorSafe=!prefs.colorSafe; savePrefs(); applyA11y(); $('#sCB .tgl').classList.toggle('on',prefs.colorSafe); };
@@ -4780,6 +4821,144 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       }
     }
     
+    // ---------- localisation (English + French; add another language by adding a dictionary here) ----------
+    const I18N = {
+      en: { name: 'English', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Brackets', 'tab.utility': 'Utility', 'tabs.label': 'Home sections',
+        'daily': 'Daily reward', 'daily.sub': '+25 coins', 'shop': 'Shop', 'shop.sub': 'Themes, boards & tokens', 'friends': 'Friends', 'friends.sub': 'Add, invite & chat',
+        'history': 'History', 'history.sub': 'Matches & replays', 'a11y': 'Accessibility', 'a11y.sub': 'Text, contrast, motion', 'gallery': 'Highlights', 'gallery.sub': 'Best moments from players',
+        'rewards': 'Rewards & Payouts', 'rewards.sub': 'Verify your details to be ready for launch', 'soon': 'Coming soon', 'leaderboard': 'Leaderboard', 'play': 'Play',
+        'challenges': 'Daily challenges', 'claimed': 'Claimed ✓', 'ch.play-3': 'Play 3 matches', 'ch.win-1': 'Win a match against a real player',
+        'sheet.quick': 'Quick match', 'sheet.create': 'Create a room', 'sheet.bot': 'Play vs Bot', 'sheet.level': 'Bot level', 'sheet.ranked': 'Ranked match (real players)',
+        'sheet.code': 'ROOM CODE', 'sheet.join': 'Join', 'sheet.rooms': 'Open rooms', 'sheet.howto': 'How to play & practice', 'sheet.rules': 'Rules (rooms & bot games)',
+        'tour.skip': 'Skip tour', 'tour.next': 'Next', 'tour.gotit': 'Got it', 'tour.replay': 'Replay the app tour', 'tour.of': 'of',
+        'tour.s1.t': 'Welcome to GameHub', 'tour.s1.d': 'These tabs move you around the app: Lobby for games, Tournaments for cups, and Utility for your tools.',
+        'tour.s2.t': 'Pick a game', 'tour.s2.d': 'Tap any game to play a quick match, create a room, play a bot, or read how it works.',
+        'tour.s3.t': 'Leaderboard', 'tour.s3.d': 'See the top players and where you rank.',
+        'tour.s4.t': 'Your progress', 'tour.s4.d': 'Your level, XP bar, rank and win streak live here. Win matches to move up.',
+        'tour.s5.t': 'Daily reward', 'tour.s5.d': 'Come back every day to claim free coins.',
+        'tour.s6.t': 'Friends', 'tour.s6.d': 'Add friends, see who is online and invite them straight into a game.',
+        'tour.s7.t': 'Daily challenges', 'tour.s7.d': 'Finish these each day to earn bonus coins. You are all set, have fun!',
+        'lang': 'Language', 'tut.title': 'How to play', 'tut.next': 'Next', 'tut.back': 'Back', 'tut.practice': 'Practice vs Easy bot', 'tut.close': 'Close', 'tut.step': 'Step' },
+      fr: { name: 'Français', 'tab.lobby': 'Salon', 'tab.tournaments': 'Tournois', 'tab.utility': 'Outils', 'tabs.label': 'Sections de l’accueil',
+        'daily': 'Récompense du jour', 'daily.sub': '+25 pièces', 'shop': 'Boutique', 'shop.sub': 'Thèmes, plateaux et pions', 'friends': 'Amis', 'friends.sub': 'Ajouter, inviter et discuter',
+        'history': 'Historique', 'history.sub': 'Parties et replays', 'a11y': 'Accessibilité', 'a11y.sub': 'Texte, contraste, animations', 'gallery': 'Temps forts', 'gallery.sub': 'Les meilleurs moments des joueurs',
+        'rewards': 'Récompenses et paiements', 'rewards.sub': 'Vérifiez vos informations pour être prêt au lancement', 'soon': 'Bientôt', 'leaderboard': 'Classement', 'play': 'Jouer',
+        'challenges': 'Défis quotidiens', 'claimed': 'Récupéré ✓', 'ch.play-3': 'Jouer 3 parties', 'ch.win-1': 'Gagner une partie contre un vrai joueur',
+        'sheet.quick': 'Partie rapide', 'sheet.create': 'Créer une salle', 'sheet.bot': 'Jouer contre le bot', 'sheet.level': 'Niveau du bot', 'sheet.ranked': 'Partie classée (vrais joueurs)',
+        'sheet.code': 'CODE DE LA SALLE', 'sheet.join': 'Rejoindre', 'sheet.rooms': 'Salles ouvertes', 'sheet.howto': 'Comment jouer et s’entraîner', 'sheet.rules': 'Règles (salles et parties contre le bot)',
+        'tour.skip': 'Passer la visite', 'tour.next': 'Suivant', 'tour.gotit': 'Compris', 'tour.replay': 'Revoir la visite guidée', 'tour.of': 'sur',
+        'tour.s1.t': 'Bienvenue sur GameHub', 'tour.s1.d': 'Ces onglets vous font naviguer : Salon pour les jeux, Tournois pour les coupes et Outils pour vos réglages.',
+        'tour.s2.t': 'Choisissez un jeu', 'tour.s2.d': 'Touchez un jeu pour lancer une partie rapide, créer une salle, jouer contre le bot ou lire les règles.',
+        'tour.s3.t': 'Classement', 'tour.s3.d': 'Voyez les meilleurs joueurs et votre position.',
+        'tour.s4.t': 'Votre progression', 'tour.s4.d': 'Votre niveau, votre barre d’XP, votre rang et votre série de victoires sont ici. Gagnez pour progresser.',
+        'tour.s5.t': 'Récompense du jour', 'tour.s5.d': 'Revenez chaque jour pour récupérer des pièces gratuites.',
+        'tour.s6.t': 'Amis', 'tour.s6.d': 'Ajoutez des amis, voyez qui est en ligne et invitez-les directement dans une partie.',
+        'tour.s7.t': 'Défis quotidiens', 'tour.s7.d': 'Terminez-les chaque jour pour gagner des pièces bonus. Vous êtes prêt, amusez-vous bien !',
+        'lang': 'Langue', 'tut.title': 'Comment jouer', 'tut.next': 'Suivant', 'tut.back': 'Retour', 'tut.practice': 'S’entraîner contre un bot facile', 'tut.close': 'Fermer', 'tut.step': 'Étape' }
+    };
+    let LANG = (() => { const saved = prefs.lang || ''; if (I18N[saved]) return saved; const nav = String(navigator.language || 'en').slice(0, 2).toLowerCase(); return I18N[nav] ? nav : 'en'; })();
+    const t = (key, fallback) => (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || fallback || key;
+    function setLang(code) { if (!I18N[code]) return; LANG = code; prefs.lang = code; savePrefs(); document.documentElement.lang = code; }
+    document.documentElement.lang = LANG;
+
+    // ---------- first-time spotlight tour ----------
+    const TOUR_KEY = 'gh_tour_done';
+    const TOUR_STEPS = [
+      { sel: '.lobtabs', tab: 'lobby', k: 's1' },
+      { sel: '.games .game, .game', tab: 'lobby', k: 's2' },
+      { sel: '#lbOpen', tab: 'lobby', k: 's3' },
+      { sel: '#dashCard', tab: 'util', k: 's4' },
+      { sel: '#daily', tab: 'util', k: 's5' },
+      { sel: '#friendsOpen', tab: 'util', k: 's6' },
+      { sel: '#chCard', tab: 'util', k: 's7' }
+    ];
+    function tourDone() { try { return localStorage.getItem(TOUR_KEY) === '1'; } catch { return true; } }
+    function maybeStartTour() {
+      if (tourDone() || document.getElementById('tourLayer')) return;
+      setTimeout(() => { if (!tourDone() && !document.querySelector('.sheet-bg') && document.querySelector('.lobtabs')) startTour(); }, 900);
+    }
+    function startTour() {
+      document.getElementById('tourLayer')?.remove();
+      const steps = TOUR_STEPS; let i = 0;
+      const layer = document.createElement('div'); layer.id = 'tourLayer';
+      layer.innerHTML = '<div class="tour-block"></div><div class="tour-hole" aria-hidden="true"></div><div class="tour-card" role="dialog" aria-modal="true" aria-live="polite"></div>';
+      document.body.appendChild(layer);
+      const hole = layer.querySelector('.tour-hole'), card = layer.querySelector('.tour-card');
+      const finish = () => { try { localStorage.setItem(TOUR_KEY, '1'); } catch {} window.removeEventListener('resize', place); window.removeEventListener('keydown', onKey, true); layer.remove(); lobbyShowTab && lobbyShowTab('lobby'); window.scrollTo(0, 0); };
+      function place() {
+        const s = steps[i], el = document.querySelector(s.sel); if (!el) return;
+        const r = el.getBoundingClientRect(), pad = 8, vh = window.innerHeight, vw = window.innerWidth;
+        hole.style.cssText = `top:${r.top - pad}px;left:${r.left - pad}px;width:${r.width + pad * 2}px;height:${r.height + pad * 2}px`;
+        const cw = Math.min(340, vw - 24), below = r.bottom + pad + 12, roomBelow = vh - below;
+        card.style.width = cw + 'px'; card.style.left = Math.max(12, Math.min(vw - cw - 12, r.left + r.width / 2 - cw / 2)) + 'px';
+        if (roomBelow >= card.offsetHeight + 12) { card.style.top = below + 'px'; card.style.bottom = 'auto'; }
+        else { card.style.top = Math.max(12, r.top - pad - 12 - card.offsetHeight) + 'px'; card.style.bottom = 'auto'; }
+      }
+      function show() {
+        const s = steps[i];
+        if (s.tab && lobbyShowTab) lobbyShowTab(s.tab);
+        const el = document.querySelector(s.sel);
+        if (!el) { if (i < steps.length - 1) { i++; return show(); } return finish(); }
+        el.scrollIntoView({ block: 'center', behavior: 'auto' });
+        const last = i === steps.length - 1;
+        card.innerHTML = `<div class="tour-step">${i + 1} ${esc(t('tour.of'))} ${steps.length}</div><h3>${esc(t('tour.' + s.k + '.t'))}</h3><p>${esc(t('tour.' + s.k + '.d'))}</p>
+          <div class="tour-dots" aria-hidden="true">${steps.map((_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('')}</div>
+          <div class="tour-actions"><button type="button" class="tour-skip">${esc(t('tour.skip'))}</button><button type="button" class="tour-next btn">${esc(last ? t('tour.gotit') : t('tour.next'))}</button></div>`;
+        card.querySelector('.tour-skip').onclick = finish;
+        card.querySelector('.tour-next').onclick = () => { if (last) finish(); else { i++; show(); } };
+        card.setAttribute('aria-label', t('tour.' + s.k + '.t'));
+        requestAnimationFrame(() => { place(); card.querySelector('.tour-next').focus({ preventScroll: true }); });
+      }
+      const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); finish(); } else if (e.key === 'Enter' && document.activeElement?.closest('.tour-card') === null) { e.preventDefault(); card.querySelector('.tour-next').click(); } };
+      window.addEventListener('resize', place); window.addEventListener('keydown', onKey, true);
+      show();
+    }
+    // ---------- interactive tutorials ----------
+    function tutorialSheet(key, name, n) {
+      const steps = RULES[key] || ['Take turns and try to win. Open the game and give it a go!'];
+      let i = 0;
+      const bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'tutBg';
+      const draw = () => {
+        const last = i === steps.length - 1;
+        bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(t('tut.title'))}: ${esc(name)}"><h2>${esc(t('tut.title'))}: ${esc(name)}</h2>
+          <div class="rwhero" style="text-align:left"><small style="color:var(--mute)">${esc(t('tut.step'))} ${i + 1} / ${steps.length}</small><p style="font-size:16px;color:var(--ink);margin:8px 0 0">${esc(steps[i])}</p></div>
+          <div class="chbar" style="margin:10px 0"><i style="width:${Math.round(100 * (i + 1) / steps.length)}%"></i></div>
+          <div class="row" style="gap:8px">${i ? `<button class="btn ghost" id="tutBack" style="flex:1">${esc(t('tut.back'))}</button>` : ''}${last ? '' : `<button class="btn" id="tutNext" style="flex:1">${esc(t('tut.next'))}</button>`}</div>
+          ${last ? `<button class="btn" id="tutPlay" style="width:100%;margin-top:10px">${esc(t('tut.practice'))}</button>` : ''}
+          <button class="btn ghost" id="tutClose" style="width:100%;margin-top:10px">${esc(t('tut.close'))}</button></div>`;
+        bg.querySelector('#tutNext')?.addEventListener('click', () => { i++; draw(); });
+        bg.querySelector('#tutBack')?.addEventListener('click', () => { i--; draw(); });
+        bg.querySelector('#tutClose').onclick = () => bg.remove();
+        bg.querySelector('#tutPlay')?.addEventListener('click', () => { bg.remove(); document.querySelector('.sheet-bg')?.remove(); createRoom(key, (n && n > 0) ? n : 2, true, 'easy'); });
+      };
+      bg.onclick = e => { if (e.target === bg) bg.remove(); };
+      document.body.appendChild(bg); draw();
+    }
+    // Rule variants the room creator can pick (the server re-validates every value).
+    const OPTION_DEFS = {
+      ludo: [['blockades', 'Blockades: two of your tokens on one cell can’t be passed', 'bool', false], ['bonusRolls', 'Bonus roll after a capture or reaching home', 'bool', false], ['safeStars', 'Star squares are safe', 'bool', true]],
+      rps: [['format', 'Format', [['bo3', 'Best of 3'], ['bo5', 'Best of 5'], ['bo7', 'Best of 7']], 'bo5'], ['gestures', 'Gestures', [['classic', 'Rock Paper Scissors'], ['rpsls', 'Plus Lizard & Spock']], 'classic']],
+      snakes: [['board', 'Board', [['random', 'Random'], ['classic', 'Classic'], ['gentle', 'Gentle (few snakes)'], ['brutal', 'Brutal (many snakes)']], 'random'], ['exactFinish', 'Exact roll needed to finish', 'bool', false], ['sixAgain', 'A six gives another roll', 'bool', false]],
+      whot: [['dealCount', 'Cards dealt', [[4, '4 cards'], [5, '5 cards'], [6, '6 cards']], 4], ['crossStack', 'Pick Two and Pick Three can answer each other', 'bool', false], ['starDouble8', 'Star 8 skips two players', 'bool', true], ['noPowerFinish', 'Cannot win on a power card', 'bool', false]],
+      joker: [['penalty', 'Penalty cards', [['numbers', 'All numbers stack'], ['twos', 'Only 2s'], ['off', 'None']], 'numbers'], ['skipOn8', '8 skips the next player', 'bool', false], ['handSize', 'Cards dealt', [[5, '5 cards'], [7, '7 cards'], [10, '10 cards']], 7]],
+      words: [['board', 'Board', [['classic', 'Classic'], ['premium', 'Premium squares (DL/TL/DW/TW)']], 'classic'], ['length', 'Game length', [[12, '12 words'], [24, '24 words'], [36, '36 words']], 24]]
+    };
+    function optionsHtml(key) {
+      const defs = OPTION_DEFS[key]; if (!defs) return '';
+      return `<fieldset class="rwnote" style="margin:12px 0;border:1px solid var(--line)"><legend style="font-weight:700;font-size:12px;padding:0 6px">${esc(t('sheet.rules'))}</legend>${defs.map(([name, label, type, def]) => type === 'bool'
+        ? `<label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" data-opt="${name}" ${def ? 'checked' : ''}> ${label}</label>`
+        : `<label style="display:flex;gap:8px;align-items:center;margin:6px 0;justify-content:space-between">${label}<select data-opt="${name}" style="padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)">${type.map(([v, t]) => `<option value="${v}" ${v === def ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`).join('')}</fieldset>`;
+    }
+    function readOptions(key, root) {
+      const defs = OPTION_DEFS[key]; if (!defs) return undefined;
+      const out = {};
+      defs.forEach(([name, , type]) => { const el = root.querySelector(`[data-opt="${name}"]`); if (!el) return; out[name] = type === 'bool' ? el.checked : (isNaN(+el.value) ? el.value : +el.value); });
+      return out;
+    }
+    function describeOptions(key, o) {
+      const defs = OPTION_DEFS[key]; if (!defs || !o) return '';
+      return defs.map(([name, label, type]) => { const v = o[name]; if (type === 'bool') return v ? label.replace(/:.*/, '') : null; const hit = type.find(([x]) => String(x) === String(v)); return hit ? hit[1] : null; }).filter(Boolean).join(' · ');
+    }
     async function sheet(key, name) {
       const g = GAMES.find(x => (x.key || x.id) === key) || {};
       const counts = g.playerCounts && g.playerCounts.length > 1 ? g.playerCounts : null;
@@ -4788,17 +4967,15 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       bg.className = 'sheet-bg';
       bg.innerHTML = `<div class="sheet"><h2>${esc(name)}</h2>
     ${counts ? `<div class="row" id="pc" style="justify-content:center">${counts.map(c => `<button type="button" class="btn ghost pcbtn${c===n?' on':''}" data-n="${c}">${c} players${key==='tictactoe'?(c===4?' · 5×5':' · 3×3'):''}</button>`).join('')}</div>` : ''}
-    <button class="btn" id="qk" style="width:100%">Quick match</button>
-    <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">Create a room</button>
-    <button class="btn ghost" id="vb" style="width:100%;margin-top:10px">${icon('controller',16)} Play vs Bot</button>
-    <div class="diffrow"><label for="diff">Bot level</label><select id="diff"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option><option value="expert">Expert</option></select></div>
-    ${(!counts || counts.includes(2)) ? `<button class="btn" id="rk" style="width:100%;margin-top:10px">🏆 Ranked match (real players)</button>` : ''}
-    ${key === 'ludo' ? `<fieldset class="rwnote" style="margin:12px 0;border:1px solid var(--line)"><legend style="font-weight:700;font-size:12px;padding:0 6px">Ludo rules (rooms &amp; bot games)</legend>
-      <label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" id="lBlock"> Blockades: two of your tokens on one cell can't be passed</label>
-      <label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" id="lBonus"> Bonus roll after a capture or reaching home</label>
-      <label class="chk" style="display:flex;gap:8px;margin:4px 0"><input type="checkbox" id="lStar" checked> Star squares are safe</label></fieldset>` : ''}
-    <div class="row"><input id="cd" placeholder="ROOM CODE" maxlength="8" aria-label="Room code"><button class="btn ghost" id="jn">Join</button></div>
-    <h3 style="margin:18px 0 0;font-size:15px">Open rooms</h3><div id="rooms" class="empty">Loading…</div></div>`;
+    <button class="btn" id="qk" style="width:100%">${esc(t('sheet.quick'))}</button>
+    <button class="btn ghost" id="mk" style="width:100%;margin-top:10px">${esc(t('sheet.create'))}</button>
+    <button class="btn ghost" id="vb" style="width:100%;margin-top:10px">${icon('controller',16)} ${esc(t('sheet.bot'))}</button>
+    <div class="diffrow"><label for="diff">${esc(t('sheet.level'))}</label><select id="diff"><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option><option value="expert">Expert</option></select></div>
+    ${(!counts || counts.includes(2)) ? `<button class="btn" id="rk" style="width:100%;margin-top:10px">🏆 ${esc(t('sheet.ranked'))}</button>` : ''}
+    <button class="btn ghost" id="howto" style="width:100%;margin-top:10px">📖 ${esc(t('sheet.howto'))}</button>
+    ${optionsHtml(key)}
+    <div class="row"><input id="cd" placeholder="${esc(t('sheet.code'))}" maxlength="8" aria-label="Room code"><button class="btn ghost" id="jn">${esc(t('sheet.join'))}</button></div>
+    <h3 style="margin:18px 0 0;font-size:15px">${esc(t('sheet.rooms'))}</h3><div id="rooms" class="empty">Loading…</div></div>`;
       document.body.appendChild(bg);
       bg.onclick = e => { if (e.target === bg) bg.remove() };
       bg.querySelectorAll('.pcbtn').forEach(b => b.onclick = () => {
@@ -4806,9 +4983,11 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         bg.querySelectorAll('.pcbtn').forEach(x => x.classList.toggle('on', x === b));
         loadRooms();
       });
+      $('#howto').onclick = () => tutorialSheet(key, name, n);
+      try { if (!localStorage.getItem('gh_tut_' + key)) { localStorage.setItem('gh_tut_' + key, '1'); setTimeout(() => tutorialSheet(key, name, n), 250); } } catch {}
       $('#qk').onclick = () => { bg.remove();
         quickMatch(key, n) };
-      const ludoOpts = () => key === 'ludo' ? { blockades: $('#lBlock').checked, bonusRolls: $('#lBonus').checked, safeStars: $('#lStar').checked } : undefined;
+      const ludoOpts = () => readOptions(key, bg);
       $('#mk').onclick = () => { const o = ludoOpts(); bg.remove();
         createRoom(key, n, false, undefined, o) };
       $('#vb').onclick = () => { const lvl = $('#diff').value, o = ludoOpts(); bg.remove();
@@ -4837,6 +5016,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         if (room?.state) gstate = room.state;
         history.pushState({ page: 'game', code: room.code }, '', '/?code=' + room.code);
         gameView();
+        const rules = describeOptions(game, room?.options); if (rules) toast('Rules: ' + rules);
       });
     }
     
@@ -5210,7 +5390,9 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     // board array's length, which can momentarily be wrong (e.g. empty) and
     // used to collapse a 5×5 board down to a 3-column layout.
     const TTT_SIZE_BY_PLAYERS = { 2: 3, 4: 5 };
-    const RPS_LABELS = { rock: 'Rock', paper: 'Paper', scissors: 'Scissors' };
+    const RPS_LABELS = { rock: 'Rock', paper: 'Paper', scissors: 'Scissors', lizard: 'Lizard', spock: 'Spock' };
+    const RPS_ICONS = { rock: ['fist', 34], paper: ['palm', 34], scissors: ['scissors', 34] };
+    const RPS_EMOJI = { lizard: '🦎', spock: '🖖' };
     function rpsBoardHtml(st, mine, players) {
       const myChoice = st.mine || null;
       const selected = picked && !myChoice ? picked : null;
@@ -5224,11 +5406,11 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         lastHtml = `<div class="rps-last ${cls}"><b>Round ${last.id}</b> · ${esc(outcome)}<br><span>${esc(RPS_LABELS[last.choices[mine]])} vs ${esc(RPS_LABELS[last.choices[opponent]])}</span></div>`;
       }
       const prompt = locked ? (st.opponentPicked ? 'Revealing the round…' : 'Choice locked — waiting for your opponent') : selected ? `${RPS_LABELS[selected]} selected` : 'Choose one, then lock it in';
-      const buttons = [['rock','fist'], ['paper','palm'], ['scissors','scissors']].map(([key, ic]) => `<button data-rps="${key}" class="${selected === key ? 'sel' : ''}" ${locked || result ? 'disabled' : ''} aria-label="${RPS_LABELS[key]}">${icon(ic,34)}<span class="rps-choice-label">${RPS_LABELS[key]}</span></button>`).join('');
+      const buttons = (st.gestures || ['rock', 'paper', 'scissors']).map(key => `<button data-rps="${key}" class="${selected === key ? 'sel' : ''}" ${locked || result ? 'disabled' : ''} aria-label="${RPS_LABELS[key]}">${RPS_ICONS[key] ? icon(RPS_ICONS[key][0], RPS_ICONS[key][1]) : `<span style="font-size:30px;line-height:34px" aria-hidden="true">${RPS_EMOJI[key]}</span>`}<span class="rps-choice-label">${RPS_LABELS[key]}</span></button>`).join('');
       const playerName = i => nameOf(players?.[i] || { name: i === mine ? 'You' : 'Opponent' });
       return `<div class="board rpsboard">
         <div class="rps-score"><div class="rps-player you ${locked?'waiting':''}"><b>${playerName(mine)}</b><strong>${st.scores?.[mine] || 0}</strong></div><span class="rps-vs">VS</span><div class="rps-player ${st.opponentPicked?'waiting':''}"><b>${playerName(opponent)}</b><strong>${st.scores?.[opponent] || 0}</strong></div></div>
-        <div class="rps-round">Round ${st.round || 1} · First to 3 wins</div>
+        <div class="rps-round">Round ${st.round || 1} · First to ${st.target || 3} wins${(st.gestures || []).length > 3 ? ' · Rock Paper Scissors Lizard Spock' : ''}</div>
         <div class="rps-prompt" aria-live="polite">${esc(prompt)}</div>
         <div class="rps">${buttons}</div>
         <button id="rpsSubmit" class="rps-submit" ${!selected || locked || result ? 'disabled' : ''}>Lock in choice</button>
@@ -5311,7 +5493,10 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       const words = (st.words || []).slice(-8);
       const score = (st.scores || []).map((x, i) => `<span class="${i===mine?'me':''}">${nameOf(players[i])}: <b>${x}</b></span>`).join('');
       const list = words.map((w, i) => `<span class="${i===words.length-1?'last':''}">${esc(w.word)}${w.pts ? ` +${w.pts}` : ''}</span>`).join('');
-      const meta = `<div class="wmeta">Tiles in bag: ${st.bagCount ?? '–'} · Words played ${st.plays || 0}/${st.maxPlays || 24}</div>`;
+      const PREM = { DL: 'Double letter', TL: 'Triple letter', DW: 'Double word', TW: 'Triple word' };
+      const premTxt = p => p && p.type !== 'none' ? `${PREM[p.type]}${p.letter ? ' (' + esc(p.letter) + ')' : ''}` : 'No bonus';
+      const premium = st.premium ? `<div class="wmeta" role="status" style="font-weight:700">⭐ This turn: ${premTxt(st.premium)} <span style="font-weight:400;opacity:.7">· Next: ${premTxt(st.nextPremium)}</span></div>` : '';
+      const meta = `<div class="wmeta">Tiles in bag: ${st.bagCount ?? '–'} · Words played ${st.plays || 0}/${st.maxPlays || 24}</div>${premium}`;
       if (ro) return `<div class="board words ro"><div class="wordscore">${score}</div><div class="wordlist">${list}</div><div class="wlabel">Letter rack</div><div class="wrackwrap"><div class="wrack">${hand.map(c => `<span class="wtile">${wordTile(st, c)}</span>`).join('')}</div></div></div>`;
       return `<div class="board words"><div class="wordscore">${score}</div>${meta}
         <div class="wlabel">Your word</div><div class="wslots" id="wordSlots">${wordSlotsInner(st, hand, can)}</div>

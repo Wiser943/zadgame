@@ -41,7 +41,16 @@ const DECK_SPEC = {
   star: [1, 2, 3, 4, 5, 7, 8],
   whot: [20, 20, 20, 20, 20]
 };
-const DEAL_COUNT = 4; // cards dealt to each player at the start (matches the reference engine)
+const DEAL_COUNT = 4; // default cards dealt to each player at the start (matches the reference engine)
+// Room options: dealCount 4 (default) | 5 | 6, crossStack (a Pick Two can be countered with a Pick Three and vice versa),
+// starDouble8 (a Star 8 skips two players; default on), noPowerFinish (you cannot win on a power card: you must pick one).
+const DEFAULT_RULES = { dealCount: 4, crossStack: false, starDouble8: true, noPowerFinish: false };
+const cleanRules = (r) => ({ dealCount: [4, 5, 6].includes(Number(r && r.dealCount)) ? Number(r.dealCount) : 4, crossStack: !!(r && r.crossStack),
+  starDouble8: r && r.starDouble8 === false ? false : true, noPowerFinish: !!(r && r.noPowerFinish) });
+const POWER_VALUES = new Set([1, 2, 5, 8, 14, 20]);
+const PICK = { 2: 2, 5: 3 };   // Pick Two (value 2) and Pick Three (value 5)
+// A Pick Two is answered by another 2, a Pick Three by another 5 (crossStack: either card answers either).
+const isCounter = (state, card) => (state.rules?.crossStack ? card.value in PICK : card.value === (state.pendingType === 'two' ? 2 : 5));
 
 function buildDeck() {
   const cards = [];
@@ -104,17 +113,17 @@ function cardMatchesTop(card, state) {
 function hasPlayableCard(state, playerIndex) {
   const hand = state.hands[playerIndex];
   if (state.pendingPick > 0) {
-    const neededValue = state.pendingType === 'two' ? 2 : 3;
-    return hand.some((c) => c.value === neededValue);
+    return hand.some((c) => isCounter(state, c));
   }
   return hand.some((c) => cardMatchesTop(c, state));
 }
 
-function createInitialState(playerCount) {
+function createInitialState(playerCount, options) {
+  const rules = cleanRules(options);
   const n = Math.min(4, Math.max(2, playerCount || 2));
   const deck = shuffle(buildDeck());
   const hands = Array.from({ length: n }, () => []);
-  for (let round = 0; round < DEAL_COUNT; round++) {
+  for (let round = 0; round < rules.dealCount; round++) {
     for (let p = 0; p < n; p++) hands[p].push(deck.pop());
   }
   // Avoid opening on a wild card — reshuffle and redraw if the flip is a Whot.
@@ -128,6 +137,7 @@ function createInitialState(playerCount) {
   }
   return {
     playerCount: n,
+    rules,
     hands,
     market: deck,
     pile: [first],
@@ -148,8 +158,7 @@ function isValidMove(state, playerIndex, move) {
     const card = state.hands[playerIndex][move.index];
     if (!card) return false;
     if (state.pendingPick > 0) {
-      const neededValue = state.pendingType === 'two' ? 2 : 3;
-      return card.value === neededValue;
+      return isCounter(state, card);
     }
     if (card.shape === 'whot') return SHAPES.includes(move.calledShape);
     return cardMatchesTop(card, state);
@@ -179,10 +188,11 @@ function applyMove(state, playerIndex, move) {
   const card = s.hands[playerIndex][move.index];
   s.hands[playerIndex].splice(move.index, 1);
   s.pile.push(card);
+  if (s.rules?.noPowerFinish && s.hands[playerIndex].length === 0 && POWER_VALUES.has(card.value)) drawCards(s, playerIndex, 1);   // cannot win on a power card
 
   if (s.pendingPick > 0) {
     // Countering a Pick Two/Three with a matching card stacks it onto the next player.
-    s.pendingPick += card.value;
+    s.pendingPick += PICK[card.value];
     s.pendingType = card.value === 2 ? 'two' : 'three';
     s.calledShape = null;
     s.turn = nextActive(s, playerIndex, 1);
@@ -203,7 +213,7 @@ function applyMove(state, playerIndex, move) {
       s.turn = nextActive(s, playerIndex, 1);
       break;
     case 8: // Suspension — skip 1 player, or 2 if it's a Star
-      s.turn = nextActive(s, playerIndex, card.shape === 'star' ? 3 : 2);
+      s.turn = nextActive(s, playerIndex, card.shape === 'star' && s.rules?.starDouble8 !== false ? 3 : 2);
       break;
     case 14: // General Market — everyone else draws 1
       drawForOthers(s, playerIndex, 1);
@@ -256,8 +266,7 @@ function publicState(state, playerIndex) {
 function botMove(state, playerIndex) {
   const hand = state.hands[playerIndex];
   if (state.pendingPick > 0) {
-    const neededValue = state.pendingType === 'two' ? 2 : 3;
-    const idx = hand.findIndex((c) => c.value === neededValue);
+    const idx = hand.findIndex((c) => isCounter(state, c));
     return idx !== -1 ? { type: 'play', index: idx } : { type: 'market' };
   }
   if (!hasPlayableCard(state, playerIndex)) return { type: 'market' };
@@ -274,4 +283,4 @@ function botMove(state, playerIndex) {
   return { type: 'play', index: idx };
 }
 
-module.exports = { createInitialState, isValidMove, applyMove, checkResult, markOut, publicState, botMove };
+module.exports = { DEFAULT_RULES, cleanRules, createInitialState, isValidMove, applyMove, checkResult, markOut, publicState, botMove };
