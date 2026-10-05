@@ -1,0 +1,83 @@
+
+:root{--ink:#1b1f33;--mut:#6b7186;--grn:#22b573;--pill:rgba(244,244,248,.94);--wall:#d9a93a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:#0d1b4a;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);overflow:hidden}
+#app{position:fixed;inset:0;max-width:480px;margin:auto;overflow:hidden;background:#17306e}
+.scene{position:absolute;inset:0;background:radial-gradient(120% 60% at 50% 100%,#4b5a2a 0,#2b3a22 40%,#13234f 41%,#13234f 100%)}
+svg.room{position:absolute;left:0;right:0;top:170px;width:100%;height:auto}
+.pill{background:var(--pill);border-radius:999px;box-shadow:0 4px 14px rgba(0,0,0,.18);color:var(--ink)}
+.hud{position:absolute;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 16px;font-weight:700;font-size:16px;gap:8px}
+.hud .t{display:flex;gap:8px;align-items:center;white-space:nowrap}.hud .mood{color:var(--grn);max-width:70px;overflow:hidden;text-overflow:ellipsis}
+.bal{display:flex;align-items:center;gap:10px;background:#f0f0f4;border-radius:999px;padding:4px 4px 4px 22px;font-weight:700}
+.plus{width:46px;height:46px;border-radius:50%;background:var(--grn);color:#fff;border:0;font-size:30px;line-height:1}
+.chips{position:absolute;top:calc(78px + env(safe-area-inset-top,0px));left:0;right:0;display:flex;justify-content:center;gap:14px}
+.chip{background:rgba(190,190,200,.85);border-radius:999px;padding:4px 14px;font-size:14px;font-weight:600;color:#555}
+.chip.g{color:#1e9d5f}
+.quest{position:absolute;left:12px;display:flex;gap:12px;align-items:center;padding:8px 22px 8px 12px;max-width:80%}
+.quest i{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:20px;background:var(--grn)}
+.quest b{display:block;font-size:16px}.quest span{font-size:14px;color:var(--mut)}
+.clean{position:absolute;left:12px;top:calc(372px + env(safe-area-inset-top,0px));padding:6px 16px;font-size:15px;font-weight:600;color:var(--mut);border:0}
+.needsbar{position:absolute;left:12px;right:12px;bottom:110px;display:flex;align-items:center;gap:12px}
+.av{width:112px;height:112px;border-radius:50%;background:#e8f1ff;border:5px solid var(--grn);overflow:hidden;box-shadow:0 0 0 4px #fff;flex:none;margin-bottom:-12px;transform:scale(.62);transform-origin:left bottom}
+.needs{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px 10px;padding:12px 18px;max-width:365px}
+.n{display:flex;align-items:center;gap:6px;font-size:15px}.bar{flex:1;height:10px;border-radius:9px;background:#e1e3ea;overflow:hidden}.bar u{display:block;height:100%;border-radius:9px;background:#1fbf7a;transition:width .4s}
+.nav{position:absolute;left:12px;right:12px;bottom:calc(22px + env(safe-area-inset-bottom,0px));display:flex;padding:10px;gap:6px}
+.nav button{flex:1;border:0;background:none;border-radius:999px;padding:10px 0 8px;font:600 15px 'Plus Jakarta Sans';color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:4px}
+.nav button svg{width:30px;height:30px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.nav button.on{background:#1b2236;color:#fff}
+/* splash */
+#splash{position:absolute;inset:0;background:linear-gradient(#c3e0f5,#dcecf6 55%,#cfe3c4);z-index:20;text-align:center}
+#splash h1{font:800 64px Outfit;margin:60px 0 0;letter-spacing:-2px;line-height:1}
+#splash p{margin:10px 0;color:var(--mut);font-size:24px}
+.crown{font-size:64px;margin-top:20px;display:block}
+.card{position:absolute;left:18px;right:18px;bottom:24px;background:#fffdfa;border-radius:36px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.who{display:flex;gap:16px;align-items:center;background:#f1f3f9;border-radius:30px;padding:10px 14px;text-align:left}
+.who .a{width:72px;height:72px;border-radius:50%;background:#dbe9ff;overflow:hidden}.who b{font:700 28px Outfit;display:block}.who span{color:var(--mut)}
+.btn{display:block;width:100%;border-radius:999px;border:0;padding:26px;font:700 22px 'Plus Jakarta Sans';margin-top:14px}
+.btn.p{background:var(--grn);color:#fff;box-shadow:0 8px 20px rgba(34,181,115,.4)}.btn.s{background:#fff;border:1px solid #ddd;padding:22px;font-size:20px;color:var(--ink)}
+.foot{display:flex;justify-content:space-between;padding:14px 8px 0;color:var(--mut);font-size:16px;text-align:left}.foot a{color:#2f7fd8;font-weight:600}
+/* map */
+#map{position:absolute;inset:0;display:none;background:#b8cf9d;overflow:hidden}
+#map .water{position:absolute;left:0;right:0;top:36%;height:22%;background:#2b8bd1}
+#map .road{position:absolute;left:0;right:0;height:22px;background:#9ba0a6}
+.mp{position:absolute;transform:translate(-50%,-50%);padding:7px 14px;font-weight:600;font-size:15px;white-space:nowrap;border:0;color:var(--ink)}
+.mp.y{background:#ffd60a}
+.bld{position:absolute;background:#e7e9ea;border-radius:4px;box-shadow:0 8px 0 rgba(0,0,0,.12)}
+.cats{position:absolute;top:calc(148px + env(safe-area-inset-top,0px));left:20px;right:20px;display:flex;justify-content:space-around;padding:12px 8px;font-weight:600;font-size:17px}
+.load{position:absolute;left:50%;top:56%;transform:translateX(-50%);padding:14px 30px;color:var(--mut);font-size:22px}
+/* buy */
+#buy{position:absolute;inset:0;display:none;z-index:8}
+#buy .top{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;display:flex;justify-content:space-between;align-items:center}
+#buy .top .pill{padding:16px 26px;font-weight:600;font-size:20px}.x{width:76px;height:76px;border:0;font-size:34px;display:grid;place-items:center}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:40px 40px 0 0;padding:24px 20px 28px;max-height:42%;overflow:auto}
+.sheet h2{font:800 34px Outfit;margin:0;display:flex;justify-content:space-between;align-items:center}.sheet h2 small{font:600 17px 'Plus Jakarta Sans';background:#f0f1f6;padding:10px 20px;border-radius:99px;color:var(--mut)}
+.tabs{display:flex;gap:12px;margin:18px 0;overflow:auto}.tabs button{border:0;background:#f0f1f6;border-radius:99px;padding:14px 24px;font:600 20px 'Plus Jakarta Sans';white-space:nowrap}.tabs .on{background:#1b2236;color:#fff}
+.hint{color:var(--mut);font-size:19px;line-height:1.5;margin:0 0 18px}.lab{color:var(--mut);font-size:19px;font-weight:600;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.sw{background:#f3f4f9;border-radius:30px;padding:12px 8px;text-align:center;border:3px solid transparent;font:600 15px 'Plus Jakarta Sans';color:var(--ink)}
+.sw.sel{border-color:var(--grn)}.sw i{display:block;height:46px;border-radius:30px;margin-bottom:8px}.sw span{display:block;font-weight:500}
+.buyb{display:none;margin-top:14px}
+/* phone */
+#phone{position:absolute;inset:0;z-index:30;display:none;backdrop-filter:blur(8px);background:rgba(15,25,70,.45)}
+.close{position:absolute;right:36px;top:150px;z-index:2;background:#fff;border:0;border-radius:99px;padding:22px 34px;font:500 24px 'Plus Jakarta Sans';box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.frame{position:absolute;left:30px;right:30px;top:260px;bottom:-30px;background:#0f1218;border-radius:68px 68px 0 0;padding:16px 16px 0}
+.screen{height:100%;border-radius:54px 54px 0 0;background:linear-gradient(170deg,#3730a3 0%,#7c3aed 38%,#f97316 78%,#fbbf24 100%);position:relative;overflow:hidden;color:#fff}
+.island{position:absolute;left:50%;top:14px;width:180px;height:46px;background:#101420;border-radius:30px;transform:translateX(-50%)}
+.sb{display:flex;justify-content:space-between;padding:26px 36px 0;font-weight:600;font-size:23px;position:relative}
+.big{padding:50px 36px 0}.big b{font:700 118px Outfit;display:block;line-height:1;letter-spacing:-3px}.big span{font-size:27px;opacity:.9}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:26px 8px;padding:50px 20px 0;text-align:center}
+.app{position:relative;font-size:21px;border:0;background:none;color:#fff;font-family:inherit;line-height:1.1}.ic{width:108px;height:108px;border-radius:30px;margin:0 auto 8px;display:grid;place-items:center;font-size:56px;box-shadow:0 6px 16px rgba(0,0,0,.15);font-weight:800}
+.nw{position:absolute;top:-10px;right:2px;background:#ef4a5f;border-radius:99px;font-size:17px;font-weight:700;padding:3px 14px;z-index:2;border:2px solid rgba(255,255,255,.4)}
+.home{position:absolute;left:50%;bottom:18px;width:240px;height:9px;border-radius:9px;background:rgba(255,255,255,.75);transform:translateX(-50%)}
+.toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);background:#1b2236;color:#fff;padding:12px 22px;border-radius:99px;font-weight:600;opacity:0;transition:.3s;z-index:50;pointer-events:none;white-space:nowrap}
+@media(max-width:400px){.ic{width:84px;height:84px;font-size:44px}.frame{top:230px}.big b{font-size:96px}}
+
+/* auth card */
+#auth{padding:18px}#auth input{display:block;width:100%;border:1px solid #d9dce8;background:#f6f7fb;border-radius:18px;padding:18px 20px;font:500 18px 'Plus Jakarta Sans';margin-top:12px;color:var(--ink)}
+.seg{display:flex;background:#eef0f6;border-radius:99px;padding:5px}.seg button{flex:1;border:0;background:none;border-radius:99px;padding:14px;font:700 17px 'Plus Jakarta Sans';color:var(--mut)}.seg .on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#auth .btn{padding:20px;font-size:19px;text-align:center;text-decoration:none}.aerr{color:#d0243a;font-weight:600;font-size:15px;min-height:20px;margin-top:10px;text-align:left}.note{color:var(--mut);font-size:14px;margin:12px 0 0}
+#splash{overflow:auto}#splash h1{margin-top:calc(34px + env(safe-area-inset-top,0px))}.crown{margin-top:10px}
+/* GameHub app overlay */
+#hub{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;background:#111}
+.hubbar{display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;background:#1b2236;color:#fff}.hubbar button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:99px;padding:10px 18px;font:600 16px 'Plus Jakarta Sans'}.hubbar span{width:70px}
+#hubf{flex:1;border:0;width:100%;background:#8f1017}

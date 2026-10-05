@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AllConnect</title>
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0d1b4a">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/allconnect/style.css"></head><body>
+<div id="app">
+ <div class="scene"></div>
+
+ <!-- HOME -->
+ <svg class="room" id="room" viewBox="0 0 400 440" onclick="walk(event)">
+  <defs><pattern id="ck" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(45 200 260) ">
+   <rect width="60" height="60" fill="#a8693a"/><rect width="30" height="30" fill="#c58a52"/><rect x="30" y="30" width="30" height="30" fill="#c58a52"/></pattern>
+   <radialGradient id="lg"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs>
+  <ellipse cx="200" cy="270" rx="320" ry="190" fill="#3a4a26" opacity=".7"/>
+  <polygon points="200,60 200,170 4,262 4,150" fill="var(--wall)" id="wl"/>
+  <polygon points="200,60 396,150 396,262 200,170" fill="var(--wall)" id="wr" style="filter:brightness(.9)"/>
+  <polygon points="4,262 200,170 396,262 200,354" fill="url(#ck)"/>
+  <polygon points="4,262 200,170 396,262 200,354" fill="url(#lg)"/>
+  <polygon points="4,262 200,354 200,366 4,274" fill="#5b4a2a"/><polygon points="396,262 200,354 200,366 396,274" fill="#47391f"/>
+  <!-- bed -->
+  <polygon points="150,118 205,92 245,110 190,138" fill="#e8d9c4"/><polygon points="130,128 190,100 215,111 155,140" fill="#d63a2f"/><polygon points="130,128 155,140 155,150 130,138" fill="#c9a977"/>
+  <rect x="244" y="104" width="30" height="34" fill="#d9c9aa" transform="skewY(25)"/>
+  <!-- window -->
+  <polygon points="330,128 392,156 392,192 330,164" fill="#8a8f90"/>
+  <!-- table + cooler -->
+  <polygon points="288,176 322,160 346,172 312,188" fill="#d2b48c"/><rect x="304" y="150" width="14" height="14" rx="3" fill="#2f4a2f"/>
+  <g class="tap" onclick="eat(event)" style="cursor:pointer"><polygon points="316,190 352,174 372,184 336,200" fill="#2d6dd8"/><polygon points="316,190 336,200 336,216 316,206" fill="#2457b0"/><polygon points="336,200 372,184 372,200 336,216" fill="#1d4a99"/></g>
+  <!-- chair -->
+  <g><rect x="166" y="206" width="30" height="5" fill="#d0243a"/><rect x="166" y="170" width="4" height="40" fill="#d0243a"/><rect x="166" y="206" width="4" height="26" fill="#a01a2b"/><rect x="192" y="206" width="4" height="26" fill="#a01a2b"/></g>
+  <!-- barrel, bucket, toilet -->
+  <ellipse cx="258" cy="318" rx="24" ry="9" fill="#1f4aa0"/><rect x="234" y="270" width="48" height="48" fill="#1f4aa0"/><ellipse cx="258" cy="270" rx="24" ry="9" fill="#2a5cc0"/>
+  <ellipse cx="216" cy="322" rx="13" ry="5" fill="#d0243a"/>
+  <polygon points="168,306 200,294 214,302 182,314" fill="#cfd4dc"/>
+  <!-- door + poster -->
+  <polygon points="4,172 4,232 40,215 40,160" fill="#5a2c14"/><rect x="108" y="100" width="22" height="30" fill="#f0f0f0" transform="skewY(-25)"/>
+  <circle cx="122" cy="96" r="7" fill="#ffd77a"/><circle cx="268" cy="98" r="7" fill="#ffd77a"/>
+  <!-- avatar -->
+  <g id="me" transform="translate(120 238)"><ellipse cx="0" cy="62" rx="14" ry="5" fill="#000" opacity=".3"/>
+   <rect x="-10" y="30" width="8" height="32" fill="#16161c"/><rect x="2" y="30" width="8" height="32" fill="#16161c"/><rect x="-13" y="4" width="26" height="30" rx="5" fill="#d9b24a"/>
+   <rect x="-18" y="6" width="6" height="24" rx="3" fill="#6b4226"/><rect x="12" y="6" width="6" height="24" rx="3" fill="#6b4226"/><circle cx="0" cy="-6" r="11" fill="#6b4226"/><path d="M-11-8Q0-24 11-8Z" fill="#1a1010"/></g>
+ </svg>
+
+ <div class="pill hud" id="hud"><div class="t"><span>🌙</span><span id="clk">7:53 PM</span><span class="mood" id="mood">😄 Very Happy</span><span>🔊</span></div><div class="bal"><span id="bal">₦2,024,000</span><button class="plus" onclick="toast('Top-up coming soon')">+</button></div></div>
+ <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
+ <div id="homeUI">
+  <div class="pill quest" style="top:calc(172px + env(safe-area-inset-top,0px))"><i>🎯</i><div><b>Eat something</b><span>Tap the cooler or stove</span></div></div>
+  <div class="pill quest" onclick="findGem()" style="top:calc(272px + env(safe-area-inset-top,0px));cursor:pointer"><i style="background:#6366f1">💎</i><div><b>Daily gem hunt</b><span id="gem">176107 found · next prize ₦3,000</span></div></div>
+  <button class="pill clean" onclick="toggleClean()">^ Clean screen</button>
+ </div>
+
+ <!-- MAP -->
+ <div id="map">
+  <div class="water"></div><div class="road" style="top:30%"></div><div class="road" style="top:64%"></div>
+  <div class="bld" style="left:46%;top:52%;width:70px;height:34px"></div><div class="bld" style="left:20%;top:63%;width:60px;height:46px;background:#9c3b22"></div><div class="bld" style="left:70%;top:74%;width:50px;height:80px;background:#222"></div><div class="bld" style="left:36%;top:73%;width:34px;height:70px;background:#8d99a6"></div>
+  <div class="pill cats"><span>🟠 Go-slow</span><span>📢 Ads</span><span>🏠 Homes</span><span>🌊 Sea</span><span>🏛 Gov</span></div>
+  <div id="pins"></div>
+  <div class="pill load" id="ld">Loading Lagos… 18%</div>
+ </div>
+
+ <div class="needsbar" id="needsbar"><div class="av"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#dbe9ff"/><rect x="22" y="62" width="56" height="50" rx="12" fill="#d9b24a"/><circle cx="50" cy="40" r="22" fill="#6b4226"/><path d="M28 36Q50 8 72 36Z" fill="#1a1010"/></svg></div>
+  <div class="pill needs" id="needs"></div></div>
+
+ <!-- BUY -->
+ <div id="buy"><div class="top"><span class="pill" style="padding:16px 26px;font-weight:600;font-size:20px">Buy mode</span><span class="pill" id="bal2" style="padding:16px 26px;font-weight:600;font-size:20px">₦2,025,000</span><button class="pill x" onclick="nav('home')">✕</button></div>
+  <div class="sheet" id="sheet"><h2>Catalogue <small onclick="document.getElementById('sheet').style.maxHeight='20%'">Hide</small></h2>
+   <div class="tabs" id="tabs"></div><p class="hint">Tap a paint or floor to try it on first. You only pay when you tap Buy, and ones you've bought stay yours.</p>
+   <div class="lab" id="lab">WALL PAINT</div><div class="grid" id="items"></div><button class="btn p buyb" id="buyb" onclick="buyIt()">Buy</button></div></div>
+
+ <div class="pill nav" id="nav"></div>
+
+ <!-- PHONE -->
+ <div id="phone"><button class="close" onclick="nav('home')">✕ Close</button>
+  <div class="frame"><div class="screen"><div class="island"></div><div class="sb"><span id="pt">8:31PM</span><span>●●● 4G ▭</span></div>
+   <div class="big"><b id="pb">8:31</b><span id="pd">Monday 5 October · Lagos</span></div><div class="apps" id="apps"></div><div class="home"></div></div></div></div>
+
+ <!-- SPLASH -->
+ <div id="splash"><span class="crown">👑</span><h1>AllConnect</h1><p>One account. Every app.</p>
+  <div class="card" id="auth"><div class="seg"><button id="tl" class="on" onclick="authMode('login')">Sign in</button><button id="tr" onclick="authMode('register')">Create account</button></div>
+   <input id="fname" placeholder="Your name" autocomplete="name" style="display:none"><input id="fid" placeholder="Email or phone" autocomplete="username" inputmode="email"><input id="fpw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
+   <div id="aerr" class="aerr"></div><button class="btn p" id="abtn" onclick="doAuth()">Sign in</button>
+   <a class="btn s gbtn" id="gbtn" href="/auth/google">Continue with Google</a>
+   <p class="note">Already play GameHub? Sign in with that same account.</p></div>
+  <div class="card" id="resume" style="display:none"><div class="who"><div class="a"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#dbe9ff"/><rect x="22" y="62" width="56" height="50" rx="12" fill="#d9b24a"/><circle cx="50" cy="40" r="22" fill="#6b4226"/><path d="M28 36Q50 8 72 36Z" fill="#1a1010"/></svg></div><div style="text-align:left"><b id="uname">wisdomw</b><span id="sd">Monday 5 Oct · ₦2.0m</span></div></div>
+   <button class="btn p" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
+   <div class="foot"><span>Signed in as <b style="color:var(--ink)">@<span id="uname2">wisdomw</span></b></span><a onclick="logout()">Log out</a></div></div></div>
+ <div id="hub"><div class="hubbar"><button onclick="closeHub()">‹ Back</button><b>🎮 GameHub</b><span></span></div><iframe id="hubf" title="GameHub" allow="autoplay; fullscreen; clipboard-write"></iframe></div>
+ <div class="toast" id="toast"></div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/allconnect/app.js"></script></body></html>
