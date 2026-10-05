@@ -13,10 +13,10 @@
   <defs><pattern id="ck" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(45 200 260) ">
    <rect width="60" height="60" fill="#a8693a"/><rect width="30" height="30" fill="#c58a52"/><rect x="30" y="30" width="30" height="30" fill="#c58a52"/></pattern>
    <radialGradient id="lg"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></radialGradient></defs>
-  <ellipse cx="200" cy="270" rx="320" ry="190" fill="#3a4a26" opacity=".7"/>
+  <ellipse cx="200" cy="290" rx="290" ry="150" fill="#3f5a2a" opacity=".85"/>
   <polygon points="200,60 200,170 4,262 4,150" fill="var(--wall)" id="wl"/>
   <polygon points="200,60 396,150 396,262 200,170" fill="var(--wall)" id="wr" style="filter:brightness(.9)"/>
-  <polygon points="4,262 200,170 396,262 200,354" fill="url(#ck)"/>
+  <g id="floor"></g>
   <polygon points="4,262 200,170 396,262 200,354" fill="url(#lg)"/>
   <polygon points="4,262 200,354 200,366 4,274" fill="#5b4a2a"/><polygon points="396,262 200,354 200,366 396,274" fill="#47391f"/>
   <!-- bed -->
@@ -45,8 +45,8 @@
  <div class="pill hud" id="hud"><div class="t"><span>🌙</span><span id="clk">7:53 PM</span><span class="mood" id="mood">😄 Very Happy</span><span>🔊</span></div><div class="bal"><span id="bal">₦2,024,000</span><button class="plus" onclick="toast('Top-up coming soon')">+</button></div></div>
  <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
  <div id="homeUI">
-  <div class="pill quest" style="top:calc(172px + env(safe-area-inset-top,0px))"><i>🎯</i><div><b>Eat something</b><span>Tap the cooler or stove</span></div></div>
-  <div class="pill quest" onclick="findGem()" style="top:calc(272px + env(safe-area-inset-top,0px));cursor:pointer"><i style="background:#6366f1">💎</i><div><b>Daily gem hunt</b><span id="gem">176107 found · next prize ₦3,000</span></div></div>
+  <div class="pill quest q1"><i>🎯</i><div><b>Eat something</b><span>Tap the cooler or stove</span></div></div>
+  <div class="pill quest q2" onclick="findGem()"><i style="background:#6366f1">💎</i><div><b>Daily gem hunt</b><span id="gem">176107 found · next prize ₦3,000</span></div></div>
   <button class="pill clean" onclick="toggleClean()">^ Clean screen</button>
  </div>
 
@@ -63,7 +63,7 @@
   <div class="pill needs" id="needs"></div></div>
 
  <!-- BUY -->
- <div id="buy"><div class="top"><span class="pill" style="padding:16px 26px;font-weight:600;font-size:20px">Buy mode</span><span class="pill" id="bal2" style="padding:16px 26px;font-weight:600;font-size:20px">₦2,025,000</span><button class="pill x" onclick="nav('home')">✕</button></div>
+ <div id="buy"><div class="top"><span class="pill">Buy mode</span><span class="pill" id="bal2">₦2,025,000</span><button class="pill x" onclick="nav('home')">✕</button></div>
   <div class="sheet" id="sheet"><h2>Catalogue <small onclick="document.getElementById('sheet').style.maxHeight='20%'">Hide</small></h2>
    <div class="tabs" id="tabs"></div><p class="hint">Tap a paint or floor to try it on first. You only pay when you tap Buy, and ones you've bought stay yours.</p>
    <div class="lab" id="lab">WALL PAINT</div><div class="grid" id="items"></div><button class="btn p buyb" id="buyb" onclick="buyIt()">Buy</button></div></div>
@@ -72,11 +72,11 @@
 
  <!-- PHONE -->
  <div id="phone"><button class="close" onclick="nav('home')">✕ Close</button>
-  <div class="frame"><div class="screen"><div class="island"></div><div class="sb"><span id="pt">8:31PM</span><span>●●● 4G ▭</span></div>
-   <div class="big"><b id="pb">8:31</b><span id="pd">Monday 5 October · Lagos</span></div><div class="apps" id="apps"></div><div class="home"></div></div></div></div>
+  <div class="frame"><div class="screen"><div class="island"></div><div class="sb"><span id="pt">8:31PM</span><span>●●● 4G ▮</span></div>
+   <div class="scroll"><div class="big"><b id="pb">8:31</b><span id="pd">Monday 5 October · Lagos</span></div><div class="apps" id="apps"></div></div><div class="home"></div></div></div></div>
 
  <!-- SPLASH -->
- <div id="splash"><span class="crown">👑</span><h1>AllConnect</h1><p>One account. Every app.</p>
+ <div id="splash"><span class="crown">👑</span><h1>AllConnect</h1><p class="tag">One account. Every app.</p><div class="sp"></div>
   <div class="card" id="auth"><div class="seg"><button id="tl" class="on" onclick="authMode('login')">Sign in</button><button id="tr" onclick="authMode('register')">Create account</button></div>
    <input id="fname" placeholder="Your name" autocomplete="name" style="display:none"><input id="fid" placeholder="Email or phone" autocomplete="username" inputmode="email"><input id="fpw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuth()">
    <div id="aerr" class="aerr"></div><button class="btn p" id="abtn" onclick="doAuth()">Sign in</button>
