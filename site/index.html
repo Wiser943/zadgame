@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="manus-game-loading-screen" content="1">
+  
+  
+
+
+  <style>
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0b122b; color: #eef2ff; }
+    body { display: grid; place-items: center; }
+    canvas { width: 100vw; height: 100vh; display: block; outline: none; }
+    #loading { position: fixed; inset: 0; z-index: 2; display: grid; place-items: center; padding: 24px; background: #0b122b; }
+    #loading::before { content: ""; position: absolute; inset: 0; opacity: .55; background: radial-gradient(circle at 20% 20%, #283b77 0 1px, transparent 2px), radial-gradient(circle at 82% 30%, #8b5cf6 0 1px, transparent 2px), linear-gradient(135deg, transparent 0 49.8%, #24376a 50% 50.2%, transparent 50.4%); background-size: 160px 160px, 220px 220px, 100% 100%; }
+    .loader-card { position: relative; width: min(520px, 100%); padding: 42px 42px 36px; text-align: center; border: 1px solid #8b5cf6aa; border-radius: 26px; background: #111b3bf2; box-shadow: 0 20px 80px #05091dcc; }
+    .mark { width: 66px; height: 66px; margin: 0 auto 20px; }
+    h1 { margin: 0; font-size: clamp(30px, 7vw, 54px); letter-spacing: .06em; line-height: 1; text-shadow: 0 4px 0 #3f267c; }
+    .eyebrow { margin: 0 0 13px; color: #46d7c6; font-size: 11px; font-weight: 800; letter-spacing: .16em; }
+    #loading-status { margin: 14px 0 13px; color: #a7b7db; font-size: 13px; }
+    progress { display: block; width: min(320px, 75vw); height: 8px; margin: 0 auto 18px; border: 0; border-radius: 999px; overflow: hidden; accent-color: #8b5cf6; background: #25345a; }
+    progress::-webkit-progress-bar { background: #25345a; border-radius: 999px; }
+    progress::-webkit-progress-value { background: linear-gradient(90deg, #8b5cf6, #46d7c6); border-radius: 999px; }
+    progress::-moz-progress-bar { background: #8b5cf6; border-radius: 999px; }
+    #loading-notice { color: #f6b94f; font-size: 12px; }
+    button { min-height: 44px; padding: 0 22px; border: 1px solid #a78bfa; border-radius: 11px; background: #8b5cf6; color: white; font-weight: 800; cursor: pointer; }
+    button:focus-visible { outline: 3px solid #46d7c6; outline-offset: 4px; }
+    noscript { position: relative; display: block; margin-top: 20px; color: #f6b94f; }
+    [hidden] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+<!-- manus:game-sharing:start -->
+<title>All Connect</title>
+<link rel="icon" type="image/png" href="./share/1262f9b9425bec05f86b725f5b187959b0a787b4e5c3680861d30ceab97ff605.png">
+<link rel="apple-touch-icon" href="./share/1262f9b9425bec05f86b725f5b187959b0a787b4e5c3680861d30ceab97ff605.png">
+<meta name="description" content="Explore a connected city, meet the neighborhood, and build a small life full of useful routes.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="All Connect">
+<meta property="og:description" content="Explore a connected city, meet the neighborhood, and build a small life full of useful routes.">
+<meta property="og:url" content="https://allconnect-5u6jzsf9.manus.game/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="All Connect">
+<meta name="twitter:description" content="Explore a connected city, meet the neighborhood, and build a small life full of useful routes.">
+<!-- manus:game-sharing:end -->
+</head>
+<body>
+  <canvas id="canvas" tabindex="0">Your browser does not support canvas.</canvas>
+  <section id="loading" role="status" aria-live="polite">
+    <div class="loader-card">
+      <svg class="mark" viewBox="0 0 128 128" aria-hidden="true">
+        <rect width="128" height="128" rx="32" fill="#0b122b"/>
+        <circle cx="64" cy="64" r="42" fill="#18284e" stroke="#8b5cf6" stroke-width="5"/>
+        <path d="M42 63.5 57.5 79 88 47" fill="none" stroke="#46d7c6" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="42" cy="63.5" r="7" fill="#f6b94f"/><circle cx="88" cy="47" r="7" fill="#f47fb5"/>
+      </svg>
+      <p class="eyebrow">A SOCIAL MAP FOR CURIOUS PEOPLE</p>
+      <h1 id="game-title">ALL CONNECT</h1>
+      <p id="loading-status">Loading your route…</p>
+      <progress id="loading-progress" aria-label="Download progress"></progress>
+      <p id="loading-notice" hidden></p>
+      <button id="loading-retry" type="button" hidden>Retry</button>
+      <noscript>JavaScript is required to play All Connect.</noscript>
+    </div>
+  </section>
+  <script>(function(){var R={"index.wasm":"/manus-storage/game/sha256/fc74679e3b97f76878947fcd4fbe1268cbfa6188182a2e33bbc3f5dc9bfa57d0.wasm","index.pck":"/manus-storage/game/sha256/29d6bcc3e2a3e2c78bcfdf86874a71d682f46f6d1691cfd94429bc90260c001f.pck"};var f=window.fetch.bind(window);window.fetch=function(i,o){var u=typeof i==="string"?i:(i&&i.url)||"";var b=u.split("?")[0].split("/").pop();return R[b]?f(R[b],o):f(i,o)};})();</script>
+<script>
+    (() => {
+      const config = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":3723640,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+      const threads = false;
+      const canvas = document.getElementById('canvas');
+      const loading = document.getElementById('loading');
+      const status = document.getElementById('loading-status');
+      const progress = document.getElementById('loading-progress');
+      const notice = document.getElementById('loading-notice');
+      const retry = document.getElementById('loading-retry');
+      document.title = 'All Connect';
+      document.getElementById('game-title').textContent = 'ALL CONNECT';
+      let failed = false, ready = false, downloadedBytes = 0;
+      const startedAt = performance.now();
+      let lastProgressAt = startedAt;
+      const updateNotice = () => {
+        if (failed || ready || performance.now() - startedAt < 30000) return;
+        notice.hidden = false; retry.hidden = false;
+        notice.textContent = performance.now() - lastProgressAt >= 30000
+          ? 'No recent loading progress. You can keep waiting, or retry.'
+          : 'Still loading. You can keep waiting, or retry.';
+      };
+      const startupWatch = setInterval(updateNotice, 1000);
+      const stopObserving = () => clearInterval(startupWatch);
+      const fail = (error) => {
+        if (failed || ready) return;
+        failed = true; stopObserving(); console.error('[all-connect-loading] Startup failed', error);
+        loading.hidden = false; status.textContent = 'Unable to load the city. Please retry.';
+        progress.hidden = true; notice.hidden = true; retry.hidden = false;
+      };
+      window.addEventListener('error', e => fail(e.error || new Error('Engine startup error')));
+      window.addEventListener('unhandledrejection', e => fail(e.reason || new Error('Engine startup rejected')));
+      const onProgress = (current, total) => {
+        if (failed || ready) return;
+        if (Number.isFinite(current) && current > downloadedBytes) { downloadedBytes = current; lastProgressAt = performance.now(); }
+        updateNotice();
+        if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(current) || current < 0) { progress.removeAttribute('value'); return; }
+        progress.max = total; progress.value = Math.min(current, total);
+        status.textContent = current >= total ? 'Starting the city…' : `Loading route ${Math.floor(current / total * 100)}%`;
+      };
+      const start = async () => {
+        failed = false; retry.hidden = true; progress.hidden = false; status.textContent = 'Loading your route…';
+        try {
+          const missing = Engine.getMissingFeatures({ threads });
+          if (missing.length) throw new Error(`Missing browser features: ${missing.join(', ')}`);
+          const engine = new Engine({ ...config, canvas });
+          await engine.startGame({ onProgress });
+          if (failed) return;
+          ready = true; stopObserving(); notice.hidden = true; retry.hidden = true;
+          requestAnimationFrame(() => requestAnimationFrame(() => { if (!failed) { loading.hidden = true; if (config['focusCanvas']) canvas.focus(); } }));
+        } catch (error) { fail(error); }
+      };
+      retry.addEventListener('click', () => window.location.reload());
+      const script = document.createElement('script');
+      script.src = 'index.js';
+      script.addEventListener('load', start, { once: true });
+      script.addEventListener('error', () => fail(new Error('Engine script could not be loaded')), { once: true });
+      document.head.appendChild(script);
+    })();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 2,
+  "title": "All Connect",
+  "description": "Explore a connected city, meet the neighborhood, and build a small life full of useful routes.",
+  "defaultCaptions": {
+    "x": "All Connect — a small city, many ways to belong.",
+    "facebook": "Explore All Connect, an original social life map game.",
+    "reddit": "I made All Connect, a browser-playable city map about finding your way into a community.",
+    "discord": "Enter All Connect and discover your next route."
+  },
+  "assets": {
+    "favicon": "assets/share/favicon.png"
+  }
+}

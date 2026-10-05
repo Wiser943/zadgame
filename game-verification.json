@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "checks": [
+    {
+      "kind": "scene",
+      "path": "res://test/test_suite.tscn",
+      "expect": "[all-connect-tests] PASS:",
+      "profile": "source"
+    }
+  ]
+}
