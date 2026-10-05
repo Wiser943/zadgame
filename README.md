@@ -149,6 +149,22 @@ are all generic.
 
 ## Notes on scope
 
+### Sunset Sprint — Beach Blitz
+
+The project now includes an original landscape-first arcade racer at `/beach-blitz.html`.
+It runs on the same Express + Socket.IO server through the dedicated `/beach-blitz`
+namespace, supports up to six players in a shared room code, and uses server-authoritative
+input/state updates for the race loop. The browser renderer is procedural so the shoreline,
+sky, palms, start line, vehicles, and effects remain easy to replace with final art later.
+Bundled audio in `assets/audio/` supplies background music and finish cues; boost, countdown,
+and sparkle effects use the Web Audio API and canvas particles.
+
+The first free third-party vehicle package is staged under
+`assets/beach-blitz/devils-workshop/`. It includes the supplied license notice plus one
+OBJ vehicle and its PNG texture. The current page still uses Canvas placeholders; the
+asset is intentionally staged for the upcoming Three.js/WebGL renderer pass because OBJ
+is not itself a browser-ready GLB model.
+
 This is a solid, working foundation, not a finished consumer product:
 
 - Sessions/rooms are held in memory per server process, so this runs on a

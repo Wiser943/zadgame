@@ -19,6 +19,7 @@ const elo = require('../utils/elo');
 const profanity = require('../utils/profanity');
 const tournaments = require('../services/tournaments');
 const hub = require('../utils/tournamentHub');
+const initBeachBlitz = require('./beachBlitz');
 const NOSHOW_MS = 3 * 60 * 1000;           // tournament no-show: opponent gets a walkover
 const QUEUE_TICK_MS = 2000;
 const RANKED_GAMES_MIN_PLAYERS = 2;
@@ -87,6 +88,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   io.engine.use(sessionMiddleware);
   io.engine.use(passport.initialize());
   io.engine.use(passport.session());
+  initBeachBlitz(io, sessionMiddleware);
   io.use((socket, next) => {
     const u = socket.request.user;
     if (!u) return next(new Error('unauthorized'));
