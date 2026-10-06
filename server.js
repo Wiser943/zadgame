@@ -18,6 +18,8 @@ const adminRoutes = require('./routes/admin');
 const socialRoutes = require('./routes/social');
 const tournamentRoutes = require('./routes/tournaments');
 const allconnectRoutes = require('./routes/allconnect');
+const acPhotoRoutes = require('./routes/acphotos');
+const acPoliceRoutes = require('./routes/acpolice');
 const acSocialRoutes = require('./routes/acsocial');
 const acBankRoutes = require('./routes/acbank');
 const initAllConnect = require('./sockets/allconnect');
@@ -42,7 +44,8 @@ async function main() {
   // thinks requests are plain HTTP and refuses to set the Secure session cookie.
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
-  app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); next(); });
+  app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
+  app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
 
   const sessionMiddleware = session({
@@ -51,7 +54,7 @@ async function main() {
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } // 7 days
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' ? 'auto' : false } // 7 days
   });
   app.use(sessionMiddleware);
 
@@ -63,6 +66,8 @@ async function main() {
   app.use('/admin-api', adminRoutes);
   app.use('/api/social', socialRoutes);
   app.use('/api/tournaments', tournamentRoutes);
+  app.use('/api/ac/photos', acPhotoRoutes);
+  app.use('/api/ac/police', acPoliceRoutes);
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)

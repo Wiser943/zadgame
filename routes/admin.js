@@ -8,18 +8,26 @@ const Match = require('../models/Match');
 const presence = require('../utils/presence');
 const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/gameSettings');
 const router = express.Router();
-const ADMIN_PHONE = String(process.env.ADMIN_PHONE || '');
-const ADMIN_PIN = String(process.env.ADMIN_PIN || '');
+// Hosting dashboards often leave stray spaces/newlines or quotes around values: clean them so login still matches.
+const clean = (v) => String(v == null ? '' : v).trim().replace(/^["']|["']$/g, '').trim();
+const ADMIN_PHONE = clean(process.env.ADMIN_PHONE);
+const ADMIN_PIN = clean(process.env.ADMIN_PIN);
+const phoneKey = (v) => clean(v).replace(/[\s-]/g, '');
 const loginHits = new Map();
-function allowed(ip){ const now=Date.now(), a=(loginHits.get(ip)||[]).filter(t=>now-t<15*60*1000); if(a.length>=10){loginHits.set(ip,a);return false;} a.push(now);loginHits.set(ip,a);return true; }
+function tooMany(ip){ const now=Date.now(), a=(loginHits.get(ip)||[]).filter(t=>now-t<15*60*1000); loginHits.set(ip,a); return a.length>=10; }
+function fail(ip){ const a=loginHits.get(ip)||[]; a.push(Date.now()); loginHits.set(ip,a); }   // only wrong attempts count
 function same(a, b) { const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || '')); return x.length === y.length && crypto.timingSafeEqual(x, y); }
+router.get('/status', (req, res) => res.json({ configured: !!(ADMIN_PHONE && ADMIN_PIN) }));
 router.post('/login', (req, res) => {
   if (!ADMIN_PHONE || !ADMIN_PIN) return res.status(503).json({ message: 'Admin login is not configured. Set ADMIN_PHONE and ADMIN_PIN in the server environment, then redeploy.' });
-  if (!allowed(req.ip)) return res.status(429).json({ message: 'Too many login attempts. Try again later.' });
+  if (tooMany(req.ip)) return res.status(429).json({ message: 'Too many wrong attempts. Try again in 15 minutes.' });
   const { phone, pin } = req.body || {};
-  if (!same(phone, ADMIN_PHONE) || !same(pin, ADMIN_PIN)) return res.status(401).json({ message: 'Invalid admin credentials.' });
+  if (!same(phoneKey(phone), phoneKey(ADMIN_PHONE)) || !same(clean(pin), ADMIN_PIN)) { fail(req.ip); return res.status(401).json({ message: 'Invalid admin credentials.' }); }
   req.session.isAdmin = true;
-  req.session.save(() => res.json({ ok: true }));
+  req.session.save((err) => {
+    if (err) { console.error('admin session save failed:', err.message); return res.status(500).json({ message: 'Signed in, but the session could not be saved (database problem). Check MONGODB_URI and the server logs.' }); }
+    res.json({ ok: true });
+  });
 });
 router.get('/session', (req, res) => res.json({ authenticated: req.session?.isAdmin === true }));
 router.post('/logout', (req, res) => { req.session.isAdmin = false; req.session.save(() => res.json({ ok: true })); });

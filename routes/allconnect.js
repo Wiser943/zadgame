@@ -13,6 +13,9 @@ async function ensureAC(id) {
   return User.findById(id);
 }
 
+// Server clock so the phone shows the same time for everyone (not the device clock).
+router.get('/time', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ now: Date.now() }); });
+
 router.get('/state', ensureAuth, async (req, res, next) => {
   try {
     const u = await ensureAC(req.user.id);

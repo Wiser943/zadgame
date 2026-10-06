@@ -50,3 +50,16 @@ Purchases are atomic and priced by the server; the client can't save cash or own
 - Phone -> Settings now has: profile edit (photo + name), username, Chat Support, Socials, Game Tutorial, About, Legal, Shop, all sound/theme/accessibility toggles, language, tour replay, voice settings, notifications, log out.
 - Preferences use the same `ghPrefs` localStorage key; the game applies changes live through `window.GHBridge` (public/index.html) and the `storage` event.
 - Put your real support email / WhatsApp / social links at the top of `public/allconnect/settings.js`.
+
+## Police app, Camera app, tablet layout, server clock
+- **Police** (Phone -> Police, `public/allconnect/police.js`, `routes/acpolice.js`): your record, report a player by @username (lands in the admin Reports queue as roomCode `POLICE`), and the Support page that used to live in Settings -> Chat Support. Set `SUPPORT_EMAIL` / `SUPPORT_WHATSAPP` at the top of `police.js`.
+- **Camera** (Phone -> Camera, `public/allconnect/camera.js`, `routes/acphotos.js`, `models/ACPhoto.js`): front/back camera, flash/torch, timer, grid, zoom (hardware or digital, pinch/wheel), 4:3 / 1:1 / 16:9 / Full, live filters, mirror, import from device, gallery (view, share, download, delete). Photos upload to imgbb via the server.
+  Set **IMGBB_KEY** in Render -> Environment (key from https://api.imgbb.com/). Without it the camera works but saving shows "Photo storage is not set up yet" and shots can be retried or saved to the device. Deleting removes it from the in-game gallery only (imgbb has no delete API; the link is kept in the DB as `deleteUrl`).
+  Video is not included: imgbb only hosts images.
+- **Desktop/tablet**: at >= 768px wide and >= 520px tall the platform fills the window and the phone becomes a landscape tablet (6-column app grid). Phones keep the original layout.
+- **Phone clock** uses server time (`GET /api/ac/time`, Africa/Lagos), re-synced every 5 minutes. The HUD clock is still the in-game life clock.
+
+## Admin login troubleshooting
+- Needs `ADMIN_PHONE` and `ADMIN_PIN` in the environment (spaces/quotes around them are now ignored). The login page tells you if they are missing.
+- If you sign in and are sent back to the login page, it now says why: cookies blocked / not https, or the real server error.
+- Only wrong attempts count toward the 10-per-15-minutes limit.
