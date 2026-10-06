@@ -19,7 +19,6 @@ const elo = require('../utils/elo');
 const profanity = require('../utils/profanity');
 const tournaments = require('../services/tournaments');
 const hub = require('../utils/tournamentHub');
-const initBeachBlitz = require('./beachBlitz');
 const NOSHOW_MS = 3 * 60 * 1000;           // tournament no-show: opponent gets a walkover
 const QUEUE_TICK_MS = 2000;
 const RANKED_GAMES_MIN_PLAYERS = 2;
@@ -88,7 +87,6 @@ module.exports = function initSockets(io, sessionMiddleware) {
   io.engine.use(sessionMiddleware);
   io.engine.use(passport.initialize());
   io.engine.use(passport.session());
-  initBeachBlitz(io, sessionMiddleware);
   io.use((socket, next) => {
     const u = socket.request.user;
     if (!u) return next(new Error('unauthorized'));
@@ -191,7 +189,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   function botsToAct(r) {
     if (r.status !== 'playing' || !r.state) return [];
     if (r.game === 'rps') {
-      if (r.state.scores[0] >= 3 || r.state.scores[1] >= 3) return [];
+      if (ENG.rps.checkResult(r.state).status !== 'ongoing') return [];
       return r.players.map((p, i) => i).filter((i) => r.players[i].bot && !r.players[i].out && r.state.choices[i] === null);
     }
     const t = r.state.turn;
@@ -468,7 +466,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   }
 
   function createRoom(socket, game, maxPlayers, vsBot, mode, difficulty, options) {
-    const r = { code: newCode(), game, maxPlayers, difficulty: botlevels.normLevel(difficulty), options: cleanOptions(game, options), status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
+    const r = { code: newCode(), game, maxPlayers, difficulty: botlevels.pickLevel(difficulty), options: cleanOptions(game, options), status: 'waiting', mode: mode === 'ranked' ? 'ranked' : 'casual', ranked: mode === 'ranked', players: [], state: null, moves: [], forfeits: new Map(), rematch: new Set(), waitingCleanupTimer: null };
     rooms.set(r.code, r); attach(socket, r);
     if (vsBot) fillWithBots(r);
     return r;
@@ -606,19 +604,27 @@ module.exports = function initSockets(io, sessionMiddleware) {
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
     });
 
-    guard('rooms:list', 30, 60000, ({ game, maxPlayers }, ack) => {
+    guard('rooms:list', 30, 60000, ({ game, maxPlayers } = {}, ack) => {
+      const row = (r) => ({
+        code: r.code, game: r.game, maxPlayers: r.maxPlayers, status: r.status === 'playing' ? 'playing' : 'waiting',
+        spectators: r.spectators ? r.spectators.size : 0,
+        players: r.players.map((p) => ({ name: p.name }))
+      });
+      const visible = (r) => !(r.reserved && r.status === 'waiting');
+      const isOpen = (r) => r.status === 'waiting' && r.players.length < r.maxPlayers;
+      const isLive = (r) => r.status === 'playing' && r.players.some((p) => !p.bot && p.connected);
+      if (!game) {
+        // No game given: everything joinable or watchable right now, across every game.
+        const all = [...rooms.values()].filter((r) => engineFor(r.game) && gameEnabled(r.game) && visible(r));
+        const list = [...all.filter(isOpen), ...all.filter(isLive)].slice(0, 40).map(row);
+        return ack({ ok: true, rooms: list });
+      }
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       const mp = resolveMaxPlayers(game, maxPlayers);
       // Open seats first (joinable), then live matches (watch only).
       const same = [...rooms.values()].filter((r) => r.game === game && r.maxPlayers === mp && !(r.reserved && r.status === 'waiting'));
-      const open = same.filter((r) => r.status === 'waiting' && r.players.length < mp);
-      const live = same.filter((r) => r.status === 'playing' && r.players.some((p) => !p.bot && p.connected));
-      const list = [...open, ...live].slice(0, 20).map((r) => ({
-        code: r.code, maxPlayers: r.maxPlayers, status: r.status === 'playing' ? 'playing' : 'waiting',
-        spectators: r.spectators ? r.spectators.size : 0,
-        players: r.players.map((p) => ({ name: p.name }))
-      }));
+      const list = [...same.filter(isOpen), ...same.filter(isLive)].slice(0, 20).map(row);
       ack({ ok: true, rooms: list });
     });
 

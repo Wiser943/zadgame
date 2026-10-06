@@ -2,12 +2,14 @@
 // returns is still re-checked with isValidMove by the server before it is played.
 const LEVELS = ['easy', 'normal', 'hard', 'expert'];
 const normLevel = (l) => (LEVELS.includes(l) ? l : 'normal');
+// The player's own pick is honoured; if they didn't choose one (or chose "random") the server rolls a level.
+const pickLevel = (l) => (LEVELS.includes(l) ? l : LEVELS[Math.floor(Math.random() * LEVELS.length)]);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
 // Games where this module can enumerate candidate moves (difficulty has an effect there).
 function candidates(game, eng, s, i) {
   if (game === 'tictactoe') return s.board.map((v, k) => (v === null ? { index: k } : null)).filter(Boolean);
-  if (game === 'connectfour') return [0, 1, 2, 3, 4, 5, 6].filter((c) => s.board[0][c] === null).map((c) => ({ column: c }));
+  if (game === 'connectfour') return s.board[0].map((v, c) => (v === null ? { column: c } : null)).filter(Boolean);
   if ((game === 'chess' || game === 'checkers' || game === 'dominoes') && eng.legalMoves) return eng.legalMoves(s, i);
   if (game === 'mancala') return (s.pits?.[i] || []).map((x, p) => (x ? { pit: p } : null)).filter(Boolean);
   if (game === 'battleship') { const out = []; for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) if (eng.isValidMove(s, i, { row: r, col: c })) out.push({ row: r, col: c }); return out; }
@@ -44,8 +46,8 @@ function searchBest(eng, s, i, depth, evalFn, moves) {
 
 // Connect Four evaluation: centre control + open windows of 2/3.
 function c4Eval(s, p) {
-  const b = s.board, R = 6, C = 7; let score = 0;
-  for (let r = 0; r < R; r++) if (b[r][3] === p) score += 3; else if (b[r][3] === 1 - p) score -= 3;
+  const b = s.board, R = b.length, C = b[0].length; let score = 0; const mid = Math.floor(C / 2);
+  for (let r = 0; r < R; r++) if (b[r][mid] === p) score += 3; else if (b[r][mid] === 1 - p) score -= 3;
   const win = (cells) => { const mine = cells.filter((v) => v === p).length, theirs = cells.filter((v) => v === 1 - p).length;
     if (mine && theirs) return 0; if (mine === 3) return 5; if (mine === 2) return 2; if (theirs === 3) return -5; if (theirs === 2) return -2; return 0; };
   for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
@@ -97,7 +99,7 @@ function botMoveLevel(game, eng, s, i, level) {
   if (level === 'easy') return Math.random() < 0.6 ? pick(cand) : normal();
   const twoPlayer = (s.playerCount || 2) === 2 && (game !== 'chess' || s.size === 8);
   const expert = level === 'expert';
-  if (game === 'connectfour') return searchBest(eng, s, i, expert ? 6 : 3, c4Eval, (st) => candidates('connectfour', eng, st));
+  if (game === 'connectfour' && (s.playerCount || 2) === 2) return searchBest(eng, s, i, expert ? 6 : 3, c4Eval, (st) => candidates('connectfour', eng, st));
   if (game === 'tictactoe' && s.size === 3 && twoPlayer && expert) return searchBest(eng, s, i, 9, () => 0, (st) => candidates('tictactoe', eng, st));
   if (game === 'checkers') return searchBestT(eng, s, i, expert ? 6 : 3, checkersEval);
   if (game === 'chess' && twoPlayer) {
@@ -106,4 +108,4 @@ function botMoveLevel(game, eng, s, i, level) {
   }
   return normal(); // hard/expert for the remaining games use the standard bot
 }
-module.exports = { LEVELS, normLevel, botMoveLevel, SUPPORTED };
+module.exports = { LEVELS, normLevel, pickLevel, botMoveLevel, SUPPORTED };

@@ -12,16 +12,8 @@ window.GameHubRenderers = (() => {
     const old=document.querySelector(`script[data-gh-renderer="${name}"]`); if(old) return old.addEventListener('load',()=>resolve(),{once:true});
     const s=document.createElement('script'); s.src=sources[name]; s.dataset.ghRenderer=name; s.onload=resolve; s.onerror=reject; document.head.appendChild(s);
   });
-  function choice(game) {
-    const mode=localStorage.getItem('ghRendererMode')||'auto';
-    if(mode==='classic'||!canWebGL()) return 'dom';
-    if(mode==='2d') return ['ludo','snakes','connectfour'].includes(game)?'phaser':'pixi';
-    if(mode==='3d') return 'three';
-    if(['ludo','snakes','connectfour'].includes(game)) return 'phaser';
-    if(['chess','checkers','mancala'].includes(game)) return 'three';
-    if(['whot','joker','dominoes','words'].includes(game)) return 'pixi';
-    return 'dom';
-  }
+  // Only Snakes & Ladders uses a WebGL renderer now (see js/snakes.js); everything else is plain DOM.
+  function choice(game) { return game === 'snakes' && canWebGL() ? 'phaser' : 'dom'; }
   function badge(root,name){ const b=document.createElement('small'); b.className='renderer-badge'; b.textContent=name==='dom'?'Classic':`${name} enhanced`; root.appendChild(b); }
   function phaser(root, game, state) {
     const host=document.createElement('div'); host.className='render-layer'; root.appendChild(host);

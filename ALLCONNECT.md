@@ -33,6 +33,20 @@ Purchases are atomic and priced by the server; the client can't save cash or own
 ## Friends, chat, updates (phone apps)
 - Settings → set your @username. Contacts → search by @username or name → Add. When they accept, they appear under My Friends and in Messages.
 - Friends are GameHub's own Friendship records, so they are shared between both apps; reports go to the existing admin Reports queue.
-- Chat buttons: Invite over, Visit them, Send money (₦100–200k each, ₦500k/day), Buy food, Block, Report. All checked on the server.
+- Chat buttons: Invite over, Visit them, Buy food, Block, Report. All checked on the server.
 - Updates feed: friend requests/accepts, money/food received, visits, leaderboard #1 changes (checked every minute), admin posts.
 - Admin post (logged-in admin session): POST /admin-api/ac/post  {"text":"...", "kind":"admin" | "update"}
+
+## AllConnect Pay (Bank app on the phone)
+- Every user gets a 10-digit Account ID (shown in Bank, copyable). Transfer = paste Account ID or @username -> name appears -> amount -> Confirm -> 4-digit payment PIN.
+- The PIN is created in the app (Bank -> Pay PIN), stored only as a salted scrypt hash in `ACWallet`; 5 wrong tries lock it for 15 minutes.
+- Limits (in-game ₦): ₦100 min, ₦200,000 per transfer, ₦500,000 per day. Change them in `MONEY` in `utils/allconnect.js`.
+- "To Bank Account" is shown as Coming soon. Airtime, Data, Bills, Savings are Coming soon tiles.
+- API: GET /api/ac/bank/summary | history | lookup?q=  ·  POST /api/ac/bank/pin | transfer. Money moves only through these (the old chat "Send money" was removed).
+
+## Updated GameHub merged + Settings moved to the phone
+- Game files from `zadgame-updated.zip` are merged: 2–4 player Connect Four / RPS / Snakes / Word Clash, DOM-only renderers (Snakes uses Phaser), improved room listing, new tests. Beach Blitz and the old Pixi/Three renderers are not in the updated game, so they were removed.
+- GameHub no longer has a profile button, Accessibility tile or Settings screen. Tapping other players still shows their stats/friend actions (own profile is read-only there).
+- Phone -> Settings now has: profile edit (photo + name), username, Chat Support, Socials, Game Tutorial, About, Legal, Shop, all sound/theme/accessibility toggles, language, tour replay, voice settings, notifications, log out.
+- Preferences use the same `ghPrefs` localStorage key; the game applies changes live through `window.GHBridge` (public/index.html) and the `storage` event.
+- Put your real support email / WhatsApp / social links at the top of `public/allconnect/settings.js`.

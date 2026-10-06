@@ -14,3 +14,15 @@ test('money limits', () => {
   assert.equal(U.parseAmount('1500.9'), 1500);
 });
 test('food menu is server-priced', () => { assert.equal(U.FOOD.jollof.price, 2500); assert.ok(U.FOOD.suya.fill < U.FOOD.jollof.fill); });
+
+const BK = require('../utils/acbank');
+test('payment PIN hashing', () => {
+  const salt = 'abc123', h = BK.hashPin('4821', salt);
+  assert.ok(BK.verifyPin('4821', salt, h)); assert.ok(!BK.verifyPin('4822', salt, h)); assert.ok(!BK.verifyPin('4821', 'other', h)); assert.notEqual(h, '4821');
+  assert.ok(BK.validPin('0042')); assert.ok(!BK.validPin('123')); assert.ok(!BK.validPin('12345')); assert.ok(!BK.validPin('12a4'));
+});
+test('account ids are 10 digits and refs are unique', () => {
+  for (let i = 0; i < 50; i++) assert.match(BK.genAcNum(), /^[1-9]\d{9}$/);
+  assert.ok(BK.validAcNum('1234567890')); assert.ok(!BK.validAcNum('123456789')); assert.ok(!BK.validAcNum('@tobi'));
+  assert.notEqual(BK.makeRef(), BK.makeRef());
+});

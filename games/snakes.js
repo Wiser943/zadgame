@@ -40,10 +40,11 @@ function generateJumps(snakeCount = 7, ladderCount = 7) {
 const BOARDS = { random: [7, 7], gentle: [4, 9], brutal: [10, 5] };
 const DEFAULT_RULES = { board: 'random', exactFinish: false, sixAgain: false };
 const cleanRules = (r) => ({ board: ['random', 'classic', 'gentle', 'brutal'].includes(r && r.board) ? r.board : 'random', exactFinish: !!(r && r.exactFinish), sixAgain: !!(r && r.sixAgain) });
-function createInitialState(_n, options) {
+function createInitialState(n, options) {
+  const count = Math.max(2, Math.min(4, Number(n) || 2));
   const rules = cleanRules(options);
   const jumps = rules.board === 'classic' ? { ...CLASSIC } : generateJumps(...(BOARDS[rules.board] || BOARDS.random));
-  return { positions: [0, 0], turn: 0, lastRoll: null, jumps, rules, sixes: 0 };
+  return { positions: Array(count).fill(0), turn: 0, lastRoll: null, jumps, rules, sixes: 0 };
 }
 function isValidMove(s, i, m) { return s.turn === i && m?.type === 'roll'; }
 function applyMove(s, i) {
@@ -54,7 +55,7 @@ function applyMove(s, i) {
   const landed = p === s.positions[i] ? p : (jumps[p] || p);
   const sixes = roll === 6 ? (s.sixes || 0) + 1 : 0;
   const again = rules.sixAgain && roll === 6 && sixes < 3 && landed !== 100;
-  return { ...s, positions: s.positions.map((x, n) => n === i ? landed : x), turn: again ? i : 1 - i, lastRoll: roll, sixes: again ? sixes : 0 };
+  return { ...s, positions: s.positions.map((x, n) => n === i ? landed : x), turn: again ? i : (i + 1) % s.positions.length, lastRoll: roll, sixes: again ? sixes : 0 };
 }
 function checkResult(s) { const i = s.positions.findIndex(x => x === 100); return i >= 0 ? { status: 'win', winnerIndex: i } : { status: 'ongoing' }; }
 function botMove() { return { type: 'roll' }; }

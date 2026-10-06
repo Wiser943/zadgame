@@ -67,9 +67,10 @@ function wordScoreBase(word) {
   return s + (len >= 4 ? (len - 3) ** 2 : 0);   // length bonus: 4→+1, 5→+4, 6→+9, 7→+16
 }
 
-function createInitialState(_n, options) {
+function createInitialState(n, options) {
   const rules = cleanRules(options), bag = newBag();
-  return { rules, premiums: rules.board === 'premium' ? makePremiums(rules.length) : null, hands: [drawFair([], bag, HAND), drawFair([], bag, HAND)], bag, scores: [0, 0], turn: 0, words: [], plays: 0, idleSwaps: 0 };
+  const count = Math.max(2, Math.min(4, Number(n) || 2));
+  return { rules, premiums: rules.board === 'premium' ? makePremiums(rules.length) : null, hands: Array.from({ length: count }, () => drawFair([], bag, HAND)), bag, scores: Array(count).fill(0), turn: 0, words: [], plays: 0, idleSwaps: 0 };
 }
 const maxPlaysOf = (s) => s.rules?.length || MAX_PLAYS;
 const premiumNow = (s) => (s.premiums ? s.premiums[s.turnNo || 0] || { type: 'none' } : null);
@@ -90,26 +91,26 @@ function isValidMove(s, i, m) {
 
 function applyMove(s, i, m) {
   const hands = s.hands.map(h => h.slice()), bag = s.bag.slice();
-  if (m.pass === true) return { ...s, turn: 1 - i, idleSwaps: (s.idleSwaps || 0) + 1, turnNo: (s.turnNo || 0) + 1 };
+  if (m.pass === true) return { ...s, turn: (i + 1) % s.hands.length, idleSwaps: (s.idleSwaps || 0) + 1, turnNo: (s.turnNo || 0) + 1 };
   if (m.swap === true) {
     bag.push(...hands[i]); hands[i] = []; shuffle(bag);
     drawFair(hands[i], bag, HAND);
-    return { ...s, hands, bag, turn: 1 - i, idleSwaps: (s.idleSwaps || 0) + 1, turnNo: (s.turnNo || 0) + 1 };
+    return { ...s, hands, bag, turn: (i + 1) % s.hands.length, idleSwaps: (s.idleSwaps || 0) + 1, turnNo: (s.turnNo || 0) + 1 };
   }
   const word = String(m.word).trim().toUpperCase();
   for (const ch of word) hands[i].splice(hands[i].indexOf(ch), 1);
   drawFair(hands[i], bag, HAND - hands[i].length);
   const pts = wordScore(word, premiumNow(s));
   return { ...s, hands, bag, scores: s.scores.map((x, n) => n === i ? x + pts : x), words: [...s.words, { player: i, word, pts }],
-    plays: (s.plays || 0) + 1, idleSwaps: 0, turn: 1 - i, turnNo: (s.turnNo || 0) + 1 };
+    plays: (s.plays || 0) + 1, idleSwaps: 0, turn: (i + 1) % s.hands.length, turnNo: (s.turnNo || 0) + 1 };
 }
 
 function checkResult(s) {
-  const byScore = () => s.scores[0] === s.scores[1] ? { status: 'draw' } : { status: 'win', winnerIndex: s.scores[0] > s.scores[1] ? 0 : 1 };
+  const byScore = () => { const top = Math.max(...s.scores), leaders = s.scores.map((x, n) => (x === top ? n : -1)).filter((n) => n >= 0); return leaders.length > 1 ? { status: 'draw' } : { status: 'win', winnerIndex: leaders[0] }; };
   // Bag is empty and someone used their last tile: they win outright.
   const out = s.hands.findIndex((h, n) => h.length === 0 && s.words.some(w => w.player === n));
   if (out >= 0 && s.bag.length === 0) return { status: 'win', winnerIndex: out };
-  if ((s.plays || 0) >= maxPlaysOf(s) || (s.idleSwaps || 0) >= MAX_IDLE_SWAPS) return byScore();
+  if ((s.plays || 0) >= maxPlaysOf(s) || (s.idleSwaps || 0) >= MAX_IDLE_SWAPS * Math.max(1, s.hands.length - 1)) return byScore();
   return { status: 'ongoing' };
 }
 

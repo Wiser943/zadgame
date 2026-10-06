@@ -19,6 +19,7 @@ const socialRoutes = require('./routes/social');
 const tournamentRoutes = require('./routes/tournaments');
 const allconnectRoutes = require('./routes/allconnect');
 const acSocialRoutes = require('./routes/acsocial');
+const acBankRoutes = require('./routes/acbank');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
 const initSockets = require('./sockets');
@@ -63,7 +64,8 @@ async function main() {
   app.use('/api/social', socialRoutes);
   app.use('/api/tournaments', tournamentRoutes);
   app.use('/api/ac', allconnectRoutes);
-  app.use('/api/ac', acSocialRoutes);   // AllConnect platform state (same login as GameHub)
+  app.use('/api/ac', acSocialRoutes);
+  app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
   app.get('/health', (req,res) => res.json({ ok: true, service: 'allconnect', time: new Date().toISOString() }));
   // Readiness: only "ready" when MongoDB is connected (and Redis too, when it is configured).
   app.get('/ready', async (req, res) => {

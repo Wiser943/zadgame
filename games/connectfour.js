@@ -1,25 +1,32 @@
-// Pure logic, no I/O. board is ROWS x COLS, top row first. Cells: null empty, 0/1 = player.
-const ROWS = 6, COLS = 7;
+// Pure logic, no I/O. board is rows x cols, top row first. Cells: null empty, 0..3 = player index.
+// 2 players use the classic 6x7 grid; 3 and 4 players get a bigger grid so everyone has room to build four in a row.
+const DIMS = { 2: [6, 7], 3: [7, 9], 4: [8, 10] };
+const dimsOf = (state) => { const b = state.board; return [b.length, b[0].length]; };
 
-function createInitialState() {
-  return { board: Array.from({ length: ROWS }, () => Array(COLS).fill(null)), turn: 0 };
+function createInitialState(n) {
+  const count = DIMS[n] ? n : 2;
+  const [rows, cols] = DIMS[count];
+  return { board: Array.from({ length: rows }, () => Array(cols).fill(null)), turn: 0, playerCount: count };
 }
 
 function isValidMove(state, playerIndex, move) {
   const c = move && move.column;
+  const [, COLS] = dimsOf(state);
   return state.turn === playerIndex && Number.isInteger(c) && c >= 0 && c < COLS && state.board[0][c] === null;
 }
 
 function applyMove(state, playerIndex, move) {
   const board = state.board.map((row) => row.slice());
-  for (let r = ROWS - 1; r >= 0; r--) {
+  for (let r = board.length - 1; r >= 0; r--) {
     if (board[r][move.column] === null) { board[r][move.column] = playerIndex; break; }
   }
-  return { board, turn: 1 - state.turn };
+  const count = state.playerCount || 2;
+  return { ...state, board, turn: (state.turn + 1) % count };
 }
 
 function checkResult(state) {
   const b = state.board;
+  const [ROWS, COLS] = dimsOf(state);
   const dirs = [[0,1],[1,0],[1,1],[1,-1]];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -41,11 +48,11 @@ function checkResult(state) {
 
 function validCols(board) {
   const cols = [];
-  for (let c = 0; c < COLS; c++) if (board[0][c] === null) cols.push(c);
+  for (let c = 0; c < board[0].length; c++) if (board[0][c] === null) cols.push(c);
   return cols;
 }
 function dropRow(board, c) {
-  for (let r = ROWS - 1; r >= 0; r--) if (board[r][c] === null) return r;
+  for (let r = board.length - 1; r >= 0; r--) if (board[r][c] === null) return r;
   return -1;
 }
 function simulateDrop(board, c, mark) {
@@ -56,6 +63,7 @@ function simulateDrop(board, c, mark) {
   return b;
 }
 function hasFourInARow(board, mark) {
+  const ROWS = board.length, COLS = board[0].length;
   const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
@@ -73,15 +81,18 @@ function hasFourInARow(board, mark) {
   return false;
 }
 
-// Simple bot: take an immediate win, else block the opponent's immediate
+// Simple bot: take an immediate win, else block any opponent's immediate
 // win, else prefer columns closer to the center.
 function botMove(state, playerIndex) {
   const board = state.board;
-  const opp = 1 - playerIndex;
+  const count = state.playerCount || 2;
   const cols = validCols(board);
   for (const c of cols) { const b2 = simulateDrop(board, c, playerIndex); if (b2 && hasFourInARow(b2, playerIndex)) return { column: c }; }
-  for (const c of cols) { const b2 = simulateDrop(board, c, opp); if (b2 && hasFourInARow(b2, opp)) return { column: c }; }
-  const center = (COLS - 1) / 2;
+  for (let o = 0; o < count; o++) {
+    if (o === playerIndex) continue;
+    for (const c of cols) { const b2 = simulateDrop(board, c, o); if (b2 && hasFourInARow(b2, o)) return { column: c }; }
+  }
+  const center = (board[0].length - 1) / 2;
   const ordered = cols.slice().sort((a, b) => Math.abs(a - center) - Math.abs(b - center));
   return { column: ordered[0] };
 }

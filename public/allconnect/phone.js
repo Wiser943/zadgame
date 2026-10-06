@@ -10,13 +10,13 @@ const PH={
   drawBadges(){const n={Messages:this.badges.messages+this.badges.updates+this.localUnread,Contacts:this.badges.requests};
     document.querySelectorAll('.app[data-app]').forEach(a=>{const b=a.querySelector('.bdg');if(!b)return;const v=n[a.dataset.app]||0;b.textContent=v>9?'9+':(v||'')})},
   /* ----- shell ----- */
-  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings()})[name]()},
+  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank()})[name]()},
   close(){document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
   shell(title,back,body,sub){this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2></div>${sub||''}${body}`},
   sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
   closeSheet(){const s=this.$a().querySelector('.asheet');if(s)s.remove()},
   av(u,big){const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.charCodeAt(0)||0)%6];
-    return /^https?:/.test(u.avatar||'')?`<img class="avi ${big?'big':''}" src="${esc(u.avatar)}" alt="">`:`<span class="avi ${big?'big':''}" style="background:${c}">${esc(n)}</span>`},
+    return /^(https?:|data:image\/)/.test(u.avatar||'')?`<img class="avi ${big?'big':''}" src="${esc(u.avatar)}" alt="">`:`<span class="avi ${big?'big':''}" style="background:${c}">${esc(n)}</span>`},
   name(u){return u.username?'@'+esc(u.username):esc(u.displayName)},
   time(t){const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')},
   rel(t){const s=(Date.now()-new Date(t))/1000;return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'},
@@ -68,7 +68,7 @@ const PH={
       <div class="emo" id="emo" style="display:none">${['😂','😍','🙏🏾','🔥','👏🏾','😭','🎉','🍛'].map(e=>`<button onclick="PH.emoji('${e}')">${e}</button>`).join('')}</div>
       <div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><input id="cinput" placeholder="Message ${n}…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')PH.sendInput()"><button class="sbtn" onclick="PH.sendInput()">➤</button></div>`,
       `<div class="csub">🔒 Private · only you and ${n} can see this</div><div class="chips2">
-        <button class="c1" onclick="PH.invite()">🏠 Invite over</button><button class="c2" onclick="PH.visit()">🚪 Visit them</button><button class="c3" onclick="PH.moneySheet()">💸 Send money</button><button class="c4" onclick="PH.foodSheet()">🍛 Buy food</button><button class="c5" onclick="PH.blockSheet()">🚫 Block</button><button class="c5" onclick="PH.reportSheet()">⚑ Report</button></div>`);
+        <button class="c1" onclick="PH.invite()">🏠 Invite over</button><button class="c2" onclick="PH.visit()">🚪 Visit them</button><button class="c4" onclick="PH.foodSheet()">🍛 Buy food</button><button class="c5" onclick="PH.blockSheet()">🚫 Block</button><button class="c5" onclick="PH.reportSheet()">⚑ Report</button></div>`);
     this.drawMsgs();this.refreshBadges()},
   bubble(m,last){const mine=m.from===NET.user.id;
     if(m.kind==='money'||m.kind==='food'||m.kind==='system')return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
@@ -81,8 +81,6 @@ const PH={
   sendInput(){const i=document.getElementById('cinput');const t=i.value.trim();if(!t)return;i.value='';this.send(t)},
   async send(t){try{this.push((await NET.api('/api/ac/messages/'+this.chatId,{method:'POST',body:{text:t}})).message)}catch(e){toast(e.message)}},
   async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST'})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
-  moneySheet(){this.sheet(`<h3>Send money 💸</h3><p class="hint2">Between ₦100 and ₦200,000 per transfer · ₦500,000 a day. You have ${fmtCash(S.cash)}.</p><div class="pre">${[1000,5000,20000,50000].map(n=>`<button onclick="PH.sendMoney(${n})">₦${n.toLocaleString('en-NG')}</button>`).join('')}</div><div class="cin2"><input id="amt" inputmode="numeric" placeholder="Other amount"><button class="pbtn blu" onclick="PH.sendMoney(document.getElementById('amt').value)">Send</button></div>`)},
-  async sendMoney(a){try{const r=await NET.api('/api/ac/send-money/'+this.chatId,{method:'POST',body:{amount:a}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Money sent 💸')}catch(e){toast(e.message)}},
   foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${f[3].toLocaleString('en-NG')}</b></button>`).join('')}`)},
   async buyFood(k){try{const r=await NET.api('/api/ac/buy-food/'+this.chatId,{method:'POST',body:{item:k}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Food delivered 🍛')}catch(e){toast(e.message)}},
   blockSheet(){this.sheet(`<h3>Block ${this.name(this.peer)}?</h3><p class="hint2">They won't be able to find you, message you or send you money. You can unblock later.</p><button class="fopt red" onclick="PH.block()"><span>🚫 Block</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
@@ -90,16 +88,6 @@ const PH={
   reportSheet(){this.sheet(`<h3>Report ${this.name(this.peer)}</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam','Harassment','Scam','Inappropriate'].map(r=>`<button class="fopt" onclick="PH.report('${r}')"><span>${r}</span></button>`).join('')}`)},
   async report(r){try{await NET.api('/api/ac/report/'+this.chatId,{method:'POST',body:{reason:r}});this.closeSheet();toast('Report sent. Thank you 🙏🏾')}catch(e){toast(e.message)}},
   async visit(){try{const r=await NET.api('/api/ac/visit/'+this.chatId);openVisit(r.host)}catch(e){toast(e.message)}},
-  /* ----- Settings ----- */
-  settings(){this.view='settings';const u=NET.user,np='Notification' in window?Notification.permission:'unsupported';
-    this.shell('Settings','PH.close()',`<div class="abody">
-      <div class="lab2">USERNAME</div><div class="card2"><p class="hint2">Friends find you with this. Use 3–16 letters, numbers or _.</p>
-        <div class="cin2"><span class="at">@</span><input id="uname_in" value="${esc(u.username||'')}" placeholder="yourname" maxlength="16" autocapitalize="none" autocomplete="off"><button class="pbtn blu" onclick="PH.saveName()">Save</button></div><div class="aerr" id="uerr"></div></div>
-      <div class="lab2">ACCOUNT</div><div class="card2"><div class="kv"><span>Name</span><b>${esc(u.displayName)}</b></div><div class="kv"><span>Username</span><b id="ushow">${u.username?'@'+esc(u.username):'Not set'}</b></div></div>
-      <div class="lab2">NOTIFICATIONS</div><div class="card2"><div class="kv"><span>Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div></div>
-      <button class="fopt red out" onclick="logout()"><span>Log out</span></button></div>`)},
-  async saveName(){const v=document.getElementById('uname_in').value,e=document.getElementById('uerr');e.textContent='';
-    try{const r=await NET.api('/api/ac/username',{method:'POST',body:{username:v}});NET.user.username=r.username;document.getElementById('ushow').textContent='@'+r.username;toast('Username saved ✓')}catch(x){e.textContent=x.message}},
   /* ----- live events ----- */
   on(ev,p){
     if(ev==='dm'){this.badges.messages++;const open=this.view==='chat'&&this.chatId===p.from;
@@ -110,7 +98,7 @@ const PH={
     if(ev==='update'){this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates();if(document.hidden&&'Notification' in window&&Notification.permission==='granted')try{new Notification('AllConnect',{body:p.text})}catch(e){}}
     if(ev==='friends'){this.refreshBadges();if(this.view==='contacts')this.loadFriends()}
     if(ev==='seen'&&this.view==='chat'&&this.chatId===p.by){this.msgs.forEach(m=>{if(m.from===NET.user.id)m.read=true});this.drawMsgs()}
-    if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}
+    if(ev==='cash'&&this.view==='bank')this.bankLoad();if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}
 };
 const fmtCash=n=>'₦'+Number(n).toLocaleString('en-NG');
 /* ----- visiting a friend's place ----- */

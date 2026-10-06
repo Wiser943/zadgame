@@ -10,17 +10,27 @@ const DEFAULT_RULES = { format: 'bo5', gestures: 'classic' };
 const cleanRules = (r) => ({ format: TARGETS[r && r.format] ? r.format : 'bo5', gestures: SETS[r && r.gestures] ? r.gestures : 'classic' });
 const beats = (a, b) => BEATS[a].includes(b);   // classic play only ever offers rock/paper/scissors, so the extra entries never apply
 
-function createInitialState(_n, options) {
+function createInitialState(n, options) {
   const rules = cleanRules(options);
-  return { rules, gestures: rules.gestures, target: TARGETS[rules.format], choices: [null, null], scores: [0, 0], round: 1, resolved: 0, lastRound: null };
+  const count = Math.max(2, Math.min(4, Number(n) || 2));
+  return { rules, gestures: rules.gestures, target: TARGETS[rules.format], playerCount: count, choices: Array(count).fill(null), scores: Array(count).fill(0), round: 1, resolved: 0, lastRound: null };
 }
 const targetOf = (s) => s.target || 3;
 const setOf = (s) => SETS[s.gestures] || SETS.classic;
+const topScore = (s) => Math.max(...s.scores);
 
 function isValidMove(state, playerIndex, move) {
   const c = move && move.choice;
-  return setOf(state).includes(c) && state.choices[playerIndex] === null
-    && state.scores[0] < targetOf(state) && state.scores[1] < targetOf(state);
+  return setOf(state).includes(c) && state.choices[playerIndex] === null && topScore(state) < targetOf(state);
+}
+
+// With 3-4 players everyone reveals together. If exactly one gesture beats every other gesture on the
+// table, everyone who threw it scores a point; otherwise (all the same, or a three-way stand-off) it is a tie.
+function roundWinners(choices) {
+  const distinct = [...new Set(choices)];
+  if (distinct.length < 2) return [];
+  const top = distinct.find((g) => distinct.every((o) => o === g || beats(g, o)));
+  return top ? choices.map((c, i) => (c === top ? i : -1)).filter((i) => i >= 0) : [];
 }
 
 function applyMove(state, playerIndex, move) {
@@ -28,31 +38,31 @@ function applyMove(state, playerIndex, move) {
   choices[playerIndex] = move.choice;
   let scores = state.scores.slice();
   let round = state.round;
-  if (choices[0] && choices[1]) {
-    let winner = null;
-    if (choices[0] !== choices[1]) {
-      winner = beats(choices[0], choices[1]) ? 0 : 1;
-      scores = scores.map((s, i) => (i === winner ? s + 1 : s));
-      round += 1;
-    }
+  if (choices.every((c) => c !== null)) {
+    const winners = roundWinners(choices);
+    const tie = winners.length === 0;
+    if (!tie) { scores = scores.map((sc, i) => (winners.includes(i) ? sc + 1 : sc)); round += 1; }
     const resolved = (state.resolved || 0) + 1;
-    return { ...state, choices: [null, null], scores, round, resolved,
-      lastRound: { id: resolved, choices: choices.slice(), winner, tie: winner === null } };
+    return { ...state, choices: Array(choices.length).fill(null), scores, round, resolved,
+      lastRound: { id: resolved, choices: choices.slice(), winner: tie ? null : winners[0], winners, tie } };
   }
   return { ...state, choices, scores, round, resolved: state.resolved || 0, lastRound: state.lastRound || null };
 }
 
 function checkResult(state) {
-  if (state.scores[0] >= targetOf(state)) return { status: 'win', winnerIndex: 0 };
-  if (state.scores[1] >= targetOf(state)) return { status: 'win', winnerIndex: 1 };
-  return { status: 'ongoing' };
+  const top = topScore(state);
+  if (top < targetOf(state)) return { status: 'ongoing' };
+  const leaders = state.scores.map((x, i) => (x === top ? i : -1)).filter((i) => i >= 0);
+  return leaders.length === 1 ? { status: 'win', winnerIndex: leaders[0] } : { status: 'ongoing' };
 }
 
 function publicState(state, playerIndex) {
-  const opp = 1 - playerIndex;
+  const others = state.choices.filter((c, i) => i !== playerIndex);
   return {
     scores: state.scores, round: state.round, target: targetOf(state), gestures: setOf(state), format: state.rules?.format || 'bo5',
-    mine: state.choices[playerIndex], opponentPicked: state.choices[opp] !== null, lastRound: state.lastRound || null
+    playerCount: state.choices.length,
+    mine: state.choices[playerIndex], opponentPicked: others.some((c) => c !== null),
+    pickedFlags: state.choices.map((c) => c !== null), lastRound: state.lastRound || null
   };
 }
 

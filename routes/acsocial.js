@@ -11,7 +11,7 @@ const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const { notify, emitUser } = require('../utils/acnotify');
 const { ensureAC } = require('./allconnect');
-const { FOOD, MONEY, normalizeUsername, validUsername, parseAmount, moneyError } = require('../utils/allconnect');
+const { FOOD, normalizeUsername, validUsername } = require('../utils/allconnect');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -200,26 +200,6 @@ router.get('/visit/:id', async (req, res, next) => {
     const host = await User.findById(f.other).select('displayName acUsername ac');
     notify(io(req), f.other, { icon: '👋', text: `${label(req.user)} visited your place`, kind: 'friend' }).catch(() => {});
     res.json({ host: { id: f.other, name: label(host), paint: host.ac.paint, items: (host.ac.owned || []).length } });
-  } catch (e) { next(e); }
-});
-router.post('/send-money/:id', async (req, res, next) => {
-  try {
-    const f = await friendOr(req, res); if (!f) return;
-    const amount = parseAmount(req.body && req.body.amount), err = moneyError(amount);
-    if (err) return bad(res, 400, err);
-    await ensureAC(f.me); await ensureAC(f.other);
-    const day = new Date().toISOString().slice(0, 10);
-    await User.updateOne({ _id: f.me, 'ac.sentDay': { $ne: day } }, { $set: { 'ac.sentDay': day, 'ac.sentAmt': 0 } });
-    const sender = await User.findOneAndUpdate({ _id: f.me, 'ac.cash': { $gte: amount }, 'ac.sentAmt': { $lte: MONEY.daily - amount } }, { $inc: { 'ac.cash': -amount, 'ac.sentAmt': amount } }, { new: true });
-    if (!sender) {
-      const cur = await User.findById(f.me).select('ac');
-      return bad(res, cur.ac.cash < amount ? 402 : 429, cur.ac.cash < amount ? 'Not enough ₦.' : `Daily sending limit is ₦${MONEY.daily.toLocaleString('en-NG')}.`);
-    }
-    await User.updateOne({ _id: f.other }, { $inc: { 'ac.cash': amount } });
-    const money = `₦${amount.toLocaleString('en-NG')}`;
-    notify(io(req), f.other, { icon: '💸', text: `${label(req.user)} sent you ${money}`, kind: 'good' }).catch(() => {});
-    emitUser(io(req), f.other, 'cash', { delta: amount });
-    res.json({ cash: sender.ac.cash, message: await addMessage(req, { to: f.other, text: `${label(req.user)} sent you ${money} 💸`, kind: 'money', amount }) });
   } catch (e) { next(e); }
 });
 router.post('/buy-food/:id', async (req, res, next) => {

@@ -41,7 +41,10 @@ async function boot(){
     $('auth').style.display='none';$('resume').style.display='block';NET.connect();render();if(window.PH)PH.init()}
   catch(e){$('auth').style.display='block';$('resume').style.display='none';if(e.status&&e.status!==401)$('aerr').textContent=e.message}
   if(/auth_error/.test(location.search)){$('aerr').textContent='Google sign-in is not available right now. Use email or phone.';history.replaceState(null,'','/')}}
-function openHub(){const f=$('hubf');if(!f.getAttribute('src'))f.src='/gamehub';$('hub').style.display='flex'}
+function openHub(cb){const f=$('hubf'),first=!f.getAttribute('src');if(first)f.src='/gamehub';$('hub').style.display='flex';if(cb){first?f.addEventListener('load',()=>hubRun(cb),{once:true}):hubRun(cb)}}
+/* run cb(bridge) once GameHub has finished loading (works with the hub hidden too) */
+function hubRun(cb,n){n=n||0;const w=$('hubf').contentWindow;let ok=false;try{ok=w&&w.GHBridge&&w.GHBridge.ready()}catch(e){}if(ok)cb(w.GHBridge);else if(n<40)setTimeout(()=>hubRun(cb,n+1),300)}
+function hubQuiet(cb){const f=$('hubf'),first=!f.getAttribute('src');if(first)f.src='/gamehub';first?f.addEventListener('load',()=>hubRun(cb),{once:true}):hubRun(cb)}
 function closeHub(){$('hub').style.display='none';nav('home')}
 const $=id=>document.getElementById(id);
 const S={cash:2025000,min:19*60+53,needs:[.55,.9,.95,.85,.95,.9],paint:'#d9a93a',tab:'Design',sel:null,owned:{'Classic Cream':1},clean:false};
@@ -78,7 +81,7 @@ function setPaint(c){S.paint=c;document.documentElement.style.setProperty('--wal
 function pick(i){S.sel=i;const it=CAT[S.tab][0][1][i];if(S.tab=='Design')setPaint(it[2]);buyUI()}
 async function buyIt(){const it=CAT[S.tab][0][1][S.sel];if(!S.owned[it[0]]){try{const r=await NET.api('/api/ac/buy',{method:'POST',body:{name:it[0]}});S.cash=r.ac.cash;S.owned=Object.fromEntries(r.ac.owned.map(n=>[n,1]));toast('Bought '+it[0]+' ✓');if(window.PH)PH.local_('🛍️','You bought '+it[0],'good')}catch(e){return toast(e.message)}}else toast('Applied');render();buyUI()}
 const APPS=[['Jobs','💼','linear-gradient(#34d399,#10b981)'],['Messages','💬','linear-gradient(#60a5fa,#2563eb)'],['Meetumo','◐','#0f2a2a;color:#4de0c0'],['Salary Index','SI','#2d5a1b;color:#c8f04a;font-size:44px'],['PopOut Tickets','P','#fff;color:#6d28d9',1],['GameHub','🎮','#151a35'],['Nollywood','N','#000;color:#7ed321',1],['Bet Tips','⚽','#e11d2e',1],['use.live','✺','#111;color:#fff',1],['versiah.com','▽','#fff;color:#111',1],['Contacts','📞','linear-gradient(#34d399,#16a34a)'],['Ride','🚕','#fbbf24'],['Chowdeck','🛵','linear-gradient(#fb7185,#e11d48)'],['Bank','🏛️','linear-gradient(#a78bfa,#6d5ce8)'],['Boutique','👠','linear-gradient(#c084fc,#9333ea)'],['Forbes','👑','#0f3d2e'],['Naija Radio','📻','linear-gradient(#f59e0b,#d97706)'],['Eko Hotels','🏨','linear-gradient(#38bdf8,#0369a1)'],['i-Fitness','🏋️','linear-gradient(#f43f5e,#be123c)'],['Library','📚','linear-gradient(#a3e635,#4d7c0f)'],['Casino','🎰','#2b0f3a'],['Airport','✈️','linear-gradient(#93c5fd,#3b82f6)'],['Camera','📷','#2a2d36'],['Settings','⚙️','linear-gradient(#9ca3af,#4b5563)']];
-const OPEN={GameHub:'openHub()',Contacts:"PH.open('contacts')",Messages:"PH.open('messages')",Settings:"PH.open('settings')"};
+const OPEN={GameHub:'openHub()',Contacts:"PH.open('contacts')",Messages:"PH.open('messages')",Settings:"PH.open('settings')",Bank:"PH.open('bank')"};
 $('apps').innerHTML=APPS.map(a=>`<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`).join('');
 async function start(n){if(n){try{applyAC((await NET.api('/api/ac/new',{method:'POST'})).ac)}catch(e){return toast(e.message)}}$('splash').style.display='none';render();nav('home')}
 $('sd').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'});
