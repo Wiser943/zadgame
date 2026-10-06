@@ -3,6 +3,8 @@
 const User = require('../models/User');
 const ACStat = require('../models/ACStat');
 const { ensureAC } = require('../routes/allconnect');
+const acPresence = require('../utils/acpresence');
+const { notify } = require('../utils/acnotify');
 
 module.exports = function initAllConnect(io) {
   const nsp = io.of('/ac');
@@ -24,6 +26,7 @@ module.exports = function initAllConnect(io) {
   nsp.on('connection', (socket) => {
     const u = socket.request.user;
     online.set(socket.id, { id: u.id, name: u.displayName });
+    socket.join('u:' + u.id); acPresence.connect(u.id);   // private room for DMs, friend events, notifications
     stats.visits++; bump('visits'); push();
     let last = 0;
     socket.on('gem', async () => {            // 1 gem / 2s; every 5th pays ₦3,000
@@ -38,6 +41,19 @@ module.exports = function initAllConnect(io) {
         nsp.emit('stats', snapshot());
       } catch (e) { console.error('[ac gem]', e.message); }
     });
-    socket.on('disconnect', () => { online.delete(socket.id); push(); });
+    socket.on('disconnect', () => { online.delete(socket.id); acPresence.disconnect(u.id); push(); });
   });
+
+  // Leaderboard news: whenever a different player becomes #1 by GameHub coins, post it to everyone's Updates.
+  const watch = async () => {
+    try {
+      const top = await User.findOne({ coins: { $gt: 0 } }).sort({ coins: -1, _id: 1 }).select('displayName acUsername');
+      if (!top) return;
+      const prev = await ACStat.findById('global').lean();
+      if (prev && prev.topUser === String(top._id)) return;
+      await ACStat.updateOne({ _id: 'global' }, { $set: { topUser: String(top._id) } }, { upsert: true });
+      if (prev && prev.topUser) await notify(io, null, { icon: '👑', text: `${top.acUsername ? '@' + top.acUsername : top.displayName} just topped the GameHub leaderboard`, kind: 'good' });
+    } catch (e) { /* ignore */ }
+  };
+  setTimeout(watch, 15000); setInterval(watch, 60000).unref();
 };

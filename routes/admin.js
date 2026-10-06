@@ -14,7 +14,7 @@ const loginHits = new Map();
 function allowed(ip){ const now=Date.now(), a=(loginHits.get(ip)||[]).filter(t=>now-t<15*60*1000); if(a.length>=10){loginHits.set(ip,a);return false;} a.push(now);loginHits.set(ip,a);return true; }
 function same(a, b) { const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || '')); return x.length === y.length && crypto.timingSafeEqual(x, y); }
 router.post('/login', (req, res) => {
-  if (!ADMIN_PHONE || !ADMIN_PIN) return res.status(503).json({ message: 'Admin login is not configured.' });
+  if (!ADMIN_PHONE || !ADMIN_PIN) return res.status(503).json({ message: 'Admin login is not configured. Set ADMIN_PHONE and ADMIN_PIN in the server environment, then redeploy.' });
   if (!allowed(req.ip)) return res.status(429).json({ message: 'Too many login attempts. Try again later.' });
   const { phone, pin } = req.body || {};
   if (!same(phone, ADMIN_PHONE) || !same(pin, ADMIN_PIN)) return res.status(401).json({ message: 'Invalid admin credentials.' });
@@ -117,4 +117,15 @@ router.post('/reports/:id/action', async (req, res, next) => {
     res.json({ ok: true, status: report.status });
   } catch (err) { next(err); }
 });
+// Admin post -> shows up in every player's Updates feed (and live to anyone online). kind: admin | update
+router.post('/ac/post', ensureAdmin, async (req, res, next) => {
+  try {
+    const text = String((req.body && req.body.text) || '').trim().slice(0, 240);
+    if (!text) return res.status(400).json({ message: 'Text is required.' });
+    const kind = req.body.kind === 'update' ? 'update' : 'admin';
+    const v = await require('../utils/acnotify').notify(req.app.get('io'), null, { icon: kind === 'update' ? '🆕' : '📢', text, kind });
+    res.json({ update: v });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

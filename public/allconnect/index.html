@@ -5,6 +5,7 @@
 <link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0d1b4a">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/allconnect/style.css"></head><body>
+<aside class="deskside"><div class="lg">👑</div><h2>AllConnect</h2><p>One account. Every app.</p><ul><li>🏙️ Live your Lagos life</li><li>🎮 GameHub multiplayer games</li><li>💬 Friends &amp; private chat</li><li>👑 Leaderboards &amp; news</li></ul></aside>
 <div id="app">
  <div class="scene"></div>
 
@@ -73,7 +74,7 @@
  <!-- PHONE -->
  <div id="phone"><button class="close" onclick="nav('home')">✕ Close</button>
   <div class="frame"><div class="screen"><div class="island"></div><div class="sb"><span id="pt">8:31PM</span><span>●●● 4G ▮</span></div>
-   <div class="scroll"><div class="big"><b id="pb">8:31</b><span id="pd">Monday 5 October · Lagos</span></div><div class="apps" id="apps"></div></div><div class="home"></div></div></div></div>
+   <div class="scroll"><div class="big"><b id="pb">8:31</b><span id="pd">Monday 5 October · Lagos</span></div><div class="apps" id="apps"></div></div><div class="appview" id="appview"></div><div class="home"></div></div></div></div>
 
  <!-- SPLASH -->
  <div id="splash"><span class="crown">👑</span><h1>AllConnect</h1><p class="tag">One account. Every app.</p><div class="sp"></div>
@@ -86,7 +87,9 @@
    <button class="btn p" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
    <div class="foot"><span>Signed in as <b style="color:var(--ink)">@<span id="uname2">wisdomw</span></b></span><a onclick="logout()">Log out</a></div></div></div>
  <div id="hub"><div class="hubbar"><button onclick="closeHub()">‹ Back</button><b>🎮 GameHub</b><span></span></div><iframe id="hubf" title="GameHub" allow="autoplay; fullscreen; clipboard-write"></iframe></div>
+ <div id="visit"></div>
  <div class="toast" id="toast"></div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
-<script src="/allconnect/app.js"></script></body></html>
+<script src="/allconnect/app.js"></script>
+<script src="/allconnect/phone.js"></script></body></html>

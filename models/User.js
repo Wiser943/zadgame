@@ -50,6 +50,7 @@ const UserSchema = new mongoose.Schema({
     termsAccepted: { type: Boolean, default: false },
     registeredAt: { type: Date, default: null }
   },
+  acUsername: { type: String, unique: true, sparse: true, lowercase: true, trim: true }, // @handle used to find friends
   // AllConnect platform life-sim state (separate from GameHub coins). Cash/owned are changed only by the server.
   ac: {
     cash: { type: Number, default: 2000000 },
@@ -57,7 +58,10 @@ const UserSchema = new mongoose.Schema({
     owned: { type: [String], default: ['Classic Cream'] },
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },
-    gemsFound: { type: Number, default: 0 }
+    gemsFound: { type: Number, default: 0 },
+    sentDay: { type: String, default: '' },
+    sentAmt: { type: Number, default: 0 },
+    updatesSeen: { type: Date, default: null }
   },
   stats: {
     gamesPlayed: { type: Number, default: 0 },

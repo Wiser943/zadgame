@@ -5,7 +5,7 @@ const ensureAuth = require('../middleware/auth');
 const { DEFAULT_AC, priceOf, sanitizeSave, publicAC } = require('../utils/allconnect');
 
 const router = express.Router();
-const who = (u) => ({ id: u.id, displayName: u.displayName, avatar: u.avatar, coins: u.coins });
+const who = (u) => ({ id: u.id, displayName: u.displayName, username: u.acUsername || '', avatar: u.avatar, coins: u.coins });
 
 // Accounts created before AllConnect existed have no `ac` data yet: give them the defaults once.
 async function ensureAC(id) {

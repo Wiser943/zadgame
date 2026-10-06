@@ -10,6 +10,7 @@ const NET={
     if(this.sock)return;this.sock=io('/ac',{withCredentials:true});
     this.sock.on('stats',m=>{$('vis').textContent=fmtN(m.visits);$('onl').textContent=fmtN(m.online);S.gems=m.gems;gemText()});
     this.sock.on('players',drawPlayers);
+    ['dm','update','friends','seen','cash'].forEach(ev=>this.sock.on(ev,p=>window.PH&&PH.on(ev,p)));
     this.sock.on('gem',m=>{S.cash=m.cash;toast(m.prize?`💎 Gem found! +₦${m.prize.toLocaleString()}`:'💎 Gem found!');render()})},
   save(){if(!this.user)return;clearTimeout(this.saveT);
     this.saveT=setTimeout(()=>this.api('/api/ac/save',{method:'POST',body:{paint:S.paint,needs:S.needs,min:S.min}}).catch(()=>{}),1500)}
@@ -37,7 +38,7 @@ async function boot(){
   if(window.top!==window.self){window.top.location.href='/';return}   // GameHub logout redirects here: never nest the platform
   try{const j=await NET.api('/api/ac/state');NET.user=j.user;applyAC(j.ac);S.gems=j.stats.gems;
     $('uname').textContent=j.user.displayName;$('uname2').textContent=j.user.displayName;
-    $('auth').style.display='none';$('resume').style.display='block';NET.connect();render()}
+    $('auth').style.display='none';$('resume').style.display='block';NET.connect();render();if(window.PH)PH.init()}
   catch(e){$('auth').style.display='block';$('resume').style.display='none';if(e.status&&e.status!==401)$('aerr').textContent=e.message}
   if(/auth_error/.test(location.search)){$('aerr').textContent='Google sign-in is not available right now. Use email or phone.';history.replaceState(null,'','/')}}
 function openHub(){const f=$('hubf');if(!f.getAttribute('src'))f.src='/gamehub';$('hub').style.display='flex'}
@@ -52,13 +53,14 @@ function render(){NET.save();const t=hm(S.min);$('clk').textContent=`${t.h}:${t.
  $('bal').textContent=fmt(S.cash);$('bal2').textContent=fmt(S.cash);
  $('needs').innerHTML=S.needs.map((v,i)=>`<div class="n"><span>${NEED[i]}</span><div class="bar"><u style="width:${v*100}%;${v<.5?'background:#f5a623':''}"></u></div></div>`).join('');
  const lo=Math.min(...S.needs);$('mood').textContent=lo>.7?'😄 Very Happy':lo>.4?'🙂 Okay':'😩 Hungry'}
-setInterval(()=>{S.min++;S.needs=S.needs.map(v=>Math.max(0,v-.004));render()},3000);
-function eat(e){e.stopPropagation();S.needs[0]=Math.min(1,S.needs[0]+.4);toast('Yum! Ate jollof 🍛');render()}
+const NEEDN=['You are getting hungry — eat something 🍛','Energy is getting low!','Your fun is running out 🎉','You are feeling lonely 💬','You need a bath 🫧','Nature is calling 🚽'],NEEDI=['🥧','⚡','🎉','💬','🫧','🚽'],LOW={};
+setInterval(()=>{S.min++;S.needs=S.needs.map(v=>Math.max(0,v-.004));S.needs.forEach((v,i)=>{if(v<.3&&!LOW[i]){LOW[i]=1;if(window.PH)PH.local_(NEEDI[i],NEEDN[i],'warn')}else if(v>.5)LOW[i]=0});render()},3000);
+function eat(e){e.stopPropagation();S.needs[0]=Math.min(1,S.needs[0]+.4);toast('Yum! Ate jollof 🍛');if(window.PH)PH.local_('🍛','You ate something · hunger restored','good');render()}
 function walk(e){const r=$('room').getBoundingClientRect(),k=400/r.width;let x=(e.clientX-r.left)*k,y=(e.clientY-r.top)*k-60;
  x=Math.max(30,Math.min(370,x));y=Math.max(130,Math.min(290,y));$('me').style.transition='transform .6s ease';$('me').setAttribute('transform',`translate(${x} ${y})`)}
 function toggleClean(){S.clean=!S.clean;['homeUI','chips'].forEach(i=>$(i).style.display=S.clean?'none':'');}
 const NAV=[['home','Home','<path d="M4 11l8-7 8 7v9H4z"/>'],['buy','Buy','<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M6 9V7a2 2 0 012-2h8a2 2 0 012 2v2M7 17v2M17 17v2"/>'],['map','Map','<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>'],['phone','Phone','<rect x="7" y="3" width="10" height="18" rx="2"/>']];
-function nav(w){S.page=w;$('nav').innerHTML=NAV.map(n=>`<button class="${n[0]==w?'on':''}" onclick="nav('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
+function nav(w){S.page=w;if(w!=='phone'&&window.PH&&PH.view)PH.close();$('nav').innerHTML=NAV.map(n=>`<button class="${n[0]==w?'on':''}" onclick="nav('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
  const home=w=='home';
  $('map').style.display=w=='map'?'block':'none';$('buy').style.display=w=='buy'?'block':'none';$('phone').style.display=w=='phone'?'block':'none';
  $('room').style.display=(w=='map')?'none':'block';$('needsbar').style.display=(home||w=='map')?'flex':'none';$('nav').style.display=(w=='buy')?'none':'flex';
@@ -74,9 +76,10 @@ function buyUI(){$('sheet').style.maxHeight='42%';$('tabs').innerHTML=Object.key
  const it=g[1][S.sel];$('buyb').style.display=it?'block':'none';if(it)$('buyb').textContent=S.owned[it[0]]?'Use':'Buy '+it[0]+' · '+fmt(it[1])}
 function setPaint(c){S.paint=c;document.documentElement.style.setProperty('--wall',c)}
 function pick(i){S.sel=i;const it=CAT[S.tab][0][1][i];if(S.tab=='Design')setPaint(it[2]);buyUI()}
-async function buyIt(){const it=CAT[S.tab][0][1][S.sel];if(!S.owned[it[0]]){try{const r=await NET.api('/api/ac/buy',{method:'POST',body:{name:it[0]}});S.cash=r.ac.cash;S.owned=Object.fromEntries(r.ac.owned.map(n=>[n,1]));toast('Bought '+it[0]+' ✓')}catch(e){return toast(e.message)}}else toast('Applied');render();buyUI()}
+async function buyIt(){const it=CAT[S.tab][0][1][S.sel];if(!S.owned[it[0]]){try{const r=await NET.api('/api/ac/buy',{method:'POST',body:{name:it[0]}});S.cash=r.ac.cash;S.owned=Object.fromEntries(r.ac.owned.map(n=>[n,1]));toast('Bought '+it[0]+' ✓');if(window.PH)PH.local_('🛍️','You bought '+it[0],'good')}catch(e){return toast(e.message)}}else toast('Applied');render();buyUI()}
 const APPS=[['Jobs','💼','linear-gradient(#34d399,#10b981)'],['Messages','💬','linear-gradient(#60a5fa,#2563eb)'],['Meetumo','◐','#0f2a2a;color:#4de0c0'],['Salary Index','SI','#2d5a1b;color:#c8f04a;font-size:44px'],['PopOut Tickets','P','#fff;color:#6d28d9',1],['GameHub','🎮','#151a35'],['Nollywood','N','#000;color:#7ed321',1],['Bet Tips','⚽','#e11d2e',1],['use.live','✺','#111;color:#fff',1],['versiah.com','▽','#fff;color:#111',1],['Contacts','📞','linear-gradient(#34d399,#16a34a)'],['Ride','🚕','#fbbf24'],['Chowdeck','🛵','linear-gradient(#fb7185,#e11d48)'],['Bank','🏛️','linear-gradient(#a78bfa,#6d5ce8)'],['Boutique','👠','linear-gradient(#c084fc,#9333ea)'],['Forbes','👑','#0f3d2e'],['Naija Radio','📻','linear-gradient(#f59e0b,#d97706)'],['Eko Hotels','🏨','linear-gradient(#38bdf8,#0369a1)'],['i-Fitness','🏋️','linear-gradient(#f43f5e,#be123c)'],['Library','📚','linear-gradient(#a3e635,#4d7c0f)'],['Casino','🎰','#2b0f3a'],['Airport','✈️','linear-gradient(#93c5fd,#3b82f6)'],['Camera','📷','#2a2d36'],['Settings','⚙️','linear-gradient(#9ca3af,#4b5563)']];
-$('apps').innerHTML=APPS.map(a=>`<button class="app" onclick="${a[0]=='GameHub'?'openHub()':`toast('${a[0]} opens soon')`}">${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`).join('');
+const OPEN={GameHub:'openHub()',Contacts:"PH.open('contacts')",Messages:"PH.open('messages')",Settings:"PH.open('settings')"};
+$('apps').innerHTML=APPS.map(a=>`<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`).join('');
 async function start(n){if(n){try{applyAC((await NET.api('/api/ac/new',{method:'POST'})).ac)}catch(e){return toast(e.message)}}$('splash').style.display='none';render();nav('home')}
 $('sd').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'});
 render();nav('home');boot();

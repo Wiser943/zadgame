@@ -17,4 +17,15 @@ function sanitizeSave(b = {}) {
   return out;
 }
 const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, owned: [...(ac.owned || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
-module.exports = { CATALOGUE, DEFAULT_AC, priceOf, sanitizeSave, publicAC };
+const FOOD = {
+  jollof: { name: 'Jollof rice & chicken', emoji: '🍛', price: 2500, fill: .35 },
+  suya: { name: 'Suya', emoji: '🍢', price: 1500, fill: .22 },
+  chops: { name: 'Small chops', emoji: '🥟', price: 1000, fill: .12 }
+};
+const MONEY = { min: 100, max: 200000, daily: 500000 };   // in-game ₦ only; limits stop alt-account cash farming
+const RESERVED = ['admin', 'administrator', 'allconnect', 'gamehub', 'support', 'system', 'mummy', 'moderator'];
+const normalizeUsername = (s) => String(s || '').trim().replace(/^@/, '').toLowerCase();
+const validUsername = (n) => /^[a-z0-9_]{3,16}$/.test(n) && !RESERVED.includes(n);
+const parseAmount = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? n : NaN; };
+const moneyError = (n) => (!Number.isFinite(n) || n < MONEY.min ? `Minimum is ₦${MONEY.min.toLocaleString('en-NG')}.` : n > MONEY.max ? `Maximum per transfer is ₦${MONEY.max.toLocaleString('en-NG')}.` : null);
+module.exports = { FOOD, MONEY, normalizeUsername, validUsername, parseAmount, moneyError, CATALOGUE, DEFAULT_AC, priceOf, sanitizeSave, publicAC };

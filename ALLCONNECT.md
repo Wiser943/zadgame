@@ -28,4 +28,11 @@ Purchases are atomic and priced by the server; the client can't save cash or own
 ## Deploy on Render
 - Put the files of this folder at the ROOT of your repo (`server.js` must sit next to `package.json`), or set Render "Root Directory" to the folder that contains it.
 - Build Command: `npm install`   Start Command: `npm start`
-- Environment: SESSION_SECRET (32+ chars), MONGODB_URI, CLIENT_URL (your https://….onrender.com URL), NODE_ENV=production; optional GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+- Environment: SESSION_SECRET (32+ chars), MONGODB_URI, CLIENT_URL (your https://….onrender.com URL), NODE_ENV=production; ADMIN_PHONE and ADMIN_PIN (needed for /admin login); optional GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+
+## Friends, chat, updates (phone apps)
+- Settings → set your @username. Contacts → search by @username or name → Add. When they accept, they appear under My Friends and in Messages.
+- Friends are GameHub's own Friendship records, so they are shared between both apps; reports go to the existing admin Reports queue.
+- Chat buttons: Invite over, Visit them, Send money (₦100–200k each, ₦500k/day), Buy food, Block, Report. All checked on the server.
+- Updates feed: friend requests/accepts, money/food received, visits, leaderboard #1 changes (checked every minute), admin posts.
+- Admin post (logged-in admin session): POST /admin-api/ac/post  {"text":"...", "kind":"admin" | "update"}
