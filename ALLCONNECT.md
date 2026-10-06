@@ -63,3 +63,10 @@ Purchases are atomic and priced by the server; the client can't save cash or own
 - Needs `ADMIN_PHONE` and `ADMIN_PIN` in the environment (spaces/quotes around them are now ignored). The login page tells you if they are missing.
 - If you sign in and are sent back to the login page, it now says why: cookies blocked / not https, or the real server error.
 - Only wrong attempts count toward the 10-per-15-minutes limit.
+
+## P-Gist (social feed)
+Phone -> P-Gist. Files: `public/allconnect/gist.js`, `routes/acgist.js` (mounted at `/api/ac/gist`), `models/Gist.js`.
+- Posts: text (500 chars), up to 4 photos, a game link (game + optional room code; "Join" opens GameHub with `?code=`), and reshares (repost, or share with a comment).
+- Photo sources: My gallery (Camera photos), Platform gallery (photos already posted on P-Gist), or Device (uploaded via imgbb, so IMGBB_KEY is needed).
+- Likes, comments (author or post owner can delete), follow/unfollow, profiles with followers/following lists, find a player by @username.
+- Safety: per-user rate limits, blocked users are hidden, "Report gist" goes to the admin Reports queue (roomCode `GIST`).

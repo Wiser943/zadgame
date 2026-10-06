@@ -10,7 +10,7 @@ const PH={
   drawBadges(){const n={Messages:this.badges.messages+this.badges.updates+this.localUnread,Contacts:this.badges.requests};
     document.querySelectorAll('.app[data-app]').forEach(a=>{const b=a.querySelector('.bdg');if(!b)return;const v=n[a.dataset.app]||0;b.textContent=v>9?'9+':(v||'')})},
   /* ----- shell ----- */
-  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open()})[name]()},
+  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open()})[name]()},
   close(){document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
   shell(title,back,body,sub){this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2></div>${sub||''}${body}`},
   sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
