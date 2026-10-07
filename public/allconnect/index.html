@@ -140,14 +140,14 @@
   
   <!-- BUY -->
   <div id="buy">
-   <div class="top"><span class="pill">Buy mode</span><span class="pill" id="bal2">₦2,025,000</span><button class="pill x" onclick="nav('home')">✕</button></div>
+   <div class="top"><span class="pill">Buy mode</span><span class="pill" id="bal2">₦0</span><button class="pill x" onclick="BUY.exit()" aria-label="Close">✕</button></div>
+   <button class="btn p catbtn" id="catbtn" onclick="BUY.openSheet()">▦ Catalogue</button>
    <div class="sheet" id="sheet">
-    <h2>Catalogue <small onclick="document.getElementById('sheet').style.maxHeight='20%'">Hide</small></h2>
+    <h2>Catalogue <small onclick="BUY.hideSheet()">Hide</small></h2>
     <div class="tabs" id="tabs"></div>
-    <p class="hint">Tap a paint or floor to try it on first. You only pay when you tap Buy, and ones you've bought stay yours.</p>
-    <div class="lab" id="lab">WALL PAINT</div>
-    <div class="grid" id="items"></div><button class="btn p buyb" id="buyb" onclick="buyIt()">Buy</button>
+    <div class="grid cat" id="items"></div>
    </div>
+   <div class="sheet bpanel" id="bpanel"></div>
   </div>
   
   <div class="pill nav" id="nav"></div>
@@ -203,7 +203,9 @@
  <script src="/js/bgm.js"></script>
  <script src="/socket.io/socket.io.js"></script>
  <script src="/allconnect/app.js"></script>
+ <script src="/allconnect/furniture.js"></script>
  <script src="/allconnect/room3d.js"></script>
+ <script src="/allconnect/buy.js"></script>
  <script src="/allconnect/phone.js"></script>
  <script src="/allconnect/bank.js"></script>
  <script src="/allconnect/police.js"></script>

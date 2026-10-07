@@ -407,3 +407,23 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 .scene{background:linear-gradient(180deg,var(--sky1,#a9d8f5),var(--sky2,#e6f2f8) 75%)!important;transition:background 1s}
 #app svg.room{filter:brightness(calc(.5 + .5 * var(--dl,1)))}
 #app.blackout #room{filter:brightness(calc(.5 + .5 * var(--dl,1)))}
+
+/* ---- Buy mode 2.0 ---- */
+#buy .catbtn{position:absolute;left:50%;bottom:calc(16px + var(--sab));transform:translateX(-50%);width:auto;padding:15px 28px;font-size:16px;display:none}
+#buy .sheet{max-height:50%}
+#buy .bpanel{display:none;max-height:none}
+.grid.cat{grid-template-columns:repeat(3,1fr);gap:9px}
+.cc{background:#f3f4f9;border-radius:20px;padding:8px 8px 10px;min-width:0;cursor:pointer;display:flex;flex-direction:column}
+.cc .ch{display:flex;justify-content:space-between;font:700 11px system-ui;color:var(--mut)}.cc .ch b{color:#d99a1c;letter-spacing:-1px}
+.cc .ci{height:64px;margin:2px 0 4px;display:grid;place-items:center}.cc .ci img{max-width:100%;max-height:64px}.cc .cem{font-size:34px}
+.cc .cn{font:700 13px/1.15 'Plus Jakarta Sans',system-ui,sans-serif}.cc .cp{font:800 13px system-ui;color:#1f9d63;margin-top:3px}.cc .cp small{color:var(--mut);font-weight:600}
+.cbtns{display:flex;gap:6px;margin-top:7px}.cbtns button{flex:1;border:0;border-radius:99px;padding:7px;background:#1b2236;color:#fff;font:700 12px system-ui}.cbtns button.x{flex:0 0 34px;background:#e6e8f1;color:#333}
+.bp-h{display:flex;justify-content:space-between;align-items:baseline;font:800 19px Outfit,system-ui,sans-serif}.bp-h span{font:800 17px system-ui}
+.bp-w{min-height:20px;margin:4px 0 8px;font:600 13px/1.3 system-ui}.bp-w .warn{color:#b86a00}.bp-w .bad{color:#c0392b}
+.bp-c{display:flex;gap:12px;align-items:stretch}.bp-b{flex:1;display:flex;flex-direction:column;gap:8px}.bp-b .btn{width:100%;margin:0}
+.btn.dis,.btn[disabled]{opacity:.45}
+.pad{display:grid;grid-template-columns:repeat(2,52px);grid-template-rows:repeat(2,52px);gap:8px 40px;position:relative;margin:0 10px 0 4px}
+.pad button{border:0;border-radius:50%;background:#eef0f6;font-size:20px;color:#1b2236}.pad .rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:50px;height:50px;background:#2f6fe0;color:#fff;font-size:24px}
+.bp-i{display:flex;gap:12px;align-items:center;margin-bottom:12px}.bp-i b{display:block;font:800 20px Outfit,system-ui,sans-serif}.bp-i small{color:var(--mut);font-size:14px}.bp-t{width:64px;height:64px;border-radius:50%;background:#eef0f6;display:grid;place-items:center;overflow:hidden}.bp-t img{width:90%}.bp-t .cem{font-size:30px}
+.bp-a{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.bp-a button{border:1.5px solid #e3e6ee;background:#fff;border-radius:99px;padding:14px 6px;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink)}.bp-a .sell{background:#fde8ea;border-color:#fde8ea;color:#d1334a}.bp-a .sell.on{background:#d1334a;color:#fff}
+#buy{pointer-events:none}#buy .top,#buy .sheet,#buy .catbtn{pointer-events:auto}

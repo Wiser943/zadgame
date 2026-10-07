@@ -3,6 +3,7 @@ const User = require('../models/User');
 const ACStat = require('../models/ACStat');
 const ensureAuth = require('../middleware/auth');
 const { DEFAULT_AC, priceOf, sanitizeSave, publicAC } = require('../utils/allconnect');
+const F = require('../utils/furniture');
 
 const router = express.Router();
 const who = (u) => ({ id: u.id, displayName: u.displayName, username: u.acUsername || '', avatar: u.avatar, coins: u.coins });
@@ -10,7 +11,13 @@ const who = (u) => ({ id: u.id, displayName: u.displayName, username: u.acUserna
 // Accounts created before AllConnect existed have no `ac` data yet: give them the defaults once.
 async function ensureAC(id) {
   await User.updateOne({ _id: id, 'ac.cash': { $exists: false } }, { $set: { ac: { ...DEFAULT_AC(), gemsFound: 0 } } });
-  return User.findById(id);
+  let u = await User.findById(id);
+  if (u && u.ac && u.ac.v2 !== true) {      // one-time: old name-only furniture -> placeable items (starter items + whatever they bought)
+    const { items, refund } = F.migrate(u.ac.owned);
+    await User.updateOne({ _id: id, 'ac.v2': { $ne: true } }, { $set: { 'ac.items': items, 'ac.v2': true }, $inc: { 'ac.cash': refund } });
+    u = await User.findById(id);
+  }
+  return u;
 }
 
 // Social links shown on the login footer + Settings. Edited in the admin panel; public (no login) because the splash needs them.
@@ -50,6 +57,7 @@ router.post('/buy', ensureAuth, async (req, res, next) => {
   try {
     const name = String(req.body?.name || ''), price = priceOf(name);
     if (price == null) return res.status(400).json({ message: 'Unknown item.' });
+    if (F.isItem(name)) return res.status(400).json({ message: 'Pick furniture from the Catalogue in Buy mode.' });
     await ensureAC(req.user.id);
     const u = await User.findOneAndUpdate(
       { _id: req.user.id, 'ac.cash': { $gte: price }, 'ac.owned': { $ne: name } },
@@ -65,7 +73,7 @@ router.post('/buy', ensureAuth, async (req, res, next) => {
 // "New life": resets the platform life-sim only. GameHub coins, stats and friends are untouched.
 router.post('/new', ensureAuth, async (req, res, next) => {
   try {
-    const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0 } }, { new: true });
+    const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0, 'ac.items': F.starterItems(), 'ac.v2': true, 'ac.wish': [] } }, { new: true });
     res.json({ ac: publicAC(u.ac) });
   } catch (e) { next(e); }
 });

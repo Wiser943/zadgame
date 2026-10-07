@@ -30,3 +30,17 @@ test('ad titles and sea plots are validated', () => {
   assert.deepEqual(A.plotList([3, 3, 1, -1, 99, 'x', 29]), [1, 3, 29]); assert.deepEqual(A.plotList('nope'), []);
   assert.equal(A.BILLBOARD.price, 250000); assert.equal(A.SEA.price, 500);
 });
+
+// ---- furniture / buy mode rules ----
+const FU = require('../utils/furniture');
+test('furniture: selling pays far less than buying', () => { assert.equal(FU.sellPrice('Spring Bed'), 4700); for (const n of Object.keys(FU.ITEMS)) assert.ok(FU.sellPrice(n) <= FU.ITEMS[n].price * 0.25, n); });
+test('furniture: footprint turns with rotation', () => { assert.deepEqual(FU.footprint('Velvet Sofa', 0), [2, 1]); assert.deepEqual(FU.footprint('Velvet Sofa', 90), [1, 2]); });
+test('furniture: no overlap, no leaving the room', () => {
+  const items = FU.starterItems();
+  assert.equal(FU.canPlace(items, 'Plastic Chair', 0, 1, 0), false);      // bed is there
+  assert.equal(FU.canPlace(items, 'Plastic Chair', 6, 0, 0), false);      // outside
+  assert.equal(FU.canPlace(items, 'Velvet Sofa', 5, 3, 0), false);        // 2 wide sticks out
+  assert.ok(FU.autoPlace(items, 'Lekki King Bed'));
+});
+test('furniture: old accounts migrate to placed items', () => { const m = FU.migrate(['Classic Cream', 'Queen Bed', 'Net', 'Ceiling Bulb']); assert.equal(m.refund, 8000); assert.ok(m.items.some((i) => i.name === 'Queen Bed' && i.placed)); assert.ok(m.items.some((i) => i.name === 'Ceiling Bulb')); });
+test('furniture: browser copy matches the server copy', () => { const src = require('fs').readFileSync(__dirname + '/../public/allconnect/furniture.js', 'utf8'); for (const n of Object.keys(FU.ITEMS)) assert.ok(src.includes('"' + n + '"'), n); assert.ok(src.includes('"price": ' + FU.ITEMS['Fridge'].price)); });

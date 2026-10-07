@@ -2,13 +2,14 @@
 const CATALOGUE = {
   'Classic Cream': 3000, 'Lagos Sky': 3000, 'Mint Fresh': 3000, 'Peach Glow': 3000, 'Soft Lilac': 3000,
   'Naija Green': 4000, 'Lekki Charcoal': 5000, 'Owambe Gold': 6000,
-  'Single Bed': 45000, 'Foam Mattress': 60000, 'Queen Bed': 250000, 'Net': 8000,
+  'Single Bed': 45000, 'Foam Mattress': 12000, 'Queen Bed': 250000, 'Net': 8000,
   'Gas Cooker': 85000, 'Fridge': 320000, 'Gen Set': 180000,
   'Bucket Set': 2000, 'Water Closet': 70000, 'Shower': 40000,
   'Ceiling Bulb': 4000, 'Wall Lamp': 6000, 'Standing Lamp': 18000
 };
 const DEFAULT_AC = () => ({ cash: 2000000, paint: '#d9a93a', owned: ['Classic Cream'], needs: [.9, .9, .9, .9, .9, .9], min: 19 * 60 });
-const priceOf = (name) => (Object.prototype.hasOwnProperty.call(CATALOGUE, name) ? CATALOGUE[name] : null);
+const F = require('./furniture');
+const priceOf = (name) => (Object.prototype.hasOwnProperty.call(CATALOGUE, name) ? CATALOGUE[name] : F.isItem(name) ? F.ITEMS[name].price : null);
 // The client may only save cosmetic/state fields. Cash and owned items are server-controlled.
 function sanitizeSave(b = {}) {
   const out = {};
@@ -17,7 +18,7 @@ function sanitizeSave(b = {}) {
   if (Number.isFinite(b.min)) out.min = Math.max(0, Math.floor(b.min)) % 100000;
   return out;
 }
-const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, owned: [...(ac.owned || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
+const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, owned: [...(ac.owned || [])], items: (ac.items || []).map((i) => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })), wish: [...(ac.wish || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
 const FOOD = {
   jollof: { name: 'Jollof rice & chicken', emoji: '🍛', price: 2500, fill: .35 },
   suya: { name: 'Suya', emoji: '🍢', price: 1500, fill: .22 },

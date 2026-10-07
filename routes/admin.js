@@ -69,6 +69,13 @@ router.post('/users/:id/penalize', async (req, res, next) => {
 });
 
 // ---------- analytics (privacy-conscious: aggregate counts only, no message content) ----------
+// Photo storage health (imgbb) - shows the real reason when uploads fail
+const acPhotos = require('./acphotos');
+router.get('/ac/photo-status', (req, res) => {
+  const k = acPhotos.keyInfo(); res.json({ configured: !!k.key, variable: k.name, keyPreview: k.key ? k.key.slice(0, 4) + '…' + k.key.slice(-3) + ` (${k.key.length} characters)` : '', last: acPhotos.status });
+});
+router.post('/ac/photo-test', async (req, res, next) => { try { res.json(await acPhotos.testUpload()); } catch (e) { next(e); } });
+
 // Social links for the login footer + Settings (empty = nothing shown to players)
 const ACSetting = require('../models/ACSetting');
 const SOC = ['x', 'tiktok', 'instagram', 'linkedin'];

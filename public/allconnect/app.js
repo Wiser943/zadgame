@@ -74,8 +74,10 @@ function drawPlayers(list) {
 function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min });
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
+  S.items = ac.items || []; S.wish = ac.wish || [];
   setPaint(S.paint);
-  if (window.ROOM3D) ROOM3D.sync()
+  if (window.ROOM3D) ROOM3D.sync();
+  if (window.BUY && BUY.active) BUY.draw()
 }
 let AM = 'login';
 
@@ -250,6 +252,7 @@ const NAV = [
 ];
 
 function nav(w, keep) {
+  if (S.page === 'buy' && w !== 'buy' && window.BUY) BUY.leave();
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
@@ -275,7 +278,7 @@ function nav(w, keep) {
   }
   if (w == 'buy') {
     $('room').style.top = '44px';
-    buyUI()
+    BUY.enter()
   } else $('room').style.top = '';
   if (w == 'map') {
     if (window.ADS) ADS.paintMap();
@@ -321,79 +324,19 @@ const CAT = {
       ['Lekki Charcoal', 5000, '#4a4e57'],
       ['Owambe Gold', 6000, '#d9a93a']
     ]]
-  ],
-  Sleep: [
-    ['BEDS', [
-      ['Single Bed', 45000, '#d63a2f'],
-      ['Foam Mattress', 60000, '#cfd4dc'],
-      ['Queen Bed', 250000, '#7a4b2a'],
-      ['Net', 8000, '#eee']
-    ]]
-  ],
-  Kitchen: [
-    ['APPLIANCES', [
-      ['Gas Cooker', 85000, '#bbb'],
-      ['Fridge', 320000, '#dfe6ee'],
-      ['Gen Set', 180000, '#d94']
-    ]]
-  ],
-  Bath: [
-    ['BATHROOM', [
-      ['Bucket Set', 2000, '#2f6fd8'],
-      ['Water Closet', 70000, '#fff'],
-      ['Shower', 40000, '#9cc']
-    ]]
-  ],
-  Light: [
-    ['LAMPS · lit at night when NEPA gives light (or you own a Gen Set)', [
-      ['Ceiling Bulb', 4000, '#ffe08a'],
-      ['Wall Lamp', 6000, '#ffd166'],
-      ['Standing Lamp', 18000, '#f4b942']
-    ]]
   ]
 };
 
-function buyUI() {
-  $('sheet').style.maxHeight = '42%';
-  $('tabs').innerHTML = Object.keys(CAT).map(t => `<button class="${t==S.tab?'on':''}" onclick="S.tab='${t}';S.sel=null;buyUI()">${{Design:'🎨',Sleep:'🛏️',Kitchen:'🍳',Bath:'🚿',Light:'💡'}[t]} ${t}</button>`).join('');
-  const g = CAT[S.tab][0];
-  $('lab').textContent = g[0];
-  $('items').innerHTML = g[1].map((it, i) => `<button class="sw ${S.sel===i?'sel':''}" onclick="pick(${i})"><i style="background:linear-gradient(90deg,${it[2]} 50%,${it[2]}cc 50%)"></i>${it[0]}<span>${S.owned[it[0]]?'Owned':fmt(it[1])}</span></button>`).join('');
-  const it = g[1][S.sel];
-  $('buyb').style.display = it ? 'block' : 'none';
-  if (it) $('buyb').textContent = S.owned[it[0]] ? 'Use' : 'Buy ' + it[0] + ' · ' + fmt(it[1])
-}
-
+function buyUI() { if (window.BUY) BUY.enter() }
 function setPaint(c) {
   S.paint = c;
   if (window.ROOM3D) ROOM3D.paint(c);
   document.documentElement.style.setProperty('--wall', c)
 }
-
-function pick(i) {
-  S.sel = i;
-  const it = CAT[S.tab][0][1][i];
-  if (S.tab == 'Design') setPaint(it[2]);
-  buyUI()
-}
-async function buyIt() {
-  const it = CAT[S.tab][0][1][S.sel];
-  if (!S.owned[it[0]]) {
-    try {
-      const r = await NET.api('/api/ac/buy', { method: 'POST', body: { name: it[0] } });
-      S.cash = r.ac.cash;
-      S.owned = Object.fromEntries(r.ac.owned.map(n => [n, 1]));
-      if (window.ROOM3D) ROOM3D.sync();
-      toast('Bought ' + it[0] + ' ✓');
-      if (window.PH) PH.local_('🛍️', 'You bought ' + it[0], 'good')
-    } catch (e) { return toast(e.message) }
-  } else toast('Applied');
-  render();
-  buyUI()
-}
 const APPS = [
   ['Camera', '📷', '#2a2d36'],
   ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
+  ['Bank, '🏦', '#151a35'],
   ['GameHub', '🎮', '#151a35'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],

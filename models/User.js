@@ -60,6 +60,9 @@ const UserSchema = new mongoose.Schema({
     cash: { type: Number, default: 2000000 },
     paint: { type: String, default: '#d9a93a' },
     owned: { type: [String], default: ['Classic Cream'] },
+    v2: { type: Boolean, default: false },                 // furniture moved to placeable items
+    items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] },
+    wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },
     gemsFound: { type: Number, default: 0 },

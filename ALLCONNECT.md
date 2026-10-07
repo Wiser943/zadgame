@@ -98,3 +98,15 @@ Also fixed: `PH`, `GIST`, `CAM`, `POL` are now attached to `window` (top-level `
 - Time of day uses Lagos server time: sun icon from 6:30am to 6:30pm, moon otherwise. Sky, ground, window and house light fade through dawn/dusk/night.
 - New shop tab **Light** (Ceiling Bulb ₦4,000, Wall Lamp ₦6,000, Standing Lamp ₦18,000). Owned lamps are real lights in the 3D house; they are on while NEPA gives light, or always if you own a Gen Set.
 - 3D character rebuilt: face (eyes that blink, brows, nose, mouth, ears), hair, patterned shirt, belt, trousers, trainers, swinging arms and legs.
+
+## Buy mode 2.0 (furniture you can place, move, store and sell)
+- Open **Buy**: a Catalogue sheet (Sleep, Kitchen, Bath, Comfort, Light, Design, ♡ Wishlist, 📦 Stored) with 3D thumbnails, size (2×1), stars and price. Tap outside the sheet to hide it (a green **Catalogue** button brings it back). The house can still be rotated/zoomed while you shop.
+- Tap an item = preview ("ghost") in the room: ↖↗↙↘ nudge it, ⟳ turns it, tap the floor to jump. Green = fits, red = taken. A warning shows if it would block the way to the cooler box. **Place** pays and adds it. Not enough ₦? You can still preview it, and it is saved to your **wishlist** (also automatically when you close Buy mode with an unpaid preview).
+- Tap any item you own: **Move / Turn / Store / Close / Sell**. Selling pays 20% of the price (Spring Bed sells for ₦4,700), so selling is always far below buying. The Cooler Box can be moved/turned but not sold/stored.
+- Server rules: `utils/furniture.js` (catalogue, 6×6 grid, overlap, sell value) + `routes/acitems.js` (`/api/ac/items/*`). Browser copy: `public/allconnect/furniture.js` (generate with `node scripts/gen-furniture.js` after editing prices). Old accounts are migrated once: starter items + what they already bought, placed in free cells (Net is refunded ₦8,000).
+- The avatar now walks around furniture (grid pathfinding) and walks next to the cooler to eat.
+
+## Photo storage (imgbb) fixes
+- Key is read from IMGBB_KEY (also IMGBB_API_KEY, IBB_KEY, ... quotes/spaces are stripped). Uploads try multipart then url-encoded, and the real imgbb error is logged.
+- If imgbb fails or is not configured, the photo is saved in our own database so the player never sees an error (max 80 such photos per user, 1.6 MB each).
+- Admin panel -> **Photo storage**: shows whether the key is found, the last real result, and a "Test imgbb now" button with imgbb's exact reply.

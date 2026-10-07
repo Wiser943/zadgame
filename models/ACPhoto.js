@@ -7,6 +7,7 @@ const ACPhotoSchema = new mongoose.Schema({
   medium: String,
   deleteUrl: String,  // imgbb page that removes the file for good
   imgbbId: String,
+  store: { type: String, default: 'imgbb' },   // 'imgbb' or 'db' (backup when imgbb failed)
   w: Number,
   h: Number,
   createdAt: { type: Date, default: Date.now, index: true },
