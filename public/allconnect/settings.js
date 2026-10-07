@@ -21,6 +21,7 @@ Object.assign(PH,{
     const el=document.querySelector(`.trow[data-k="${k}"] .sw2`);if(el)el.classList.toggle('on',on);
     if(k==='vibration'&&on&&navigator.vibrate)navigator.vibrate(30);
     if(k==='music'||k==='lowPower'){if(window.BGM)BGM.sync()}
+    if(window.refreshMute)refreshMute();
     if(k==='lowPower')on?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off: loading apps in the background'),warmUp(true))},
   async settings(){this.view='settings';document.querySelector('.screen').classList.add('light');
     const p=GP.get(),u=Object.assign({},NET.user||{},this.me||{}),np='Notification' in window?Notification.permission:'unsupported';

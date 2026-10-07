@@ -122,3 +122,5 @@ function closeVisit(){document.getElementById('visit').style.display='none'}
 /* Desktop: Esc steps back (visit -> GameHub -> phone app) */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const vis=document.getElementById('visit'),hub=document.getElementById('hub');
   if(vis&&vis.style.display==='block')closeVisit();else if(hub&&hub.style.display==='flex')closeHub();else if(PH.view==='chat')PH.messages();else if(PH.view)PH.close()});
+
+window.PH = PH;

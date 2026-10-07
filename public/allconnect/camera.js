@@ -187,3 +187,5 @@ const CAM={
 /* make sure the camera always switches off when the phone app closes or the tab is hidden */
 (function(){const close=PH.close;PH.close=function(){if(PH.view==='camera')CAM.teardown();return close.apply(this,arguments)};
   document.addEventListener('visibilitychange',()=>{if(PH.view!=='camera'||CAM.mode!=='cam')return;if(document.hidden)CAM.stop();else CAM.start()})})();
+
+window.CAM = CAM;

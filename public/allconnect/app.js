@@ -74,7 +74,8 @@ function drawPlayers(list) {
 function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min });
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
-  setPaint(S.paint)
+  setPaint(S.paint);
+  if (window.ROOM3D) ROOM3D.sync()
 }
 let AM = 'login';
 
@@ -180,7 +181,6 @@ function toast(t) {
 function render() {
   NET.save();
   const t = hm(S.min);
-  $('clk').textContent = `${t.h}:${t.mm} ${t.ap}`;
   $('bal').textContent = fmt(S.cash);
   $('bal2').textContent = fmt(S.cash);
   $('needs').innerHTML = S.needs.map((v, i) => `<div class="n"><span>${NEED[i]}</span><div class="bar"><u style="width:${v*100}%;${v<.5?'background:#f5a623':''}"></u></div></div>`).join('');
@@ -208,8 +208,10 @@ function eat(e) {
 function walk(e) {
   const r = $('room').getBoundingClientRect(),
     k = 400 / r.width;
+  if (CAMV.moved()) return;
   let x = (e.clientX - r.left) * k,
     y = (e.clientY - r.top) * k - 60;
+  if (CAMV.fl < 0) x = 400 - x;
   x = Math.max(30, Math.min(370, x));
   y = Math.max(130, Math.min(290, y));
   $('me').style.transition = 'transform .6s ease';
@@ -218,7 +220,7 @@ function walk(e) {
 
 function toggleClean() {
   S.clean = !S.clean;
-  ['homeUI', 'chips'].forEach(i => $(i).style.display = S.clean ? 'none' : '');
+  nav('home', true)
 }
 const NAV = [
   ['home', 'Home', '<path d="M4 11l8-7 8 7v9H4z"/>'],
@@ -227,8 +229,9 @@ const NAV = [
   ['phone', 'Phone', '<rect x="7" y="3" width="10" height="18" rx="2"/>']
 ];
 
-function nav(w) {
+function nav(w, keep) {
   S.page = w;
+  if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
   $('nav').innerHTML = NAV.map(n => `<button class="${n[0]==w?'on':''}" onclick="nav('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
   const home = w == 'home';
@@ -236,11 +239,15 @@ function nav(w) {
   $('buy').style.display = w == 'buy' ? 'block' : 'none';
   $('phone').style.display = w == 'phone' ? 'block' : 'none';
   $('room').style.display = (w == 'map') ? 'none' : 'block';
-  $('needsbar').style.display = (home || w == 'map') ? 'flex' : 'none';
-  $('nav').style.display = (w == 'buy') ? 'none' : 'flex';
+  const cl = S.clean && home;
+  $('needsbar').style.display = ((home && !cl) || w == 'map') ? 'flex' : 'none';
+  $('nav').style.display = (w == 'buy' || cl) ? 'none' : 'flex';
+  $('menubtn').style.display = cl ? 'block' : 'none';
+  $('viewctl').style.display = home ? 'flex' : 'none';
+  if (window.ROOM3D) ROOM3D.page(w);
   $('hud').style.display = (w == 'buy') ? 'none' : 'flex';
-  $('chips').style.display = (home && !S.clean || w == 'map') ? 'flex' : 'none';
-  $('homeUI').style.display = (home && !S.clean) ? 'block' : 'none';
+  $('chips').style.display = (home || w == 'map') ? 'flex' : 'none';
+  $('homeUI').style.display = (home && !cl) ? 'block' : 'none';
   if (w == 'phone') {
     $('room').style.display = 'block';
     $('hud').style.display = 'flex'
@@ -330,6 +337,7 @@ function buyUI() {
 
 function setPaint(c) {
   S.paint = c;
+  if (window.ROOM3D) ROOM3D.paint(c);
   document.documentElement.style.setProperty('--wall', c)
 }
 
@@ -346,6 +354,7 @@ async function buyIt() {
       const r = await NET.api('/api/ac/buy', { method: 'POST', body: { name: it[0] } });
       S.cash = r.ac.cash;
       S.owned = Object.fromEntries(r.ac.owned.map(n => [n, 1]));
+      if (window.ROOM3D) ROOM3D.sync();
       toast('Bought ' + it[0] + ' ✓');
       if (window.PH) PH.local_('🛍️', 'You bought ' + it[0], 'good')
     } catch (e) { return toast(e.message) }
@@ -354,10 +363,11 @@ async function buyIt() {
   buyUI()
 }
 const APPS = [
+  ['Camera', '📷', '#2a2d36'],
+  ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
+  ['GameHub', '🎮', '#151a35'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
-  ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
-  ['Camera', '📷', '#2a2d36'],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '🗣️', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['Settings', '⚙️', 'linear-gradient(#9ca3af,#4b5563)']
@@ -366,7 +376,6 @@ const APPS = [
 /*'Meetumo', '◐', '#0f2a2a;color:#4de0c0'],
 ['Salary Index', 'SI', '#2d5a1b;color:#c8f04a;font-size:44px'],
 ['PopOut Tickets', 'P', '#fff;color:#6d28d9', 1],
-['GameHub', '🎮', '#151a35'],
 ['Nollywood', 'N', '#000;color:#7ed321', 1],
 ['Bet Tips', '⚽', '#e11d2e', 1],
 ['use.live', '✺', '#111;color:#fff', 1],
@@ -387,6 +396,7 @@ const APPS = [
 const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')" };
 $('apps').innerHTML = APPS.map(a => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`).join('');
 async function start(n) {
+  if (window.ROOM3D) ROOM3D.init();
   if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { return toast(e.message) } } $('splash').style.display = 'none';
   render();
   nav('home')
@@ -416,7 +426,10 @@ const CLOCK = {
       c = $('pd');
     if (a) a.textContent = m[1] + m[2];
     if (b) b.textContent = m[1];
-    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '') + ' · Lagos'
+    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '') + ' · Lagos';
+    const hc = $('clk'), hi = $('hico');
+    if (hc) hc.textContent = m[1] + ' ' + m[2];
+    if (hi) { const hr = parseInt(d.toLocaleString('en-US', { ...o, hour: 'numeric', hour12: false }), 10) % 24; hi.textContent = hr >= 6 && hr < 18 ? '☀️' : '🌙' }
   },
   start() {
     this.sync();
@@ -485,3 +498,66 @@ window.addEventListener('message', e => {
   if (e.origin !== location.origin) return; const d = e.data || {};
   if (d.type === 'ac:profile' && d.id) openUserProfile(String(d.id), true)
 });
+
+
+/* ================= HUD mute: one tap mutes / unmutes ALL game sound (music, effects, announcer) ================= */
+const soundOn = () => { const p = GP.get(); return p.music !== false || p.sound !== false || p.voice !== false };
+function refreshMute() { const b = $('mute'); if (b) b.textContent = soundOn() ? '🔊' : '🔇' }
+function toggleMute() {
+  const on = !soundOn();
+  ['music', 'sound', 'voice'].forEach(k => GP.set(k, on));
+  if (window.BGM) BGM.sync();
+  refreshMute(); toast(on ? '🔊 Sound on' : '🔇 Sound off')
+}
+window.addEventListener('storage', e => { if (e.key === 'ghPrefs') refreshMute() });
+setTimeout(refreshMute, 0);
+
+/* ================= NEPA & city banners: pop up now and then ================= */
+const BAN = {
+  t: 0,
+  show(text, ms = 4800) { const b = $('banner'); if (!b) return; b.textContent = text; b.classList.add('show'); clearTimeout(b.h); b.h = setTimeout(() => b.classList.remove('show'), ms) },
+  light: true,
+  cycle() {
+    clearTimeout(this.t);
+    this.t = setTimeout(() => {
+      const idle = $('splash').style.display !== 'none' || $('hub').style.display === 'flex';
+      if (!idle) {
+        if (this.light) { this.light = false; $('app').classList.add('blackout'); if (window.ROOM3D) ROOM3D.dark(true); this.show('🕯️ NEPA took light! 🕯️'); this.t = setTimeout(() => this.cycle(), 20000 + Math.random() * 25000); return }
+        this.light = true; $('app').classList.remove('blackout'); if (window.ROOM3D) ROOM3D.dark(false); this.show('💡 UP NEPA! Light don come! 💡')
+      }
+      this.cycle()
+    }, this.light ? 45000 + Math.random() * 75000 : 1000)
+  }
+};
+BAN.cycle();
+
+/* ================= zoom + rotate the house ================= */
+const CAMV = {
+  z: 1, x: 0, y: 0, fl: 1, ptr: new Map(), pinch: 0, mv: false, mvT: 0,
+  el() { return $('room') },
+  apply() { const e = this.el(); if (!e) return; e.style.setProperty('--zm', this.z); e.style.setProperty('--fl', this.fl); e.style.setProperty('--tx', this.x + 'px'); e.style.setProperty('--ty', this.y + 'px') },
+  clamp() { const r = this.el().getBoundingClientRect(), w = r.width / this.z, h = r.height / this.z, mx = (this.z - 1) * w / 2 + 40, my = (this.z - 1) * h / 2 + 40; this.x = Math.max(-mx, Math.min(mx, this.x)); this.y = Math.max(-my, Math.min(my, this.y)) },
+  zoom(f) { if (window.ROOM3D && ROOM3D.on) return ROOM3D.zoom(1 / f); this.z = Math.max(.8, Math.min(3.2, this.z * f)); this.clamp(); this.apply() },
+  flip() { if (window.ROOM3D && ROOM3D.on) { ROOM3D.flip(); return } this.fl = -this.fl; this.apply(); toast('View rotated 🔄') },
+  reset() { if (window.ROOM3D && ROOM3D.on) return ROOM3D.reset(); this.z = 1; this.x = 0; this.y = 0; this.apply() },
+  moved() { return this.mv },
+  flag() { this.mv = true; clearTimeout(this.mvT); this.mvT = setTimeout(() => { this.mv = false }, 260) },
+  init() {
+    const e = this.el(); if (!e) return;
+    e.addEventListener('pointerdown', ev => { this.ptr.set(ev.pointerId, { x: ev.clientX, y: ev.clientY }); try { e.setPointerCapture(ev.pointerId) } catch (x) {} if (this.ptr.size === 2) { const [a, b] = [...this.ptr.values()]; this.pinch = Math.hypot(a.x - b.x, a.y - b.y) } });
+    e.addEventListener('pointermove', ev => {
+      const p = this.ptr.get(ev.pointerId); if (!p) return; const dx = ev.clientX - p.x, dy = ev.clientY - p.y;
+      if (this.ptr.size === 2) {
+        p.x = ev.clientX; p.y = ev.clientY; const [a, b] = [...this.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (this.pinch) { this.z = Math.max(.8, Math.min(3.2, this.z * d / this.pinch)); this.clamp(); this.apply() } this.pinch = d; this.flag()
+      } else if (this.ptr.size === 1 && (Math.abs(dx) + Math.abs(dy) > 5 || this.dragging)) {
+        this.dragging = true; this.x += dx; this.y += dy; p.x = ev.clientX; p.y = ev.clientY; this.clamp(); this.apply(); this.flag()
+      }
+    });
+    const up = ev => { this.ptr.delete(ev.pointerId); this.pinch = 0; if (!this.ptr.size) this.dragging = false };
+    e.addEventListener('pointerup', up); e.addEventListener('pointercancel', up);
+    e.addEventListener('wheel', ev => { ev.preventDefault(); this.zoom(ev.deltaY < 0 ? 1.12 : 1 / 1.12) }, { passive: false });
+    e.addEventListener('dblclick', () => this.reset())
+  }
+};
+CAMV.init();

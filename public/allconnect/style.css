@@ -325,3 +325,24 @@ i.spin::after{content:"";width:18px;height:18px;border-radius:50%;border:3px sol
 .pedit .avi.huge{margin-top:-52px;border:4px solid #fff;box-sizing:border-box;position:relative}.swho.tap{cursor:pointer}
 .upd.tap{cursor:pointer}
 .glbi{touch-action:pan-y}
+
+/* ---- splash footer ---- */
+.sfoot{position:relative;margin-top:auto;padding:14px 0 calc(14px + var(--sab));display:flex;gap:8px;justify-content:center;align-items:center;flex:none}
+.sfoot a,.sfoot .official{display:inline-flex;align-items:center;justify-content:center;height:38px;min-width:38px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.12);color:#17203d;font-size:16px;text-decoration:none}
+.sfoot .official{padding:0 14px;gap:6px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:#4a5068}.sfoot .official i{color:#1d9a5b}
+/* ---- HUD mute ---- */
+.mutebtn{border:0;background:none;font-size:16px;padding:0 2px;line-height:1}
+/* ---- NEPA / event banner ---- */
+.banner2{position:absolute;left:12px;right:12px;top:calc(92px + var(--sat));z-index:9;background:#fff;border-radius:999px;box-shadow:0 8px 22px rgba(0,0,0,.22);padding:12px 18px;text-align:center;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);transform:translateY(-30px);opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
+.banner2.show{transform:none;opacity:1}
+#room{transition:filter .6s}#app.blackout #room{filter:brightness(.62) saturate(.8)}
+/* ---- clean screen -> Menu button ---- */
+.menubtn{position:absolute;left:50%;bottom:calc(14px + var(--sab));transform:translateX(-50%);z-index:6;display:none;padding:14px 26px;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif;border:0}
+/* ---- zoom / rotate the house ---- */
+svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(--ty,0px);scale:calc(var(--zm,1) * var(--fl,1)) var(--zm,1)}
+.viewctl{position:absolute;right:10px;top:calc(96px + var(--sat));z-index:6;display:none;flex-direction:column;gap:6px}
+.viewctl button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:17px;color:#17203d}
+
+/* ---- 3D house ---- */
+#room3d{position:absolute;inset:0;width:100%;height:100%;z-index:1;display:none;touch-action:none}
+#app.r3d > svg#room{display:none!important}

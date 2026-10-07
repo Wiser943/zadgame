@@ -97,9 +97,12 @@
   </svg>
   
   <div class="pill hud" id="hud">
-   <div class="t"><span>🌙</span><span id="clk">7:53 PM</span><span class="mood" id="mood">😄 Very Happy</span><span>🔊</span></div>
+   <div class="t"><span id="hico">🌙</span><span id="clk">--:--</span><span class="mood" id="mood">😄 Very Happy</span><button class="mutebtn" id="mute" onclick="toggleMute()" aria-label="Mute or unmute game sound">🔊</button></div>
    <div class="bal"><span id="bal">₦2,024,000</span><button class="plus" onclick="toast('Top-up coming soon')">+</button></div>
   </div>
+  <div id="banner" class="banner2" role="status"></div>
+  <div class="viewctl" id="viewctl"><button onclick="CAMV.zoom(1.3)" aria-label="Zoom in">＋</button><button onclick="CAMV.zoom(1/1.3)" aria-label="Zoom out">－</button><button onclick="CAMV.flip()" aria-label="Rotate view">⟲</button><button onclick="CAMV.reset()" aria-label="Reset view">⌖</button></div>
+  <button class="pill menubtn" id="menubtn" onclick="toggleClean()">☰ Menu</button>
   <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
   <div id="homeUI">
    <div class="pill quest q1"><i>🎯</i>
@@ -189,6 +192,11 @@
     <button class="btn p" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
     <div class="foot"><span>Signed in as <b style="color:var(--ink)">@<span id="uname2">wisdomw</span></b></span><a onclick="logout()">Log out</a></div>
    </div>
+   <footer class="sfoot" id="sfoot"><span class="official"><i class="fa-solid fa-circle-check"></i> Official</span>
+    <a href="https://x.com/" target="_blank" rel="noopener" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
+    <a href="https://www.tiktok.com/" target="_blank" rel="noopener" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+    <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+    <a href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a></footer>
   </div>
   <div id="hub">
    <div class="hubbar"><button onclick="closeHub()">‹ Back</button><b>🎮 GameHub</b><span></span></div><iframe id="hubf" title="GameHub" allow="autoplay; fullscreen; clipboard-write"></iframe>
@@ -199,6 +207,7 @@
  <script src="/js/bgm.js"></script>
  <script src="/socket.io/socket.io.js"></script>
  <script src="/allconnect/app.js"></script>
+ <script src="/allconnect/room3d.js"></script>
  <script src="/allconnect/phone.js"></script>
  <script src="/allconnect/bank.js"></script>
  <script src="/allconnect/police.js"></script>

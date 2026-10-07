@@ -369,3 +369,5 @@ const GIST = {
   gameDraw() { const l = $('gg_list'); if (l) l.innerHTML = this.games.map(g => `<button class="${g.key === this.gsel ? 'on' : ''}" onclick="GIST.gsel='${g.key}';GIST.gameDraw()">${esc(g.name)}</button>`).join('') },
   gameAttach() { if (!this.gsel) return $('gg_e').textContent = 'Pick a game first.'; let v = ($('gg_code').value || '').trim(); const m = /[?&]code=([A-Za-z0-9]+)/.exec(v); if (m) v = m[1]; v = v.toUpperCase(); if (v && !/^[A-Z0-9]{3,8}$/.test(v)) return $('gg_e').textContent = 'Room codes are 3 to 8 letters or numbers.'; const g = this.games.find(x => x.key === this.gsel); this.C.game = { key: g.key, name: g.name, code: v }; PH.closeSheet(); this.attDraw() }
 };
+
+window.GIST = GIST;

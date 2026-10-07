@@ -37,3 +37,5 @@ const POL={
     catch(x){e.textContent=x.message}
     b.textContent='File the report';this.check()}
 };
+
+window.POL = POL;

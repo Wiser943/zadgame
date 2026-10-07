@@ -80,3 +80,14 @@ Phone -> P-Gist. Files: `public/allconnect/gist.js`, `routes/acgist.js` (mounted
 - **Instant UI**: optimistic likes/reactions/follow/comments/posts; stale-while-revalidate cache (`NET.swr`); on login the app preloads feeds, chats, updates, friends, bank, photos and the GameHub frame. **Saver mode** (Settings -> Display) turns all background loading and music off.
 - **Audio**: `public/js/bgm.js` loops `public/audio/Chrome_Capture_2026-10-06_08-39-17.weba` across the whole site (starts after first tap; Settings -> Music toggles it).
 - **Branding**: `public/logo.png` (splash), `icon-192/512.png` + `icon-maskable-512.png` (mobile app icon), `pwa-192/512.png` (web app icon), `favicon.png`; manifest updated.
+
+## Home screen polish
+- Splash footer: Official tick + X / TikTok / Instagram / LinkedIn (edit the hrefs in `.sfoot` in `public/allconnect/index.html`).
+- HUD clock is server (Lagos) time with a sun/moon by hour; the speaker in the HUD mutes/unmutes music, effects and announcer.
+- `BAN` in `app.js`: NEPA banners ("NEPA took light" dims the house, later "UP NEPA! Light don come!") every ~1-2 min.
+- Clean screen hides everything except the HUD and shows a ☰ Menu button that brings it all back.
+- House: pinch / wheel to zoom, drag to pan, double-tap or ⌖ to reset, ⟲ flips the view to the other side.
+
+## 3D house
+`public/allconnect/room3d.js` (Three.js r128 from cdnjs, loaded when you tap Continue). Drag = rotate, pinch/wheel = zoom, tap floor = walk, tap cooler = eat, ⟲ = turn 90°, ⌖ / double-tap = reset. Walls facing the camera fade out. Bought items (Queen Bed, Foam Mattress, Net, Fridge, Gas Cooker, Gen Set, Shower, Water Closet, Bucket Set) and wall paint appear in the room; NEPA blackouts dim the lights. If WebGL or the library can't load, the old flat SVG room is used automatically.
+Also fixed: `PH`, `GIST`, `CAM`, `POL` are now attached to `window` (top-level `const` is not on `window`, so live notifications/badges never reached the phone apps).
