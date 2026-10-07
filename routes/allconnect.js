@@ -13,6 +13,18 @@ async function ensureAC(id) {
   return User.findById(id);
 }
 
+// Social links shown on the login footer + Settings. Edited in the admin panel; public (no login) because the splash needs them.
+const ACSetting = require('../models/ACSetting');
+const SOCIAL_KEYS = ['x', 'tiktok', 'instagram', 'linkedin'];
+let socCache = { at: 0, v: {} };
+async function getSocials() {
+  if (Date.now() - socCache.at < 8000) return socCache.v;
+  const d = await ACSetting.findById('socials').lean(); const v = {};
+  SOCIAL_KEYS.forEach((k) => { const u = d && d.value && d.value[k]; if (typeof u === 'string' && /^https?:\/\//i.test(u)) v[k] = u; });
+  socCache = { at: Date.now(), v }; return v;
+}
+router.get('/public-config', async (req, res) => { try { res.set('Cache-Control', 'no-cache'); res.json({ socials: await getSocials() }); } catch (e) { res.json({ socials: {} }); } });
+
 // Server clock so the phone shows the same time for everyone (not the device clock).
 router.get('/time', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ now: Date.now() }); });
 
@@ -53,7 +65,7 @@ router.post('/buy', ensureAuth, async (req, res, next) => {
 // "New life": resets the platform life-sim only. GameHub coins, stats and friends are untouched.
 router.post('/new', ensureAuth, async (req, res, next) => {
   try {
-    const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60 } }, { new: true });
+    const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0 } }, { new: true });
     res.json({ ac: publicAC(u.ac) });
   } catch (e) { next(e); }
 });

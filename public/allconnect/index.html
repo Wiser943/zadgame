@@ -105,7 +105,7 @@
   <button class="pill menubtn" id="menubtn" onclick="toggleClean()">☰ Menu</button>
   <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
   <div id="homeUI">
-   <div class="pill quest q1"><i>🎯</i>
+   <div class="pill quest q1" id="q1"><i>🎯</i>
     <div><b>Eat something</b><span>Tap the cooler or stove</span></div>
    </div>
    <div class="pill quest q2" onclick="findGem()"><i style="background:#6366f1">💎</i>
@@ -129,13 +129,13 @@
   </div>
   
   <div class="needsbar" id="needsbar">
-   <div class="av"><svg viewBox="0 0 100 100">
+   <div class="av" id="avbtn" role="button" tabindex="0" aria-label="Show or hide your needs" aria-expanded="false" onclick="toggleNeeds()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNeeds()}"><svg viewBox="0 0 100 100">
      <rect width="100" height="100" fill="#dbe9ff" />
      <rect x="22" y="62" width="56" height="50" rx="12" fill="#d9b24a" />
      <circle cx="50" cy="40" r="22" fill="#6b4226" />
      <path d="M28 36Q50 8 72 36Z" fill="#1a1010" />
     </svg></div>
-   <div class="pill needs" id="needs"></div>
+   <div class="pill needs" id="needs" style="display:none"></div>
   </div>
   
   <!-- BUY -->
@@ -192,11 +192,7 @@
     <button class="btn p" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
     <div class="foot"><span>Signed in as <b style="color:var(--ink)">@<span id="uname2">wisdomw</span></b></span><a onclick="logout()">Log out</a></div>
    </div>
-   <footer class="sfoot" id="sfoot"><span class="official"><i class="fa-solid fa-circle-check"></i> Official</span>
-    <a href="https://x.com/" target="_blank" rel="noopener" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
-    <a href="https://www.tiktok.com/" target="_blank" rel="noopener" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
-    <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
-    <a href="https://www.linkedin.com/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a></footer>
+   <footer class="sfoot" id="sfoot" style="display:none"></footer>
   </div>
   <div id="hub">
    <div class="hubbar"><button onclick="closeHub()">‹ Back</button><b>🎮 GameHub</b><span></span></div><iframe id="hubf" title="GameHub" allow="autoplay; fullscreen; clipboard-write"></iframe>
@@ -213,6 +209,9 @@
  <script src="/allconnect/police.js"></script>
  <script src="/allconnect/camera.js"></script>
  <script src="/allconnect/gist.js"></script>
+ <script src="/allconnect/groups.js"></script>
+ <script src="/allconnect/jobs.js"></script>
+ <script src="/allconnect/ads.js"></script>
  <script src="/allconnect/settings.js"></script>
 </body>
 

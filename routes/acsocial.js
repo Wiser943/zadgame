@@ -11,6 +11,7 @@ const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const { notify, emitUser } = require('../utils/acnotify');
 const { ensureAC } = require('./allconnect');
+const { unreadTotal: groupUnread } = require('./acgroups');
 const { FOOD, normalizeUsername, validUsername } = require('../utils/allconnect');
 
 const router = express.Router();
@@ -244,7 +245,7 @@ router.get('/badges', async (req, res, next) => {
     const [messages, requests, updates] = await Promise.all([
       ACMessage.countDocuments({ to: me, read: false }), Friendship.countDocuments({ recipient: me, status: 'pending' }),
       ACUpdate.countDocuments({ $or: [{ user: me }, { user: null }], at: { $gt: seen } })]);
-    res.json({ messages, requests, updates });
+    res.json({ messages: messages + (await groupUnread(me).catch(() => 0)), requests, updates });
   } catch (e) { next(e); }
 });
 module.exports = router;

@@ -65,7 +65,13 @@ const UserSchema = new mongoose.Schema({
     gemsFound: { type: Number, default: 0 },
     sentDay: { type: String, default: '' },
     sentAmt: { type: Number, default: 0 },
-    updatesSeen: { type: Date, default: null }
+    updatesSeen: { type: Date, default: null },
+    jobId: { type: String, default: '' },
+    jobShifts: { type: Map, of: Number, default: {} },
+    autoWork: { type: Boolean, default: true },
+    lastShift: { type: Date, default: null },
+    shiftDay: { type: String, default: '' },
+    shiftsToday: { type: Number, default: 0 }
   },
   stats: {
     gamesPlayed: { type: Number, default: 0 },

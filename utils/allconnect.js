@@ -4,7 +4,8 @@ const CATALOGUE = {
   'Naija Green': 4000, 'Lekki Charcoal': 5000, 'Owambe Gold': 6000,
   'Single Bed': 45000, 'Foam Mattress': 60000, 'Queen Bed': 250000, 'Net': 8000,
   'Gas Cooker': 85000, 'Fridge': 320000, 'Gen Set': 180000,
-  'Bucket Set': 2000, 'Water Closet': 70000, 'Shower': 40000
+  'Bucket Set': 2000, 'Water Closet': 70000, 'Shower': 40000,
+  'Ceiling Bulb': 4000, 'Wall Lamp': 6000, 'Standing Lamp': 18000
 };
 const DEFAULT_AC = () => ({ cash: 2000000, paint: '#d9a93a', owned: ['Classic Cream'], needs: [.9, .9, .9, .9, .9, .9], min: 19 * 60 });
 const priceOf = (name) => (Object.prototype.hasOwnProperty.call(CATALOGUE, name) ? CATALOGUE[name] : null);

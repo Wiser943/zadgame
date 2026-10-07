@@ -37,7 +37,7 @@ const NET = {
       gemText()
     });
     this.sock.on('players', drawPlayers);
-    ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
+    ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new', 'gmsg', 'group'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
     this.sock.on('gem', m => {
       S.cash = m.cash;
       toast(m.prize ? `💎 Gem found! +₦${m.prize.toLocaleString()}` : '💎 Gem found!');
@@ -163,6 +163,16 @@ const $ = id => document.getElementById(id);
 const S = { cash: 2025000, min: 19 * 60 + 53, needs: [.55, .9, .95, .85, .95, .9], paint: '#d9a93a', tab: 'Design', sel: null, owned: { 'Classic Cream': 1 }, clean: false };
 const NEED = ['🥧', '⚡', '🎉', '💬', '🫧', '🚽'];
 const fmt = n => '₦' + n.toLocaleString('en-NG');
+/* Balance shown in the HUD: up to 4 figures stays exact (₦9,999); anything longer is shortened: ₦10K, ₦4.25M, ₦5B, ₦8T... (cut, never rounded up) */
+const BAL_UNITS = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx'];
+function fmtBal(n) {
+  n = Math.floor(Number(n) || 0);
+  const sign = n < 0 ? '-' : '', a = Math.abs(n);
+  if (a < 10000) return sign + '₦' + a.toLocaleString('en-NG');
+  let v = a, i = 0;
+  while (v >= 1000 && i < BAL_UNITS.length - 1) { v /= 1000; i++ }
+  return sign + '₦' + (Math.floor(v * 100) / 100) + BAL_UNITS[i]
+}
 const hm = m => {
   m = (m % 1440 + 1440) % 1440;
   let h = Math.floor(m / 60),
@@ -181,8 +191,11 @@ function toast(t) {
 function render() {
   NET.save();
   const t = hm(S.min);
-  $('bal').textContent = fmt(S.cash);
-  $('bal2').textContent = fmt(S.cash);
+  $('bal').textContent = fmtBal(S.cash);
+  $('bal2').textContent = fmtBal(S.cash);
+  $('bal').title = $('bal2').title = fmt(S.cash);
+  const q1 = $('q1');
+  if (q1 && window.JOBS) JOBS.quest(q1);
   $('needs').innerHTML = S.needs.map((v, i) => `<div class="n"><span>${NEED[i]}</span><div class="bar"><u style="width:${v*100}%;${v<.5?'background:#f5a623':''}"></u></div></div>`).join('');
   const lo = Math.min(...S.needs);
   $('mood').textContent = lo > .7 ? '😄 Very Happy' : lo > .4 ? '🙂 Okay' : '😩 Hungry'
@@ -218,6 +231,13 @@ function walk(e) {
   $('me').setAttribute('transform', `translate(${x} ${y})`)
 }
 
+/* The six need bars stay hidden until the player taps their profile picture. */
+function toggleNeeds(force) {
+  S.needsOpen = typeof force === 'boolean' ? force : !S.needsOpen;
+  const n = $('needs'); if (n) n.style.display = S.needsOpen ? 'grid' : 'none';
+  const a = $('avbtn'); if (a) a.setAttribute('aria-expanded', S.needsOpen ? 'true' : 'false')
+}
+
 function toggleClean() {
   S.clean = !S.clean;
   nav('home', true)
@@ -233,6 +253,7 @@ function nav(w, keep) {
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
+  toggleNeeds(false);
   $('nav').innerHTML = NAV.map(n => `<button class="${n[0]==w?'on':''}" onclick="nav('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
   const home = w == 'home';
   $('map').style.display = w == 'map' ? 'block' : 'none';
@@ -257,6 +278,7 @@ function nav(w, keep) {
     buyUI()
   } else $('room').style.top = '';
   if (w == 'map') {
+    if (window.ADS) ADS.paintMap();
     let p = 18;
     $('ld').style.display = 'block';
     const i = setInterval(() => {
@@ -321,12 +343,19 @@ const CAT = {
       ['Water Closet', 70000, '#fff'],
       ['Shower', 40000, '#9cc']
     ]]
+  ],
+  Light: [
+    ['LAMPS · lit at night when NEPA gives light (or you own a Gen Set)', [
+      ['Ceiling Bulb', 4000, '#ffe08a'],
+      ['Wall Lamp', 6000, '#ffd166'],
+      ['Standing Lamp', 18000, '#f4b942']
+    ]]
   ]
 };
 
 function buyUI() {
   $('sheet').style.maxHeight = '42%';
-  $('tabs').innerHTML = Object.keys(CAT).map(t => `<button class="${t==S.tab?'on':''}" onclick="S.tab='${t}';S.sel=null;buyUI()">${{Design:'🎨',Sleep:'🛏️',Kitchen:'🍳',Bath:'🚿'}[t]} ${t}</button>`).join('');
+  $('tabs').innerHTML = Object.keys(CAT).map(t => `<button class="${t==S.tab?'on':''}" onclick="S.tab='${t}';S.sel=null;buyUI()">${{Design:'🎨',Sleep:'🛏️',Kitchen:'🍳',Bath:'🚿',Light:'💡'}[t]} ${t}</button>`).join('');
   const g = CAT[S.tab][0];
   $('lab').textContent = g[0];
   $('items').innerHTML = g[1].map((it, i) => `<button class="sw ${S.sel===i?'sel':''}" onclick="pick(${i})"><i style="background:linear-gradient(90deg,${it[2]} 50%,${it[2]}cc 50%)"></i>${it[0]}<span>${S.owned[it[0]]?'Owned':fmt(it[1])}</span></button>`).join('');
@@ -368,38 +397,20 @@ const APPS = [
   ['GameHub', '🎮', '#151a35'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
+  ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '🗣️', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['Settings', '⚙️', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-/*'Meetumo', '◐', '#0f2a2a;color:#4de0c0'],
-['Salary Index', 'SI', '#2d5a1b;color:#c8f04a;font-size:44px'],
-['PopOut Tickets', 'P', '#fff;color:#6d28d9', 1],
-['Nollywood', 'N', '#000;color:#7ed321', 1],
-['Bet Tips', '⚽', '#e11d2e', 1],
-['use.live', '✺', '#111;color:#fff', 1],
-['versiah.com', '▽', '#fff;color:#111', 1],
-['Ride', '🚕', '#fbbf24'],
-['Chowdeck', '🛵', 'linear-gradient(#fb7185,#e11d48)'],
-['Bank', '🏛️', 'linear-gradient(#a78bfa,#6d5ce8)'],
-['Boutique', '👠', 'linear-gradient(#c084fc,#9333ea)'],
-['Forbes', '👑', '#0f3d2e'],
-['Naija Radio', '📻', 'linear-gradient(#f59e0b,#d97706)'],
-['Eko Hotels', '🏨', 'linear-gradient(#38bdf8,#0369a1)'],
-['i-Fitness', '🏋️', 'linear-gradient(#f43f5e,#be123c)'],
-['Library', '📚', 'linear-gradient(#a3e635,#4d7c0f)'],
-['Casino', '🎰', '#2b0f3a'],
-['Airport', '✈️', 'linear-gradient(#93c5fd,#3b82f6)'],*/
-
-
-const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')" };
+const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Jobs: "PH.open('jobs')", Ads: "PH.open('ads')" };
 $('apps').innerHTML = APPS.map(a => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`).join('');
 async function start(n) {
   if (window.ROOM3D) ROOM3D.init();
   if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { return toast(e.message) } } $('splash').style.display = 'none';
   render();
-  nav('home')
+  nav('home');
+  if (window.JOBS) JOBS.boot()
 }
 $('sd').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 /* Phone clock = SERVER time (Lagos), not the device clock. Offset is measured against /api/ac/time and re-synced every 5 min. */
@@ -429,7 +440,7 @@ const CLOCK = {
     if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '') + ' · Lagos';
     const hc = $('clk'), hi = $('hico');
     if (hc) hc.textContent = m[1] + ' ' + m[2];
-    if (hi) { const hr = parseInt(d.toLocaleString('en-US', { ...o, hour: 'numeric', hour12: false }), 10) % 24; hi.textContent = hr >= 6 && hr < 18 ? '☀️' : '🌙' }
+    { const hr = parseInt(d.toLocaleString('en-US', { ...o, hour: 'numeric', hour12: false }), 10) % 24, mi = parseInt(d.toLocaleString('en-US', { ...o, minute: 'numeric' }), 10) || 0; ENV.apply(hr * 60 + mi) }
   },
   start() {
     this.sync();
@@ -499,6 +510,34 @@ window.addEventListener('message', e => {
   if (d.type === 'ac:profile' && d.id) openUserProfile(String(d.id), true)
 });
 
+
+/* ================= time of day (server / Lagos time): sun icon 6:30am-6:30pm, sky + house light follow it ================= */
+const ENV = {
+  dl: -1,
+  calc(m) { const c = x => Math.max(0, Math.min(1, x)); return Math.min(c((m - 330) / 120), c((1170 - m) / 120)) },
+  mix(a, b, t) { const h = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16)); const A = h(a), B = h(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('') },
+  apply(min) {
+    const day = min >= 390 && min < 1110, hi = $('hico'); if (hi) hi.textContent = day ? '☀️' : '🌙';
+    const dl = this.calc(min); if (Math.abs(dl - this.dl) < .004) return; this.dl = dl;
+    const T = dl > .5 ? [['#f59e6c', '#fbd9a8'], ['#a9d8f5', '#e6f2f8'], (dl - .5) * 2] : [['#0b1433', '#1d2c5e'], ['#f59e6c', '#fbd9a8'], dl * 2];
+    const a = $('app'); a.style.setProperty('--sky1', this.mix(T[0][0], T[1][0], T[2])); a.style.setProperty('--sky2', this.mix(T[0][1], T[1][1], T[2])); a.style.setProperty('--dl', dl.toFixed(3));
+    if (window.ROOM3D) ROOM3D.env(dl)
+  }
+};
+
+/* ================= social links: set in the admin panel; no links = no footer ================= */
+const SOC_META = { x: ['X', 'fa-brands fa-x-twitter', '✖', 'X (Twitter)'], tiktok: ['TikTok', 'fa-brands fa-tiktok', '🎵', 'TikTok'], instagram: ['Instagram', 'fa-brands fa-instagram', '📸', 'Instagram'], linkedin: ['LinkedIn', 'fa-brands fa-linkedin-in', '💼', 'LinkedIn'] };
+window.SOCIAL = {};
+async function loadSocials() {
+  try {
+    const r = await fetch('/api/ac/public-config', { cache: 'no-store' }); const d = await r.json(); window.SOCIAL = d.socials || {};
+  } catch (e) { window.SOCIAL = {} }
+  const f = $('sfoot'), ks = Object.keys(SOC_META).filter(k => window.SOCIAL[k]);
+  if (!f) return;
+  f.innerHTML = ks.length ? '<span class="official"><i class="fa-solid fa-circle-check"></i> Official</span>' + ks.map(k => `<a href="${esc(window.SOCIAL[k])}" target="_blank" rel="noopener noreferrer" aria-label="${SOC_META[k][0]}"><i class="${SOC_META[k][1]}"></i></a>`).join('') : '';
+  f.style.display = ks.length ? 'flex' : 'none'
+}
+loadSocials();
 
 /* ================= HUD mute: one tap mutes / unmutes ALL game sound (music, effects, announcer) ================= */
 const soundOn = () => { const p = GP.get(); return p.music !== false || p.sound !== false || p.voice !== false };

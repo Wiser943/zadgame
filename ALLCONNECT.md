@@ -91,3 +91,10 @@ Phone -> P-Gist. Files: `public/allconnect/gist.js`, `routes/acgist.js` (mounted
 ## 3D house
 `public/allconnect/room3d.js` (Three.js r128 from cdnjs, loaded when you tap Continue). Drag = rotate, pinch/wheel = zoom, tap floor = walk, tap cooler = eat, ⟲ = turn 90°, ⌖ / double-tap = reset. Walls facing the camera fade out. Bought items (Queen Bed, Foam Mattress, Net, Fridge, Gas Cooker, Gen Set, Shower, Water Closet, Bucket Set) and wall paint appear in the room; NEPA blackouts dim the lights. If WebGL or the library can't load, the old flat SVG room is used automatically.
 Also fixed: `PH`, `GIST`, `CAM`, `POL` are now attached to `window` (top-level `const` is not on `window`, so live notifications/badges never reached the phone apps).
+
+## Merged update (Jobs, Ads, Groups) + environment
+- Merged `lagoslife_update.zip` (groups, jobs, ads, balance shortening, needs-on-avatar-tap) on top of everything above. All tests pass (174).
+- Admin panel -> **Social links**: X / TikTok / Instagram / LinkedIn. Empty = hidden; all empty = the login footer and the Settings "Join our socials" row disappear. Public endpoint: `GET /api/ac/public-config`.
+- Time of day uses Lagos server time: sun icon from 6:30am to 6:30pm, moon otherwise. Sky, ground, window and house light fade through dawn/dusk/night.
+- New shop tab **Light** (Ceiling Bulb ₦4,000, Wall Lamp ₦6,000, Standing Lamp ₦18,000). Owned lamps are real lights in the 3D house; they are on while NEPA gives light, or always if you own a Gen Set.
+- 3D character rebuilt: face (eyes that blink, brows, nose, mouth, ears), hair, patterned shirt, belt, trousers, trainers, swinging arms and legs.

@@ -69,6 +69,26 @@ router.post('/users/:id/penalize', async (req, res, next) => {
 });
 
 // ---------- analytics (privacy-conscious: aggregate counts only, no message content) ----------
+// Social links for the login footer + Settings (empty = nothing shown to players)
+const ACSetting = require('../models/ACSetting');
+const SOC = ['x', 'tiktok', 'instagram', 'linkedin'];
+router.get('/ac/socials', async (req, res, next) => {
+  try { const d = await ACSetting.findById('socials').lean(); res.json({ socials: (d && d.value) || {} }); } catch (e) { next(e); }
+});
+router.post('/ac/socials', async (req, res, next) => {
+  try {
+    const v = {}, b = (req.body && req.body.socials) || {};
+    for (const k of SOC) {
+      const u = String(b[k] || '').trim(); if (!u) continue;
+      let ok = false; try { const x = new URL(u); ok = /^https?:$/.test(x.protocol) } catch (e) {}
+      if (!ok || u.length > 200) return res.status(400).json({ message: `Enter a full link starting with https:// for ${k}.` });
+      v[k] = u;
+    }
+    await ACSetting.findByIdAndUpdate('socials', { $set: { value: v } }, { upsert: true });
+    res.json({ socials: v });
+  } catch (e) { next(e); }
+});
+
 // Blue tick: only an admin can grant or remove it.
 router.post('/users/:id/verify', async (req, res, next) => {
   try {

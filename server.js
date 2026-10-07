@@ -22,6 +22,9 @@ const acPhotoRoutes = require('./routes/acphotos');
 const acPoliceRoutes = require('./routes/acpolice');
 const acGistRoutes = require('./routes/acgist');
 const acSocialRoutes = require('./routes/acsocial');
+const acGroupRoutes = require('./routes/acgroups');
+const acJobRoutes = require('./routes/acjobs');
+const acAdRoutes = require('./routes/acads');
 const acBankRoutes = require('./routes/acbank');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
@@ -70,6 +73,9 @@ async function main() {
   app.use('/api/ac/photos', acPhotoRoutes);
   app.use('/api/ac/police', acPoliceRoutes);
   app.use('/api/ac/gist', acGistRoutes);
+  app.use('/api/ac/groups', acGroupRoutes);
+  app.use('/api/ac/jobs', acJobRoutes);
+  app.use('/api/ac/ads', acAdRoutes);
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)

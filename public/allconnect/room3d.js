@@ -28,7 +28,7 @@ window.ROOM3D = {
     this.amb = new THREE.HemisphereLight(0xffffff, 0x8a7a60, 0.62); sc.add(this.amb);
     this.sun = new THREE.DirectionalLight(0xfff0d0, 0.5); this.sun.position.set(6, 12, 8); sc.add(this.sun);
     // ground + slab
-    this.cyl(10, 0.3, 0x93a05a, 0, -0.45, 0, null, 48); this.box(6.5, 0.3, 6.5, 0xc9a56b, 0, -0.15, 0);
+    this.ground = this.cyl(10, 0.3, 0x93a05a, 0, -0.45, 0, null, 48).material; this.box(6.5, 0.3, 6.5, 0xc9a56b, 0, -0.15, 0);
     // checker floor
     const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#a8693a'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c58a52'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64);
     const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(3, 3); tx.anisotropy = 8;
@@ -37,10 +37,11 @@ window.ROOM3D = {
     const W = (w, h, d, x, z, out) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: S.paint, transparent: true })); m.position.set(x, h / 2, z); sc.add(m); this.walls.push({ m, out }); return m };
     this.wW = W(.15, 3, 6.15, -3.075, 0, [-1, 0]); this.wN = W(6.15, 3, .15, 0, -3.075, [0, -1]); W(.15, 3, 6.15, 3.075, 0, [1, 0]); W(6.15, 3, .15, 0, 3.075, [0, 1]);
     // door + poster + lamp on the west wall, window + AC + lamp on the north wall
-    this.box(.12, 2.1, 1.1, 0x5a2c14, -2.95, 1.05, 1.6); this.box(.1, .9, .7, 0xf2f2f2, -2.97, 1.8, -1.5); this.box(.1, .16, .16, 0xffd77a, -2.9, 2.3, 0.2);
-    this.box(1.5, 1.0, .12, 0x80868a, 1.6, 1.7, -2.94); Object.assign(this.box(1.3, .8, .1, 0xbfe4ff, 1.6, 1.7, -2.9).material, { transparent: true, opacity: .7 }); this.box(1.3, .08, .12, 0x555a5c, 1.6, 1.7, -2.88);
-    this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.4, -2.8); this.box(.16, .16, .1, 0xffd77a, 1.2, 2.3, -2.9);
-    this.l1 = new THREE.PointLight(0xffd68a, .25, 7); this.l1.position.set(-2.4, 2.3, .2); sc.add(this.l1); this.l2 = new THREE.PointLight(0xffd68a, .2, 7); this.l2.position.set(1.2, 2.3, -2.4); sc.add(this.l2);
+    this.box(.12, 2.1, 1.1, 0x5a2c14, -2.95, 1.05, 1.6); this.box(.1, .9, .7, 0xf2f2f2, -2.97, 1.8, -1.5);
+    this.box(1.5, 1.0, .12, 0x80868a, 1.6, 1.7, -2.94); this.walls.glass = this.box(1.3, .8, .1, 0xbfe4ff, 1.6, 1.7, -2.9).material; Object.assign(this.walls.glass, { transparent: true, opacity: .7 }); this.box(1.3, .08, .12, 0x555a5c, 1.6, 1.7, -2.88);
+    this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.4, -2.8);
+    this.glass = this.walls.glass;
+    this.moon = new THREE.DirectionalLight(0x7f9bff, 0); this.moon.position.set(-6, 10, -4); sc.add(this.moon); this.lamps = [];
     // furniture
     this.bed = new THREE.Group(); sc.add(this.bed);
     this.table = new THREE.Group(); sc.add(this.table);
@@ -51,11 +52,31 @@ window.ROOM3D = {
     this.box(1.1, .55, 1.0, 0xe0c25a, 1.0, .3, .9); this.box(1.1, .6, .25, 0xd9b24a, 1.0, .7, 1.35);                                                  // armchair
     this.cyl(.55, 1.1, 0x1f4aa0, 2.1, .55, 2.1); this.cyl(.55, .08, 0x2a5cc0, 2.1, 1.12, 2.1); this.cyl(.28, .34, 0x2f6fd8, .7, .17, 2.5); this.cyl(.3, .06, 0xd0243a, 1.5, .03, 2.6);   // barrel, buckets
     this.box(.8, .45, .55, 0xcfd4dc, -1.8, .22, 2.4); this.box(.8, .6, .2, 0xcfd4dc, -1.8, .75, 2.65);                                                    // toilet
-    // avatar
-    const av = this.avatar = new THREE.Group(); this.box(.22, .7, .22, 0x16161c, -.14, .35, 0, av); this.box(.22, .7, .22, 0x16161c, .14, .35, 0, av);
-    this.box(.55, .65, .3, 0xd9b24a, 0, 1.02, 0, av); this.box(.14, .55, .14, 0x6b4226, -.36, 1.0, 0, av); this.box(.14, .55, .14, 0x6b4226, .36, 1.0, 0, av);
-    const hd = new THREE.Mesh(new THREE.SphereGeometry(.24, 16, 12), this.mat(0x6b4226)); hd.position.y = 1.58; av.add(hd); const hr = new THREE.Mesh(new THREE.SphereGeometry(.255, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), this.mat(0x1a1010)); hr.position.y = 1.6; av.add(hr);
-    const sh = new THREE.Mesh(new THREE.CircleGeometry(.4, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .25 })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; av.add(sh);
+    // avatar: detailed character with a face, hair, clothes and swinging limbs
+    const M = (c) => this.mat(c), SK = 0x6e4529, SKD = 0x5a3720, SH = 0xe2b64a, av = this.avatar = new THREE.Group(), P = this.parts = {};
+    const part = (geo, mat, x, y, z, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (par || av).add(m); return m };
+    const leg = (sx) => { const g = new THREE.Group(); g.position.set(sx * .15, .74, 0); av.add(g);
+      part(new THREE.BoxGeometry(.24, .5, .26), M(0x1f2a44), 0, -.25, 0, g); part(new THREE.BoxGeometry(.2, .26, .22), M(0x1f2a44), 0, -.58, 0, g);
+      part(new THREE.BoxGeometry(.25, .12, .38), M(0xf4f4f4), 0, -.7, .06, g); part(new THREE.BoxGeometry(.26, .04, .4), M(0x2b2b2b), 0, -.76, .06, g); return g };
+    P.legL = leg(-1); P.legR = leg(1);
+    part(new THREE.BoxGeometry(.6, .1, .34), M(0x3a2414), 0, .76, 0);                                           // belt
+    part(new THREE.BoxGeometry(.58, .62, .32), M(SH), 0, 1.1, 0);                                                // shirt
+    for (let k = -2; k <= 2; k++) part(new THREE.BoxGeometry(.05, .5, .335), M(k % 2 ? 0xc9962b : 0xf0cf72), k * .105, 1.1, 0);   // shirt pattern
+    part(new THREE.BoxGeometry(.2, .05, .2), M(0xf0cf72), 0, 1.42, .04);                                        // collar
+    const arm = (sx) => { const g = new THREE.Group(); g.position.set(sx * .4, 1.36, 0); av.add(g);
+      part(new THREE.BoxGeometry(.18, .3, .2), M(SH), 0, -.12, 0, g); part(new THREE.BoxGeometry(.13, .32, .14), M(SK), 0, -.4, 0, g); part(new THREE.SphereGeometry(.085, 10, 8), M(SK), 0, -.6, 0, g); return g };
+    P.armL = arm(-1); P.armR = arm(1);
+    part(new THREE.CylinderGeometry(.085, .095, .12, 10), M(SKD), 0, 1.47, 0);                                  // neck
+    const head = P.head = new THREE.Group(); head.position.y = 1.78; av.add(head);
+    const skull = part(new THREE.SphereGeometry(.25, 20, 16), M(SK), 0, 0, 0, head); skull.scale.set(.92, 1.08, .96);
+    part(new THREE.SphereGeometry(.05, 8, 6), M(SK), -.24, -.02, 0, head); part(new THREE.SphereGeometry(.05, 8, 6), M(SK), .24, -.02, 0, head);   // ears
+    const eye = (sx) => { const w = part(new THREE.SphereGeometry(.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), sx * .09, .04, .215, head); w.scale.set(1, .85, .5);
+      const pu = part(new THREE.SphereGeometry(.026, 8, 6), new THREE.MeshBasicMaterial({ color: 0x120a06 }), sx * .09, .04, .238, head); part(new THREE.BoxGeometry(.1, .018, .03), M(0x120a06), sx * .09, .12, .225, head); return [w, pu] };
+    P.eyes = [...eye(-1), ...eye(1)];
+    part(new THREE.SphereGeometry(.045, 8, 6), M(SKD), 0, -.03, .245, head);                                    // nose
+    part(new THREE.BoxGeometry(.11, .022, .03), M(0x2a0f0b), 0, -.13, .225, head);                              // mouth
+    const hair = part(new THREE.SphereGeometry(.27, 20, 12, 0, Math.PI * 2, 0, Math.PI * .56), M(0x120d0a), 0, .02, -.02, head); hair.scale.set(.95, 1.02, 1);
+    const shd = new THREE.Mesh(new THREE.CircleGeometry(.42, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .28 })); shd.rotation.x = -Math.PI / 2; shd.position.y = .02; av.add(shd);
     av.position.set(-1, 0, 1.2); sc.add(av);
     // input
     const cv2 = cv; cv2.style.touchAction = 'none';
@@ -82,6 +103,8 @@ window.ROOM3D = {
   },
   paint(c) { this.walls.forEach(w => w.m.material.color.set(c || '#d9a93a')) },
   dark(b) { this.dark_ = !!b },
+  env(dl) { this.dl = dl },
+  power() { return !this.dark_ || !!(S.owned && S.owned['Gen Set']) },
   /* owned items show up in the house */
   sync() {
     if (!this.on) return; const o = S.owned || {}, sc = this.scene;
@@ -95,7 +118,12 @@ window.ROOM3D = {
     if (o['Gen Set']) this.box(.9, .7, .7, 0xdd9944, -2.4, .35, 2.5, ex);
     if (o['Shower']) { this.cyl(.05, 2.2, 0x99cccc, -2.8, 1.1, -2.8, ex); this.box(.5, .12, .5, 0x99cccc, -2.6, 2.2, -2.8, ex) }
     if (o['Water Closet']) this.box(.6, .5, .7, 0xffffff, -1.0, .25, 2.5, ex);
-    if (o['Bucket Set']) this.cyl(.22, .3, 0x2f6fd8, -.3, .15, 2.7, ex)
+    if (o['Bucket Set']) this.cyl(.22, .3, 0x2f6fd8, -.3, .15, 2.7, ex);
+    // lamps you bought: each is a real light that switches on with power (NEPA light or a Gen Set)
+    this.lamps = []; const lamp = (x, y, z, big) => { const bm = new THREE.MeshBasicMaterial({ color: 0x8a8466 }); const b = new THREE.Mesh(new THREE.SphereGeometry(big ? .2 : .13, 12, 10), bm); b.position.set(x, y, z); ex.add(b); const l = new THREE.PointLight(0xffd68a, 0, big ? 11 : 8); l.position.set(x, y - .1, z); ex.add(l); this.lamps.push({ l, bm, k: big ? 1.15 : .9 }) };
+    if (o['Ceiling Bulb']) { this.cyl(.015, .35, 0x222222, 0, 2.82, 0, ex); lamp(0, 2.6, 0, true) }
+    if (o['Wall Lamp']) { this.box(.12, .2, .22, 0x555555, -2.93, 2.2, .2, ex); lamp(-2.8, 2.2, .2); this.box(.22, .2, .12, 0x555555, 1.2, 2.2, -2.93, ex); lamp(1.2, 2.2, -2.8) }
+    if (o['Standing Lamp']) { this.cyl(.03, 1.5, 0x3a3a3a, -2.55, .75, .7, ex); this.cyl(.18, .04, 0x3a3a3a, -2.55, .03, .7, ex); lamp(-2.55, 1.62, .7) }
   },
   tap(cx, cy) {
     const r = this.cv.getBoundingClientRect(), v = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), ray = new THREE.Raycaster(); ray.setFromCamera(v, this.cam);
@@ -115,9 +143,18 @@ window.ROOM3D = {
     // avatar walking
     const a = this.avatar; let moving = false;
     if (this.goal) { const d = this.goal.clone().sub(a.position); d.y = 0; const L = d.length(); if (L < .06) this.goal = null; else { moving = true; d.normalize(); a.position.addScaledVector(d, Math.min(L, 2.4 * dt)); const ta = Math.atan2(d.x, d.z), df = ((ta - a.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; a.rotation.y += df * Math.min(1, dt * 10); } }
-    a.position.y = moving ? Math.abs(Math.sin(t / 110)) * .08 : Math.sin(t / 600) * .015;
-    // lights: NEPA blackout dims the house
-    const k = this.dark_ ? .3 : 1; this.amb.intensity += (.62 * k - this.amb.intensity) * Math.min(1, dt * 4); this.sun.intensity += (.5 * k - this.sun.intensity) * Math.min(1, dt * 4); const lamp = this.dark_ ? .9 : .25; this.l1.intensity += (lamp - this.l1.intensity) * Math.min(1, dt * 4); this.l2.intensity = this.l1.intensity * .85;
+    const P = this.parts, ph = t / 120, sw = moving ? Math.sin(ph) * .75 : 0;
+    P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * .9; P.armR.rotation.x = sw * .9;
+    if (!moving) { const b = Math.sin(t / 700) * .04; P.armL.rotation.x = b; P.armR.rotation.x = -b; P.armL.rotation.z = .05; P.armR.rotation.z = -.05 } else { P.armL.rotation.z = .05; P.armR.rotation.z = -.05 }
+    P.head.rotation.y = moving ? 0 : Math.sin(t / 1900) * .25; const bl = (t % 4200) < 130 ? .1 : 1; P.eyes.forEach(e => { e.scale.y = e === P.eyes[0] || e === P.eyes[2] ? bl * .85 : bl });
+    a.position.y = moving ? Math.abs(Math.sin(ph)) * .06 : 0;
+    // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
+    const dl = this.dl == null ? 1 : this.dl, kk = Math.min(1, dt * 3), C = THREE.Color, lerpC = (a, b, t) => new C(a).lerp(new C(b), t);
+    this.amb.intensity += ((.3 + .32 * dl) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
+    this.sun.intensity += (.55 * dl - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
+    this.moon.intensity += (.42 * (1 - dl) - this.moon.intensity) * kk;
+    this.ground.color.copy(lerpC(0x24331f, 0x93a05a, dl)); if (this.glass) this.glass.color.copy(lerpC(0x16224a, 0xbfe4ff, dl));
+    const on = this.power(); this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
     this.R.render(this.scene, cam)
   }
 };

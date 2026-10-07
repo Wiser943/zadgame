@@ -346,3 +346,64 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 /* ---- 3D house ---- */
 #room3d{position:absolute;inset:0;width:100%;height:100%;z-index:1;display:none;touch-action:none}
 #app.r3d > svg#room{display:none!important}
+
+/* ===== Needs bars open from the profile picture ===== */
+.av{cursor:pointer;-webkit-tap-highlight-color:transparent}.av[aria-expanded="true"]{box-shadow:0 0 0 3px #fff,0 0 0 6px rgba(34,181,115,.35)}
+
+/* ===== Messages: groups ===== */
+.grph{display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px}.grph .lab2{margin:0}
+.newg{border:0;background:#e6efff;color:#2f6fdb;border-radius:99px;padding:8px 14px;font:700 13.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.gpromo{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,#fde6f1,#fdeedd);border-radius:22px;padding:14px 16px;cursor:pointer}
+.gpromo b{display:block;font:800 16px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink)}.gpromo small{display:block;color:var(--mut);font-size:12.5px;line-height:1.35;margin-top:2px}
+.gpi{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:26px;background:linear-gradient(135deg,#7c3aed,#f97316)}
+.avi.gav{background:linear-gradient(135deg,#7c3aed,#f97316);font-size:19px}
+.gsn{font-size:11.5px;font-weight:700;margin:0 6px 2px}.gdel{background:#f3f4f8!important;color:#8a90a2!important;font-style:italic}
+.glock{flex:none;text-align:center;background:#f3f4f8;color:var(--mut);font-size:13px;font-weight:600;padding:14px 12px;margin:4px 12px 0;border-radius:16px}
+.gchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}.gchip{background:#e6efff;color:#2f6fdb;border-radius:99px;padding:5px 6px 5px 11px;font-size:12.5px;font-weight:700}.gchip i{font-style:normal;margin-left:4px;padding:0 5px;cursor:pointer;opacity:.7}
+.gpick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;max-height:110px;overflow:auto}.gpick button{border:0;background:#eef0f5;border-radius:99px;padding:7px 12px;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink)}.gpick button.on{background:var(--grn);color:#fff}
+.ginfo{display:flex;align-items:center;gap:12px;padding:6px 0}.ginfo .avi{width:56px;height:56px;font-size:28px}.ginfo b{font-size:18px}
+.rtag{font-size:11px;font-weight:700;color:#1d8a56;background:#e3f4ea;border-radius:99px;padding:3px 9px;flex:none}.rtag.own{background:#fdf0c4;color:#8a5a00}
+.gset{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f3f4f9;border-radius:16px;padding:12px 14px}.gset b{display:block;font-size:14px}.gset small{display:block;color:var(--mut);font-size:12px;margin-top:2px}.gset.ro{opacity:.7}
+.gsw{appearance:none;-webkit-appearance:none;width:46px;height:28px;border-radius:99px;background:#cdd1dc;position:relative;flex:none;transition:.15s;outline:0}.gsw::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.15s}.gsw:checked{background:var(--grn)}.gsw:checked::after{left:21px}
+
+/* ===== Jobs app ===== */
+.jhint{color:var(--mut);font-size:13.5px;margin:4px 2px 10px}
+.jmine{background:#e6f6ee;border-radius:26px;padding:16px 18px;margin-bottom:12px}
+.jtop{display:flex;align-items:center;justify-content:space-between;gap:8px}.jlab{color:#0f9a63;font-weight:800;font-size:15px;letter-spacing:.2px}
+.jauto{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:#0f6b47;cursor:pointer}.jauto input{width:22px;height:22px;accent-color:#16a34a;margin:0}
+.jmine h3{margin:8px 0 2px;font:800 24px Outfit,system-ui,sans-serif;color:var(--ink)}.jmine p{margin:0 0 10px;color:var(--mut);font-size:16px}
+.jbar{height:8px;border-radius:99px;background:#cfeadc;overflow:hidden}.jbar u{display:block;height:100%;background:var(--grn);border-radius:99px;transition:width .4s}
+.jmine small{display:block;color:#5a6a63;font-size:12px;margin-top:6px;line-height:1.35}.jmine .jwarn{color:#b45309;font-weight:700}
+.jwork{width:100%;border:0;border-radius:99px;padding:13px;margin-top:12px;background:var(--grn);color:#fff;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;box-shadow:0 5px 14px rgba(34,181,115,.3)}.jwork:disabled{background:#b9e6d3;box-shadow:none}
+.jcard{background:#f3f4f9;border-radius:26px;padding:16px 18px;margin-bottom:12px}
+.jrow{display:flex;align-items:center;gap:14px}.jic{width:56px;height:56px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:28px;flex:none}
+.jnm{flex:1;min-width:0}.jnm b{display:block;font:800 21px Outfit,system-ui,sans-serif;color:var(--ink)}.jnm span{display:block;color:var(--mut);font-size:14.5px}
+.jpay{text-align:right;flex:none}.jpay b{display:block;font:800 21px Outfit,system-ui,sans-serif;color:#0f9a63}.jpay span{color:var(--mut);font-size:13px}
+.jdesc{color:var(--mut);font-size:15.5px;line-height:1.4;margin:12px 0 8px}.jmeta{color:var(--mut);font-size:15px;padding:6px 10px;margin-top:2px}
+.jsw{width:100%;border:0;border-radius:99px;padding:15px;margin-top:10px;background:var(--grn);color:#fff;font:700 17px 'Plus Jakarta Sans',system-ui,sans-serif;box-shadow:0 6px 16px rgba(34,181,115,.3)}
+
+/* ===== Ads app ===== */
+.adpromo{background:linear-gradient(135deg,#f472b6,#be185d);border-radius:26px;padding:18px;color:#fff}
+.adpromo h3{margin:0 0 6px;font:800 24px Outfit,system-ui,sans-serif}.adpromo p{margin:0 0 14px;font-size:15px;line-height:1.4;opacity:.92}
+.adopts{display:grid;grid-template-columns:1fr 1fr;gap:12px}.adopts button{border:0;background:#fff6fb;border-radius:22px;padding:14px;text-align:left;color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.adopts span{display:block;font-size:30px}.adopts b{display:block;font:800 17px Outfit,system-ui,sans-serif;margin-top:6px}.adopts small{display:block;color:var(--mut);font-size:13px;margin-top:3px}
+.adempty{background:#f3f4f9;border-radius:22px;padding:22px 18px;color:var(--mut);text-align:center;font-size:15px;line-height:1.5}
+.adfoot{text-align:center;color:var(--mut);font-size:13px;margin:16px 0 0}
+.adrow{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid #eef0f5}
+.adth{width:46px;height:46px;border-radius:12px;background:#f3f4f9;display:grid;place-items:center;font-size:22px;overflow:hidden;flex:none}.adth img{width:100%;height:100%;object-fit:cover}.adth.big{width:64px;height:64px}
+.adimg{display:flex;gap:10px;align-items:center;margin:10px 0 4px}.adimgb{flex:1;min-width:0}.adimgb .sinput{margin-top:6px;padding:9px 13px;font-size:13px}
+.plots{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px}.plots button{aspect-ratio:1;border:0;border-radius:10px;background:#dff0fb;color:#1d6fa5;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;padding:0;overflow:hidden}.plots button.on{background:var(--grn);color:#fff}.plots button.tk{background:#eceef3;color:#b3b8c6}.plots.pics{grid-template-columns:repeat(4,1fr)}.plots.pics img{width:100%;height:100%;object-fit:cover}
+
+/* ads on the Map: sea plots over the water, a rotating billboard card near the bottom */
+#adlayer{position:absolute;inset:0;z-index:2;pointer-events:none}
+#adlayer .seaplots{position:absolute;left:10px;right:10px;top:38%;height:18%;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(3,1fr);gap:3px}
+#adlayer .sp{border:1px dashed rgba(255,255,255,.35);border-radius:6px;background:rgba(255,255,255,.08);padding:0;overflow:hidden;display:grid;place-items:center;font-size:14px}
+#adlayer .sp.on{border:1px solid #fff;background:rgba(255,255,255,.9);pointer-events:auto;cursor:pointer}#adlayer .sp img{width:100%;height:100%;object-fit:cover}
+#adlayer .bbstrip{position:absolute;left:12px;right:12px;bottom:calc(142px + var(--sab));pointer-events:auto}
+.bbcard{display:flex;align-items:center;gap:11px;background:#fff;border-radius:18px;padding:9px 12px;box-shadow:0 6px 18px rgba(0,0,0,.18);cursor:pointer}.bbcard b{display:block;font-size:14px;color:var(--ink)}.bbcard small{display:block;color:var(--mut);font-size:11.5px}.bbcard>span{font-size:24px}
+.bbcard.empty{background:rgba(255,255,255,.85)}
+
+/* ---- time of day ---- */
+.scene{background:linear-gradient(180deg,var(--sky1,#a9d8f5),var(--sky2,#e6f2f8) 75%)!important;transition:background 1s}
+#app svg.room{filter:brightness(calc(.5 + .5 * var(--dl,1)))}
+#app.blackout #room{filter:brightness(calc(.5 + .5 * var(--dl,1)))}

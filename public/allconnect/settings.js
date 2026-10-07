@@ -1,7 +1,7 @@
 /* AllConnect Settings app. Everything that used to be on GameHub's profile/settings screen lives here now:
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
-const SOCIALS=[['💬','WhatsApp Community','https://wa.me/10000000000'],['✖','X (Twitter)','https://twitter.com/'],['📸','Instagram','https://instagram.com/'],['🎧','Discord','https://discord.gg/']];
+const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][2],SOC_META[k][3],window.SOCIAL[k]]);
 const GP_DEF={theme:'light',music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:''};
 const GP={
   get(){try{return Object.assign({},GP_DEF,JSON.parse(localStorage.getItem('ghPrefs')||'{}'))}catch(e){return Object.assign({},GP_DEF)}},
@@ -35,7 +35,7 @@ Object.assign(PH,{
       <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
         <label class="trow"><span class="ti">🌐</span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
       <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','🏆',"openHub(b=>b.shop())")}</div>
-      <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','🎓',"PH.sub('tutorial')")}${this.lrow('Join our socials','📣',"PH.sub('socials')")}${this.lrow('About us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
+      <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','🎓',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','📣',"PH.sub('socials')"):''}${this.lrow('About us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
       <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.1 · GameHub 1.0.10141</p></div>`);
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},
@@ -73,7 +73,7 @@ Object.assign(PH,{
     this.shell(T,'PH.settings()',`<div class="abody" id="ab">${this.subBody(name)}</div>`);if(name==='tutorial')this.loadRules()},
   faq(q,a){return `<div class="faq"><b>${esc(q)}</b><p>${esc(a)}</p></div>`},
   subBody(n){
-    if(n==='socials')return `<p class="hint2">Follow along for updates, and hang out with other players.</p><div class="sgrp">${SOCIALS.map(s=>`<a class="trow" href="${esc(s[2])}" target="_blank" rel="noopener"><span class="ti">${s[0]}</span><span class="tl">${esc(s[1])}</span><span class="chv">›</span></a>`).join('')}</div>`;
+    if(n==='socials')return `<p class="hint2">Follow along for updates, and hang out with other players.</p><div class="sgrp">${socialList().map(s=>`<a class="trow" href="${esc(s[2])}" target="_blank" rel="noopener"><span class="ti">${s[0]}</span><span class="tl">${esc(s[1])}</span><span class="chv">›</span></a>`).join('')}</div>`;
     if(n==='tutorial')return `<div class="lab2">GETTING STARTED</div><div class="sgrp"><ul class="tut"><li>Open GameHub on the phone, pick a game, then Quick match, Create a room, or join with a code.</li><li>Share your room code so a friend can jump straight into your room.</li><li>Win matches to earn coins — your total sits at the top of the lobby.</li><li>Use the emote bar during a match to react without typing.</li><li>Tap any player's avatar in a match to see their profile and stats.</li></ul></div><div id="rules"><p class="empty">Loading game rules…</p></div>`;
     if(n==='about')return `<div class="sgrp"><div class="faq"><p style="margin-top:0">AllConnect is one account for a whole Lagos world: live your life in the city, chat with friends, send money with AllConnect Pay, and play real-time games in GameHub.</p><p>GameHub is a for-fun multiplayer arcade — quick matches of Connect Four, Rock Paper Scissors, Snakes &amp; Ladders, Word Clash and more with friends, right in the browser. Coins track bragging rights across matches.</p><p style="color:var(--mut)">Built with Node.js, Socket.IO and a lot of care for snappy, mobile-first play.</p></div></div>`;
     return `<div class="lab2">TERMS OF SERVICE</div><div class="sgrp"><div class="faq"><p>By using AllConnect and GameHub you agree to play fair, keep your account to yourself, and treat other players with respect. Coins and ₦ earned in-game have no cash value and can’t be withdrawn, exchanged for real money, or sold.</p><p>We can suspend accounts that cheat, abuse other players, or interfere with the service. Features, games and rules may change as the app evolves.</p></div></div>
