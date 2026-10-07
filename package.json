@@ -21,7 +21,8 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",
@@ -31,7 +32,7 @@
     "node": ">=18.0.0"
   },
   "optionalDependencies": {
-    "redis": "^4.6.14",
-    "@socket.io/redis-adapter": "^8.3.0"
+    "@socket.io/redis-adapter": "^8.3.0",
+    "redis": "^4.6.14"
   }
 }

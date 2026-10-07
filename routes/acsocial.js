@@ -10,6 +10,7 @@ const profanity = require('../utils/profanity');
 const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const { notify, emitUser } = require('../utils/acnotify');
+const push = require('../services/push');
 const { ensureAC } = require('./allconnect');
 const { unreadTotal: groupUnread } = require('./acgroups');
 const { FOOD, normalizeUsername, validUsername } = require('../utils/allconnect');
@@ -51,7 +52,9 @@ async function peerOr(req, res) {
 }
 async function addMessage(req, { to, text, kind = 'text', amount = 0 }) {
   const m = await ACMessage.create({ from: uid(req), to, text, kind, amount });
-  emitUser(io(req), to, 'dm', mv(m)); return mv(m);
+  emitUser(io(req), to, 'dm', mv(m));
+  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: String(text).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req) } }).catch((e) => console.error('[push dm]', e.message));
+  return mv(m);
 }
 
 /* ---------- username ---------- */

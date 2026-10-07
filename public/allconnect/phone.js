@@ -12,7 +12,7 @@ const PH={
     const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
   /* ----- shell ----- */
   open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),ads:()=>ADS.open()})[name]()},
-  close(){document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
+  close(){if(this.view==='songify'&&window.SONGIFY)SONGIFY.stop();document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
   shell(title,back,body,sub,right){this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}${body}`},
   sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
   closeSheet(){const s=this.$a().querySelector('.asheet');if(s)s.remove()},
@@ -99,16 +99,18 @@ const PH={
   reportSheet(){this.sheet(`<h3>Report ${this.name(this.peer)}</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam','Harassment','Scam','Inappropriate'].map(r=>`<button class="fopt" onclick="PH.report('${r}')"><span>${r}</span></button>`).join('')}`)},
   async report(r){try{await NET.api('/api/ac/report/'+this.chatId,{method:'POST',body:{reason:r}});this.closeSheet();toast('Report sent. Thank you 🙏🏾')}catch(e){toast(e.message)}},
   async visit(){try{const r=await NET.api('/api/ac/visit/'+this.chatId);openVisit(r.host)}catch(e){toast(e.message)}},
+  notify(title,body,target){if(!document.hidden||!('Notification' in window)||Notification.permission!=='granted')return;try{const n=new Notification(title,{body,icon:'/pwa-192.png',tag:target?.type||'allconnect'});n.onclick=()=>{window.focus();location.href='/?open='+encodeURIComponent(target?.type||'updates')+(target?.id?'&id='+encodeURIComponent(target.id):'')+(target?.ref?'&ref='+encodeURIComponent(target.ref):'')};}catch(e){}},
+  openDeepLink(){const q=new URLSearchParams(location.search),kind=q.get('open');if(!kind)return;history.replaceState(null,'','/');if(kind==='chat'&&q.get('id')){this.open('messages');setTimeout(()=>this.chat(q.get('id')),80)}else if(kind==='gist'&&q.get('ref')){GIST.openPost(q.get('ref'))}else if(kind==='updates'){this.messages('updates') }},
   /* ----- live events ----- */
   on(ev,p){
     if(ev==='gmsg'||ev==='group'){this.gEvent(ev,p);return}
     if(ev==='gist:new'){if(window.GIST)GIST.onNew(p);return}
     if(ev==='dm'){NET.drop('/api/ac/chats');NET.cache.delete('/api/ac/messages/'+p.from);this.badges.messages++;const open=this.view==='chat'&&this.chatId===p.from;
       if(open){this.push(p);NET.api('/api/ac/messages/'+p.from).catch(()=>{});this.badges.messages=Math.max(0,this.badges.messages-1)}
-      else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+p.text.slice(0,40));if(document.hidden&&'Notification' in window&&Notification.permission==='granted')try{new Notification('AllConnect',{body:p.text})}catch(e){}
+      else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+p.text.slice(0,40));this.notify('New message on AllConnect',p.text,{type:'chat',id:p.from});
         if(this.view==='messages'&&this.tab==='chats')this.drawChats()}
       this.drawBadges()}
-    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates();if(document.hidden&&'Notification' in window&&Notification.permission==='granted')try{new Notification('AllConnect',{body:p.text})}catch(e){}}
+    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}
     if(ev==='friends'){NET.drop('/api/ac/friends');this.refreshBadges();if(this.view==='contacts')this.loadFriends()}
     if(ev==='seen'&&this.view==='chat'&&this.chatId===p.by){this.msgs.forEach(m=>{if(m.from===NET.user.id)m.read=true});this.drawMsgs()}
     if(ev==='cash'&&this.view==='bank')this.bankLoad();if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}

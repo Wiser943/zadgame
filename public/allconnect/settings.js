@@ -30,6 +30,7 @@ Object.assign(PH,{
       <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()">Edit ✎</button></div>
       <div class="lab2">ACCOUNT</div><div class="sgrp">${this.lrow('Edit profile · photo, cover, name, @username, bio','👤',"PH.editProfile()")}
         <div class="trow"><span class="ti">🔔</span><span class="tl">Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div>
+        <div class="trow"><span class="ti">📲</span><span class="tl">Background push notifications</span><button class="pbtn blu" onclick="PUSH.enable();setTimeout(()=>PH.settings(),900)">Enable</button></div>
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti">🏆</span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
