@@ -336,7 +336,7 @@ function setPaint(c) {
 const APPS = [
   ['Camera', '📷', '#2a2d36'],
   ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
-  ['Bank, '🏦', '#151a35'],
+  ['Bank', '🏦', '#151a35'],
   ['GameHub', '🎮', '#151a35'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
