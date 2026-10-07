@@ -64,7 +64,8 @@ router.get('/lookup', async (req, res, next) => {
   try {
     const me = uid(req); if (limited(me, 30)) return bad(res, 429, 'Slow down a little.');
     const q = String(req.query.q || '').trim(); let user = null;
-    if (B.validAcNum(q)) { const w = await ACWallet.findOne({ acNum: q }); if (w) user = await User.findById(w.user).select('displayName acUsername'); }
+    if (/^[a-f\d]{24}$/i.test(q)) user = await User.findById(q).select('displayName acUsername');
+    else if (B.validAcNum(q)) { const w = await ACWallet.findOne({ acNum: q }); if (w) user = await User.findById(w.user).select('displayName acUsername'); }
     else { const n = normalizeUsername(q); if (/^[a-z0-9_]{3,16}$/.test(n)) user = await User.findOne({ acUsername: n }).select('displayName acUsername'); }
     if (!user) return bad(res, 404, 'No AllConnect account found.');
     if (String(user._id) === me) return bad(res, 400, "That's your own account.");

@@ -70,3 +70,13 @@ Phone -> P-Gist. Files: `public/allconnect/gist.js`, `routes/acgist.js` (mounted
 - Photo sources: My gallery (Camera photos), Platform gallery (photos already posted on P-Gist), or Device (uploaded via imgbb, so IMGBB_KEY is needed).
 - Likes, comments (author or post owner can delete), follow/unfollow, profiles with followers/following lists, find a player by @username.
 - Safety: per-user rate limits, blocked users are hidden, "Report gist" goes to the admin Reports queue (roomCode `GIST`).
+
+## Gist 2.0, one profile, instant feel (this update)
+- **Gist** (`public/allconnect/gist.js`, `routes/acgist.js`, `models/Gist.js`): Latest / Trending / Following / Me tabs, #hashtags + trending strip, @mentions, edit with "edited" label, reactions (long-press the heart: ❤️ 😂 🔥 😢 😮), polls, pin one post to your profile, comment replies + comment likes, photo swipe carousel (up to 10), auto-posted match-win cards (real opponents only, 1 per 90s, opt-out in Settings), and a live "N new gists" pill over the `/ac` socket (`gist:new`).
+- **Notifications** (likes, comments, replies, mentions, follows, reshares, poll votes) go to the Messages app -> Updates tab (+ bell with unread badge in Gist). Tapping one opens the gist/profile. Stored in `ACUpdate` (`ref`, `from`).
+- **Verified tick**: admin only. Admin panel -> Users -> "Verify ✔" (`POST /admin-api/users/:id/verify`).
+- **One profile**: cover, bio, verified, game stats, follow, Message, friend/block/report/send-money menu. GameHub leaderboard + room avatars, Settings, Contacts and Gist all open it (GameHub posts `ac:profile` to the parent).
+- **Messages**: anyone not blocked can be messaged (from a profile); friend-only extras (invite/visit/food) show only for friends. Chat has 💸 Send money -> Bank pre-filled with that player.
+- **Instant UI**: optimistic likes/reactions/follow/comments/posts; stale-while-revalidate cache (`NET.swr`); on login the app preloads feeds, chats, updates, friends, bank, photos and the GameHub frame. **Saver mode** (Settings -> Display) turns all background loading and music off.
+- **Audio**: `public/js/bgm.js` loops `public/audio/Chrome_Capture_2026-10-06_08-39-17.weba` across the whole site (starts after first tap; Settings -> Music toggles it).
+- **Branding**: `public/logo.png` (splash), `icon-192/512.png` + `icon-maskable-512.png` (mobile app icon), `pwa-192/512.png` (web app icon), `favicon.png`; manifest updated.

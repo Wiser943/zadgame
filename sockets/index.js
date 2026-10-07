@@ -333,6 +333,16 @@ module.exports = function initSockets(io, sessionMiddleware) {
     });
     Match.create({ _id:matchId, highlights: winnerIndex == null ? [] : highlights, momentScore, game:r.game, roomCode:r.code, players:r.players.map(p=>({userId:p.id,name:p.name,bot:!!p.bot})), winnerIndex, result:r.result.status, reason, durationMs:r.startedAt?Date.now()-r.startedAt:undefined, ranked:!!r.ranked, moves:r.moves||[] }).catch(e=>console.error('[match]',e.message));
     const winner = winnerIndex != null ? r.players[winnerIndex] : null;
+    if (winner && !winner.bot) {      // auto-post the win to P-Gist (real opponents only, throttled, opt-out in Settings)
+      try {
+        const foes = r.players.filter((p, i) => i !== winnerIndex && !p.bot);
+        if (foes.length && !r.players.some((p) => p.bot)) {
+          const sc = r.state && Array.isArray(r.state.scores) && r.state.scores.length === r.players.length ? [r.state.scores[winnerIndex], ...r.state.scores.filter((_, i) => i !== winnerIndex)].join(' - ') : '';
+          const info = require('../games/registry').find((g) => g.key === r.game);
+          require('../routes/acgist').postMatchWin(io, { userId: winner.id, game: r.game, name: (info && info.name) || r.game, score: sc, opponent: foes.map((p) => p.name).join(', ') });
+        }
+      } catch (e) { console.error('[gist win]', e.message); }
+    }
     if (winner && !winner.bot && momentScore > 0) {
       // Keep the player's single best highlight reel (highest total clip score) for their profile badge.
       User.updateOne({ _id: winner.id, 'bestMoment.score': { $not: { $gte: momentScore } } },

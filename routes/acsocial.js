@@ -39,6 +39,15 @@ async function friendOr(req, res) {
   if (!(await areFriends(me, other))) { bad(res, 403, `Add ${label(target)} as a friend first.`); return null; }
   return { me, other, target };
 }
+// Like friendOr, but for plain private messages: any player who has not blocked you / not blocked by you.
+async function peerOr(req, res) {
+  const me = uid(req), other = String(req.params.id);
+  if (!isId(other) || other === me) { bad(res, 400, 'Invalid player.'); return null; }
+  const target = await User.findById(other).select('displayName avatar acUsername');
+  if (!target) { bad(res, 404, 'Player not found.'); return null; }
+  if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
+  return { me, other, target, friend: !!(await areFriends(me, other)) };
+}
 async function addMessage(req, { to, text, kind = 'text', amount = 0 }) {
   const m = await ACMessage.create({ from: uid(req), to, text, kind, amount });
   emitUser(io(req), to, 'dm', mv(m)); return mv(m);
@@ -104,7 +113,7 @@ router.post('/friends/:id/request', async (req, res, next) => {
       emitUser(io(req), other, 'friends', {}); return res.json({ state: 'friend' });
     }
     await Friendship.create({ requester: me, recipient: other, status: 'pending' });
-    notify(io(req), other, { icon: '👋', text: `${label(req.user)} sent you a friend request`, kind: 'friend' }).catch(() => {});
+    notify(io(req), other, { icon: '👋', text: `${label(req.user)} sent you a friend request`, kind: 'friend', ref: 'u:' + me, from: me }).catch(() => {});
     emitUser(io(req), other, 'friends', {});
     res.json({ state: 'sent' });
   } catch (e) { next(e); }
@@ -159,9 +168,9 @@ router.get('/chats', async (req, res, next) => {
       { $match: { $or: [{ from: me }, { to: me }] } }, { $sort: { at: -1 } },
       { $group: { _id: { $cond: [{ $eq: ['$from', me] }, '$to', '$from'] }, last: { $first: '$$ROOT' }, unread: { $sum: { $cond: [{ $and: [{ $eq: ['$to', me] }, { $eq: ['$read', false] }] }, 1, 0] } } } },
       { $sort: { 'last.at': -1 } }, { $limit: 50 }]);
-    const frs = await Friendship.find({ $or: [{ requester: me }, { recipient: me }], status: 'accepted' }).lean();
-    const friendSet = new Set(frs.map((x) => (x.requester === me ? x.recipient : x.requester)));
-    const rows = agg.filter((a) => friendSet.has(a._id) && isId(a._id));
+    const bl = await Friendship.find({ $or: [{ requester: me }, { recipient: me }], status: 'blocked' }).lean();
+    const blockedSet = new Set(bl.map((x) => (x.requester === me ? x.recipient : x.requester)));
+    const rows = agg.filter((a) => !blockedSet.has(a._id) && isId(a._id));
     const users = await User.find({ _id: { $in: rows.map((a) => a._id) } }).select('displayName avatar acUsername').lean();
     const by = new Map(users.map((u) => [String(u._id), pub(u)]));
     res.json({ chats: rows.filter((a) => by.has(a._id)).map((a) => ({ peer: by.get(a._id), last: mv(a.last), unread: a.unread })) });
@@ -169,17 +178,17 @@ router.get('/chats', async (req, res, next) => {
 });
 router.get('/messages/:id', async (req, res, next) => {
   try {
-    const f = await friendOr(req, res); if (!f) return;
+    const f = await peerOr(req, res); if (!f) return;
     const rows = await ACMessage.find({ $or: [{ from: f.me, to: f.other }, { from: f.other, to: f.me }] }).sort({ at: -1 }).limit(60).lean();
     await ACMessage.updateMany({ from: f.other, to: f.me, read: false }, { $set: { read: true } });
     emitUser(io(req), f.other, 'seen', { by: f.me });
-    res.json({ messages: rows.reverse().map(mv), peer: pub(f.target) });
+    res.json({ messages: rows.reverse().map(mv), peer: pub(f.target), isFriend: f.friend });
   } catch (e) { next(e); }
 });
 router.post('/messages/:id', async (req, res, next) => {
   try {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
-    const f = await friendOr(req, res); if (!f) return;
+    const f = await peerOr(req, res); if (!f) return;
     const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 300));
     if (!text) return bad(res, 400, 'Type a message first.');
     res.json({ message: await addMessage(req, { to: f.other, text }) });
@@ -221,8 +230,8 @@ router.post('/buy-food/:id', async (req, res, next) => {
 /* ---------- updates feed + badges ---------- */
 router.get('/updates', async (req, res, next) => {
   try {
-    const rows = await ACUpdate.find({ $or: [{ user: uid(req) }, { user: null }] }).sort({ at: -1 }).limit(40).lean();
-    res.json({ updates: rows.map((u) => ({ id: String(u._id), icon: u.icon, text: u.text, kind: u.kind, at: u.at })) });
+    const rows = await ACUpdate.find({ $or: [{ user: uid(req) }, { user: null }] }).sort({ at: -1 }).limit(60).lean();
+    res.json({ updates: rows.map((u) => ({ id: String(u._id), icon: u.icon, text: u.text, kind: u.kind, ref: u.ref || '', from: u.from || '', at: u.at })) });
   } catch (e) { next(e); }
 });
 router.post('/updates/seen', async (req, res, next) => {

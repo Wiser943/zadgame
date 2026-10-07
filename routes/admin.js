@@ -49,7 +49,7 @@ router.get('/users', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
     const filter = q ? { $or: [{ displayName: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }, { phone: q }, { email: q.toLowerCase() }] } : {};
-    const users = await User.find(filter).select('displayName phone email coins stats suspendedUntil penaltyPoints adminNote createdAt').sort({ createdAt: -1 }).limit(100).lean();
+    const users = await User.find(filter).select('displayName phone email coins stats suspendedUntil penaltyPoints adminNote createdAt verified acUsername').sort({ createdAt: -1 }).limit(100).lean();
     res.json({ users: users.map(u => ({ ...u, id: String(u._id) })) });
   } catch (err) { next(err); }
 });
@@ -69,6 +69,15 @@ router.post('/users/:id/penalize', async (req, res, next) => {
 });
 
 // ---------- analytics (privacy-conscious: aggregate counts only, no message content) ----------
+// Blue tick: only an admin can grant or remove it.
+router.post('/users/:id/verify', async (req, res, next) => {
+  try {
+    const on = req.body && typeof req.body.verified === 'boolean' ? req.body.verified : true;
+    const u = await User.findByIdAndUpdate(req.params.id, { $set: { verified: on } }, { new: true }).select('displayName verified');
+    if (!u) return res.status(404).json({ message: 'User not found.' });
+    res.json({ user: { id: u.id, displayName: u.displayName, verified: !!u.verified } });
+  } catch (err) { next(err); }
+});
 router.get('/metrics', async (req, res, next) => {
   try {
     const since = new Date(Date.now() - 7 * 864e5), day = new Date(Date.now() - 864e5);

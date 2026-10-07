@@ -1,35 +1,29 @@
 {
   "name": "AllConnect",
   "short_name": "AllConnect",
-  "description": "One account, many apps: your Lagos life, GameHub games and more.",
+  "description": "One account, every app: your Lagos life, GameHub games, friends, gists and more.",
   "start_url": "/",
   "id": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#8f1017",
-  "theme_color": "#8f1017",
+  "background_color": "#ffffff",
+  "theme_color": "#0b4fe0",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/pwa-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/pwa-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icon-512.png",
+      "src": "/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

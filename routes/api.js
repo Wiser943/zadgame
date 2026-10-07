@@ -107,7 +107,7 @@ router.get('/highlight/:id', async (req, res, next) => {
 router.get('/me', ensureAuth, (req, res) => {
   const u = req.user;
   res.json({ user: {
-    id: u.id, displayName: u.displayName, avatar: u.avatar,
+    id: u.id, displayName: u.displayName, avatar: u.avatar, cover: u.cover||'', bio: u.bio||'', verified: !!u.verified, autoPostWins: u.autoPostWins !== false, username: u.acUsername||'', email: u.email||'', phone: u.phone||'',
     coins: u.coins, stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null
   } });
 });
@@ -120,8 +120,16 @@ router.get('/games', ensureAuth, (req, res) => {
 // compresses/resizes the image to a small JPEG data URI before sending it
 // (see resizeImage() in public/index.html) — we just sanity-check it here.
 router.post('/me/profile', ensureAuth, async (req, res) => {
-  const { avatar, displayName } = req.body || {};
+  const { avatar, displayName, bio, cover, autoPostWins } = req.body || {};
   const update = {};
+  if (typeof bio === 'string') update.bio = bio.replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (typeof autoPostWins === 'boolean') update.autoPostWins = autoPostWins;
+  if (typeof cover === 'string') {
+    if (cover === '') update.cover = '';
+    else if (cover.length > MAX_AVATAR_BYTES) return res.status(413).json({ message: 'Cover photo is too large. Try a smaller photo.' });
+    else if (!AVATAR_RE.test(cover)) return res.status(400).json({ message: 'That doesn’t look like a valid image.' });
+    else update.cover = cover;
+  }
   if (typeof avatar === 'string' && avatar) {
     if (avatar.length > MAX_AVATAR_BYTES) return res.status(413).json({ message: 'Image is too large. Try a smaller photo.' });
     if (!AVATAR_RE.test(avatar)) return res.status(400).json({ message: 'That doesn’t look like a valid image.' });
@@ -130,7 +138,7 @@ router.post('/me/profile', ensureAuth, async (req, res) => {
   if (typeof displayName === 'string' && displayName.trim()) update.displayName = displayName.trim().slice(0, 40);
   if (!Object.keys(update).length) return res.status(400).json({ message: 'Nothing to update.' });
   const u = await User.findByIdAndUpdate(req.user.id, update, { new: true });
-  res.json({ user: { id: u.id, displayName: u.displayName, avatar: u.avatar, coins: u.coins, stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null } });
+  res.json({ user: { id: u.id, displayName: u.displayName, avatar: u.avatar, cover: u.cover||'', bio: u.bio||'', verified: !!u.verified, autoPostWins: u.autoPostWins !== false, username: u.acUsername||'', coins: u.coins, stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null } });
 });
 
 // Read-only profile for any other player — used when you tap someone's

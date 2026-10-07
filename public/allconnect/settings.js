@@ -8,7 +8,9 @@ const GP={
   set(k,v){const p=this.get();p[k]=v;try{localStorage.setItem('ghPrefs',JSON.stringify(p))}catch(e){}
     try{const w=document.getElementById('hubf').contentWindow;if(w&&w.GHBridge)w.GHBridge.sync()}catch(e){}}
 };
-const FX=[['music','Music','🎵'],['sound','Game Sound','🔊'],['voice','Voice Announcements','📣'],['vibration','Vibration','📳'],['theme','Dark Mode','🌙'],['reducedMotion','Reduce Animations','🐢'],['highContrast','High contrast','◐'],['largeText','Larger text','🔠'],['colorSafe','Colour-blind friendly colours','🎨'],['lowPower','Low-power mode','🔋'],['winnerReplay','Cinematic winner highlights','🏆']];
+/* Sound / display toggles, grouped. Only what players actually need. */
+const FX_SOUND=[['music','Music','🎵'],['sound','Game sound','🔊'],['voice','Voice announcements','📣'],['vibration','Vibration','📳']];
+const FX_LOOK=[['theme','Dark mode','🌙'],['lowPower','Saver mode · less data, no background loading','🔋'],['reducedMotion','Reduce animations','🐢'],['largeText','Larger text','🔠'],['highContrast','High contrast','◐'],['colorSafe','Colour-blind friendly','🎨']];
 const FALLBACK_RULES={};
 Object.assign(PH,{
   me:null,
@@ -17,42 +19,53 @@ Object.assign(PH,{
   isOn(k,p){return k==='theme'?p.theme==='dark':!!p[k]},
   tgl(k){const p=GP.get(),on=!this.isOn(k,p);GP.set(k,k==='theme'?(on?'dark':'light'):on);
     const el=document.querySelector(`.trow[data-k="${k}"] .sw2`);if(el)el.classList.toggle('on',on);
-    if(k==='vibration'&&on&&navigator.vibrate)navigator.vibrate(30)},
+    if(k==='vibration'&&on&&navigator.vibrate)navigator.vibrate(30);
+    if(k==='music'||k==='lowPower'){if(window.BGM)BGM.sync()}
+    if(k==='lowPower')on?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off: loading apps in the background'),warmUp(true))},
   async settings(){this.view='settings';document.querySelector('.screen').classList.add('light');
-    const p=GP.get(),u=this.me||NET.user||{},np='Notification' in window?Notification.permission:'unsupported';
-    const voices=('speechSynthesis' in window)?speechSynthesis.getVoices().slice().sort((a,b)=>(/^en/i.test(b.lang)?1:0)-(/^en/i.test(a.lang)?1:0)||a.name.localeCompare(b.name)):[];
+    const p=GP.get(),u=Object.assign({},NET.user||{},this.me||{}),np='Notification' in window?Notification.permission:'unsupported';
+    const auto=this.me?this.me.autoPostWins!==false:true;
     this.shell('Settings','PH.close()',`<div class="abody">
-      <div class="swho"><div id="swav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1)}</div><div class="rt"><b>${esc(u.displayName||'Player')}</b><span>${esc(u.email||u.phone||(NET.user&&NET.user.username?'@'+NET.user.username:''))}</span></div><button class="pbtn blu" onclick="PH.editProfile()">Edit ✎</button></div>
-      <div class="lab2">GENERAL</div><div class="sgrp">${this.lrow('Join our Socials','📣',"PH.sub('socials')")}${this.lrow('Game Tutorial','🎓',"PH.sub('tutorial')")}${this.lrow('About Us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
-      <div class="lab2">THEMES</div><div class="sgrp">${this.lrow('Shop · backgrounds, boards & tokens','🏆',"openHub(b=>b.shop())")}</div>
-      <div class="lab2">EFFECTS</div><div class="sgrp">${FX.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
-        <label class="trow"><span class="ti">🌐</span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label>
-        ${this.lrow('Replay the app tour','🧭',"openHub(b=>b.replayTour())")}</div>
-      <div class="lab2">VOICE</div><div class="sgrp">${this.trow('voiceCmd','Voice commands · “Say” button in rooms','🎙️',!!p.voiceCmd)}
-        <label class="trow"><span class="ti">🗣️</span><span class="tl">Voice</span><select class="ssel" onchange="PH.setPref('voiceURI',this.value)"><option value="">Auto (best available)</option>${voices.map(v=>`<option value="${esc(v.voiceURI)}" ${v.voiceURI===p.voiceURI?'selected':''}>${esc(v.name)} (${esc(v.lang)})</option>`).join('')}</select></label>
-        <label class="trow"><span class="ti">⏱️</span><span class="tl">Speed</span><input type="range" class="srange" min="0.7" max="1.3" step="0.05" value="${p.voiceRate||1}" onchange="PH.setPref('voiceRate',+this.value)"></label>
-        ${this.lrow('Test announcer','🔈',"PH.testVoice()")}${this.lrow('Get more announcer styles','🏆',"openHub(b=>b.shop(true))")}</div>
-      <div class="lab2">USERNAME</div><div class="card2"><p class="hint2">Friends find you with this. Use 3–16 letters, numbers or _.</p>
-        <div class="cin2"><span class="at">@</span><input id="uname_in" value="${esc((NET.user&&NET.user.username)||'')}" placeholder="yourname" maxlength="16" autocapitalize="none" autocomplete="off"><button class="pbtn blu" onclick="PH.saveName()">Save</button></div><div class="aerr" id="uerr"></div></div>
-      <div class="lab2">NOTIFICATIONS</div><div class="sgrp"><div class="trow"><span class="ti">🔔</span><span class="tl">Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div></div>
-      <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.0 · GameHub 1.0.10141</p></div>`);
+      <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()">Edit ✎</button></div>
+      <div class="lab2">ACCOUNT</div><div class="sgrp">${this.lrow('Edit profile · photo, cover, name, @username, bio','👤',"PH.editProfile()")}
+        <div class="trow"><span class="ti">🔔</span><span class="tl">Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div>
+        <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti">🏆</span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
+      <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
+      <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
+        <label class="trow"><span class="ti">🌐</span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
+      <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','🏆',"openHub(b=>b.shop())")}</div>
+      <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','🎓',"PH.sub('tutorial')")}${this.lrow('Join our socials','📣',"PH.sub('socials')")}${this.lrow('About us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
+      <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.1 · GameHub 1.0.10141</p></div>`);
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},
-  testVoice(){hubQuiet(b=>b.say('doubleSix'));toast('Playing the announcer…')},
-  async saveName(){const v=document.getElementById('uname_in').value,e=document.getElementById('uerr');e.textContent='';
-    try{const r=await NET.api('/api/ac/username',{method:'POST',body:{username:v}});NET.user.username=r.username;toast('Username saved ✓')}catch(x){e.textContent=x.message}},
-  /* ----- edit profile (photo + name) ----- */
-  editProfile(){this.view='settings-edit';const u=this.me||NET.user||{};
-    this.shell('Edit profile','PH.settings()',`<div class="abody"><div class="pedit"><div id="pedav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1).replace('class="avi big"','class="avi huge"')}</div>
+  tglAuto(){const on=!(this.me?this.me.autoPostWins!==false:true);if(this.me)this.me.autoPostWins=on;const el=document.querySelector('.trow[data-k="autoPost"] .sw2');if(el)el.classList.toggle('on',on);
+    NET.api('/api/me/profile',{method:'POST',body:{autoPostWins:on}}).catch(e=>{toast(e.message);if(this.me)this.me.autoPostWins=!on;if(el)el.classList.toggle('on',!on)})},
+  /* ----- edit profile: ONE screen for photo, cover, name, @username and bio ----- */
+  editProfile(back){this.view='settings-edit';this.editBack=back||this.editBack||'PH.settings()';const u=Object.assign({},NET.user||{},this.me||{});
+    this.shell('Edit profile',this.editBack==='PH.settings()'?'PH.settings()':this.editBack,`<div class="abody"><div class="pedit">
+      <div class="pecover" id="pecov" ${u.cover?`style="background-image:url('${esc(u.cover)}')"`:''}><label class="pbtn blu pick">🖼️ Cover<input type="file" accept="image/*" style="display:none" onchange="PH.pickCover(this)"></label></div>
+      <div id="pedav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1).replace('class="avi big"','class="avi huge"')}</div>
       <label class="pbtn blu pick">📷 Change photo<input type="file" accept="image/*" style="display:none" onchange="PH.pickPhoto(this)"></label></div>
-      <div class="lab2">DISPLAY NAME</div><div class="cin2"><input id="dname" class="sinput" value="${esc(u.displayName||'')}" maxlength="40" placeholder="Your name"><button class="pbtn blu" onclick="PH.saveDisplay()">Save</button></div></div>`)},
+      <div class="lab2">DISPLAY NAME</div><input id="dname" class="sinput" value="${esc(u.displayName||'')}" maxlength="40" placeholder="Your name">
+      <div class="lab2">USERNAME</div><div class="cin2"><span class="at">@</span><input id="uname_in" class="sinput" value="${esc(u.username||'')}" placeholder="yourname" maxlength="16" autocapitalize="none" autocomplete="off"></div><p class="hint2">3–16 letters, numbers or _. Friends find you with this.</p>
+      <div class="lab2">BIO</div><textarea id="bio_in" class="gedit" maxlength="160" placeholder="Tell people about yourself (160 characters)">${esc(u.bio||'')}</textarea>
+      <div class="aerr" id="uerr"></div><button class="btn p" id="pesave" onclick="PH.saveProfile()">Save changes</button></div>`);
+    if(!this.me)NET.api('/api/me').then(r=>{this.me=r.user;if(this.view==='settings-edit'&&!document.getElementById('bio_in').value)this.editProfile()}).catch(()=>{})},
   resize(file,max=480,q=.82){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);let w=img.width,h=img.height;if(w>h&&w>max){h=h/w*max;w=max}else if(h>max){w=w/h*max;h=max}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',q))};img.onerror=rej;img.src=url})},
+  resizeCover(file){return new Promise((res,rej)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{URL.revokeObjectURL(url);const W=900,H=300,c=document.createElement('canvas');c.width=W;c.height=H;const r=Math.max(W/img.width,H/img.height),w=img.width*r,h=img.height*r;c.getContext('2d').drawImage(img,(W-w)/2,(H-h)/2,w,h);res(c.toDataURL('image/jpeg',.8))};img.onerror=rej;img.src=url})},
+  after(r){this.me=Object.assign(this.me||{},r.user);Object.assign(NET.user,{avatar:r.user.avatar,displayName:r.user.displayName,bio:r.user.bio,cover:r.user.cover});NET.drop('/gist/profile');NET.drop('/api/me')},
   async pickPhoto(inp){const f=inp.files[0];if(!f)return;if(!f.type.startsWith('image/'))return toast('Please choose an image file.');
-    try{const d=await this.resize(f);const r=await NET.api('/api/me/profile',{method:'POST',body:{avatar:d}});this.me=Object.assign(this.me||{},r.user);NET.user.avatar=r.user.avatar;
+    try{const d=await this.resize(f);const r=await NET.api('/api/me/profile',{method:'POST',body:{avatar:d}});this.after(r);
       document.getElementById('pedav').innerHTML=this.av(this.me,1).replace('class="avi big"','class="avi huge"');toast('Photo updated ✓');this.hubRefresh()}catch(e){toast(e.message||'Could not upload photo')}},
-  async saveDisplay(){const n=document.getElementById('dname').value.trim();if(!n)return toast('Enter a name first');
-    try{const r=await NET.api('/api/me/profile',{method:'POST',body:{displayName:n}});this.me=Object.assign(this.me||{},r.user);NET.user.displayName=r.user.displayName;
-      ['uname','uname2'].forEach(i=>{const e=document.getElementById(i);if(e)e.textContent=r.user.displayName});toast('Name updated ✓');this.hubRefresh()}catch(e){toast(e.message||'Could not update name')}},
+  async pickCover(inp){const f=inp.files[0];if(!f)return;if(!f.type.startsWith('image/'))return toast('Please choose an image file.');
+    try{const d=await this.resizeCover(f);const r=await NET.api('/api/me/profile',{method:'POST',body:{cover:d}});this.after(r);document.getElementById('pecov').style.backgroundImage=`url('${d}')`;toast('Cover updated ✓')}catch(e){toast(e.message||'Could not upload cover')}},
+  async saveProfile(){const b=document.getElementById('pesave'),err=document.getElementById('uerr');err.textContent='';
+    const name=document.getElementById('dname').value.trim(),bio=document.getElementById('bio_in').value,un=document.getElementById('uname_in').value.trim().replace(/^@/,'').toLowerCase();
+    if(!name)return err.textContent='Enter a display name.';b.disabled=true;
+    try{const r=await NET.api('/api/me/profile',{method:'POST',body:{displayName:name,bio}});this.after(r);
+      if(un&&un!==(NET.user.username||'')){const x=await NET.api('/api/ac/username',{method:'POST',body:{username:un}});NET.user.username=x.username;this.me.username=x.username}
+      ['uname','uname2'].forEach(i=>{const e=document.getElementById(i);if(e)e.textContent=name});this.hubRefresh();toast('Profile saved ✓');
+      const back=this.editBack;this.editBack=null;back==='PH.settings()'?this.settings():(new Function(back))()}catch(e){err.textContent=e.message||'Could not save'}b.disabled=false},
   hubRefresh(){try{const w=document.getElementById('hubf').contentWindow;if(w&&w.GHBridge&&w.GHBridge.ready())w.GHBridge.refreshMe()}catch(e){}},
   /* ----- info pages ----- */
   sub(name){this.view='settings-'+name;const T={socials:'Join our Socials',tutorial:'Game Tutorial',about:'About Us',legal:'Legal'}[name];

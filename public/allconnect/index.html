@@ -6,7 +6,9 @@
  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
  <title>AllConnect</title>
  <link rel="manifest" href="/manifest.webmanifest">
- <meta name="theme-color" content="#0d1b4a">
+ <link rel="icon" type="image/png" href="/favicon.png">
+ <link rel="apple-touch-icon" href="/icon-192.png">
+ <meta name="theme-color" content="#0b4fe0">
  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
@@ -15,7 +17,7 @@
 
 <body>
  <aside class="deskside">
-  <div class="lg">👑</div>
+  <img class="lg" src="/icon-192.png" alt="AllConnect" width="84" height="84">
   <h2>AllConnect</h2>
   <p>One account. Every app.</p>
   <ul>
@@ -165,9 +167,7 @@
   </div>
   
   <!-- SPLASH -->
-  <div id="splash"><span class="crown">👑</span>
-   <h1>AllConnect</h1>
-   <p class="tag">One account. Every app.</p>
+  <div id="splash"><img class="brandlogo" src="/logo.png" alt="AllConnect - One account. Every app." width="220" height="220" fetchpriority="high">
    <div class="sp"></div>
    <div class="card" id="auth">
     <div class="seg"><button id="tl" class="on" onclick="authMode('login')">Sign in</button><button id="tr" onclick="authMode('register')">Create account</button></div>
@@ -196,6 +196,7 @@
   <div id="visit"></div>
   <div class="toast" id="toast"></div>
  </div>
+ <script src="/js/bgm.js"></script>
  <script src="/socket.io/socket.io.js"></script>
  <script src="/allconnect/app.js"></script>
  <script src="/allconnect/phone.js"></script>

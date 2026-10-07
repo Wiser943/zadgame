@@ -3,7 +3,7 @@
 // exist — its presence + the manifest is what makes Chrome/Edge/Android
 // consider the site "installable" and fire beforeinstallprompt.
 const CACHE = 'gamehub-shell-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

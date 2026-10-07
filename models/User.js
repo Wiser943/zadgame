@@ -8,6 +8,10 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String },
   displayName: { type: String, default: 'Player' },
   avatar: { type: String, default: '' },
+  cover: { type: String, default: '' },                 // profile cover photo (small JPEG data URI)
+  bio: { type: String, default: '', maxlength: 160 },
+  verified: { type: Boolean, default: false },          // blue tick: granted only by an admin
+  autoPostWins: { type: Boolean, default: true },       // auto-post match wins to P-Gist
   coins: { type: Number, default: 0 },
   suspendedUntil: { type: Date, default: null },
   penaltyPoints: { type: Number, default: 0 },

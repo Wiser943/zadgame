@@ -7,7 +7,8 @@
   <meta name="theme-color" content="#8f1017">
   <title>GameHub</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <script src="/js/bgm.js"></script>
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3661,13 +3662,13 @@
     };
     const musicAudio = new Audio(AUDIO_FILES.music);
     musicAudio.loop = true;
-    musicAudio.preload = 'auto';
+    musicAudio.preload = 'none';
     musicAudio.volume = 0.22;
     function playAudioCue(name) {
       if (!prefs.sound || !AUDIO_FILES[name]) return;
       try { const a = new Audio(AUDIO_FILES[name]); a.volume = name === 'game' ? 0.16 : 0.28; a.play().catch(() => {}); } catch {}
     }
-    function startMusic() { if (prefs.music) musicAudio.play().catch(() => {}); }
+    function startMusic() { /* the site-wide track (js/bgm.js) plays instead */ }
     function stopMusic() { musicAudio.pause(); }
     function setLobbyMusic(active) { active ? startMusic() : stopMusic(); }
     document.addEventListener('click', (e) => {
@@ -4786,6 +4787,8 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       return data;
     }
     async function profileView(uid) {
+      // ONE profile for the whole platform: inside AllConnect, hand over to the main profile (follow, message, stats).
+      if (window.parent !== window) { try { window.parent.postMessage({ type: 'ac:profile', id: String(uid) }, location.origin); return; } catch {} }
       const isMe = uid === (me.id || me._id);
       app.innerHTML = `<div class="profile">
     <div class="pcover"><button class="back" id="pbk" aria-label="Back">‹</button>
