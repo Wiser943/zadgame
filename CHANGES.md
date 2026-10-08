@@ -1,3 +1,21 @@
+## One balance, match stakes, Invest app, public /advertise
+
+- **One balance.** The GameHub balance is now `User.ac.cash` (₦), the same number as AllConnect. The old `coins` field is gone; API responses still call it `coins` so older screens keep working. All wallet changes go through `utils/economy.js` and are pushed live to the phone and GameHub (`balance` / `cash` events). Shop prices, daily reward, challenge rewards and tournament prizes are multiplied by `COIN` (1000) in `config/economy.js`. Old coin totals are not converted.
+- **Match stakes.** Human-vs-human matches charge every player a stake when the match starts (default ₦5,000, `GAME_STAKE` env or `STAKES` per game in `config/economy.js`). Winner is credited the pot, a draw pays nobody (both stakes are lost), and if nobody is left to finish the match everyone is refunded. Tournament matches are free. Players who can't afford it are blocked at create/join/quick/ranked and at rematch.
+- **Bot matches** are free and leave no trace: no ₦, stats, XP, rating, streak, challenge progress, highlight badge or P-Gist post.
+- **Invest app** (`routes/acinvest.js`, `utils/acinvest.js`, `models/ACInvest.js`, `public/allconnect/invest.js`): land, street businesses and haulage trailers. Payouts at 6:00 PM Lagos time, 10% tax, deterministic per evening so refreshing can't re-roll. Every number is in `utils/acinvest.js`. "New life" also clears Invest holdings.
+- **Public pages:** `/advertise` (billboards, sea plots, phone apps, stats-page ad, airport boards, NGN/USD total; the pay button stays disabled) and `/stats` (live numbers). Data from `/api/public/advertise` and `/api/public/stats`. Rates in `utils/acads.js` (`PUBLIC`, `AIRPORTS`, `USD_RATE` env).
+- Ads app footer now links to `<this site>/advertise` using `location.host`.
+- **Tournaments are admin-only.** Players can no longer create or start tournaments (those routes answer 403). The admin page has a new **Tournaments** section to create one (game, size, minimum players, minimum level, start time), set its **registration fee** and its **prizes** (₦ and XP for champion and runner-up), start it, or cancel it. Joining charges the fee; leaving before the start, a cancel, or a tournament that never reaches its minimum refunds it. Prizes are paid from the platform into the winners' balance. Tournaments are never free: the fee is required (minimum ₦1,000, `TOURNAMENT_MIN_FEE` env), and any older tournament without a fee is hidden and can't be joined. Tournament matches themselves carry no stake. GameHub shows the fee and prizes on each tournament.
+
+# Latest: 3D map, male/female characters, music, ad bar, controls
+
+- **Map** (`public/allconnect/map3d.js`): real 3D Lagos you can drag (pan), pinch/scroll (zoom), twist or right-drag (rotate), two-finger swipe (tilt). Tap the ground to walk (path-finding, bridges only over water), tap a place to open it. Sea plots and billboards from the Ads board are drawn on the map and tappable.
+- **Characters** (`avatar.js`, `room3d.js`): male and female models, picked once on the start card (saved as `ac.gender`). Walk, run (map), 4 dance moves, wave. Emote buttons: tap the dance button again for the next move.
+- **Music** (`public/js/bgm.js`): the Chrome capture track plays everywhere and goes quiet only while you are inside a GameHub game room (GameHub calls `BGM.room(true/false)`); mp3 fallback for browsers without opus/webm.
+- **Sponsored apps**: top bar is one row (back, title, Open with arrow), website name only on wide screens, tinted per ad, shrinks to floating glass buttons after load. Other phone apps hide their header while scrolling down.
+- **HUD**: speaker is an SVG icon; zoom/rotate/reset are one expandable button.
+
 # GameHub update
 Copy these files over your project (same paths), then redeploy.
 

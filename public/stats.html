@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Live stats</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font:400 16px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;color:#161a2e;background:linear-gradient(#e8f0ff,#f4f7ff 420px)}
+.w{max-width:720px;margin:0 auto;padding:22px 18px 50px}a{color:#2f7fd8;font-weight:700;text-decoration:none}
+h1{font:800 clamp(30px,8vw,44px)/1.1 Outfit,system-ui,sans-serif;margin:26px 0 8px}p.s{color:#5d6378;margin:0 0 22px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:14px}.c{background:#fff;border:1px solid #e3e7f2;border-radius:26px;padding:20px}
+.c small{display:block;color:#5d6378;font-size:15px}.c b{display:block;font:800 clamp(26px,7vw,36px) Outfit,system-ui,sans-serif;margin-top:4px}
+.live{display:inline-block;width:11px;height:11px;border-radius:50%;background:#16a361;margin-right:8px}
+</style></head><body><div class="w">
+<a href="/">← Back</a>
+<h1><span class="live"></span>Live numbers</h1><p class="s">Updated every 30 seconds.</p>
+<div class="g"><div class="c"><small>Players online</small><b id="o">–</b></div><div class="c"><small>Visits today</small><b id="v">–</b></div>
+<div class="c"><small>All-time visits</small><b id="t">–</b></div><div class="c"><small>Gems found</small><b id="g">–</b></div></div>
+<p class="s" style="margin-top:22px">Want your ad beside these numbers? <a href="/advertise?space=stats">Book a space</a></p>
+</div><script>
+const f=n=>Number(n||0).toLocaleString('en-NG');
+async function go(){try{const r=await (await fetch('/api/public/stats')).json();o.textContent=f(r.online);v.textContent=f(r.visitsToday);t.textContent=f(r.visitsTotal);g.textContent=f(r.gems)}catch(e){}}
+go();setInterval(go,30000);
+</script></body></html>

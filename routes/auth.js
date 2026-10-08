@@ -6,7 +6,7 @@ const { normalizeIdentifier, isValidEmail, isValidPhone } = require('../utils/id
 
 const router = express.Router();
 
-const publicUser = (u) => ({ id: u.id, displayName: u.displayName, avatar: u.avatar, coins: u.coins, stats: u.stats });
+const publicUser = (u) => ({ id: u.id, displayName: u.displayName, avatar: u.avatar, coins: u.ac ? u.ac.cash : 0, stats: u.stats });
 
 router.post('/register', async (req, res, next) => {
   try {

@@ -6,7 +6,7 @@ const { DEFAULT_AC, priceOf, sanitizeSave, publicAC } = require('../utils/allcon
 const F = require('../utils/furniture');
 
 const router = express.Router();
-const who = (u) => ({ id: u.id, displayName: u.displayName, username: u.acUsername || '', avatar: u.avatar, coins: u.coins });
+const who = (u) => ({ id: u.id, displayName: u.displayName, username: u.acUsername || '', avatar: u.avatar, coins: u.ac ? u.ac.cash : 0 });
 
 // Accounts created before AllConnect existed have no `ac` data yet: give them the defaults once.
 async function ensureAC(id) {
@@ -70,10 +70,11 @@ router.post('/buy', ensureAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// "New life": resets the platform life-sim only. GameHub coins, stats and friends are untouched.
+// "New life": resets the life-sim, the shared ₦ balance (so also the GameHub balance) and Invest holdings. Stats and friends are untouched.
 router.post('/new', ensureAuth, async (req, res, next) => {
   try {
     const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0, 'ac.items': F.starterItems(), 'ac.v2': true, 'ac.wish': [] } }, { new: true });
+    await require('../models/ACInvest').deleteOne({ user: String(req.user.id) });   // Invest holdings reset with the balance, so a reset can't be used to keep assets AND get fresh cash
     res.json({ ac: publicAC(u.ac) });
   } catch (e) { next(e); }
 });

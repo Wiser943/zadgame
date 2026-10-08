@@ -50,3 +50,31 @@ test('phone apps: price, one-day run, names and logos are validated', () => {
   assert.ok(A.appNameError('a')); assert.ok(A.appNameError('x'.repeat(17))); assert.equal(A.appNameError('Quilox'), null);
   assert.equal(A.cleanEmoji(''), ''); assert.equal(A.cleanEmoji('🍔'), '🍔'); assert.equal(A.cleanEmoji('abc'), null); assert.equal(A.cleanEmoji('<b>🍔'), null);
 });
+
+/* ---- Invest + shared wallet + stakes ---- */
+const I = require('../utils/acinvest'), E = require('../config/economy');
+test('invest: payouts are paid per Lagos 6 PM, never twice, and a fresh purchase waits', () => {
+  const now = Date.UTC(2026, 9, 8, 10, 0, 0);                      // Thu 8 Oct, 11:00 Lagos
+  assert.equal(new Date(I.nextBoundary(now)).toISOString(), '2026-10-08T17:00:00.000Z');
+  assert.equal(new Date(I.lastBoundary(now)).toISOString(), '2026-10-07T17:00:00.000Z');
+  const at = now - 3 * I.DAY_MS, inv = { biz: [{ key: 'zobo', at }], trucks: [] };
+  const a = I.settle('u1', inv, I.lastBoundary(at), now), b = I.settle('u1', inv, I.lastBoundary(at), now);
+  assert.equal(a.entries.length, 3); assert.deepEqual(a, b);       // 3 evenings, and re-running gives the same numbers (no re-rolling)
+  assert.equal(I.settle('u1', inv, a.newLast, now).entries.length, 0);
+  const fresh = I.settle('u1', { biz: [{ key: 'zobo', at: I.nextBoundary(now) - 5 * 3600000 }], trucks: [] }, I.lastBoundary(now), I.nextBoundary(now));
+  assert.equal(fresh.entries.length, 0);                           // bought 5.xh before 6 PM -> waits for the next evening
+});
+test('invest: every payout stays inside its range, tax is taken, unknown items are rejected', () => {
+  for (let i = 0; i < 200; i++) { const d = I.bizDay('u' + i, 'pos', 1e12 + i * 86400000); assert.ok(d.gross >= I.BIZ.pos.min - 50 && d.gross <= I.BIZ.pos.max + 50); assert.equal(d.net, d.gross - d.tax); }
+  assert.equal(I.bizOf('__proto__'), null); assert.equal(I.landOf('constructor'), null);
+  const t = I.truckDay('u1', 'x', 1e12); assert.equal(t.pre, t.gross - t.cost);
+});
+test('invest: land sells for its fee-adjusted price plus growth', () => {
+  const l = { place: 'ikorodu', at: 0 }, c = I.LAND.ikorodu;
+  assert.equal(I.landWorth(l, 0), Math.floor(c.price * I.LAND_SELL_PCT));
+  assert.ok(I.landWorth(l, 10 * I.DAY_MS) > I.landWorth(l, 0));
+});
+test('economy: stakes are positive numbers and shop/challenge amounts are scaled to ₦', () => {
+  assert.ok(E.stakeFor('chess') > 0); assert.equal(E.DAILY_REWARD, 25 * E.COIN);
+  assert.ok(require('../config/shop').CATALOG.filter((i) => i.price > 0).every((i) => i.price >= 40 * E.COIN));
+});

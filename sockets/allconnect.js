@@ -11,9 +11,12 @@ module.exports = function initAllConnect(io) {
   const online = new Map();                 // socket.id -> { id, name }
   const stats = { visits: 0, gems: 0 };
   ACStat.findById('global').lean().then((d) => { if (d) { stats.visits = d.visits; stats.gems = d.gems; } }).catch(() => {});
-  const bump = (f) => ACStat.updateOne({ _id: 'global' }, { $inc: { [f]: 1 } }, { upsert: true }).catch(() => {});
+  const bump = (f) => {
+    ACStat.updateOne({ _id: 'global' }, { $inc: { [f]: 1 } }, { upsert: true }).catch(() => {});
+    if (f === 'visits') ACStat.updateOne({ _id: 'day:' + new Date(Date.now() + 3600000).toISOString().slice(0, 10) }, { $inc: { visits: 1 } }, { upsert: true }).catch(() => {});   // visits today (Lagos day) for the public stats page
+  };
   const snapshot = () => ({ online: new Set([...online.values()].map((v) => v.id)).size, visits: stats.visits, gems: stats.gems });
-  const roster = () => [...new Map([...online.values()].map((v) => [v.id, { name: v.name }])).values()].slice(0, 40);
+  const roster = () => [...new Map([...online.values()].map((v) => [v.id, { name: v.name, g: v.g }])).values()].slice(0, 40);
   const push = () => { nsp.emit('stats', snapshot()); nsp.emit('players', roster()); };
 
   nsp.use((socket, next) => {
@@ -25,7 +28,7 @@ module.exports = function initAllConnect(io) {
 
   nsp.on('connection', (socket) => {
     const u = socket.request.user;
-    online.set(socket.id, { id: u.id, name: u.displayName });
+    online.set(socket.id, { id: u.id, name: u.displayName, g: (u.ac && (u.ac.gender === 'male' || u.ac.gender === 'female')) ? u.ac.gender : '' });
     socket.join('u:' + u.id); acPresence.connect(u.id);   // private room for DMs, friend events, notifications
     stats.visits++; bump('visits'); push();
     let last = 0;
@@ -44,10 +47,10 @@ module.exports = function initAllConnect(io) {
     socket.on('disconnect', () => { online.delete(socket.id); acPresence.disconnect(u.id); push(); });
   });
 
-  // Leaderboard news: whenever a different player becomes #1 by GameHub coins, post it to everyone's Updates.
+  // Leaderboard news: whenever a different player becomes #1 by balance, post it to everyone's Updates.
   const watch = async () => {
     try {
-      const top = await User.findOne({ coins: { $gt: 0 } }).sort({ coins: -1, _id: 1 }).select('displayName acUsername');
+      const top = await User.findOne({ 'ac.cash': { $gt: 0 } }).sort({ 'ac.cash': -1, _id: 1 }).select('displayName acUsername');
       if (!top) return;
       const prev = await ACStat.findById('global').lean();
       if (prev && prev.topUser === String(top._id)) return;

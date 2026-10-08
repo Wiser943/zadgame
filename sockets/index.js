@@ -18,6 +18,8 @@ const botlevels = require('../games/botlevels');
 const elo = require('../utils/elo');
 const profanity = require('../utils/profanity');
 const tournaments = require('../services/tournaments');
+const econ = require('../utils/economy');
+const { stakeFor } = require('../config/economy');
 const hub = require('../utils/tournamentHub');
 const NOSHOW_MS = 3 * 60 * 1000;           // tournament no-show: opponent gets a walkover
 const QUEUE_TICK_MS = 2000;
@@ -26,13 +28,11 @@ const RANKED_GAMES_MIN_PLAYERS = 2;
 const ENG = games.ENGINES || games;
 const FORFEIT_MS = 75 * 1000;
 const WAITING_ROOM_RETENTION_MS = 60 * 1000;      // disconnect this long => that player forfeits
-const WIN_COINS = 10;
 const EMOTE_COUNT = 8;             // keep in sync with EMOTES in public/index.html
 
 // ---- Ludo-only: per-turn clock, strikes, and a whole-match countdown ----
 const LUDO_TURN_MS = 15 * 1000;                 // roll or move within this long, or take a strike
 const LUDO_STRIKE_LIMIT = 3;                    // 3 strikes = removed from the room
-const LUDO_STRIKE_FORFEIT_COINS = 15;           // coins lost when removed for strikes
 const LUDO_MATCH_MS = { 2: 4 * 60 * 1000, 3: 6 * 60 * 1000, 4: 8 * 60 * 1000 }; // match clock by room size
 
 // ---- Every game gets a visible per-turn clock. Ludo uses its own bespoke
@@ -83,6 +83,12 @@ function newCode() {
   return c;
 }
 
+// ---- Stakes: every human-vs-human match costs each player a stake, taken when the match starts.
+// The winner is credited the whole pot; a draw means everyone loses their stake. Matches with a bot, and
+// tournament matches, are free and never touch rankings, stats, XP or ₦.
+const stakeOf = (r) => (r.tournament || r.players.some((p) => p.bot) ? 0 : stakeFor(r.game));
+const naira = (n) => '₦' + Number(n).toLocaleString('en-NG');
+
 module.exports = function initSockets(io, sessionMiddleware) {
   io.engine.use(sessionMiddleware);
   io.engine.use(passport.initialize());
@@ -99,6 +105,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
     // playerIndex -> ms-epoch they forfeit at, for anyone currently disconnected-but-not-yet-eliminated
     forfeits: r.forfeits ? Object.fromEntries([...r.forfeits].map(([idx, f]) => [idx, f.forfeitAt])) : {},
     result: r.result || null,
+    stake: r.status === 'waiting' ? stakeOf(r) : (r.result ? r.result.stake : (r.stakePaid || 0)),
+    practice: r.players.some((p) => p.bot) && !r.tournament,
     spectatorCount: r.spectators ? r.spectators.size : 0,
     rematch: r.rematch ? [...r.rematch] : [],
     round: r.round || 0,
@@ -129,12 +137,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
         avatar: BOT_AVATAR, sid: null, connected: true, out: false, bot: true
       });
     }
-    if (r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.startedAt = Date.now(); r.state = initState(r); r.moves = [];
-      r.round = (r.round || 0) + 1;
-      r.strikes = Array(r.maxPlayers).fill(0);
-      armTurnTimer(r); armMatchTimer(r);
-    }
+    if (r.players.length === r.maxPlayers) beginMatch(r);   // has bots => free, starts straight away
     pushAndBot(r);
   }
 
@@ -257,8 +260,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     r.strikes[i] = (r.strikes[i] || 0) + 1;
     toAll(r, 'game:event', { type: 'timeout', player: i, strikes: r.strikes[i] });
     if (r.strikes[i] >= LUDO_STRIKE_LIMIT) {
-      if (!r.players[i].bot) User.updateOne({ _id: r.players[i].id }, [{ $set: { coins: { $max: [0, { $subtract: [{ $ifNull: ['$coins', 0] }, LUDO_STRIKE_FORFEIT_COINS] }] } } }]).catch((e) => console.error('[coins]', e.message));
-      toAll(r, 'game:event', { type: 'strikeout', player: i, coinsLost: LUDO_STRIKE_FORFEIT_COINS });
+      toAll(r, 'game:event', { type: 'strikeout', player: i, coinsLost: r.stakePaid || 0 });   // their stake is already in the pot
       eliminatePlayer(r, i, 'strikes'); // re-arms the turn timer itself if the match continues
       return;
     }
@@ -312,6 +314,64 @@ module.exports = function initSockets(io, sessionMiddleware) {
     finish(r, winner, 'timeup');
   }
 
+  // ---- starting a match (and charging stakes) ----
+  function startNow(r, rematch) {
+    if (rematch) { r.rematch = new Set(); r.result = null; r.players.forEach((p) => { p.out = false; }); }
+    r.status = 'playing'; r.startedAt = Date.now(); r.state = initState(r); r.moves = [];
+    r.round = (r.round || 0) + 1;
+    r.strikes = Array(r.maxPlayers).fill(0);
+    armTurnTimer(r); armMatchTimer(r);
+  }
+  function beginMatch(r, rematch) {
+    const stake = stakeOf(r);
+    if (!stake) { r.stakePaid = 0; r.stakePot = 0; r.paidIds = null; startNow(r, rematch); return; }
+    if (r.charging) return;
+    r.charging = true;
+    chargeAndStart(r, stake, rematch)
+      .catch((e) => { console.error('[stake]', e.message); })
+      .finally(() => { r.charging = false; });
+  }
+  async function chargeAndStart(r, stake, rematch) {
+    const people = r.players.slice(), paid = [];
+    const giveBack = async () => { for (const q of paid) await econ.credit(q.id, stake).catch((e) => console.error('[refund]', e.message)); };
+    for (const p of people) {
+      let cash = null;
+      try { cash = await econ.debit(p.id, stake); } catch (e) { console.error('[stake debit]', e.message); }
+      if (cash == null) { await giveBack(); return stakeRejected(r, p, stake, rematch); }
+      paid.push(p);
+    }
+    const stillSame = rooms.get(r.code) === r && r.status === (rematch ? 'over' : 'waiting') && r.players.length === people.length && people.every((p, i) => r.players[i] === p);
+    if (!stillSame) { await giveBack(); if (rooms.get(r.code) === r) push(r); return; }
+    r.stakePaid = stake; r.stakePot = stake * paid.length; r.paidIds = paid.map((p) => String(p.id));
+    startNow(r, rematch);
+    r.players.forEach((p, i) => { if (!p.connected && !p.bot) startForfeitTimer(r, i); });
+    paid.forEach((p) => p.sid && io.to(p.sid).emit('stake:charged', { stake, pot: r.stakePot, code: r.code }));
+    push(r);
+  }
+  function stakeRejected(r, p, stake, rematch) {
+    const message = `You need ${naira(stake)} to play this match. Top up or pick a free practice match against a bot.`;
+    if (p.sid) io.to(p.sid).emit('stake:rejected', { message, stake, code: r.code });
+    if (rematch) { r.rematch = new Set(); toAll(r, 'error', { message: `${p.name} can't cover the ${naira(stake)} stake, so no rematch.` }); push(r); return; }
+    const idx = r.players.indexOf(p);          // waiting room: the player who can't pay leaves, everyone else keeps waiting
+    if (idx !== -1) {
+      const sock = p.sid && io.sockets.sockets.get(p.sid); if (sock) sock.data.code = null;
+      r.players.splice(idx, 1);
+    }
+    scheduleWaitingRoomCleanup(r); push(r);
+  }
+  function refundStakes(r) {
+    if (!r.stakePaid || !r.paidIds) return;
+    const stake = r.stakePaid; r.paidIds.forEach((id) => econ.credit(id, stake).catch((e) => console.error('[refund]', e.message)));
+    r.stakePaid = 0; r.stakePot = 0; r.paidIds = null;
+  }
+  // Can this player afford the stake for joining/creating a human match? (checked up front so nobody is dropped mid-start)
+  async function stakeBlock(uid, game, room) {
+    const stake = room ? stakeOf(room) : stakeFor(game);
+    if (!stake) return null;
+    if (room && room.players.some((p) => String(p.id) === uid)) return null;     // already seated
+    return (await econ.canAfford(uid, stake)) ? null : `You need ${naira(stake)} to play this match. Top up or play a free practice match against a bot.`;
+  }
+
   function finish(r, winnerIndex, reason) {
     if (r.status !== 'playing') return;
     clearAllForfeits(r);
@@ -322,18 +382,28 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const matchId = new mongoose.Types.ObjectId();
     const highlights = selectHighlights(r.game, r.moves, winnerIndex, ENG[r.game].publicState);
     const momentScore = highlights.reduce((a, h) => a + (h.score || 0) * 100, 0);
-    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights, matchId: String(matchId) };
-    r.players.forEach((p, i) => {
-      if (p.bot) return; // bots have no User document — nothing to update
+    // Practice = any bot in the room. Practice matches are free and leave NO trace: no ₦, stats, XP, rating, streak,
+    // challenge progress or leaderboard movement, so nobody can climb by beating bots.
+    const practice = r.players.some((p) => p.bot);
+    const stake = r.stakePaid || 0, pot = r.stakePot || 0;
+    r.result = { winnerIndex, status: winnerIndex == null ? 'draw' : 'win', reason: reason || 'normal', highlights, matchId: String(matchId),
+      practice, stake, pot, payout: winnerIndex == null ? 0 : pot, burned: winnerIndex == null ? pot : 0 };
+    if (!practice) r.players.forEach((p, i) => {
       const won = winnerIndex === i, draw = winnerIndex == null;
       User.updateOne({ _id: p.id }, { $inc: {
-        coins: won ? WIN_COINS : 0, 'stats.gamesPlayed': 1, 'stats.wins': won ? 1 : 0,
+        'stats.gamesPlayed': 1, 'stats.wins': won ? 1 : 0,
         'stats.losses': !won && !draw ? 1 : 0, 'stats.draws': draw ? 1 : 0
       } }).catch((e) => console.error('[stats]', e.message));
     });
+    // Winner takes the pot. A draw pays nobody, so both stakes are gone.
+    if (pot > 0 && winnerIndex != null && !r.players[winnerIndex].bot) {
+      const wid = r.players[winnerIndex].id;
+      econ.credit(wid, pot).catch((e) => console.error('[payout]', e.message));
+    }
+    r.stakePaid = 0; r.stakePot = 0; r.paidIds = null;
     Match.create({ _id:matchId, highlights: winnerIndex == null ? [] : highlights, momentScore, game:r.game, roomCode:r.code, players:r.players.map(p=>({userId:p.id,name:p.name,bot:!!p.bot})), winnerIndex, result:r.result.status, reason, durationMs:r.startedAt?Date.now()-r.startedAt:undefined, ranked:!!r.ranked, moves:r.moves||[] }).catch(e=>console.error('[match]',e.message));
     const winner = winnerIndex != null ? r.players[winnerIndex] : null;
-    if (winner && !winner.bot) {      // auto-post the win to P-Gist (real opponents only, throttled, opt-out in Settings)
+    if (winner && !winner.bot && !practice) {      // auto-post the win to P-Gist (real opponents only, throttled, opt-out in Settings)
       try {
         const foes = r.players.filter((p, i) => i !== winnerIndex && !p.bot);
         if (foes.length && !r.players.some((p) => p.bot)) {
@@ -343,7 +413,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
         }
       } catch (e) { console.error('[gist win]', e.message); }
     }
-    if (winner && !winner.bot && momentScore > 0) {
+    if (winner && !winner.bot && !practice && momentScore > 0) {
       // Keep the player's single best highlight reel (highest total clip score) for their profile badge.
       User.updateOne({ _id: winner.id, 'bestMoment.score': { $not: { $gte: momentScore } } },
         { $set: { bestMoment: { matchId: String(matchId), game: r.game, score: momentScore, at: new Date() } } }).catch(e => console.error('[bestMoment]', e.message));
@@ -354,9 +424,9 @@ module.exports = function initSockets(io, sessionMiddleware) {
       tournaments.onMatchResult(r.tournament, wid).catch((e) => console.error('[tournament]', e.message));
     }
     const xpGain = winnerIndex == null ? 8 : 20;
-    r.players.forEach(p=>{ if(!p.bot) User.findByIdAndUpdate(p.id,{ $inc:{ xp:xpGain, coins: winnerIndex==null?2:0 } }).catch(()=>{}); });
+    if (!practice) r.players.forEach(p=>{ User.findByIdAndUpdate(p.id,{ $inc:{ xp:xpGain } }).catch(()=>{}); });
     // Win streaks (anti-exploit: only matches with 2+ human players count)
-    if (r.players.filter(p => !p.bot).length >= 2) {
+    if (!practice && r.players.filter(p => !p.bot).length >= 2) {
       r.players.forEach((p, i) => {
         if (p.bot || winnerIndex == null) return;
         const upd = winnerIndex === i
@@ -366,7 +436,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       });
     }
     // Persistent daily challenge progress (server-side only, per user per UTC day)
-    try {
+    if (!practice) try {
       const day = challenges.today();
       challenges.matchDeltas(r.players, winnerIndex).forEach(d => {
         ChallengeProgress.updateOne({ userId: d.userId, day },
@@ -394,15 +464,13 @@ module.exports = function initSockets(io, sessionMiddleware) {
     if (r.status !== 'playing' || r.players[i].out) return;
     r.players[i].out = true;
     clearForfeit(r, i);
-    if (r.game === 'ludo' && reason === 'forfeit') {
-      if (!r.players[i].bot) User.updateOne({ _id: r.players[i].id }, [{ $set: { coins: { $max: [0, { $subtract: [{ $ifNull: ['$coins', 0] }, LUDO_STRIKE_FORFEIT_COINS] }] } } }]).catch((e) => console.error('[coins]', e.message));
-    }
     const eng = ENG[r.game];
     if (eng.markOut) r.state = eng.markOut(r.state, i);
     const remaining = r.players.filter((p) => !p.out && p.connected);
     if (remaining.length === 0 || !remaining.some((p) => !p.bot)) {
       // Nobody left, or only bots left playing each other — nothing to show anyone.
       clearAllForfeits(r); clearTimeout(r.turnTimer); clearTimeout(r.matchTimer); clearTimeout(r.botTimer);
+      refundStakes(r);   // nobody finished the match, so nobody loses their stake
       rooms.delete(r.code); return;
     }
     if (remaining.length === 1) { finish(r, r.players.indexOf(remaining[0]), reason); return; }
@@ -465,12 +533,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
     Object.assign(r.players[i], { sid: socket.id, connected: true });
     socket.data.code = r.code;
     if (r.status === 'playing') clearForfeit(r, i);
-    if (r.status === 'waiting' && r.players.length === r.maxPlayers) {
-      r.status = 'playing'; r.startedAt = Date.now(); r.state = initState(r); r.moves = [];
-      r.round = (r.round || 0) + 1;
-      r.strikes = Array(r.maxPlayers).fill(0);
-      armTurnTimer(r); armMatchTimer(r);
-    }
+    if (r.status === 'waiting' && r.players.length === r.maxPlayers) beginMatch(r);
     push(r);
     return true;
   }
@@ -580,13 +643,14 @@ module.exports = function initSockets(io, sessionMiddleware) {
       socket.emit('room:spectator', { room: view(r, null) }); push(r); ack({ok:true, room:view(r,null)});
     });
 
-    guard('room:create', 6, 60000, ({ game, maxPlayers, vsBot, mode, difficulty, options }, ack) => {
+    guard('room:create', 6, 60000, async ({ game, maxPlayers, vsBot, mode, difficulty, options }, ack) => { try {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
       if (mode === 'ranked' && vsBot) return ack({ ok: false, error: 'Ranked matches are against real players only.' });
+      if (!vsBot) { const blocked = await stakeBlock(uid, game, null); if (blocked) return ack({ ok: false, error: blocked }); }
       const r = createRoom(socket, game, resolveMaxPlayers(game, maxPlayers), !!vsBot, mode, difficulty, mode === 'ranked' ? null : options);
       ack({ ok: true, room: view(r, 0) });
-    });
+    } catch (e) { console.error('[room:create]', e.message); ack({ ok: false, error: 'Server error' }); } });
 
     guard('room:addBots', 10, 60000, ({ code }, ack) => {
       const [r, i] = myRoom(code);
@@ -597,22 +661,24 @@ module.exports = function initSockets(io, sessionMiddleware) {
       ack({ ok: true, room: view(r, i) });
     });
 
-    guard('room:join', 10, 60000, ({ code }, ack) => {
+    guard('room:join', 10, 60000, async ({ code }, ack) => { try {
       const r = isCode(code) ? rooms.get(code) : null;
       if (!r) return ack({ ok: false, error: 'Room not found' });
+      if (r.status === 'waiting') { const blocked = await stakeBlock(uid, r.game, r); if (blocked) return ack({ ok: false, error: blocked }); }
       if (!attach(socket, r)) return ack({ ok: false, error: 'Room is full' });
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
-    });
+    } catch (e) { console.error('[room:join]', e.message); ack({ ok: false, error: 'Server error' }); } });
 
-    guard('room:quick', 6, 60000, ({ game, maxPlayers, mode }, ack) => {
+    guard('room:quick', 6, 60000, async ({ game, maxPlayers, mode }, ack) => { try {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
+      { const blocked = await stakeBlock(uid, game, null); if (blocked) return ack({ ok: false, error: blocked }); }
       const mp = resolveMaxPlayers(game, maxPlayers);
       const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting' && !r.reserved && !r.ranked
         && r.players.length < mp && !r.players.some((p) => p.id === uid));
       const r = open && attach(socket, open) ? open : createRoom(socket, game, mp, false, mode);
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
-    });
+    } catch (e) { console.error('[room:quick]', e.message); ack({ ok: false, error: 'Server error' }); } });
 
     guard('rooms:list', 30, 60000, ({ game, maxPlayers } = {}, ack) => {
       const row = (r) => ({
@@ -642,6 +708,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!engineFor(game) || !gameEnabled(game)) return ack({ ok: false, error: 'This game is not available.' });
       if (!playerCountsFor(game).includes(2)) return ack({ ok: false, error: 'Ranked is for two-player games.' });
       if (inQueue(uid)) return ack({ ok: false, error: 'You are already searching.' });
+      { const blocked = await stakeBlock(uid, game, null); if (blocked) return ack({ ok: false, error: blocked }); }
       const u = await User.findById(uid).select('rating gameRatings displayName').lean();
       const bl = await Friendship.find({ status: 'blocked', $or: [{ requester: uid }, { recipient: uid }] }).lean();
       const blocked = new Set(bl.map((x) => (x.requester === uid ? x.recipient : x.requester)));
@@ -708,14 +775,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       if (!r || r.tournament || r.status !== 'over' || r.players.length < r.maxPlayers || !r.players.every((p) => p.connected)) return;
       r.rematch.add(i);
       r.players.forEach((p, idx) => { if (p.bot) r.rematch.add(idx); }); // bots always agree to a rematch
-      if (r.rematch.size === r.maxPlayers) {
-        r.rematch = new Set(); r.result = null; r.status = 'playing';
-        r.players.forEach((p) => { p.out = false; });
-        r.state = initState(r); r.moves = [];
-        r.round = (r.round || 0) + 1;
-        r.strikes = Array(r.maxPlayers).fill(0);
-        armTurnTimer(r); armMatchTimer(r);
-      }
+      if (r.rematch.size === r.maxPlayers) beginMatch(r, true);   // charges a fresh stake when it is human vs human
       pushAndBot(r);
     });
 

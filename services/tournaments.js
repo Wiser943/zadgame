@@ -3,7 +3,8 @@ const User = require('../models/User');
 const B = require('../utils/bracket');
 const hub = require('../utils/tournamentHub');
 
-const PRIZES = { champion: { coins: 100, xp: 30 }, runnerUp: { coins: 40, xp: 10 } }; // cosmetic coins/xp only, never cash
+const { TOURNAMENT_PRIZES: PRIZES } = require('../config/economy');
+const econ = require('../utils/economy');   // prizes are paid into the shared ₦ balance
 const locks = new Map();
 // Serialise all changes to one tournament so two matches ending at once cannot overwrite each other.
 function withLock(id, fn) {
@@ -11,6 +12,23 @@ function withLock(id, fn) {
   const next = prev.then(fn, fn);
   locks.set(id, next.catch(() => {}));
   return next;
+}
+// Prize amounts for one tournament: whatever the admin set, else the platform defaults.
+const prizesOf = (t) => {
+  const n = (v, d) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : d), p = t.prizes || {};
+  return { champion: { coins: n(p.champion && p.champion.coins, PRIZES.champion.coins), xp: n(p.champion && p.champion.xp, PRIZES.champion.xp) },
+    runnerUp: { coins: n(p.runnerUp && p.runnerUp.coins, PRIZES.runnerUp.coins), xp: n(p.runnerUp && p.runnerUp.xp, PRIZES.runnerUp.xp) } };
+};
+// Give every registered player their entry fee back (tournament cancelled or never reached its minimum).
+async function refundAll(t) {
+  const fee = Number(t.entryFee) || 0; if (fee <= 0) return;
+  for (const id of t.players) await econ.credit(id, fee).catch((e) => console.error('[tournament refund]', e.message));
+}
+// Admin cancels an open tournament: close it first (atomic, so it can't also start), then refund.
+async function cancel(id) {
+  const t = await Tournament.findOneAndUpdate({ _id: id, status: 'open' }, { $set: { status: 'cancelled' } }, { new: true });
+  if (!t) return null;
+  await refundAll(t); return t;
 }
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
@@ -26,7 +44,7 @@ function start(id) {
   return withLock(String(id), async () => {
     const t = await Tournament.findById(id);
     if (!t || t.status !== 'open') return null;
-    if (t.players.length < t.minPlayers) { t.status = 'cancelled'; await t.save(); return t; }
+    if (t.players.length < t.minPlayers) { t.status = 'cancelled'; await t.save(); await refundAll(t); return t; }
     t.bracket = B.buildBracket(shuffle(t.players));
     t.status = 'running';
     launchReady(t);
@@ -40,8 +58,9 @@ function finishIfDone(t) {
   const champ = B.champion(t.bracket);
   if (!champ || t.status === 'done') return false;
   t.status = 'done'; t.champion = champ; t.runnerUp = B.runnerUp(t.bracket);
-  User.updateOne({ _id: champ }, { $inc: { coins: PRIZES.champion.coins, xp: PRIZES.champion.xp, tournamentWins: 1 } }).catch(() => {});
-  if (t.runnerUp) User.updateOne({ _id: t.runnerUp }, { $inc: { coins: PRIZES.runnerUp.coins, xp: PRIZES.runnerUp.xp } }).catch(() => {});
+  const pz = prizesOf(t);   // the admin's amounts for THIS tournament
+  User.updateOne({ _id: champ }, { $inc: { xp: pz.champion.xp, tournamentWins: 1 } }).then(() => econ.credit(champ, pz.champion.coins)).catch(() => {});
+  if (t.runnerUp) User.updateOne({ _id: t.runnerUp }, { $inc: { xp: pz.runnerUp.xp } }).then(() => econ.credit(t.runnerUp, pz.runnerUp.coins)).catch(() => {});
   return true;
 }
 
@@ -70,4 +89,4 @@ async function tick() {
   const due = await Tournament.find({ status: 'open', startsAt: { $ne: null, $lte: new Date() } }).select('_id').lean();
   for (const d of due) await start(d._id).catch((e) => console.error('[tournament tick]', e.message));
 }
-module.exports = { start, onMatchResult, tick, PRIZES };
+module.exports = { start, cancel, onMatchResult, tick, prizesOf, PRIZES };

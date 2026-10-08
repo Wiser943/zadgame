@@ -43,32 +43,8 @@ window.ROOM3D = {
     this.glass = this.walls.glass;
     this.moon = new THREE.DirectionalLight(0x7f9bff, 0); this.moon.position.set(-6, 10, -4); sc.add(this.moon); this.lamps = [];
     this.itemsGroup = new THREE.Group(); sc.add(this.itemsGroup); this.ghostG = null; this.ring = null; this.path = [];
-    // avatar: detailed character with a face, hair, clothes and swinging limbs
-    const M = (c) => this.mat(c), SK = 0x6e4529, SKD = 0x5a3720, SH = 0xe2b64a, av = this.avatar = new THREE.Group(), P = this.parts = {};
-    const part = (geo, mat, x, y, z, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (par || av).add(m); return m };
-    const leg = (sx) => { const g = new THREE.Group(); g.position.set(sx * .15, .74, 0); av.add(g);
-      part(new THREE.BoxGeometry(.24, .5, .26), M(0x1f2a44), 0, -.25, 0, g); part(new THREE.BoxGeometry(.2, .26, .22), M(0x1f2a44), 0, -.58, 0, g);
-      part(new THREE.BoxGeometry(.25, .12, .38), M(0xf4f4f4), 0, -.7, .06, g); part(new THREE.BoxGeometry(.26, .04, .4), M(0x2b2b2b), 0, -.76, .06, g); return g };
-    P.legL = leg(-1); P.legR = leg(1);
-    part(new THREE.BoxGeometry(.6, .1, .34), M(0x3a2414), 0, .76, 0);                                           // belt
-    part(new THREE.BoxGeometry(.58, .62, .32), M(SH), 0, 1.1, 0);                                                // shirt
-    for (let k = -2; k <= 2; k++) part(new THREE.BoxGeometry(.05, .5, .335), M(k % 2 ? 0xc9962b : 0xf0cf72), k * .105, 1.1, 0);   // shirt pattern
-    part(new THREE.BoxGeometry(.2, .05, .2), M(0xf0cf72), 0, 1.42, .04);                                        // collar
-    const arm = (sx) => { const g = new THREE.Group(); g.position.set(sx * .4, 1.36, 0); av.add(g);
-      part(new THREE.BoxGeometry(.18, .3, .2), M(SH), 0, -.12, 0, g); part(new THREE.BoxGeometry(.13, .32, .14), M(SK), 0, -.4, 0, g); part(new THREE.SphereGeometry(.085, 10, 8), M(SK), 0, -.6, 0, g); return g };
-    P.armL = arm(-1); P.armR = arm(1);
-    part(new THREE.CylinderGeometry(.085, .095, .12, 10), M(SKD), 0, 1.47, 0);                                  // neck
-    const head = P.head = new THREE.Group(); head.position.y = 1.78; av.add(head);
-    const skull = part(new THREE.SphereGeometry(.25, 20, 16), M(SK), 0, 0, 0, head); skull.scale.set(.92, 1.08, .96);
-    part(new THREE.SphereGeometry(.05, 8, 6), M(SK), -.24, -.02, 0, head); part(new THREE.SphereGeometry(.05, 8, 6), M(SK), .24, -.02, 0, head);   // ears
-    const eye = (sx) => { const w = part(new THREE.SphereGeometry(.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), sx * .09, .04, .215, head); w.scale.set(1, .85, .5);
-      const pu = part(new THREE.SphereGeometry(.026, 8, 6), new THREE.MeshBasicMaterial({ color: 0x120a06 }), sx * .09, .04, .238, head); part(new THREE.BoxGeometry(.1, .018, .03), M(0x120a06), sx * .09, .12, .225, head); return [w, pu] };
-    P.eyes = [...eye(-1), ...eye(1)];
-    part(new THREE.SphereGeometry(.045, 8, 6), M(SKD), 0, -.03, .245, head);                                    // nose
-    part(new THREE.BoxGeometry(.11, .022, .03), M(0x2a0f0b), 0, -.13, .225, head);                              // mouth
-    const hair = part(new THREE.SphereGeometry(.27, 20, 12, 0, Math.PI * 2, 0, Math.PI * .56), M(0x120d0a), 0, .02, -.02, head); hair.scale.set(.95, 1.02, 1);
-    const shd = new THREE.Mesh(new THREE.CircleGeometry(.42, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .28 })); shd.rotation.x = -Math.PI / 2; shd.position.y = .02; av.add(shd);
-    av.position.set(-1, 0, 1.2); sc.add(av);
+    // the player's character (male or female, chosen on the start card)
+    this.gender = (typeof S !== 'undefined' && S.gender) || 'male'; this.buildAvatar(this.gender);
     // input
     const cv2 = cv; cv2.style.touchAction = 'none';
     cv2.addEventListener('pointerdown', e => { this.ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.down = { x: e.clientX, y: e.clientY, t: Date.now() }; this.drag = false; try { cv2.setPointerCapture(e.pointerId) } catch (x) { } if (this.ptr.size === 2) { const [a, b] = [...this.ptr.values()]; this.pinch = Math.hypot(a.x - b.x, a.y - b.y) } });
@@ -82,6 +58,100 @@ window.ROOM3D = {
     cv2.addEventListener('wheel', e => { e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.1 : 1 / 1.1) }, { passive: false });
     cv2.addEventListener('dblclick', () => this.reset());
     window.addEventListener('resize', () => this.resize()); this.resize()
+  },
+  /* ---------- the player's character: male / female models with walk, dance and wave ---------- */
+  buildAvatar(gender) {
+    const fem = gender === 'female', old = this.avatar, pos = old ? old.position.clone() : new THREE.Vector3(-1, 0, 1.2), ry = old ? old.rotation.y : 0;
+    if (old) this.scene.remove(old);
+    const M = c => this.mat(c), SK = 0x6e4529, SKD = 0x5a3720, GOLD = 0xe2b64a, GREEN = 0x2f9e63, CREAM = 0xf4efe6, HAIR = 0x120d0a;
+    const av = this.avatar = new THREE.Group(), body = new THREE.Group(), P = this.parts = { body }; av.add(body);
+    const part = (geo, mat, x, y, z, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (par || body).add(m); return m };
+    const L1 = .36, L2 = .30, HIP = .74;
+    const leg = sx => {
+      const hip = new THREE.Group(); hip.position.set(sx * (fem ? .125 : .15), HIP, 0); body.add(hip);
+      part(new THREE.BoxGeometry(fem ? .2 : .24, L1, fem ? .22 : .26), M(fem ? SK : 0x1f2a44), 0, -L1 / 2, 0, hip);
+      const knee = new THREE.Group(); knee.position.y = -L1; hip.add(knee);
+      part(new THREE.BoxGeometry(fem ? .16 : .2, L2, fem ? .18 : .22), M(fem ? SK : 0x1f2a44), 0, -L2 / 2, 0, knee);
+      part(new THREE.BoxGeometry(.25, .06, .36), M(fem ? 0x7a4b2a : 0xf4f4f4), 0, -L2 - .03, .06, knee);
+      part(new THREE.BoxGeometry(.26, .025, .4), M(0x2b2b2b), 0, -L2 - .0675, .06, knee);
+      return { hip, knee };
+    };
+    P.legL = leg(-1); P.legR = leg(1);
+    const T = P.torso = new THREE.Group(); T.position.y = .76; body.add(T);
+    if (fem) {
+      part(new THREE.BoxGeometry(.5, .16, .3), M(CREAM), 0, -.04, 0, T);                                        // hips
+      P.skirt = part(new THREE.CylinderGeometry(.2, .37, .46, 18), M(CREAM), 0, -.14, 0, body); P.skirt.position.y = HIP - .12 + .0;
+      part(new THREE.BoxGeometry(.46, .54, .28), M(GREEN), 0, .34, 0, T);                                       // top
+      for (let k = -1; k <= 1; k++) part(new THREE.BoxGeometry(.04, .46, .295), M(k % 2 ? GREEN : CREAM), k * .13, .34, 0, T);
+      part(new THREE.BoxGeometry(.4, .045, .3), M(CREAM), 0, .6, .005, T);                                      // neckline trim
+    } else {
+      part(new THREE.BoxGeometry(.6, .1, .34), M(0x3a2414), 0, 0, 0, T);                                        // belt
+      part(new THREE.BoxGeometry(.58, .62, .32), M(GOLD), 0, .34, 0, T);                                        // shirt
+      for (let k = -2; k <= 2; k++) part(new THREE.BoxGeometry(.05, .5, .335), M(k % 2 ? 0xc9962b : 0xf0cf72), k * .105, .34, 0, T);
+      part(new THREE.BoxGeometry(.2, .05, .2), M(0xf0cf72), 0, .66, .04, T);                                    // collar
+    }
+    const arm = sx => {
+      const sh = new THREE.Group(); sh.position.set(sx * (fem ? .31 : .4), .6, 0); T.add(sh);
+      part(new THREE.BoxGeometry(fem ? .13 : .18, .3, fem ? .15 : .2), M(fem ? SK : GOLD), 0, -.13, 0, sh);
+      const el = new THREE.Group(); el.position.y = -.28; sh.add(el);
+      part(new THREE.BoxGeometry(fem ? .11 : .13, .3, fem ? .12 : .14), M(SK), 0, -.15, 0, el);
+      part(new THREE.SphereGeometry(fem ? .07 : .085, 10, 8), M(SK), 0, -.34, 0, el);
+      if (fem) part(new THREE.SphereGeometry(.075, 8, 6), M(GREEN), 0, .02, 0, sh);                            // shoulder cap
+      return { sh, el };
+    };
+    P.armL = arm(-1); P.armR = arm(1);
+    part(new THREE.CylinderGeometry(fem ? .07 : .085, fem ? .08 : .095, .12, 10), M(SKD), 0, .71, 0, T);       // neck
+    const head = P.head = new THREE.Group(); head.position.y = 1.02; T.add(head);
+    const skull = part(new THREE.SphereGeometry(fem ? .235 : .25, 20, 16), M(SK), 0, 0, 0, head); skull.scale.set(.92, 1.08, .96);
+    part(new THREE.SphereGeometry(.05, 8, 6), M(SK), -.23, -.02, 0, head); part(new THREE.SphereGeometry(.05, 8, 6), M(SK), .23, -.02, 0, head);
+    const eye = sx => {
+      const w = part(new THREE.SphereGeometry(.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), sx * .09, .04, .205, head); w.scale.set(1, .85, .5);
+      const pu = part(new THREE.SphereGeometry(.026, 8, 6), new THREE.MeshBasicMaterial({ color: 0x120a06 }), sx * .09, .04, .228, head);
+      part(new THREE.BoxGeometry(.1, fem ? .012 : .018, .03), M(HAIR), sx * .09, fem ? .105 : .12, .215, head);
+      if (fem) { const l = part(new THREE.BoxGeometry(.05, .012, .03), M(HAIR), sx * .135, .085, .21, head); l.rotation.z = -sx * .5 }   // lashes
+      return [w, pu];
+    };
+    P.eyes = [...eye(-1), ...eye(1)];
+    part(new THREE.SphereGeometry(.045, 8, 6), M(SKD), 0, -.03, .235, head);                                    // nose
+    part(new THREE.BoxGeometry(fem ? .1 : .11, fem ? .028 : .022, .03), M(fem ? 0x9c2f3f : 0x2a0f0b), 0, -.125, .215, head);   // mouth
+    if (fem) {                                                                                                  // hair: big cap, puff bun, long braids
+      const hair = part(new THREE.SphereGeometry(.275, 20, 12, 0, Math.PI * 2, 0, Math.PI * .6), M(HAIR), 0, .02, -.03, head); hair.scale.set(1, 1.04, 1.04);
+      part(new THREE.SphereGeometry(.13, 12, 10), M(HAIR), 0, .27, -.07, head);
+      for (let k = -2; k <= 2; k++) { const br = part(new THREE.BoxGeometry(.055, .62, .055), M(HAIR), k * .1, -.2, -.2, head); br.rotation.x = .08; part(new THREE.SphereGeometry(.035, 6, 5), M(0xf0cf72), k * .1, -.5, -.19, head) }
+    } else {
+      const hair = part(new THREE.SphereGeometry(.27, 20, 12, 0, Math.PI * 2, 0, Math.PI * .56), M(HAIR), 0, .02, -.02, head); hair.scale.set(.95, 1.02, 1);
+    }
+    const shd = new THREE.Mesh(new THREE.CircleGeometry(.42, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: .28 })); shd.rotation.x = -Math.PI / 2; shd.position.y = .02; av.add(shd);
+    av.position.copy(pos); av.rotation.y = ry; this.scene.add(av);
+    this.pose = this.pose || null; this.tp = {}; this.ph = 0; this.tt = 0; this.spin = 0;
+    if (!this.pose) this.pose = {}; Object.assign(this.pose, ACPOSE.idle());
+  },
+  setGender(g) { g = g === 'female' ? 'female' : 'male'; if (g === this.gender) return; this.gender = g; if (this.on && this.scene) this.buildAvatar(g) },
+  /* emote('dance') starts dancing (tap again for the next move), emote('wave') waves, emote(null) stops */
+  emote(k) {
+    if (k === 'dance') { if (this.em === 'dance') this.dn = (this.dn + 1) % ACPOSE.DANCES; else { this.em = 'dance'; this.dn = this.dn || 0 } }
+    else this.em = k || null
+  },
+  /* drive every joint from the current pose; moving = walking along the path */
+  animate(t, dt, moving) {
+    const P = this.parts, ps = this.pose, tp = this.tp, st = moving ? 'walk' : (this.em || 'idle');
+    if (this.em && moving) { this.em = null; if (window.emoteEnded) window.emoteEnded() }
+    const rate = st === 'walk' ? 1.3 : st === 'dance' ? [1.15, 1.15, 1.0, 1.4][this.dn % ACPOSE.DANCES] : st === 'wave' ? 1 : 0;
+    if (this.laststate !== st && st === 'wave') this.ph = 0; this.laststate = st;
+    this.ph += dt * Math.PI * 2 * rate; this.tt += dt;
+    if (st === 'dance' && this.dn % ACPOSE.DANCES === 2) this.spin += dt * 5.2; else this.spin += (Math.round(this.spin / (Math.PI * 2)) * Math.PI * 2 - this.spin) * Math.min(1, dt * 7);
+    ACPOSE.target(tp, st, this.ph, this.tt, this.dn || 0);
+    const k = 1 - Math.exp(-dt * 14); for (const key in tp) ps[key] += (tp[key] - ps[key]) * k;
+    const c = Math.cos, L1 = .36, L2 = .30;
+    const lg = (g, sx, a, b, kn) => { g.hip.rotation.set(-a, 0, sx * b); g.knee.rotation.x = kn; return L1 * c(a) * c(b) + L2 * c(a - kn) * c(b * .5) + .08 };
+    const dL = lg(P.legL, -1, ps.ll, ps.llb, ps.llk), dR = lg(P.legR, 1, ps.rl, ps.rlb, ps.rlk);
+    P.body.position.y = Math.max(dL, dR) - .74 + ps.lift; P.body.rotation.y = this.spin;
+    const ar = (g, sx, a1, b1, a2, b2) => { g.sh.rotation.set(-a1, 0, sx * b1); g.el.rotation.set(-(a2 - a1), 0, sx * (b2 - b1)) };
+    ar(P.armL, -1, ps.la1, ps.lb1, ps.la2, ps.lb2); ar(P.armR, 1, ps.ra1, ps.rb1, ps.ra2, ps.rb2);
+    P.torso.rotation.set(ps.lean, ps.twist, 0); P.torso.position.x = ps.sx;
+    P.head.rotation.set(0, st === 'idle' ? Math.sin(t / 1900) * .25 : 0, ps.head);
+    const bl = (t % 4200) < 130 ? .1 : 1; P.eyes.forEach((e, i) => { e.scale.y = (i === 0 || i === 2 ? bl * .85 : bl) });
+    if (P.skirt) P.skirt.rotation.x = 0;
   },
   resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const half = 4.3, asp = Math.min(w / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
   applyShift() { const sh = this.shiftY * this.H; this.cam.setViewOffset(this.W, this.H, 0, -sh, this.W, this.H); this.cam.updateProjectionMatrix() },
@@ -208,11 +278,7 @@ window.ROOM3D = {
     // avatar walking along the path
     const a = this.avatar; let moving = false;
     if (this.path.length) { const goal = this.path[0], d = goal.clone().sub(a.position); d.y = 0; const L = d.length(); if (L < .08) { this.path.shift(); if (!this.path.length && this.onArrive) { const f = this.onArrive; this.onArrive = null; f() } } else { moving = true; d.normalize(); a.position.addScaledVector(d, Math.min(L, 2.5 * dt)); const ta = Math.atan2(d.x, d.z), df = ((ta - a.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; a.rotation.y += df * Math.min(1, dt * 10) } }
-    const P = this.parts, ph = t / 120, sw = moving ? Math.sin(ph) * .75 : 0;
-    P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * .9; P.armR.rotation.x = sw * .9;
-    if (!moving) { const b = Math.sin(t / 700) * .04; P.armL.rotation.x = b; P.armR.rotation.x = -b; P.armL.rotation.z = .05; P.armR.rotation.z = -.05 } else { P.armL.rotation.z = .05; P.armR.rotation.z = -.05 }
-    P.head.rotation.y = moving ? 0 : Math.sin(t / 1900) * .25; const bl = (t % 4200) < 130 ? .1 : 1; P.eyes.forEach(e => { e.scale.y = e === P.eyes[0] || e === P.eyes[2] ? bl * .85 : bl });
-    a.position.y = moving ? Math.abs(Math.sin(ph)) * .06 : 0;
+    this.animate(t, dt, moving);
     // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
     const dl = this.dl == null ? 1 : this.dl, kk = Math.min(1, dt * 3), C = THREE.Color, lerpC = (a, b, t) => new C(a).lerp(new C(b), t);
     this.amb.intensity += ((.3 + .32 * dl) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));

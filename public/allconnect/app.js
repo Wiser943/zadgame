@@ -52,7 +52,7 @@ const NET = {
   save() {
     if (!this.user) return;
     clearTimeout(this.saveT);
-    this.saveT = setTimeout(() => this.api('/api/ac/save', { method: 'POST', body: { paint: S.paint, needs: S.needs, min: S.min } }).catch(() => {}), 1500)
+    this.saveT = setTimeout(() => this.api('/api/ac/save', { method: 'POST', body: { paint: S.paint, needs: S.needs, min: S.min, gender: S.gender || undefined } }).catch(() => {}), 1500)
   }
 };
 const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k' : String(n);
@@ -62,27 +62,15 @@ function gemText() { const e = $('gem'); if (e) e.textContent = `${(S.gems||0).t
 function findGem() { if (NET.sock) NET.sock.emit('gem') }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [c]));
 
-function drawPlayers(list) {
-  let box = $('players');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'players';
-    $('map').appendChild(box)
-  }
-  box.innerHTML = list.filter(p => p.name !== (NET.user && NET.user.displayName)).slice(0, 25).map(p => {
-    let h = 0;
-    for (const c of p.name) h = (h * 31 + c.charCodeAt(0)) % 997;
-    return `<span class="pill mp" style="left:${10+h%80}%;top:${14+(h*7)%76}%;padding:3px 10px;font-size:12px;opacity:.9">🟢 ${esc(p.name)}</span>`
-  }).join('')
-}
+function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
 
 function applyAC(ac) {
-  Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min });
+  Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
   S.items = ac.items || [];
   S.wish = ac.wish || [];
   setPaint(S.paint);
-  if (window.ROOM3D) ROOM3D.sync();
+  if (window.ROOM3D) { ROOM3D.setGender(S.gender || 'male'); ROOM3D.sync() }
   if (window.BUY && BUY.active) BUY.draw()
 }
 let AM = 'login';
@@ -125,6 +113,7 @@ async function boot() {
     $('uname2').textContent = j.user.displayName;
     $('auth').style.display = 'none';
     $('resume').style.display = 'block';
+    initCharacter();
     NET.connect();
     render();
     if (window.PH) PH.init();
@@ -301,7 +290,10 @@ function nav(w, keep) {
   $('needsbar').style.display = ((home && !cl) || w == 'map') ? 'flex' : 'none';
   $('nav').style.display = (w == 'buy' || cl) ? 'none' : 'flex';
   $('menubtn').style.display = cl ? 'block' : 'none';
-  $('viewctl').style.display = home ? 'flex' : 'none';
+  $('viewctl').style.display = (home || w == 'map') ? 'flex' : 'none';
+  $('app').classList.toggle('onmap', w == 'map'); try { CAMV.toggle(false) } catch (e) {}
+  $('emotes').style.display = (home || w == 'map') ? 'flex' : 'none';
+  if (window.MAP3D) { if (w == 'map') MAP3D.show(); else MAP3D.hide() }
   if (window.ROOM3D) ROOM3D.page(w);
   $('hud').style.display = (w == 'buy') ? 'none' : 'flex';
   $('chips').style.display = (home || w == 'map') ? 'flex' : 'none';
@@ -317,37 +309,9 @@ function nav(w, keep) {
     BUY.enter()
   } else $('room').style.top = '';
   if (w == 'map') {
-    if (window.ADS) ADS.paintMap();
-    let p = 18;
-    $('ld').style.display = 'block';
-    const i = setInterval(() => {
-      p += Math.ceil(Math.random() * 14);
-      if (p >= 100) {
-        clearInterval(i);
-        $('ld').style.display = 'none'
-      } else $('ld').textContent = 'Loading Lagos… ' + p + '%'
-    }, 500)
+    if (window.ADS) ADS.paintMap()
   }
 }
-const PINS = [
-  ['📻 Naija Radio', 20, 22],
-  ['⚽ Viewing Centre', 26, 29],
-  ['🍲 Amala Shitta', 19, 37],
-  ['🏠 Home', 47, 34, 0],
-  ['💡 CcHub', 74, 27],
-  ['🎓 UNILAG', 78, 32],
-  ['🚧 ✈️ Airport · Coming soon', 34, 42, 1],
-  ['⛵ Boat Cruise', 58, 45],
-  ['🏋️ i-Fitness', 44, 59],
-  ['⚖️ High Court', 22, 63],
-  ['📚 The Library', 70, 61],
-  ['🏨 Eko Hotels', 40, 69],
-  ['🎭 Freedom Park', 24, 73],
-  ['🌐 Quilox', 64, 75],
-  ['🕯 Ivory Rooftop', 76, 80],
-  ['🎰 Eko Casino', 36, 80]
-];
-$('pins').innerHTML = PINS.map(p => `<button class="pill mp ${p[3]?'y':''}" style="left:${p[1]}%;top:${p[2]}%" onclick="${p[0].includes('Home')?"nav('home')":"toast('"+p[0].split(' ').slice(1).join(' ')+" opens soon')"}">${p[0]}</button>`).join('');
 const CAT = {
   Design: [
     ['WALL PAINT', [
@@ -377,6 +341,7 @@ const APPS = [
   ['GameHub', '🎮', '#151a35'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
+  ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '🗣️', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
@@ -385,7 +350,7 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Ads: "PH.open('ads')" }; 
+const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Ads: "PH.open('ads')" }; 
 /* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
 const PHLAY = {
   key: 'allconnect:applayout',
@@ -444,6 +409,8 @@ const APPSEARCH = {
 };
 drawApps();
 async function start(n) {
+  if (!S.gender) { $('gp').classList.add('need'); setTimeout(() => $('gp').classList.remove('need'), 800); return toast('Pick your character first 👆') }
+  stopPreviews();
   if (window.ROOM3D) ROOM3D.init();
   if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { return toast(e.message) } } $('splash').style.display = 'none';
   render();
@@ -609,9 +576,10 @@ async function loadSocials() {
 loadSocials();
 
 /* ================= HUD mute: one tap mutes / unmutes ALL game sound (music, effects, announcer) ================= */
-const soundOn = () => { const p = GP.get(); return p.music !== false || p.sound !== false || p.voice !== false };
+const soundOn = () => { if (typeof GP === 'undefined') return true; const p = GP.get(); return p.music !== false || p.sound !== false || p.voice !== false };
 
-function refreshMute() { const b = $('mute'); if (b) b.textContent = soundOn() ? '🔊' : '🔇' }
+const ICON_SND_ON = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>', ICON_SND_OFF = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/><path d="m16 9 5 6"/><path d="m21 9-5 6"/></svg>';
+function refreshMute() { const b = $('mute'); if (b) { b.innerHTML = soundOn() ? ICON_SND_ON : ICON_SND_OFF; b.classList.toggle('off', !soundOn()) } }
 
 function toggleMute() {
   const on = !soundOn();
@@ -621,7 +589,7 @@ function toggleMute() {
   toast(on ? '🔊 Sound on' : '🔇 Sound off')
 }
 window.addEventListener('storage', e => { if (e.key === 'ghPrefs') refreshMute() });
-setTimeout(refreshMute, 0);
+setTimeout(refreshMute, 0); window.addEventListener('load', refreshMute);
 
 /* ================= NEPA & city banners: pop up now and then ================= */
 const BAN = {
@@ -663,30 +631,12 @@ const CAMV = {
   mv: false,
   mvT: 0,
   el() { return $('room') },
-  apply() { const e = this.el(); if (!e) return;
-    e.style.setProperty('--zm', this.z);
-    e.style.setProperty('--fl', this.fl);
-    e.style.setProperty('--tx', this.x + 'px');
-    e.style.setProperty('--ty', this.y + 'px') },
-  clamp() { const r = this.el().getBoundingClientRect(),
-      w = r.width / this.z,
-      h = r.height / this.z,
-      mx = (this.z - 1) * w / 2 + 40,
-      my = (this.z - 1) * h / 2 + 40;
-    this.x = Math.max(-mx, Math.min(mx, this.x));
-    this.y = Math.max(-my, Math.min(my, this.y)) },
-  zoom(f) { if (window.ROOM3D && ROOM3D.on) return ROOM3D.zoom(1 / f);
-    this.z = Math.max(.8, Math.min(3.2, this.z * f));
-    this.clamp();
-    this.apply() },
-  flip() { if (window.ROOM3D && ROOM3D.on) { ROOM3D.flip(); return } this.fl = -this.fl;
-    this.apply();
-    toast('View rotated 🔄') },
-  reset() { if (window.ROOM3D && ROOM3D.on) return ROOM3D.reset();
-    this.z = 1;
-    this.x = 0;
-    this.y = 0;
-    this.apply() },
+  apply() { const e = this.el(); if (!e) return; e.style.setProperty('--zm', this.z); e.style.setProperty('--fl', this.fl); e.style.setProperty('--tx', this.x + 'px'); e.style.setProperty('--ty', this.y + 'px') },
+  clamp() { const r = this.el().getBoundingClientRect(), w = r.width / this.z, h = r.height / this.z, mx = (this.z - 1) * w / 2 + 40, my = (this.z - 1) * h / 2 + 40; this.x = Math.max(-mx, Math.min(mx, this.x)); this.y = Math.max(-my, Math.min(my, this.y)) },
+  zoom(f) { if (S.page === 'map' && window.MAP3D) return MAP3D.zoom(1 / f); if (window.ROOM3D && ROOM3D.on) return ROOM3D.zoom(1 / f); this.z = Math.max(.8, Math.min(3.2, this.z * f)); this.clamp(); this.apply() },
+  flip() { if (S.page === 'map' && window.MAP3D) return MAP3D.rotate(Math.PI / 2); if (window.ROOM3D && ROOM3D.on) { ROOM3D.flip(); return } this.fl = -this.fl; this.apply(); toast('View rotated 🔄') },
+  reset() { if (S.page === 'map' && window.MAP3D) return MAP3D.recenter(); if (window.ROOM3D && ROOM3D.on) return ROOM3D.reset(); this.z = 1; this.x = 0; this.y = 0; this.apply() },
+  toggle(force) { const v = $('viewctl'); if (!v) return; const on = force === undefined ? !v.classList.contains('open') : force; v.classList.toggle('open', on); const m = v.querySelector('.vcmain'); if (m) m.setAttribute('aria-expanded', on); clearTimeout(this.ct); if (on) this.ct = setTimeout(() => this.toggle(false), 9000) },
   moved() { return this.mv },
   flag() { this.mv = true;
     clearTimeout(this.mvT);
@@ -731,6 +681,38 @@ const CAMV = {
 };
 CAMV.init();
 
+
+/* ================= Your character: male / female, walk, dance, wave ================= */
+const DANCE_NAMES = ['Shaku-shaku', 'Hands-up bounce', 'Spin', 'Zanku'];
+let GP_PREV = [];
+function stopPreviews() { GP_PREV.forEach(p => p.stop()); GP_PREV = [] }
+function paintPortraits() {
+  if (!window.ACAvatar) return; const g = S.gender || 'male';
+  [$('avbtn'), document.querySelector('#resume .who .a')].forEach(el => { if (!el) return; el.innerHTML = ''; el.appendChild(ACAvatar.portrait(g, 96)) })
+}
+function initCharacter() {
+  if (!window.ACAvatar) return;
+  stopPreviews();
+  GP_PREV = [ACAvatar.preview($('gpMc'), 'male', { state: 'wave' }), ACAvatar.preview($('gpFc'), 'female', { state: 'wave' })];
+  $('gpM').classList.toggle('on', S.gender === 'male'); $('gpF').classList.toggle('on', S.gender === 'female');
+  paintPortraits()
+}
+function setGender(g) {
+  S.gender = g === 'female' ? 'female' : 'male';
+  $('gpM').classList.toggle('on', S.gender === 'male'); $('gpF').classList.toggle('on', S.gender === 'female');
+  paintPortraits(); NET.save();
+  if (window.ROOM3D) ROOM3D.setGender(S.gender)
+}
+/* kind: 'dance' (tap again for the next move) | 'wave' | null (stop). Both the room and the map character do it. */
+function doEmote(kind) {
+  if (window.ROOM3D) ROOM3D.emote(kind);
+  if (window.MAP3D) MAP3D.setEmote(kind);
+  S.emote = kind; const idx = (window.ROOM3D && ROOM3D.on && S.page !== 'map') ? ROOM3D.dn : (MAP3D.me ? MAP3D.me.dance : 0);
+  if (kind === 'dance') toast('🕺 ' + DANCE_NAMES[(idx || 0) % 4]); else if (kind === 'wave') toast('👋 Hey!');
+  emoteUI()
+}
+function emoteUI() { $('emDance').classList.toggle('on', S.emote === 'dance'); $('emStop').style.display = S.emote ? 'block' : 'none' }
+window.emoteEnded = () => { S.emote = null; if (window.MAP3D) MAP3D.setEmote(null); emoteUI() };
 /* Haptics: a short tick when a nav bar icon / tab is tapped (respects Settings > Vibration).
    Android uses the Vibration API; iPhone (iOS 18+) has no vibrate(), so we toggle a hidden native switch, which gives the system tick. */
 const HAPTIC = {
@@ -754,3 +736,19 @@ document.addEventListener('click', (e) => {
   if (t) HAPTIC.tick()
 }, true);
 window.HAPTIC = HAPTIC;
+
+
+/* ================= phone app headers tuck away while you scroll down and come back when you scroll up ================= */
+(() => {
+  const last = new WeakMap(); let lock = 0;
+  document.addEventListener('scroll', e => {
+    const t = e.target; if (!t || !t.classList || !t.classList.contains('abody')) return;
+    const av = t.closest('.appview'); if (!av || av.classList.contains('adview')) return;
+    const y = t.scrollTop, p = last.get(t) || 0; last.set(t, y);
+    if (Date.now() < lock) return;                                   // let the collapse animation finish before reacting again
+    const off = av.classList.contains('hdr-off');
+    if (y < 24) { if (off) { av.classList.remove('hdr-off'); lock = Date.now() + 320 } }
+    else if (y > p + 8 && !off && y > 90) { av.classList.add('hdr-off'); lock = Date.now() + 320 }
+    else if (y < p - 8 && off) { av.classList.remove('hdr-off'); lock = Date.now() + 320 }
+  }, true);
+})();

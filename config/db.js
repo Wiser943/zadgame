@@ -25,9 +25,12 @@ module.exports = async function connectDB() {
     console.error('[db] failed to sync User indexes — auth may misbehave until this is fixed:', err.message);
   }
 
-  // One-off cleanup: earlier penalties could push balances below zero.
+  // The GameHub balance and the AllConnect balance are now one number (User.ac.cash). Every account must have it.
   try {
-    const fixed = await User.updateMany({ coins: { $lt: 0 } }, { $set: { coins: 0 } });
-    if (fixed.modifiedCount) console.log(`[db] reset ${fixed.modifiedCount} negative coin balance(s) to 0`);
-  } catch (err) { console.error('[db] negative-coin cleanup failed:', err.message); }
+    const { DEFAULT_AC } = require('../utils/allconnect');
+    const made = await User.updateMany({ 'ac.cash': { $exists: false } }, { $set: { ac: { ...DEFAULT_AC(), gemsFound: 0 } } });
+    if (made.modifiedCount) console.log(`[db] gave ${made.modifiedCount} account(s) their starting balance`);
+    const fixed = await User.updateMany({ 'ac.cash': { $lt: 0 } }, { $set: { 'ac.cash': 0 } });
+    if (fixed.modifiedCount) console.log(`[db] reset ${fixed.modifiedCount} negative balance(s) to 0`);
+  } catch (err) { console.error('[db] balance setup failed:', err.message); }
 };

@@ -5,6 +5,9 @@ const User = require('../models/User');
 const Match = require('../models/Match');
 const shop = require('../config/shop');
 const mongoose = require('mongoose');
+const econ = require('../utils/economy');
+const { DAILY_REWARD } = require('../config/economy');
+const cashOf = econ.cashOf;
 
 const router = express.Router();
 
@@ -14,7 +17,7 @@ const router = express.Router();
 const AVATAR_RE = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/;
 const MAX_AVATAR_BYTES = 900 * 1024; // ~900KB of base64 (~650KB image) — plenty for a profile photo
 
-router.post('/daily-claim', ensureAuth, async (req,res,next)=>{ try { const u=await User.findById(req.user.id); const now=new Date(); if(u.lastDailyClaim && now-u.lastDailyClaim < 24*60*60*1000) return res.status(409).json({message:'Daily reward already claimed.', nextAt:new Date(u.lastDailyClaim.getTime()+24*60*60*1000)}); u.lastDailyClaim=now; u.coins+=25; u.xp=(u.xp||0)+10; u.level=Math.floor(u.xp/100)+1; await u.save(); res.json({coins:u.coins,xp:u.xp,level:u.level,reward:25}); } catch(e){next(e);} });
+router.post('/daily-claim', ensureAuth, async (req,res,next)=>{ try { const u=await User.findById(req.user.id); const now=new Date(); if(u.lastDailyClaim && now-u.lastDailyClaim < 24*60*60*1000) return res.status(409).json({message:'Daily reward already claimed.', nextAt:new Date(u.lastDailyClaim.getTime()+24*60*60*1000)}); u.lastDailyClaim=now; u.xp=(u.xp||0)+10; u.level=Math.floor(u.xp/100)+1; await u.save(); const cash=await econ.credit(u.id,DAILY_REWARD); res.json({coins:cash,xp:u.xp,level:u.level,reward:DAILY_REWARD}); } catch(e){next(e);} });
 router.get('/matches/:id/replay', ensureAuth, async (req,res,next)=>{try{const row=await Match.findOne({_id:req.params.id,'players.userId':String(req.user.id)}).select('game players result winnerIndex moves createdAt');if(!row)return res.status(404).json({message:'Replay not found.'});res.json({replay:row});}catch(e){next(e);}});
 router.get('/matches', ensureAuth, async (req,res,next)=>{ try { const rows=await Match.find({'players.userId':String(req.user.id)}).sort({createdAt:-1}).limit(30).select('game players winnerIndex result reason ranked durationMs createdAt').lean(); res.json({matches:rows}); } catch(e){next(e);} });
 
@@ -47,7 +50,7 @@ router.post('/rewards/register', ensureAuth, async (req, res, next) => {
 
 // ---------- coin shop: room backgrounds, board skins, token skins ----------
 const shopView = (u) => ({
-  coins: u.coins || 0,
+  coins: cashOf(u),
   catalog: shop.CATALOG.map(it => ({ ...it, owned: shop.owns(u, it.cat, it.id) })),
   equipped: shop.sanitizeEquipped(u)
 });
@@ -59,11 +62,13 @@ router.post('/shop/buy', ensureAuth, async (req, res, next) => {
     if (!it) return res.status(404).json({ message: 'Item not found.' });
     if (shop.isFree(it) || shop.owns(req.user, cat, id)) return res.status(409).json({ message: 'You already own this.' });
     const k = shop.key(cat, id);
-    // Atomic: only deducts if the user still has enough coins and does not already own it (no double-spend on rapid taps).
+    // Atomic: only deducts if the user still has enough ₦ and does not already own it (no double-spend on rapid taps).
+    await econ.balance(req.user.id);   // makes sure an older account has its balance field
     const u = await User.findOneAndUpdate(
-      { _id: req.user.id, coins: { $gte: it.price }, cosmetics: { $ne: k } },
-      { $inc: { coins: -it.price }, $addToSet: { cosmetics: k } }, { new: true });
-    if (!u) return res.status(402).json({ message: `Not enough coins — you need ${it.price}.` });
+      { _id: req.user.id, 'ac.cash': { $gte: it.price }, cosmetics: { $ne: k } },
+      { $inc: { 'ac.cash': -it.price }, $addToSet: { cosmetics: k } }, { new: true });
+    if (!u) return res.status(402).json({ message: `Not enough ₦ — you need ₦${it.price.toLocaleString('en-NG')}.` });
+    econ.announce(String(u._id), u.ac.cash);
     res.json(shopView(u));
   } catch (e) { next(e); }
 });
@@ -108,7 +113,7 @@ router.get('/me', ensureAuth, (req, res) => {
   const u = req.user;
   res.json({ user: {
     id: u.id, displayName: u.displayName, avatar: u.avatar, cover: u.cover||'', bio: u.bio||'', verified: !!u.verified, autoPostWins: u.autoPostWins !== false, username: u.acUsername||'', email: u.email||'', phone: u.phone||'',
-    coins: u.coins, stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null
+    coins: cashOf(u), stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null
   } });
 });
 
@@ -138,7 +143,7 @@ router.post('/me/profile', ensureAuth, async (req, res) => {
   if (typeof displayName === 'string' && displayName.trim()) update.displayName = displayName.trim().slice(0, 40);
   if (!Object.keys(update).length) return res.status(400).json({ message: 'Nothing to update.' });
   const u = await User.findByIdAndUpdate(req.user.id, update, { new: true });
-  res.json({ user: { id: u.id, displayName: u.displayName, avatar: u.avatar, cover: u.cover||'', bio: u.bio||'', verified: !!u.verified, autoPostWins: u.autoPostWins !== false, username: u.acUsername||'', coins: u.coins, stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null } });
+  res.json({ user: { id: u.id, displayName: u.displayName, avatar: u.avatar, cover: u.cover||'', bio: u.bio||'', verified: !!u.verified, autoPostWins: u.autoPostWins !== false, username: u.acUsername||'', coins: cashOf(u), stats: u.stats, xp:u.xp||0, level:u.level||1, achievements:u.achievements||[], cosmetics:u.cosmetics||[], equipped: shop.sanitizeEquipped(u), bestMoment: u.bestMoment?.matchId ? u.bestMoment : null } });
 });
 
 // Read-only profile for any other player — used when you tap someone's
@@ -158,18 +163,18 @@ router.get('/leaderboard', ensureAuth, async (req, res) => {
   const byWins = req.query.by === 'wins';
   const byRating = req.query.by === 'rating';
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
-  const sort = byRating ? { rating: -1, 'stats.wins': -1 } : byWins ? { 'stats.wins': -1, coins: -1 } : { coins: -1, 'stats.wins': -1 };
-  const rows = await User.find({}).select('displayName avatar coins rating stats').sort(sort).limit(limit).lean();
+  const sort = byRating ? { rating: -1, 'stats.wins': -1 } : byWins ? { 'stats.wins': -1, 'ac.cash': -1 } : { 'ac.cash': -1, 'stats.wins': -1 };
+  const rows = await User.find({}).select('displayName avatar ac.cash rating stats').sort(sort).limit(limit).lean();
   const shape = (u, rank) => ({
     id: String(u._id), rank, displayName: u.displayName, avatar: u.avatar,
-    coins: u.coins || 0, rating: u.rating || 1000, stats: u.stats || {}
+    coins: (u.ac && u.ac.cash) || 0, rating: u.rating || 1000, stats: u.stats || {}
   });
   const leaderboard = rows.map((u, i) => shape(u, i + 1));
   let me = leaderboard.find((u) => u.id === req.user.id);
   if (!me) {
     const ahead = await User.countDocuments(byRating ? { rating: { $gt: req.user.rating || 1000 } } : byWins
       ? { 'stats.wins': { $gt: req.user.stats?.wins || 0 } }
-      : { coins: { $gt: req.user.coins || 0 } });
+      : { 'ac.cash': { $gt: cashOf(req.user) } });
     me = { ...shape(req.user, ahead + 1), outsideTop: true };
   }
   res.json({ leaderboard, me, by: byRating ? 'rating' : byWins ? 'wins' : 'coins' });

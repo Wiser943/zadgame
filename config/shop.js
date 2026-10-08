@@ -1,6 +1,7 @@
-// Cosmetic shop catalog. Everything is bought with coins earned from matches / daily rewards.
+// Cosmetic shop catalog. Everything is bought with your platform balance (₦), the same one you see in AllConnect.
 // Categories: roomBg (room background), boardSkin (board look), tokenSkin (pieces / tokens / discs).
-const CATALOG = [
+const { COIN } = require('../config/economy');
+const CATALOG_BASE = [
   // ---- room backgrounds ----
   { id: 'classic',  cat: 'roomBg',    name: 'Classic Red',  price: 0,   colors: ['#7a0c12', '#9c1219'] },
   { id: 'midnight', cat: 'roomBg',    name: 'Midnight',     price: 40,  colors: ['#0a1b3f', '#1d3f85'] },
@@ -28,6 +29,7 @@ const CATALOG = [
   { id: 'calm',     cat: 'announcer', name: 'Smooth Host',   price: 60,  colors: ['#0a1b3f', '#1d3f85'], blurb: 'Slow, deep and cool.' },
   { id: 'naija',    cat: 'announcer', name: 'Naija Vibes',   price: 100, colors: ['#08382a', '#12744f'], blurb: 'Pidgin one-liners.' }
 ];
+const CATALOG = CATALOG_BASE.map((it) => ({ ...it, price: it.price * COIN }));
 const CATS = ['roomBg', 'boardSkin', 'tokenSkin', 'announcer'];
 const key = (cat, id) => `${cat}:${id}`;
 const find = (cat, id) => CATALOG.find(x => x.cat === cat && x.id === id);

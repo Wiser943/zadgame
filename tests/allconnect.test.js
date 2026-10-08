@@ -26,3 +26,5 @@ test('account ids are 10 digits and refs are unique', () => {
   assert.ok(BK.validAcNum('1234567890')); assert.ok(!BK.validAcNum('123456789')); assert.ok(!BK.validAcNum('@tobi'));
   assert.notEqual(BK.makeRef(), BK.makeRef());
 });
+
+test('gender is saved only when it is male or female', () => { assert.deepEqual(sanitizeSave({ gender: 'female' }), { gender: 'female' }); assert.deepEqual(sanitizeSave({ gender: 'banana' }), {}); });

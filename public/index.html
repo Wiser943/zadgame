@@ -3300,6 +3300,14 @@
       if (code) return joinRoom(code, false);
       lobbyView(false);
     });
+    const naira = n => '₦' + Math.floor(Number(n) || 0).toLocaleString('en-NG');   // the one shared balance is always shown in ₦
+    function stakeLine(result, won, draw) {
+      if (result.practice) return 'Practice match: no ₦, stats or ranking changes.';
+      const st = result.stake || 0;
+      if (!st) return won ? 'Well played.' : draw ? 'Nobody wins this one.' : 'Better luck next round.';
+      if (draw) return `Draw: both players lose their ${naira(st)} stake.`;
+      return won ? `You won ${naira(result.payout)}!` : `You lost your ${naira(st)} stake. Better luck next round.`;
+    }
     const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [c]));
     const EMOTES = [
       { icon: 'thumbsup', label: 'Nice move!', showLabel: true },
@@ -3312,6 +3320,8 @@
       { icon: 'pray', label: 'Please' }
     ];
     const ICON = { tictactoe: 'x', connectfour: 'dot', rps: 'fist', ludo: 'dice', chess: 'pawn', whot: 'card', joker: 'card' };
+    /* background music is silent only while you are inside a game room (see js/bgm.js) */
+    function bgmRoom(on) { try { var B = (window.top && window.top.BGM) || window.BGM; if (B && B.room) B.room(on); } catch (e) { } }
     let me, socket, room, gstate, result, picked;
     let authMode = 'login',
       authErr = '';
@@ -4059,6 +4069,9 @@
       socket.on('chat:message', appendChatMessage);
       socket.on('invite:received', showInvite);
       socket.on('queue:matched', m => { closeQueue(); toast('Opponent found: ' + (m.opponent?.name || 'Player') + ' (' + m.opponent?.rating + ')'); joinRoom(m.code); });
+      socket.on('balance', b => { if (typeof b?.cash !== 'number') return; me.coins = b.cash; for (const id of ['balTop', 'balShop']) { const el = document.getElementById(id); if (el) el.textContent = naira(b.cash); } });
+      socket.on('stake:charged', m => toast(`${naira(m.stake)} stake taken. Winner gets ${naira(m.pot)}.`));
+      socket.on('stake:rejected', m => { toast(m.message || 'Not enough ₦ for the stake.'); if (room && (!m.code || m.code === room.code)) { room = null; result = null; try { lobbyView(false); } catch {} } });
       socket.on('rating:update', r => toast('Rating ' + r.after + ' (' + (r.delta >= 0 ? '+' : '') + r.delta + ')'));
       socket.on('tournament:match', m => showInvite({ from: { name: m.name + ' · ' + m.stage }, code: m.code, game: m.game, tournament: true }));
     }
@@ -4163,7 +4176,7 @@
       if (ev.type === 'strikeout') {
         SFX.out();
         const p = room.players[ev.player];
-        toast(`${p ? nameOf(p) : 'Player'} was removed — forfeited ${ev.coinsLost} coins`);
+        toast(`${p ? nameOf(p) : 'Player'} was removed${ev.coinsLost ? ' and lost the ' + naira(ev.coinsLost) + ' stake' : ''}`);
       }
     }
     
@@ -4247,7 +4260,7 @@
     async function lobbyView(navigate = true) {
       closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
       roomsTabPoll(false);
-      room = gstate = result = null;
+      room = gstate = result = null; bgmRoom(false);
       ludoRollReady = false;
       chessSelected = null;
       if (navigate && routePath() !== '/lobby') history.pushState({ page: 'lobby' }, '', '/lobby');
@@ -4266,7 +4279,7 @@
       GAMES = games;
       games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
       app.innerHTML = `
-  <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b>${esc(me.coins ?? 0)} 🪙</b></div></div>
+  <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b id="balTop">${naira(me.coins)}</b></div></div>
   <div class="lobtabs" role="tablist" aria-label="${esc(t('tabs.label'))}">
     <button role="tab" id="tabLobby" data-tab="lobby" aria-controls="pnLobby">${esc(t('tab.lobby'))}</button>
     <button role="tab" id="tabTour" data-tab="tour" aria-controls="pnTour">${esc(t('tab.tournaments'))}</button>
@@ -4341,7 +4354,7 @@
       loadChallengesCard();
       loadDashboard();
       $('#shopOpen').onclick = () => shopView();
-      $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${d.reward} coins`); lobbyView(false); } catch(e) { toast(e.message || 'Reward already claimed'); } };
+      $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${naira(d.reward)}`); lobbyView(false); } catch(e) { toast(e.message || 'Reward already claimed'); } };
       app.querySelectorAll('.game').forEach(b => b.onclick = () =>
         b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
     }
@@ -4357,7 +4370,7 @@
       <h1 style="flex:1;margin:0">Leaderboard</h1><span style="width:38px"></span>
     </div>
     <div class="lbtabs">
-      <button type="button" data-by="coins" class="${by==='coins'?'on':''}">🪙 Coins</button>
+      <button type="button" data-by="coins" class="${by==='coins'?'on':''}">₦ Balance</button>
       <button type="button" data-by="wins" class="${by==='wins'?'on':''}">${icon('trophy',13)} Wins</button>
     </div>
     <div id="lbList"><p style="text-align:center;color:var(--mute);padding:30px 0">Loading…</p></div>
@@ -4374,7 +4387,7 @@
     <span class="rank">${medal(p.rank)}</span>
     <img src="${avatar(p)}" alt="">
     <span class="who"><b>${esc(p.displayName || 'Player')}${p.id===meId?' (you)':''}</b><span>${esc(p.stats?.gamesPlayed ?? 0)} games played</span></span>
-    <span class="val">${by === 'wins' ? `${esc(p.stats?.wins ?? 0)} wins` : `${esc(p.coins ?? 0)} 🪙`}</span></button>`;
+    <span class="val">${by === 'wins' ? `${esc(p.stats?.wins ?? 0)} wins` : naira(p.coins)}</span></button>`;
       const html = list.length ?
         list.map(row).join('') + (data.me?.outsideTop ? `<div class="lbsep">···</div>${row(data.me)}` : '') :
         '<p style="text-align:center;color:var(--mute);padding:30px 0">No players yet — be the first!</p>';
@@ -4383,7 +4396,7 @@
     }
     
 
-    /* ---------- shop: backgrounds, board skins, token skins (coins) ---------- */
+    /* ---------- shop: backgrounds, board skins, token skins (paid from the shared ₦ balance) ---------- */
     const SHOP_TABS = [['roomBg', 'Rooms'], ['boardSkin', 'Boards'], ['tokenSkin', 'Tokens'], ['announcer', 'Voices']];
     const SHOP_HINT = {
       roomBg: 'Changes the backdrop of every game room.',
@@ -4457,26 +4470,15 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       try { data = await api('/api/tournaments'); } catch { toast('Could not load tournaments'); }
       const games = (GAMES || []).filter(g => !g.playerCounts || g.playerCounts.includes(2));
       const row = t => { const g = (GAMES || []).find(x => (x.key || x.id) === t.game);
-        return `<div class="tcard" data-t="${esc(t.id)}" tabindex="0" role="button"><div class="tt"><span>${esc(t.name)}</span><span class="tstat ${esc(t.status)}">${esc(t.status)}</span></div><small>${esc(g?.name || t.game)} · ${t.count}/${t.maxPlayers} players${t.minLevel > 1 ? ' · level ' + t.minLevel + '+' : ''}${t.startsAt ? ' · starts ' + esc(new Date(t.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}${t.champion ? ' · 🏆 ' + esc(t.champion) : ''}</small></div>`; };
+        return `<div class="tcard" data-t="${esc(t.id)}" tabindex="0" role="button"><div class="tt"><span>${esc(t.name)}</span><span class="tstat ${esc(t.status)}">${esc(t.status)}</span></div><small>${esc(g?.name || t.game)} · ${t.count}/${t.maxPlayers} players${t.minLevel > 1 ? ' · level ' + t.minLevel + '+' : ''}${t.startsAt ? ' · starts ' + esc(new Date(t.startsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}${t.status === 'done' ? '' : ' · entry ' + naira(t.entryFee) + ' · 🏆 ' + naira(t.prizes?.champion?.coins || 0)}${t.champion ? ' · 🏆 ' + esc(t.champion) : ''}</small></div>`; };
       (mount || app).innerHTML = `${mount ? '' : `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
       <button class="back" id="trBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>Tournaments</h1><span style="width:38px"></span></div>`}
-      <button class="btn" id="trNew" style="width:100%;margin:8px 0">Create a tournament</button>
-      <div id="trForm"></div>
       <div class="glabel" style="margin:10px 0 6px;font-weight:700">Open &amp; live</div>
-      ${data.tournaments.length ? data.tournaments.map(row).join('') : '<p class="socempty">No tournaments right now. Create one!</p>'}
+      ${data.tournaments.length ? data.tournaments.map(row).join('') : '<p class="socempty">No tournaments right now. New cups are announced by the admin, so check back soon.</p>'}
       ${data.recent.length ? '<div class="glabel" style="margin:14px 0 6px;font-weight:700">Recent champions</div>' + data.recent.map(row).join('') : ''}
-      <p class="rwnote">Prizes are cosmetic coins and XP only. Entries lock when the bracket starts.</p>${mount ? '' : '</div>'}`;
+      <p class="rwnote">Entry fees and prizes are set by the admin. Prizes are paid into your ₦ balance, plus XP. Entries lock when the bracket starts.</p>${mount ? '' : '</div>'}`;
       if ($('#trBk')) $('#trBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
       app.querySelectorAll('[data-t]').forEach(c => { c.onclick = () => tournamentView(c.dataset.t); c.onkeydown = e => { if (e.key === 'Enter') tournamentView(c.dataset.t); }; });
-      $('#trNew').onclick = () => {
-        $('#trForm').innerHTML = `<div class="tform"><input id="tfName" maxlength="40" placeholder="Name (optional)">
-        <select id="tfGame">${games.map(g => `<option value="${esc(g.key || g.id)}">${esc(g.name)}</option>`).join('')}</select>
-        <select id="tfSize"><option value="4">4 players</option><option value="8" selected>8 players</option><option value="16">16 players</option></select>
-        <select id="tfStart"><option value="0">Start when full (or when I start it)</option><option value="10">Starts in 10 minutes</option><option value="30">Starts in 30 minutes</option><option value="60">Starts in 1 hour</option></select>
-        <select id="tfLvl"><option value="1">Everyone can enter</option><option value="3">Level 3+</option><option value="5">Level 5+</option><option value="10">Level 10+</option></select>
-        <button class="btn" id="tfGo">Create</button></div>`;
-        $('#tfGo').onclick = async () => { try { const r = await apiPost('/api/tournaments', { name: $('#tfName').value, game: $('#tfGame').value, maxPlayers: +$('#tfSize').value, startInMinutes: +$('#tfStart').value, minLevel: +$('#tfLvl').value }); tournamentView(r.tournament.id); } catch (e) { toast(e.message || 'Could not create'); } };
-      };
     }
     async function tournamentView(id) {
       history.pushState({ page: 'tournament', id }, '', '/tournaments');
@@ -4487,23 +4489,22 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
       <button class="back" id="tvBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button><h1>${esc(t.name)}</h1><span style="width:38px"></span></div>
       <p style="margin:4px 0 10px;color:var(--mute);font-size:13px">${esc(g?.name || t.game)} · ${t.count}/${t.maxPlayers} players · <span class="tstat ${esc(t.status)}">${esc(t.status)}</span></p>
-      ${t.status === 'done' ? `<div class="rwdone">🏆 Champion: <b>${esc(t.champion || '?')}</b>${t.runnerUp ? ' · Runner-up: ' + esc(t.runnerUp) : ''}<br><small>Prizes: ${t.prizes.champion.coins} coins + ${t.prizes.champion.xp} XP for the champion.</small></div>` : ''}
+      <p style="margin:0 0 10px;font-size:13px"><b>Registration ${naira(t.entryFee)}</b> · 🏆 ${naira(t.prizes.champion.coins)} + ${t.prizes.champion.xp} XP · 🥈 ${naira(t.prizes.runnerUp.coins)} + ${t.prizes.runnerUp.xp} XP</p>
+      ${t.status === 'done' ? `<div class="rwdone">🏆 Champion: <b>${esc(t.champion || '?')}</b>${t.runnerUp ? ' · Runner-up: ' + esc(t.runnerUp) : ''}</div>` : ''}
       ${d.myMatch ? `<button class="btn" id="tvPlay" style="width:100%;margin:8px 0">▶ Play your ${esc(d.myMatch.round)} match vs ${esc(d.myMatch.opponent)}</button>` : ''}
       <div class="acts" style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap">
-        ${t.status === 'open' && !t.joined ? '<button class="btn" id="tvJoin">Join</button>' : ''}
+        ${t.status === 'open' && !t.joined ? `<button class="btn" id="tvJoin">Join · ${naira(t.entryFee)}</button>` : ''}
         ${t.status === 'open' && t.joined ? '<button class="btn ghost" id="tvLeave">Leave</button>' : ''}
-        ${t.status === 'open' && t.mine && t.count >= t.minPlayers ? '<button class="btn" id="tvStart">Start now</button>' : ''}
         <button class="btn ghost" id="tvRef">Refresh</button></div>
       ${d.rounds.length ? `<div class="bracket" role="group" aria-label="Bracket">${d.rounds.map(r => `<div class="bround"><h4>${esc(r.name)}</h4>${r.matches.map(m => `<div class="bmatch ${m.mine ? 'mine' : ''}">
         <div class="${m.winner && m.winner === m.a ? 'win' : ''}"><span class="${m.a ? '' : 'tbd'}">${esc(m.a || (m.bye ? 'bye' : 'TBD'))}</span></div>
         <div class="${m.winner && m.winner === m.b ? 'win' : ''}"><span class="${m.b ? '' : 'tbd'}">${esc(m.b || (m.bye ? 'bye' : 'TBD'))}</span>${m.live ? '<span>🔴</span>' : ''}</div></div>`).join('')}</div>`).join('')}</div>`
         : `<div class="glabel" style="margin:10px 0 6px;font-weight:700">Players</div>${t.players.map(p => `<div class="prow"><div class="t"><b>${esc(p.name)}</b></div></div>`).join('') || '<p class="socempty">Nobody yet.</p>'}`}
-      <p class="rwnote">Bracket starts automatically when full or at the start time. If a player does not show within 3 minutes, their opponent advances. Drawn matches are replayed.</p></div>`;
+      <p class="rwnote">The admin sets the fee, prizes and start. The bracket starts automatically when full or at the start time; leaving before it starts refunds your fee. If a player does not show within 3 minutes, their opponent advances. Drawn matches are replayed.</p></div>`;
       $('#tvBk').onclick = () => { lobbyTab = 'tour'; lobbyView(false); };
       $('#tvRef').onclick = () => tournamentView(id);
       $('#tvJoin') && ($('#tvJoin').onclick = () => post('/join'));
       $('#tvLeave') && ($('#tvLeave').onclick = () => post('/leave'));
-      $('#tvStart') && ($('#tvStart').onclick = () => post('/start'));
       $('#tvPlay') && ($('#tvPlay').onclick = () => joinRoom(d.myMatch.code));
     }
     async function galleryView(navigate = true) {
@@ -4534,7 +4535,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         }).join('');
         box.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
           b.disabled = true;
-          try { const r = await apiPost('/api/social/challenges/' + b.dataset.claim + '/claim', {}); toast('+' + r.reward + ' coins'); me.coins = r.coins; lobbyView(false); }
+          try { const r = await apiPost('/api/social/challenges/' + b.dataset.claim + '/claim', {}); toast('+' + naira(r.reward)); me.coins = r.coins; lobbyView(false); }
           catch (e) { toast(e.message || 'Could not claim'); b.disabled = false; }
         });
       };
@@ -4663,7 +4664,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       <button class="back" id="rwBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
       <h1>Rewards &amp; Payouts</h1><span style="width:38px"></span></div>
     <div class="rwhero"><div class="big">🚀</div><b>Coming soon · ${esc(st.launch)}</b>
-      <p>Soon you will be able to turn approved rewards into real payouts. Your coins stay as in-game points and are not cash. Verify your details now so you are ready on launch day.</p></div>
+      <p>Soon you will be able to turn approved rewards into real payouts. Your ₦ balance stays in-game money and is not cash. Verify your details now so you are ready on launch day.</p></div>
     ${st.registered ? `<div class="rwdone">✅ You are on the list${st.legalName ? ', ' + esc(st.legalName) : ''}. We will notify you before launch. You can update your details below.</div>` : ''}
     <form class="rwform" id="rwForm" onsubmit="return false">
       <label>Full name (as on your ID)<input type="text" id="rwName" maxlength="80" autocomplete="name" value="${esc(st.legalName || '')}"></label>
@@ -4698,16 +4699,16 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       const items = data.catalog.filter(x => x.cat === shopTab);
       app.innerHTML = `<div class="shop">
     <div class="shop-top"><button class="back" id="shBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
-      <h1>Shop</h1><span class="shop-coins">${esc(data.coins)} 🪙</span></div>
+      <h1>Shop</h1><span class="shop-coins" id="balShop">${naira(data.coins)}</span></div>
     <div class="shop-tabs">${SHOP_TABS.map(([k, n]) => `<button data-tab="${k}" class="${k === shopTab ? 'on' : ''}">${n}</button>`).join('')}</div>
-    <p class="shop-hint">${SHOP_HINT[shopTab]} Win matches and claim your daily reward to earn coins.</p>
+    <p class="shop-hint">${SHOP_HINT[shopTab]} Win matches and claim your daily reward to earn ₦.</p>
     <div class="shop-grid">${items.map(it => {
         const eq = data.equipped[it.cat] === it.id;
         const poor = !it.owned && data.coins < it.price;
         const btn = eq ? `<button class="act on" disabled>Equipped ✓</button>`
           : it.owned ? `<button class="act own" data-equip="${esc(it.id)}">Equip</button>`
           : `<button class="act ${poor ? 'poor' : ''}" data-buy="${esc(it.id)}" data-price="${it.price}">Buy · ${it.price} 🪙</button>`;
-        return `<div class="shop-card ${eq ? 'eq' : ''}">${shopPreview(it)}<b>${esc(it.name)}</b>${it.blurb ? `<span class="price">${esc(it.blurb)}</span>` : ''}<span class="price">${it.price === 0 ? 'Free' : it.owned ? 'Owned' : it.price + ' coins'}</span>${btn}</div>`;
+        return `<div class="shop-card ${eq ? 'eq' : ''}">${shopPreview(it)}<b>${esc(it.name)}</b>${it.blurb ? `<span class="price">${esc(it.blurb)}</span>` : ''}<span class="price">${it.price === 0 ? 'Free' : it.owned ? 'Owned' : naira(it.price)}</span>${btn}</div>`;
       }).join('')}</div></div>`;
       $('#shBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
       app.querySelectorAll('[data-prev]').forEach(b => b.onclick = () => { const ann = ANNOUNCERS[b.dataset.prev] || ANNOUNCERS.classic; speak(pickLine('doubleSix', {}, ann), { force: true, prio: 2, style: ann }); });
@@ -4717,7 +4718,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         catch (e) { toast(e.message); }
       });
       app.querySelectorAll('[data-buy]').forEach(b => b.onclick = async () => {
-        if (+b.dataset.price > data.coins) return toast(`Not enough coins — you need ${b.dataset.price}.`);
+        if (+b.dataset.price > data.coins) return toast(`Not enough ₦ — you need ${naira(b.dataset.price)}.`);
         if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Tap again to confirm'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = `Buy · ${b.dataset.price} 🪙`; } }, 3000); return; }
         b.disabled = true;
         try {
@@ -4838,7 +4839,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     // ---------- localisation (English + French; add another language by adding a dictionary here) ----------
     const I18N = {
       en: { name: 'English', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Brackets', 'tab.utility': 'Utility', 'tabs.label': 'Home sections',
-        'daily': 'Daily reward', 'daily.sub': '+25 coins', 'shop': 'Shop', 'shop.sub': 'Themes, boards & tokens', 'friends': 'Friends', 'friends.sub': 'Add, invite & chat',
+        'daily': 'Daily reward', 'daily.sub': '+₦25,000', 'shop': 'Shop', 'shop.sub': 'Themes, boards & tokens', 'friends': 'Friends', 'friends.sub': 'Add, invite & chat',
         'history': 'History', 'history.sub': 'Matches & replays', 'a11y': 'Accessibility', 'a11y.sub': 'Text, contrast, motion', 'gallery': 'Highlights', 'gallery.sub': 'Best moments from players',
         'rewards': 'Rewards & Payouts', 'rewards.sub': 'Verify your details to be ready for launch', 'soon': 'Coming soon', 'leaderboard': 'Leaderboard', 'play': 'Play',
         'challenges': 'Daily challenges', 'claimed': 'Claimed ✓', 'ch.play-3': 'Play 3 matches', 'ch.win-1': 'Win a match against a real player',
@@ -4849,12 +4850,12 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         'tour.s2.t': 'Pick a game', 'tour.s2.d': 'Tap any game to play a quick match, create a room, play a bot, or read how it works.',
         'tour.s3.t': 'Leaderboard', 'tour.s3.d': 'See the top players and where you rank.',
         'tour.s4.t': 'Your progress', 'tour.s4.d': 'Your level, XP bar, rank and win streak live here. Win matches to move up.',
-        'tour.s5.t': 'Daily reward', 'tour.s5.d': 'Come back every day to claim free coins.',
+        'tour.s5.t': 'Daily reward', 'tour.s5.d': 'Come back every day to claim free ₦.',
         'tour.s6.t': 'Friends', 'tour.s6.d': 'Add friends, see who is online and invite them straight into a game.',
-        'tour.s7.t': 'Daily challenges', 'tour.s7.d': 'Finish these each day to earn bonus coins. You are all set, have fun!',
+        'tour.s7.t': 'Daily challenges', 'tour.s7.d': 'Finish these each day to earn bonus ₦. You are all set, have fun!',
         'lang': 'Language', 'tut.title': 'How to play', 'tut.next': 'Next', 'tut.back': 'Back', 'tut.practice': 'Practice vs Easy bot', 'tut.close': 'Close', 'tut.step': 'Step' },
       fr: { name: 'Français', 'tab.lobby': 'Salon', 'tab.tournaments': 'Tournois', 'tab.utility': 'Outils', 'tabs.label': 'Sections de l’accueil',
-        'daily': 'Récompense du jour', 'daily.sub': '+25 pièces', 'shop': 'Boutique', 'shop.sub': 'Thèmes, plateaux et pions', 'friends': 'Amis', 'friends.sub': 'Ajouter, inviter et discuter',
+        'daily': 'Récompense du jour', 'daily.sub': '+₦25 000', 'shop': 'Boutique', 'shop.sub': 'Thèmes, plateaux et pions', 'friends': 'Amis', 'friends.sub': 'Ajouter, inviter et discuter',
         'history': 'Historique', 'history.sub': 'Parties et replays', 'a11y': 'Accessibilité', 'a11y.sub': 'Texte, contraste, animations', 'gallery': 'Temps forts', 'gallery.sub': 'Les meilleurs moments des joueurs',
         'rewards': 'Récompenses et paiements', 'rewards.sub': 'Vérifiez vos informations pour être prêt au lancement', 'soon': 'Bientôt', 'leaderboard': 'Classement', 'play': 'Jouer',
         'challenges': 'Défis quotidiens', 'claimed': 'Récupéré ✓', 'ch.play-3': 'Jouer 3 parties', 'ch.win-1': 'Gagner une partie contre un vrai joueur',
@@ -4873,12 +4874,12 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     Object.assign(I18N.en, {
       'tab.rooms': 'Rooms', 'tour.prev': 'Back',
       'tour.s1.d': 'These tabs move you around the app: Lobby for games, Brackets for cups, Utility for your tools and Rooms for joining friends.',
-      'tour.s7.d': 'Finish these each day to earn bonus coins.',
+      'tour.s7.d': 'Finish these each day to earn bonus ₦.',
       'tour.s8.t': 'Rewards', 'tour.s8.d': 'Verify your details here so you are ready when real payouts launch.',
       'tour.s9.t': 'Rooms tab', 'tour.s9.d': 'Every open room and live match from all games shows up here.',
       'tour.s10.t': 'Room code', 'tour.s10.d': 'Got a code from a friend? Type it here and tap Join to jump straight into their game.',
       'tour.s11.t': 'Open rooms', 'tour.s11.d': 'Rooms with free seats show Join. Matches already running show Watch so you can spectate.',
-      'tour.s12.t': 'Shop', 'tour.s12.d': 'Spend your coins on backgrounds, boards and tokens.',
+      'tour.s12.t': 'Shop', 'tour.s12.d': 'Spend your ₦ on backgrounds, boards and tokens.',
       'tour.s13.t': 'Match history', 'tour.s13.d': 'Look back at your past matches and see how they went.',
       'tour.s14.t': 'Settings', 'tour.s14.d': 'Tap your name here for sound, dark mode, accessibility and language. You are all set, have fun!',
       'sheet.players': 'Players', 'sheet.lvl.random': 'Surprise me',
@@ -5259,6 +5260,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     /* ---------- game ---------- */
     function gameView() {
       if (!room) return lobbyView();
+      bgmRoom(true);
       if (chatRoomCode !== room.code) { chatMessages = [];
         chatRoomCode = room.code;
         chatReplyTo = null; }
@@ -5292,7 +5294,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
           } else if (c !== 1) { whotLastCardSeen[i] = false; }
         });
       }
-      let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})` :
+      let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})${room.stake > 0 ? ` · Stake ${naira(room.stake)} each, winner takes the pot` : room.practice ? ' · Practice, no stake' : ''}` :
         result ? '' : g === 'rps' ? (gstate?.mine ? (gstate?.opponentPicked ? 'Revealing the round…' : 'Choice locked — waiting for your opponent') : gstate?.opponentPicked ? 'Your opponent is ready — choose now' : 'Choose your move') :
         g === 'whot' && myTurn && gstate?.pendingPick > 0 ? `Play a Pick ${gstate.pendingType === 'two' ? 'Two' : 'Three'} or draw ${gstate.pendingPick}` :
         g === 'whot' && myTurn && gstate?.hand?.length === 1 ? 'Your turn — Last card!' :
@@ -5341,7 +5343,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     ${result ? overCard(mine) : ''}</main><aside class="game-rail"><button class="rail-lobby" id="railLobby">‹ Back to lobby</button><h2>${esc(GAMES.find(x => (x.key || x.id) === g)?.name || g)}</h2><p>${spectator ? 'Spectator view' : waiting ? 'Waiting room' : 'Live match'}${room.spectatorCount ? ` · ${room.spectatorCount} watching` : ''}</p><div class="rail-room">Room <b>${esc(room.code)}</b><br><span>${players.length}/${maxPlayers} players</span></div><div class="rail-players">${railPlayers}</div></aside></div></div>`;
       $('#railLobby').onclick = () => $('#bk').click();
       $('#bk').onclick = async () => {
-        if (g === 'ludo' && room.status === 'playing' && !result && !await askDialog('Leave this match?', 'Leaving now forfeits your coins for this match. Do you want to leave?', 'Leave match')) return;
+        if (room.stake > 0 && room.status === 'playing' && !result && !await askDialog('Leave this match?', `Leaving now forfeits your ${naira(room.stake)} stake to the other player. Do you want to leave?`, 'Leave match')) return;
         socket.emit(EV.leave, { code: room.code });
         stopMusic();
         goBackToLobby();
@@ -6063,7 +6065,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       const highlights = result.highlights || [];
       const replay = (!draw && highlights.length && prefs.winnerReplay) ? `<button class="btn hl-watch" id="watchHl" type="button">▶ Watch highlights</button>` : '';
       return `<div class="over-bg"><div class="over"><h2>${draw ? 'It’s a draw' : won ? `You won! ${icon('trophy',24)}` : 'You lost'}</h2>
-    <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Someone left the match.' : 'You left or timed out.') : draw ? 'Nobody takes the coins.' : won ? 'Coins added to your total.' : 'Better luck next round.'}</p>
+    <p style="margin:0 0 14px;color:#6b6b76">${result.reason === 'forfeit' ? (won ? 'Someone left the match.' : 'You left or timed out.') : stakeLine(result, won, draw)}</p>
     <div>${replay}</div>
     <button class="btn" id="rm" style="margin-right:8px" ${canRe ? '' : 'disabled'}>${room.rematch?.includes(mine) ? 'Waiting…' : 'Rematch'}</button>
     <button class="btn ghost" id="again">Lobby</button></div></div>`;

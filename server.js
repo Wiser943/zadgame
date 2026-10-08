@@ -26,6 +26,8 @@ const acGroupRoutes = require('./routes/acgroups');
 const acJobRoutes = require('./routes/acjobs');
 const acAdRoutes = require('./routes/acads');
 const acItemRoutes = require('./routes/acitems');
+const acInvestRoutes = require('./routes/acinvest');
+const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
 const acMusicRoutes = require('./routes/acmusic');
 const acPushRoutes = require('./routes/acpush');
@@ -80,6 +82,8 @@ async function main() {
   app.use('/api/ac/jobs', acJobRoutes);
   app.use('/api/ac/ads', acAdRoutes);
   app.use('/api/ac/items', acItemRoutes);
+  app.use('/api/ac/invest', acInvestRoutes);
+  app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
@@ -106,6 +110,8 @@ async function main() {
     res.sendFile(path.join(__dirname, 'public', 'allconnect', 'index.html'));
   });
   app.get('/gamehub', (req, res) => res.sendFile(GAMEHUB));
+  app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
+  app.get('/stats', (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));
 
   // GameHub's own client-side routes (/lobby, /shop, /friends ...) fall through to GameHub
   app.get('*', (req, res) => res.sendFile(GAMEHUB));
@@ -129,6 +135,7 @@ async function main() {
   initSockets(io, sessionMiddleware);
   app.set('io', io);
   initAllConnect(io);
+  require('./utils/economy').setIO(io);   // lets every wallet change update open screens live
 
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   server.listen(PORT, () => {

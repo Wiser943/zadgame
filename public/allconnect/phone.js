@@ -11,9 +11,9 @@ const PH={
     document.querySelectorAll('.app[data-app]').forEach(a=>{const b=a.querySelector('.bdg');if(!b)return;const v=n[a.dataset.app]||0;b.textContent=v>9?'9+':(v||'')});
     const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
   /* ----- shell ----- */
-  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),ads:()=>ADS.open()})[name]()},
+  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),invest:()=>INV.open(),ads:()=>ADS.open()})[name]()},
   close(){document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
-  shell(title,back,body,sub,right){this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}${body}`},
+  shell(title,back,body,sub,right){const av=this.$a();av.classList.remove('adview','hdr-min','hdr-off');clearTimeout(window.ADS&&ADS.ht);this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}${body}`},
   sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
   closeSheet(){const s=this.$a().querySelector('.asheet');if(s)s.remove()},
   av(u,big){const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.charCodeAt(0)||0)%6];

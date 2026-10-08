@@ -98,11 +98,12 @@
   </svg>
   
   <div class="pill hud" id="hud">
-   <div class="t"><span id="hico">🌙</span><span id="clk">--:--</span><span class="mood" id="mood">😄 Very Happy</span><button class="mutebtn" id="mute" onclick="toggleMute()" aria-label="Mute or unmute game sound">🔊</button></div>
+   <div class="t"><span id="hico">🌙</span><span id="clk">--:--</span><span class="mood" id="mood">😄 Very Happy</span><button class="mutebtn" id="mute" onclick="toggleMute()" aria-label="Mute or unmute game sound"></button></div>
    <div class="bal" role="button" tabindex="0" onclick="openBank()" aria-label="Open AllConnect Pay"><span id="bal">₦2,024,000</span><button class="plus" onclick="event.stopPropagation();openBank(true)" aria-label="Deposit money">+</button></div>
   </div>
   <div id="banner" class="banner2" role="status"></div>
-  <div class="viewctl" id="viewctl"><button onclick="CAMV.zoom(1.3)" aria-label="Zoom in">＋</button><button onclick="CAMV.zoom(1/1.3)" aria-label="Zoom out">－</button><button onclick="CAMV.flip()" aria-label="Rotate view">⟲</button><button onclick="CAMV.reset()" aria-label="Reset view">⌖</button></div>
+  <div class="viewctl" id="viewctl"><button class="vcmain" onclick="CAMV.toggle()" aria-label="View controls" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button><div class="vcmenu"><button onclick="CAMV.zoom(1.3)" aria-label="Zoom in">＋</button><button onclick="CAMV.zoom(1/1.3)" aria-label="Zoom out">－</button><button onclick="CAMV.flip()" aria-label="Rotate view">⟲</button><button onclick="CAMV.reset()" aria-label="Reset view">⌖</button><button class="mapOnly" id="mpCompass" onclick="MAP3D.resetNorth()" aria-label="Face north"><svg class="needle" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m12 4.5 3 7.5h-6z" fill="#e5484d" stroke="#e5484d"/><path d="m12 19.5-3-7.5h6z" fill="currentColor"/></svg></button><button class="mapOnly" onclick="MAP3D.toggleTilt()" aria-label="Flat or 3D view">3D</button></div></div>
+  <div class="emotes" id="emotes"><button id="emDance" onclick="doEmote('dance')" aria-label="Dance (tap again for the next move)">🕺</button><button onclick="doEmote('wave')" aria-label="Wave">👋</button><button id="emStop" onclick="doEmote(null)" aria-label="Stop" style="display:none">✋</button></div>
   <button class="pill menubtn" id="menubtn" onclick="toggleClean()">☰ Menu</button>
   <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
   <div id="homeUI">
@@ -117,17 +118,10 @@
   
   <!-- MAP -->
   <div id="map">
-   <div class="water"></div>
-   <div class="road" style="top:30%"></div>
-   <div class="road" style="top:64%"></div>
-   <div class="bld" style="left:46%;top:52%;width:70px;height:34px"></div>
-   <div class="bld" style="left:20%;top:63%;width:60px;height:46px;background:#9c3b22"></div>
-   <div class="bld" style="left:70%;top:74%;width:50px;height:80px;background:#222"></div>
-   <div class="bld" style="left:36%;top:73%;width:34px;height:70px;background:#8d99a6"></div>
+   <canvas id="mapCv" aria-label="Map of Lagos. Drag to move, pinch or scroll to zoom, twist with two fingers to rotate."></canvas>
    <div class="pill cats"><span>🟠 Go-slow</span><span>📢 Ads</span><span>🏠 Homes</span><span>🌊 Sea</span><span>🏛 Gov</span></div>
-   <div id="pins"></div>
-   <div class="pill load" id="ld">Loading Lagos… 18%</div>
   </div>
+
   
   <div class="pill miniplayer" id="miniplayer" style="display:none"></div>
 
@@ -193,7 +187,10 @@
       </svg></div>
      <div style="text-align:left"><b id="uname">wisdomw</b><span id="sd">Monday 5 Oct · ₦2.0m</span></div>
     </div>
-    <button class="btn p" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
+    <div class="gp" id="gp"><p>Choose your character</p><div class="gpr">
+     <button type="button" id="gpM" onclick="setGender('male')"><canvas id="gpMc" width="220" height="280"></canvas><span>Male</span></button>
+     <button type="button" id="gpF" onclick="setGender('female')"><canvas id="gpFc" width="220" height="280"></canvas><span>Female</span></button></div></div>
+    <button class="btn p" id="contBtn" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
     <div class="foot"><span>Signed in as <b style="color:var(--ink)">@<span id="uname2">wisdomw</span></b></span><a onclick="logout()">Log out</a></div>
    </div>
    <footer class="sfoot" id="sfoot" style="display:none"></footer>
@@ -212,6 +209,8 @@
  </div>
  <script src="/js/bgm.js"></script>
  <script src="/socket.io/socket.io.js"></script>
+ <script src="/allconnect/avatar.js"></script>
+ <script src="/allconnect/map3d.js"></script>
  <script src="/allconnect/app.js"></script>
  <script src="/allconnect/furniture.js"></script>
  <script src="/allconnect/room3d.js"></script>
@@ -223,6 +222,7 @@
  <script src="/allconnect/gist.js"></script>
  <script src="/allconnect/groups.js"></script>
  <script src="/allconnect/jobs.js"></script>
+ <script src="/allconnect/invest.js"></script>
  <script src="/allconnect/ads.js"></script>
  <script src="/allconnect/settings.js"></script>
  <script src="/allconnect/songify.js"></script>

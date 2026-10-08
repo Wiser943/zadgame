@@ -4,6 +4,8 @@ const ReportSchema = new mongoose.Schema({ reporter:String, target:String, roomC
 const TournamentSchema = new mongoose.Schema({
   name:String, game:String, minPlayers:{type:Number,default:4}, maxPlayers:{type:Number,default:8}, minLevel:{type:Number,default:1},
   players:[String], createdBy:String, startsAt:Date,
+  entryFee:{type:Number,default:0},                                  // registration fee in ₦, set by the admin when the tournament is created
+  prizes:{type:mongoose.Schema.Types.Mixed,default:null},            // { champion:{coins,xp}, runnerUp:{coins,xp} } set by the admin; null = platform defaults
   status:{type:String,enum:['open','running','done','cancelled'],default:'open'},
   bracket:mongoose.Schema.Types.Mixed, champion:String, runnerUp:String, createdAt:{type:Date,default:Date.now}
 });

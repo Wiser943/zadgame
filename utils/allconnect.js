@@ -15,10 +15,11 @@ function sanitizeSave(b = {}) {
   const out = {};
   if (typeof b.paint === 'string' && /^#[0-9a-f]{6}$/i.test(b.paint)) out.paint = b.paint.toLowerCase();
   if (Array.isArray(b.needs) && b.needs.length === 6 && b.needs.every((v) => typeof v === 'number' && isFinite(v))) out.needs = b.needs.map((v) => Math.max(0, Math.min(1, v)));
+  if (b.gender === 'male' || b.gender === 'female') out.gender = b.gender;
   if (Number.isFinite(b.min)) out.min = Math.max(0, Math.floor(b.min)) % 100000;
   return out;
 }
-const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, owned: [...(ac.owned || [])], items: (ac.items || []).map((i) => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })), wish: [...(ac.wish || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
+const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, gender: ac.gender || '', owned: [...(ac.owned || [])], items: (ac.items || []).map((i) => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })), wish: [...(ac.wish || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
 const FOOD = {
   jollof: { name: 'Jollof rice & chicken', emoji: '🍛', price: 2500, fill: .35 },
   suya: { name: 'Suya', emoji: '🍢', price: 1500, fill: .22 },

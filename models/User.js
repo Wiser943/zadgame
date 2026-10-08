@@ -12,7 +12,6 @@ const UserSchema = new mongoose.Schema({
   bio: { type: String, default: '', maxlength: 160 },
   verified: { type: Boolean, default: false },          // blue tick: granted only by an admin
   autoPostWins: { type: Boolean, default: true },       // auto-post match wins to P-Gist
-  coins: { type: Number, default: 0 },
   suspendedUntil: { type: Date, default: null },
   penaltyPoints: { type: Number, default: 0 },
   xp: { type: Number, default: 0 },
@@ -55,10 +54,11 @@ const UserSchema = new mongoose.Schema({
     registeredAt: { type: Date, default: null }
   },
   acUsername: { type: String, unique: true, sparse: true, lowercase: true, trim: true }, // @handle used to find friends
-  // AllConnect platform life-sim state (separate from GameHub coins). Cash/owned are changed only by the server.
+  // ONE balance for the whole platform: ac.cash is the AllConnect balance AND the GameHub balance (₦). Changed only by the server.
   ac: {
     cash: { type: Number, default: 2000000 },
     paint: { type: String, default: '#d9a93a' },
+    gender: { type: String, enum: ['', 'male', 'female'], default: '' },   // which character model the player uses
     owned: { type: [String], default: ['Classic Cream'] },
     v2: { type: Boolean, default: false },                 // furniture moved to placeable items
     items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] },

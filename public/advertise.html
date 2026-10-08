@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Advertise</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<meta name="theme-color" content="#e8f0ff">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#161a2e;--mut:#5d6378;--line:#e3e7f2;--blue:#2f7fd8;--grn:#0b8f4d;--bg:#e8f0ff}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font:400 16px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);background:linear-gradient(#e8f0ff,#f4f7ff 420px,#f4f7ff);min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:18px 18px 60px}
+.top{display:flex;align-items:center;justify-content:space-between;margin:6px 0 34px}
+.brand{font:800 26px Outfit,system-ui,sans-serif;letter-spacing:-.3px;color:var(--ink);text-decoration:none}
+.pill{border:1px solid var(--line);background:#fff;border-radius:99px;padding:11px 22px;font:600 17px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--mut);text-decoration:none}
+h1{font:800 clamp(30px,8.2vw,46px)/1.12 Outfit,system-ui,sans-serif;letter-spacing:-.8px;margin:0 0 16px}
+.lead{color:var(--mut);font-size:clamp(16.5px,4.4vw,19px);line-height:1.6;margin:0 0 22px}
+.kick{font:600 clamp(16px,4.4vw,19px) 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--blue);margin:0 0 8px}
+.kick a{color:var(--blue);text-decoration:none}
+.right{font-weight:600;font-size:clamp(16px,4.4vw,19px);margin:0 0 22px}
+.card{background:#fff;border:1px solid var(--line);border-radius:30px;padding:22px;margin:0 0 20px;box-shadow:0 2px 0 rgba(20,30,70,.02)}
+.lab{font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.7px;color:var(--mut);text-transform:uppercase;margin:0 0 14px}
+.new{display:flex;align-items:center;gap:14px}
+.new .ic{width:58px;height:58px;border-radius:50%;background:#e4f5ec;display:grid;place-items:center;font-size:26px;flex:none}
+.new b{display:block;font:700 18px/1.3 'Plus Jakarta Sans',system-ui,sans-serif}
+.new small{display:block;color:var(--mut);font-size:15px;line-height:1.4;margin-top:2px}
+.new a.see{color:var(--blue);font-weight:700;font-size:18px;text-decoration:none;white-space:nowrap;margin-left:auto;cursor:pointer}
+.onair{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px}
+.onair b{font:700 17px 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.4px;color:var(--mut)}.onair b i{display:inline-block;width:12px;height:12px;border-radius:50%;background:#f06a86;margin-right:9px}
+.onair span{color:var(--mut);font-size:16px;text-align:right}
+.rail{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;margin:0 -22px 16px;padding:0 22px}.rail::-webkit-scrollbar{display:none}
+.slide{flex:none;width:calc(50% - 20px);min-width:210px;aspect-ratio:1.9;border:4px solid var(--ink);border-radius:26px;background:#fff;overflow:hidden;display:grid;place-items:center;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--mut);text-align:center;padding:6px}
+.slide img{width:100%;height:100%;object-fit:contain}
+.ph{background:linear-gradient(135deg,#111,#2a2054);color:#fff}
+.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 0 14px}
+.row h3{margin:0;font:600 24px Outfit,system-ui,sans-serif}.row p{margin:2px 0 0;color:var(--mut);font-size:15.5px;line-height:1.4}
+.step{display:flex;align-items:center;gap:20px;flex:none}
+.step button{width:54px;height:54px;border-radius:50%;border:0;background:#eef0f7;font-size:28px;color:var(--ink);cursor:pointer}
+.step button:disabled{color:#b5bacb;cursor:default}.step b{font:600 24px Outfit,system-ui,sans-serif;min-width:22px;text-align:center}
+.book{border:0;border-radius:99px;background:#0b8f4d;color:#fff;padding:16px 26px;font:700 20px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.hr{border:0;border-top:1px solid var(--line);margin:8px 0 20px}
+h2.ap{font:600 26px Outfit,system-ui,sans-serif;margin:0 0 8px}.ap-s{color:var(--mut);font-size:16.5px;margin:0 0 14px;line-height:1.5}
+.where{font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.5px;color:var(--mut);text-transform:uppercase;margin:16px 0 8px}
+.opt{display:flex;align-items:center;gap:16px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:34px;padding:16px 20px;margin-bottom:12px;cursor:pointer;font-family:inherit;color:var(--ink)}
+.opt .dot{width:34px;height:34px;border-radius:50%;border:2px solid #c7ccdc;flex:none;display:grid;place-items:center}
+.opt.on{border-color:var(--grn);background:#f0faf4}.opt.on .dot{background:var(--grn);border-color:var(--grn)}.opt.on .dot:after{content:'✓';color:#fff;font-weight:800}
+.opt b{display:block;font:600 21px Outfit,system-ui,sans-serif}.opt small{color:var(--mut);font-size:15.5px}
+.drop{display:block;border:2px dashed #cfd5e6;border-radius:30px;padding:30px 18px;text-align:center;cursor:pointer}
+.drop b{display:block;font:600 21px Outfit,system-ui,sans-serif}.drop small{display:block;color:var(--mut);font-size:16px;margin-top:6px;line-height:1.45}
+.drop img{max-width:100%;max-height:150px;border-radius:14px;margin-bottom:10px}.drop.err{border-color:#e5484d}
+.err-t{color:#e5484d;font-size:14.5px;margin:8px 4px 0}
+label.f{display:block;font:600 21px Outfit,system-ui,sans-serif;margin:18px 0 10px}label.f span{font:400 21px Outfit,system-ui,sans-serif;color:var(--mut)}
+input.t{width:100%;border:1px solid var(--line);background:#f4f6fb;border-radius:99px;padding:18px 22px;font:500 20px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);outline:0}
+input.t:focus{border-color:#9db9ee;background:#fff}
+.sum{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:26px;padding-top:20px}
+.sum small{display:block;color:var(--mut);font-size:19px}.sum b{display:block;font:800 clamp(30px,8vw,40px) Outfit,system-ui,sans-serif;letter-spacing:-.5px}
+.cur{display:flex;background:#eef0f7;border-radius:99px;padding:6px}.cur button{border:0;background:none;border-radius:99px;padding:12px 18px;font:600 19px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--mut);cursor:pointer}.cur button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(20,30,70,.12)}
+.pay{display:block;width:100%;margin-top:22px;border:0;border-radius:99px;background:#a2a4ab;color:#fff;padding:24px;font:600 clamp(21px,5.6vw,27px) Outfit,system-ui,sans-serif}
+.pay:disabled{cursor:not-allowed}
+.rules{text-align:center;color:var(--mut);font-size:16.5px;line-height:1.5;margin:20px 6px 0}
+.foot{text-align:center;color:var(--mut);font-size:16.5px;margin:34px 10px 0}
+/* stats page ad mock */
+.mock{background:#f2f4fa;border-radius:34px;padding:16px;display:grid;grid-template-columns:1fr 2.2fr 1fr;gap:12px}
+.mock .sq{border:2px dashed #dde2ef;border-radius:20px;background:#fafbff;aspect-ratio:1}
+.mock .me{border:4px solid var(--grn);background:#e8f5ee;color:var(--grn);display:grid;place-items:center;font:600 20px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:24px;aspect-ratio:1}
+.mock .mid{display:grid;gap:10px;align-content:start}
+.mock .bar{height:26px;border-radius:14px;background:#5a6070}.mock .bar.s{width:46%;display:inline-block}.mock .bar.r{width:18%;background:#dc2626;display:inline-block;margin-left:8px}
+.mock .boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.mock .boxes i{aspect-ratio:1.2;background:#fff;border:1px solid var(--line);border-radius:14px}
+.mock .wide{height:50px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.mock .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mock .two i{aspect-ratio:2.2;border:2px dashed #dde2ef;border-radius:16px;background:#fafbff}
+.mockcap{color:var(--mut);font-size:17px;line-height:1.5;margin:18px 4px 4px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="brand" href="/" id="brand">Lagos Life</a><a class="pill" href="/advertise">Advertise</a></div>
+  <div id="app"></div>
+</div>
+<script>
+/* Public advertise page. Prices and live numbers come from /api/public/advertise.
+   Payments are not switched on yet, so the final button stays disabled whatever is filled in. */
+const BRAND = 'Lagos Life';
+const HOST = location.host;
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const FALLBACK = { rates: { billboard: { price: 250000, days: 7 }, sea: { price: 18000, days: 7 }, app: { price: 100000, days: 1 }, stats: { price: 150000, days: 7 }, airport: { price: 500000, days: 7 }, usdRate: 1500 }, airports: [], boards: 6, plots: 30, onAir: { ads: 0, list: [] }, live: { online: 0, visitsToday: 0 } };
+const st = { cfg: FALLBACK, view: 'cart', qty: { billboard: 1, sea: 0, app: 0 }, air: new Set(), cur: 'NGN', imgName: '', imgUrl: '', imgErr: '' };
+
+const ngn = n => '₦' + Math.round(n).toLocaleString('en-NG');
+const money = n => st.cur === 'USD' ? '$' + (Math.round(n / st.cfg.rates.usdRate * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 }) : ngn(n);
+const short = n => n >= 1e6 ? (Math.round(n / 1e5) / 10) + 'm' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
+const total = () => {
+  const r = st.cfg.rates;
+  return st.view === 'stats' ? r.stats.price : st.qty.billboard * r.billboard.price + st.qty.sea * r.sea.price + st.qty.app * r.app.price + st.air.size * r.airport.price;
+};
+
+function hero() {
+  if (st.view === 'stats') {
+    const L = st.cfg.live || {};
+    return `<p class="kick">Ad space · <a href="/stats">${esc(HOST)}/stats</a></p>
+      <h1>Your ad beside the live numbers.</h1>
+      <p class="lead">Our live stats page shows how ${esc(BRAND)} is growing, updated every 30 seconds. Your square ad sits beside the numbers for ${st.cfg.rates.stats.days} days, live as soon as you pay, and a tap opens your link. No account needed.</p>
+      <p class="right">Right now: ${Number(L.online || 0).toLocaleString('en-NG')} players online · ${Number(L.visitsToday || 0).toLocaleString('en-NG')} visits today</p>
+      <div class="card"><p class="lab">How it looks</p>
+        <div class="mock"><div style="display:grid;gap:12px"><div class="me">Your ad</div><i class="sq"></i><i class="sq"></i></div>
+          <div class="mid"><div><span class="bar s"></span><span class="bar r"></span></div><div class="bar" style="height:30px;width:92%"></div>
+            <div class="boxes"><i></i><i></i><i></i><i></i></div><div class="wide"></div><div class="two"><i></i><i></i></div><div class="two"><i></i><i></i></div></div>
+          <div style="display:grid;gap:12px"><i class="sq"></i><i class="sq"></i><i class="sq"></i></div></div>
+        <p class="mockcap">Ten spaces: three down each side and four in the middle. We pick the quietest; if it has other ads, they take turns, 15 s each.</p></div>`;
+  }
+  const O = st.cfg.onAir || { ads: 0, list: [] };
+  const slides = (O.list.length ? O.list.map(a => `<div class="slide">${/^https:/.test(a.image) ? `<img src="${esc(a.image)}" alt="${esc(a.title)}" loading="lazy" onerror="this.parentNode.textContent='${esc(a.title).replace(/'/g, '')}'">` : esc(a.title)}</div>`) : [1, 2, 3].map(() => '<div class="slide ph">Your ad here</div>')).join('');
+  return `<h1>Put your brand inside ${esc(BRAND)}.</h1>
+    <p class="lead">Billboards on the city roads and Sea Plots on the lagoon, seen by every player. Tapping your ad opens your link. No account needed: upload your logo, pay, and you're live.</p>
+    <div class="card new"><span class="ic">📈</span><div><b>New: an ad space on our live stats page</b><small>Beside the numbers at ${esc(HOST)}/stats · ${ngn(st.cfg.rates.stats.price)} for ${st.cfg.rates.stats.days} days</small></div><a class="see" data-go="stats">See →</a></div>
+    <div class="card"><div class="onair"><b><i></i>ON AIR NOW</b><span>${O.ads} ad${O.ads === 1 ? '' : 's'} rotating on ${st.cfg.boards} boards</span></div>
+      <div class="rail">${slides}</div>
+      <p class="lead" style="margin:0">Every billboard is a digital screen: your ad goes live as soon as you pay and takes turns with the others there. We put you on the boards with the fewest ads, so you get the most screen time.</p></div>`;
+}
+
+function chooser() {
+  const r = st.cfg.rates, q = st.qty;
+  const stepper = k => `<div class="step"><button data-dec="${k}" ${q[k] <= 0 ? 'disabled' : ''} aria-label="Fewer">−</button><b>${q[k]}</b><button data-inc="${k}" aria-label="More">+</button></div>`;
+  let air = '';
+  for (const a of st.cfg.airports) {
+    air += `<p class="where">${esc(a.name)}</p>` + a.boards.map(b => `<button class="opt ${st.air.has(b.id) ? 'on' : ''}" data-air="${b.id}"><span class="dot"></span><span><b>${esc(b.label)}</b><small>Billboard ${b.id} · open</small></span></button>`).join('');
+  }
+  return `<div class="card"><p class="lab">1 · What you want</p>
+    <div class="row"><div><h3>Billboards</h3><p>${ngn(r.billboard.price)} each · ${r.billboard.days} days · ${st.cfg.boards} digital boards · live as soon as you pay</p></div>${stepper('billboard')}</div>
+    <div class="row"><div><h3>Sea Plots</h3><p>6×6 · ${ngn(r.sea.price)} each · ${r.sea.days} days</p></div>${stepper('sea')}</div>
+    <div class="row"><div><h3>Phone app</h3><p>Your own app icon on every player's phone, opening your website inside it · ${ngn(r.app.price)} per day · pick how many days</p></div>${stepper('app')}</div>
+    <div class="row"><div><h3>Stats page ad</h3><p>Beside the live numbers at ${esc(HOST)}/stats · ${ngn(r.stats.price)} · ${r.stats.days} days · takes turns, live as soon as you pay</p></div><button class="book" data-go="stats">Book →</button></div>
+    <hr class="hr">
+    <h2 class="ap">✈️ Airport boards · ₦${short(r.airport.price)} / ${r.airport.days} days</h2>
+    <p class="ap-s">On the airport lawn every flyer passes, and beside the runway as players take off and land. Tick the ones you want.</p>${air}</div>`;
+}
+
+function logoDetails(n) {
+  const drop = `<label class="drop ${st.imgErr ? 'err' : ''}" for="img">${st.imgUrl ? `<img src="${esc(st.imgUrl)}" alt="Your logo"><small>${esc(st.imgName)} · tap to change</small>` : `<b>Choose an image</b><small>${st.view === 'stats' ? 'Square works best. PNG, JPG or WebP; we fit it without cropping.' : 'PNG, JPG or WebP. We fit it to each ad without cropping.'}</small>`}</label><input id="img" type="file" accept="image/png,image/jpeg,image/webp" hidden>${st.imgErr ? `<p class="err-t">${esc(st.imgErr)}</p>` : ''}`;
+  const logo = st.view === 'stats' ? '' : `<div class="card"><p class="lab">2 · Your logo or ad</p>${drop}</div>`;
+  const details = `<div class="card"><p class="lab">${st.view === 'stats' ? '1 · Your logo or ad' : ''}</p>` + (st.view === 'stats' ? drop + '</div><div class="card"><p class="lab">2 · Your details</p>' : `<p class="lab">3 · Your details</p>`) + `
+    <label class="f" for="bn">Business name</label><input class="t" id="bn" placeholder="Mama Put Kitchen" autocomplete="organization">
+    <label class="f" for="web">Website or social link</label><input class="t" id="web" placeholder="yourbusiness.com" inputmode="url" autocomplete="url">
+    <label class="f" for="em">Email</label><input class="t" id="em" type="email" placeholder="you@company.com" autocomplete="email">
+    <label class="f" for="ph">Phone <span>(optional)</span></label><input class="t" id="ph" type="tel" placeholder="+234…" autocomplete="tel">
+    <div class="sum"><div><small>${st.view === 'stats' ? st.cfg.rates.stats.days + ' days' : 'Total'}</small><b id="tot">${money(total())}</b></div><div class="cur"><button data-cur="NGN" class="${st.cur === 'NGN' ? 'on' : ''}">₦ NGN</button><button data-cur="USD" class="${st.cur === 'USD' ? 'on' : ''}">$ USD</button></div></div>
+    <button class="pay" type="button" disabled>${st.view === 'stats' ? 'Upload your logo or ad' : 'Upload your logo'}</button>
+    <p class="rules">Ads that break our rules (scams, adult content, coins or tokens, selling accounts, or pretending to be ${esc(BRAND)}) are taken down without a refund.</p></div>`;
+  return logo + details;
+}
+
+function draw() {
+  const keep = {}; document.querySelectorAll('#app input.t').forEach(i => keep[i.id] = i.value);
+  $('#app').innerHTML = hero() + (st.view === 'stats' ? '' : chooser()) + logoDetails() + `<p class="foot">Secure payment by Flutterwave. Ads go live as soon as you pay.${st.view === 'stats' ? ' <a href="/advertise" data-go="cart" style="color:var(--blue)">← All ad spaces</a>' : ''}</p>`;
+  for (const k in keep) { const e = document.getElementById(k); if (e) e.value = keep[k] }
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-inc],[data-dec],[data-air],[data-cur]'); if (!t) return;
+  const d = t.dataset;
+  if (d.go) { e.preventDefault(); st.view = d.go === 'stats' ? 'stats' : 'cart'; history.pushState(null, '', d.go === 'stats' ? '/advertise?space=stats' : '/advertise'); draw(); window.scrollTo(0, 0); return }
+  if (d.inc) { const max = d.inc === 'sea' ? st.cfg.plots : d.inc === 'app' ? 30 : 10; st.qty[d.inc] = Math.min(max, st.qty[d.inc] + 1); draw(); return }
+  if (d.dec) { st.qty[d.dec] = Math.max(0, st.qty[d.dec] - 1); draw(); return }
+  if (d.air) { const id = +d.air; st.air.has(id) ? st.air.delete(id) : st.air.add(id); draw(); return }
+  if (d.cur) { st.cur = d.cur; draw() }
+});
+document.addEventListener('change', e => {
+  if (e.target.id !== 'img') return;
+  const f = e.target.files && e.target.files[0]; st.imgErr = '';
+  if (f) {
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) st.imgErr = 'Please choose a PNG, JPG or WebP image.';
+    else if (f.size > 5 * 1024 * 1024) st.imgErr = 'That image is over 5 MB. Please pick a smaller one.';
+    else { if (st.imgUrl) URL.revokeObjectURL(st.imgUrl); st.imgUrl = URL.createObjectURL(f); st.imgName = f.name }
+  }
+  draw();
+});
+window.addEventListener('popstate', () => { st.view = new URLSearchParams(location.search).get('space') === 'stats' ? 'stats' : 'cart'; draw() });
+
+(async () => {
+  st.view = new URLSearchParams(location.search).get('space') === 'stats' ? 'stats' : 'cart';
+  draw();
+  try { const r = await fetch('/api/public/advertise'); if (r.ok) { st.cfg = Object.assign({}, FALLBACK, await r.json()); draw() } } catch (e) { /* keep fallback prices */ }
+  setInterval(async () => { try { const r = await fetch('/api/public/stats'); if (r.ok && st.view === 'stats') { st.cfg.live = await r.json(); draw() } } catch (e) {} }, 30000);
+})();
+</script>
+</body>
+</html>

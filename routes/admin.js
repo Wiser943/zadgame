@@ -49,22 +49,22 @@ router.get('/users', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
     const filter = q ? { $or: [{ displayName: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }, { phone: q }, { email: q.toLowerCase() }] } : {};
-    const users = await User.find(filter).select('displayName phone email coins stats suspendedUntil penaltyPoints adminNote createdAt verified acUsername').sort({ createdAt: -1 }).limit(100).lean();
-    res.json({ users: users.map(u => ({ ...u, id: String(u._id) })) });
+    const users = await User.find(filter).select('displayName phone email ac.cash stats suspendedUntil penaltyPoints adminNote createdAt verified acUsername').sort({ createdAt: -1 }).limit(100).lean();
+    res.json({ users: users.map(u => ({ ...u, coins: (u.ac && u.ac.cash) || 0, id: String(u._id) })) });   // coins = the shared ₦ balance
   } catch (err) { next(err); }
 });
 router.post('/users/:id/penalize', async (req, res, next) => {
   try {
-    const coins = Math.max(0, Math.min(1000000, Number(req.body?.coins) || 0));
+    const coins = Math.max(0, Math.min(1000000000, Math.floor(Number(req.body?.coins)) || 0));   // ₦ taken off the shared balance
     const suspendMinutes = Math.max(0, Math.min(525600, Number(req.body?.suspendMinutes) || 0));
     const reason = String(req.body?.reason || '').trim().slice(0, 240);
     if (!coins && !suspendMinutes) return res.status(400).json({ message: 'Add a coin penalty or suspension duration.' });
-    const update = { $inc: { coins: -coins, penaltyPoints: 1 }, $set: { adminNote: reason } };
+    const update = { $inc: { penaltyPoints: 1 }, $set: { adminNote: reason } };
     if (suspendMinutes) update.$set.suspendedUntil = new Date(Date.now() + suspendMinutes * 60000);
-    let user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).select('displayName coins suspendedUntil penaltyPoints adminNote');
+    let user = await User.findByIdAndUpdate(req.params.id, update, { new: true }).select('displayName ac.cash suspendedUntil penaltyPoints adminNote');
     if (!user) return res.status(404).json({ message: 'User not found.' });
-    if (user.coins < 0) { user.coins = 0; await user.save(); } // never leave a negative balance
-    res.json({ user: { id: user.id, displayName: user.displayName, coins: user.coins, suspendedUntil: user.suspendedUntil, penaltyPoints: user.penaltyPoints, adminNote: user.adminNote } });
+    if (coins) { const cash = await require('../utils/economy').adjust(user.id, -coins); if (cash != null) user.ac.cash = cash; }   // clamped at 0, never negative
+    res.json({ user: { id: user.id, displayName: user.displayName, coins: user.ac ? user.ac.cash : 0, suspendedUntil: user.suspendedUntil, penaltyPoints: user.penaltyPoints, adminNote: user.adminNote } });
   } catch (err) { next(err); }
 });
 
@@ -170,6 +170,50 @@ router.post('/ac/post', ensureAdmin, async (req, res, next) => {
     const v = await require('../utils/acnotify').notify(req.app.get('io'), null, { icon: kind === 'update' ? '🆕' : '📢', text, kind });
     res.json({ update: v });
   } catch (err) { next(err); }
+});
+
+// ---- Tournaments: ONLY the admin creates, prices and starts them. Entry fee and prizes are fixed here, never by players. ----
+const intIn = (v, min, max, d) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : d; };
+const tourRow = (t) => ({ id: String(t._id), name: t.name, game: t.game, status: t.status, maxPlayers: t.maxPlayers, minPlayers: t.minPlayers, minLevel: t.minLevel || 1,
+  startsAt: t.startsAt || null, count: (t.players || []).length, entryFee: t.entryFee || 0, prizes: require('../services/tournaments').prizesOf(t), champion: t.champion || null, createdAt: t.createdAt });
+router.get('/tournaments', async (req, res, next) => {
+  try {
+    const rows = await Tournament.find().sort({ createdAt: -1 }).limit(40).lean();
+    const { TOURNAMENT_PRIZES, COIN } = require('../config/economy');
+    res.json({ tournaments: rows.map(tourRow), defaults: { prizes: TOURNAMENT_PRIZES }, minFee: require('../config/economy').MIN_ENTRY_FEE, games: effectiveGames().filter((g) => g.available && (g.playerCounts || [2]).includes(2)).map((g) => ({ key: g.key, name: g.name })) });
+  } catch (e) { next(e); }
+});
+router.post('/tournaments', async (req, res, next) => {
+  try {
+    const b = req.body || {}, g = effectiveGame(String(b.game || ''));
+    if (!g || !g.available || !(g.playerCounts || [2]).includes(2)) return res.status(400).json({ message: 'Choose an available two-player game.' });
+    const maxPlayers = [4, 8, 16].includes(Number(b.maxPlayers)) ? Number(b.maxPlayers) : 8;
+    const minPlayers = intIn(b.minPlayers, 4, maxPlayers, 4);
+    const startIn = intIn(b.startInMinutes, 0, 10080, 0);
+    const prizes = { champion: { coins: intIn(b.championCoins, 0, 1e9, 0), xp: intIn(b.championXp, 0, 1000, 30) }, runnerUp: { coins: intIn(b.runnerUpCoins, 0, 1e9, 0), xp: intIn(b.runnerUpXp, 0, 1000, 10) } };
+    const { MIN_ENTRY_FEE } = require('../config/economy'), fee = intIn(b.entryFee, 0, 1e7, 0);
+    if (fee < MIN_ENTRY_FEE) return res.status(400).json({ message: `Tournaments are never free. Set a registration fee of at least ₦${MIN_ENTRY_FEE.toLocaleString('en-NG')}.` });
+    const t = await Tournament.create({ name: String(b.name || (g.name + ' Cup')).trim().slice(0, 40) || 'Cup', game: g.key, maxPlayers, minPlayers, minLevel: intIn(b.minLevel, 1, 50, 1),
+      entryFee: fee, prizes, players: [], createdBy: 'admin', startsAt: startIn ? new Date(Date.now() + startIn * 60000) : null });
+    require('../utils/acnotify').notify(req.app.get('io'), null, { icon: '🏆', text: `New tournament: ${t.name}. Entry ₦${t.entryFee.toLocaleString('en-NG')}. Champion wins ₦${prizes.champion.coins.toLocaleString('en-NG')}. Join it in GameHub → Brackets.`, kind: 'admin' }).catch(() => {});
+    res.json({ tournament: tourRow(t) });
+  } catch (e) { next(e); }
+});
+router.post('/tournaments/:id/start', async (req, res, next) => {
+  try {
+    const t = await Tournament.findById(req.params.id);
+    if (!t) return res.status(404).json({ message: 'Tournament not found.' });
+    if (t.status !== 'open') return res.status(409).json({ message: 'It already started or was closed.' });
+    if (t.players.length < t.minPlayers) return res.status(400).json({ message: `Needs at least ${t.minPlayers} players (has ${t.players.length}).` });
+    await require('../services/tournaments').start(t._id); res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+router.post('/tournaments/:id/cancel', async (req, res, next) => {
+  try {
+    const t = await require('../services/tournaments').cancel(req.params.id);
+    if (!t) return res.status(409).json({ message: 'Only open tournaments can be cancelled.' });
+    res.json({ ok: true, refunded: t.players.length, fee: t.entryFee || 0 });
+  } catch (e) { next(e); }
 });
 
 module.exports = router;

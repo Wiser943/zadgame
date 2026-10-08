@@ -24,7 +24,7 @@ const ADS = {
         <div class="rt"><b>${esc(a.title)}</b><span>${a.kind === 'app' ? 'Phone app' : a.kind === 'sea' ? 'Sea plot #' + (a.slot + 1) : 'Billboard #' + (a.slot + 1)} · ${this.left(a.expiresAt)} · ${a.clicks} ${a.kind === 'app' ? 'open' : 'tap'}${a.clicks === 1 ? '' : 's'}</span></div>
         <button class="pbtn blu" onclick="ADS.edit('${a.id}')">Edit</button></div>`).join('')
         : `<div class="adempty">You don't have any ads yet. Book one above and it shows up here, where you can change its picture any time.</div>`) +
-      `<p class="adfoot">Business without an account? lagoslife.app/advertise</p>`
+      `<p class="adfoot">Business without an account? <a class="adlink" href="${esc(location.protocol + '//' + location.host)}/advertise" target="_blank" rel="noopener">${esc(location.host)}/advertise</a></p>`
   },
   /* ----- booking ----- */
   async sheet(kind) {
@@ -127,15 +127,22 @@ const ADS = {
     inp.value = ''
   },
   async loadApps() { try { this.apps = (await NET.api('/api/ac/ads/apps')).apps || [] } catch (e) {} if (window.drawApps) drawApps() },
+  /* top bar of an ad app: full bar at first, then it shrinks to two floating buttons so the site gets the whole screen */
+  hdr(min) { const av = PH.$a(); if (!av) return; clearTimeout(this.ht); av.classList.toggle('hdr-min', min === undefined ? !av.classList.contains('hdr-min') : min) },
+  hdrAuto() { clearTimeout(this.ht); this.ht = setTimeout(() => { if (PH.view === 'adapp') this.hdr(true) }, 2600) },
   /* an ad app: the advertiser's website runs inside the phone */
   openApp(id) {
     const a = this.apps.find(x => x.id === id); if (!a) return toast('That app is no longer running.');
     let host = a.link, sandbox = 'allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox';
     try { const u = new URL(a.link); host = u.hostname; if (u.origin !== location.origin) sandbox += ' allow-same-origin' } catch (e) {}
     document.querySelector('.screen').classList.add('light'); PH.view = 'adapp';
-    PH.shell(esc(a.title), 'PH.close()', `<div class="adapp"><div class="adbar"><span>Sponsored · ${esc(host)}</span><button class="pbtn blu" onclick="ADS.go(ADS.apps.find(x=>x.id==='${a.id}'))">Open in browser</button></div>
-      <div class="adwait" id="adwait">Loading ${esc(a.title)}…<small>Blank screen? This site may not allow being shown here. Use Open in browser.</small></div>
-      <iframe class="adif" src="${esc(a.link)}" sandbox="${sandbox}" referrerpolicy="no-referrer" onload="const w=document.getElementById('adwait');if(w)w.style.display='none'"></iframe></div>`);
+    let hue = 0; for (const ch of host + a.title) hue = (hue * 31 + ch.charCodeAt(0)) % 360;      // every ad gets its own header tint
+    const arrow = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
+    const open = `<button class="adopen" onclick="ADS.go(ADS.apps.find(x=>x.id==='${a.id}'))" aria-label="Open in browser"><span class="adot">Open<span class="adfull"> in browser</span></span>${arrow}</button>`;
+    const tog = '<button class="adtog" onclick="ADS.hdr()" aria-label="Show or hide the top bar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>';
+    PH.shell(`${esc(a.title)}<span class="adbadge">Ad</span><small class="adhost">Sponsored · ${esc(host)}</small>`, 'PH.close()', `<div class="adapp"><div class="adwait" id="adwait">Loading ${esc(a.title)}…<small>Blank screen? This site may not allow being shown here. Use Open in browser.</small></div>
+      <iframe class="adif" src="${esc(a.link)}" sandbox="${sandbox}" referrerpolicy="no-referrer" onload="const w=document.getElementById('adwait');if(w)w.style.display='none';ADS.hdrAuto()"></iframe></div>`, '', open + tog);
+    const av = PH.$a(); av.classList.add('adview'); av.style.setProperty('--adh', hue);
     fetch(`/api/ac/ads/${a.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
   },
   /* ----- what every player sees on the Map ----- */
@@ -146,8 +153,9 @@ const ADS = {
     if (!layer) { layer = document.createElement('div'); layer.id = 'adlayer'; map.appendChild(layer) }
     try { this.board = await NET.api('/api/ac/ads/board') } catch (e) { return }
     const b = this.board, plots = new Map(b.plots.map(p => [p.slot, p]));
+    if (window.MAP3D) MAP3D.setAds(b);   // the 3D map draws the sea plots and billboards itself
     this.live = b.billboards; this.cur = 0;
-    layer.innerHTML = `<div class="seaplots">${[...Array(b.config.sea.plots).keys()].map(i => { const p = plots.get(i); return p ? `<button class="sp on" title="${esc(p.title)}" onclick="ADS.goPlot(${i})">${p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : '🌊'}</button>` : '<span class="sp"></span>' }).join('')}</div>
+    layer.innerHTML = `<div class="seaplots" ${window.MAP3D ? 'hidden' : ''}>${[...Array(b.config.sea.plots).keys()].map(i => { const p = plots.get(i); return p ? `<button class="sp on" title="${esc(p.title)}" onclick="ADS.goPlot(${i})">${p.image ? `<img src="${esc(p.image)}" alt="" onerror="this.remove()">` : '🌊'}</button>` : '<span class="sp"></span>' }).join('')}</div>
       <div class="bbstrip" id="bbstrip"></div>`;
     this.showBB(); clearInterval(this.bbT); this.bbT = setInterval(() => { if (!document.getElementById('bbstrip') || S.page !== 'map') return clearInterval(this.bbT); this.cur++; this.showBB() }, 5000)
   },

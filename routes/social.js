@@ -52,8 +52,9 @@ router.post('/challenges/:id/claim',async(req,res,next)=>{try{
     {userId:me,day,['progress.'+c.stat]:{$gte:c.target},claimed:{$ne:c.id}},
     {$addToSet:{claimed:c.id}},{new:true});
   if(!row)return res.status(409).json({message:'Not completed yet, or already claimed.'});
-  const u=await User.findByIdAndUpdate(me,{$inc:{coins:c.reward,xp:5}},{new:true});
-  res.json({reward:c.reward,coins:u.coins});
+  await User.updateOne({_id:me},{$inc:{xp:5}});
+  const cash=await require('../utils/economy').credit(me,c.reward);
+  res.json({reward:c.reward,coins:cash});
 }catch(e){next(e);}});
 
 router.get('/dashboard',async(req,res,next)=>{try{
