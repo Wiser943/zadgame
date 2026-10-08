@@ -57,7 +57,11 @@ const PH={
       `<input class="sinput" id="msgto" placeholder="✏️ Message someone: @username" onkeydown="if(event.key==='Enter')PH.msgTo(this.value)" autocomplete="off">
        ${this.groupSection()}<div class="lab2">CHATS</div>`+(list.length?list.map(c=>`<div class="row tap" onclick="PH.chat('${c.peer.id}')">${this.av(c.peer,1)}<div class="rt"><b>${this.name(c.peer)}</b><span class="pv">${prev(c.last)}</span></div><div class="rm"><small>${this.rel(c.last.at)}</small>${c.unread?`<em class="cnt">${c.unread}</em>`:''}</div></div>`).join(''):`<p class="empty">No chats yet. Add friends in Contacts, then message them here.</p>`)},
   async msgTo(v){const q=v.trim().replace(/^@/,'').toLowerCase();if(!q)return;try{const f=await NET.api('/api/ac/friends');const m=f.friends.find(u=>(u.username||'').toLowerCase()===q||u.displayName.toLowerCase()===q);m?this.chat(m.id):toast(`Add @${q} as a friend in Contacts first`)}catch(e){toast(e.message)}},
-  notifOn(){if(!('Notification' in window))return toast('Not supported on this device');Notification.requestPermission().then(p=>{toast(p==='granted'?'Notifications on 🔔':'Notifications blocked in browser settings');this.view==='messages'&&this.messages()})},
+  notifOn(){return this.notifEnable()},
+  /* ONE notifications switch: in-app alerts and background push turn on together, and stay off together if either can't work */
+  async notifEnable(){const ok=await PUSH.enable();if(ok)toast('Notifications on 🔔');await PUSH.status();if(this.view==='settings')this.settings();else if(this.view==='messages')this.messages()},
+  async notifPaint(){const el=document.getElementById('nright');if(!el)return;const st=await PUSH.status();if(!document.getElementById('nright'))return;
+    el.innerHTML=st.perm==='unsupported'?'<b>Not supported</b>':st.on?'<b class="okc">On</b>':st.perm==='denied'?'<b>Blocked in browser</b>':'<button class="pbtn blu" onclick="PH.notifEnable()">Turn on</button>'},
   async drawUpdates(){
     const paint=rows=>{this.updates=rows;if(this.view!=='messages'||this.tab!=='updates')return;
       const all=[...rows,...this.local].sort((a,b)=>new Date(b.at)-new Date(a.at));
@@ -69,28 +73,45 @@ const PH={
   openUpd(ref){const back=()=>PH.messages('updates');if(ref.startsWith('u:'))GIST.openProfile(ref.slice(2),back);else GIST.openPost(ref,back)},
   local_(icon,text,kind){this.local.unshift({id:'l'+Date.now(),icon,text,kind,at:Date.now(),local:true});this.local.length=Math.min(this.local.length,30);if(!(this.view==='messages'&&this.tab==='updates'))this.localUnread++;this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates()},
   /* ----- Chat ----- */
-  async chat(id,back){this.view='chat';this.chatId=id;this.chatBack=back||null;const bk=this.chatBack||'PH.messages()';document.querySelector('.screen').classList.add('light');
+  async chat(id,back){this.view='chat';this.chatId=id;this.replyTo=null;this._tp=null;this.newId=null;this.newCount=0;this.chatBack=back||null;const bk=this.chatBack||'PH.messages()';document.querySelector('.screen').classList.add('light');
     const hit=NET.cache.get('/api/ac/messages/'+id);
-    try{if(hit){this.peer=hit.d.peer;this.msgs=hit.d.messages;this.isFriend=hit.d.isFriend}else{const r=await NET.api('/api/ac/messages/'+id);NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});this.peer=r.peer;this.msgs=r.messages;this.isFriend=r.isFriend}}catch(e){this.view='messages';return toast(e.message)}
-    if(hit)NET.api('/api/ac/messages/'+id).then(r=>{NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});if(this.view==='chat'&&this.chatId===id){this.msgs=r.messages;this.isFriend=r.isFriend;this.drawMsgs();this.refreshBadges()}}).catch(()=>{});
+    try{if(hit){this.peer=hit.d.peer;this.msgs=hit.d.messages;this.isFriend=hit.d.isFriend}else{const r=await NET.api('/api/ac/messages/'+id);NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});this.peer=r.peer;this.msgs=r.messages;this.isFriend=r.isFriend;this.markNew()}}catch(e){this.view='messages';return toast(e.message)}
+    if(hit)NET.api('/api/ac/messages/'+id).then(r=>{NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});if(this.view==='chat'&&this.chatId===id){this.msgs=r.messages;this.isFriend=r.isFriend;this.markNew();this.drawMsgs();this.applyPending(true);this.refreshBadges()}}).catch(()=>{});
     const n=this.name(this.peer),fr=this.isFriend;
     this.shell(`<span onclick="GIST.openProfile('${id}',()=>PH.chat('${id}'))" style="cursor:pointer">${n}</span>`,bk,`<div class="abody chat" id="ab"><div class="cmsgs" id="cm"></div></div>
       <div class="qr">${['How far? 👋','I dey o 😄','Wetin dey happen?'].map(t=>`<button onclick="PH.send('${t}')">${t}</button>`).join('')}</div>
       <div class="emo" id="emo" style="display:none">${['😂','😍','🙏🏾','🔥','👏🏾','😭','🎉','🍛'].map(e=>`<button onclick="PH.emoji('${e}')">${e}</button>`).join('')}</div>
-      <div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><input id="cinput" placeholder="Message ${n}…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')PH.sendInput()"><button class="sbtn" onclick="PH.sendInput()">➤</button></div>`,
+      <div id="crep"></div><div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><input id="cinput" placeholder="Message ${n}…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')PH.sendInput()"><button class="sbtn" onclick="PH.sendInput()">➤</button></div>`,
       `<div class="csub">🔒 Private · only you and ${n} can see this</div><div class="chips2">
         <button class="c3" onclick="PH.payUser('${id}','${esc(this.peer.username||'')}','PH.chat(\\'${id}\\')')">💸 Send money</button>${fr?`<button class="c1" onclick="PH.invite()">🏠 Invite over</button><button class="c2" onclick="PH.visit()">🚪 Visit them</button><button class="c4" onclick="PH.foodSheet()">🍛 Buy food</button>`:''}<button class="c5" onclick="PH.blockSheet()">🚫 Block</button><button class="c5" onclick="PH.reportSheet()">⚑ Report</button></div>`);
-    this.drawMsgs();this.refreshBadges()},
+    const cmEl=document.getElementById('cm');if(cmEl)cmEl.addEventListener('click',e=>this.tapMsg(e));
+    this.drawMsgs();this.applyPending(!hit);this.refreshBadges()},
+  /* "New messages" divider: first incoming message that was unread when the chat was opened */
+  markNew(){if(this.newId)return;const me=NET.user.id,un=this.msgs.filter(m=>m.from!==me&&!m.read&&m.kind!=='system');if(un.length){this.newId=un[0].id;this.newCount=un.length;this._scrollNew=true}},
+  /* Coming from a push notification: open the chat with that message already selected for reply */
+  applyPending(fresh){const id=this.pendingReply;if(!id)return;let m=this.msgs.find(x=>x.id===id);
+    if(!m&&fresh){const inc=this.msgs.filter(x=>x.from!==NET.user.id&&x.kind==='text');m=inc[inc.length-1]}
+    if(!m)return;this.pendingReply=null;this.setReply(m.id,!!this.pendingFocus);this.pendingFocus=false;
+    const el=document.querySelector(`.msg[data-id="${m.id}"]`);if(el){el.classList.add('hl');if(!this.newId)el.scrollIntoView({block:'center'})}},
   bubble(m,last){const mine=m.from===NET.user.id;
     if(m.kind==='money'||m.kind==='food'||m.kind==='system')return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
     if(m.kind==='invite')return `<div class="sys inv">${esc(m.text)} · ${this.time(m.at)}${mine?'':`<br><button onclick="PH.visit()">Go over 🏠</button>`}</div>`;
-    return `<div class="msg ${mine?'me':'th'}"><div class="mb">${esc(m.text)}</div><small>${this.time(m.at)}${mine&&last&&m.read?' · Seen':''}</small></div>`},
+    return `<div class="msg ${mine?'me':'th'}" data-id="${m.id}"><div class="mb">${m.reply?`<div class="mrep"><b>${m.reply.from===NET.user.id?'You':esc(this.name(this.peer))}</b><span>${esc(m.reply.text)}</span></div>`:''}${esc(m.text)}</div><small>${this.time(m.at)}${mine&&last&&m.read?' · Seen':''}</small></div>`},
   drawMsgs(){const el=document.getElementById('cm');if(!el)return;const lastMine=[...this.msgs].reverse().find(m=>m.from===NET.user.id&&m.kind==='text');
-    el.innerHTML=this.msgs.length?this.msgs.map(m=>this.bubble(m,lastMine&&m.id===lastMine.id)).join(''):`<p class="empty">Say hi to ${this.name(this.peer)} 👋</p>`;const b=document.getElementById('ab');b.scrollTop=b.scrollHeight},
+    el.innerHTML=this.msgs.length?this.msgs.map(m=>(this.newId&&m.id===this.newId?`<div class="newdiv"><span>${this.newCount>1?this.newCount+' new messages':'New message'}</span></div>`:'')+this.bubble(m,lastMine&&m.id===lastMine.id)).join(''):`<p class="empty">Say hi to ${this.name(this.peer)} 👋</p>`;const b=document.getElementById('ab'),dv=el.querySelector('.newdiv');
+    if(dv&&this._scrollNew){this._scrollNew=false;dv.scrollIntoView({block:'start'})}else b.scrollTop=b.scrollHeight},
   push(m){if(this.msgs.some(x=>x.id===m.id))return;this.msgs.push(m);const h=NET.cache.get('/api/ac/messages/'+this.chatId);if(h)h.d.messages=this.msgs;NET.drop('/api/ac/chats');this.drawMsgs()},
   emoji(e){const i=document.getElementById('cinput');i.value+=e;i.focus()},
   sendInput(){const i=document.getElementById('cinput');const t=i.value.trim();if(!t)return;i.value='';this.send(t)},
-  async send(t){try{this.push((await NET.api('/api/ac/messages/'+this.chatId,{method:'POST',body:{text:t}})).message)}catch(e){toast(e.message)}},
+  async send(t){const rid=this.replyTo&&this.replyTo.id;this.cancelReply();try{this.push((await NET.api('/api/ac/messages/'+this.chatId,{method:'POST',body:{text:t,replyTo:rid||undefined}})).message)}catch(e){toast(e.message)}},
+  /* double-tap (or double-click) a message to reply to it, like WhatsApp */
+  tapMsg(e){const el=e.target.closest&&e.target.closest('.msg[data-id]');if(!el)return;const id=el.dataset.id,now=Date.now();
+    if(this._tp&&this._tp.id===id&&now-this._tp.t<380){this._tp=null;this.setReply(id)}else this._tp={id,t:now}},
+  setReply(id,focus){const m=this.msgs.find(x=>x.id===id);if(!m||m.kind!=='text')return;this.replyTo={id:m.id,from:m.from,text:String(m.text).slice(0,120)};
+    const who=m.from===NET.user.id?'You':this.name(this.peer),r=document.getElementById('crep');
+    if(r)r.innerHTML=`<div class="crepl"><div><b>Replying to ${esc(who)}</b><span>${esc(this.replyTo.text)}</span></div><button onclick="PH.cancelReply()" aria-label="Cancel reply">✕</button></div>`;
+    if(focus!==false){if(navigator.vibrate)navigator.vibrate(15);const i=document.getElementById('cinput');if(i)i.focus()}},
+  cancelReply(){this.replyTo=null;const r=document.getElementById('crep');if(r)r.innerHTML=''},
   async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST'})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
   foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${f[3].toLocaleString('en-NG')}</b></button>`).join('')}`)},
   async buyFood(k){try{const r=await NET.api('/api/ac/buy-food/'+this.chatId,{method:'POST',body:{item:k}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Food delivered 🍛')}catch(e){toast(e.message)}},
@@ -99,15 +120,15 @@ const PH={
   reportSheet(){this.sheet(`<h3>Report ${this.name(this.peer)}</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam','Harassment','Scam','Inappropriate'].map(r=>`<button class="fopt" onclick="PH.report('${r}')"><span>${r}</span></button>`).join('')}`)},
   async report(r){try{await NET.api('/api/ac/report/'+this.chatId,{method:'POST',body:{reason:r}});this.closeSheet();toast('Report sent. Thank you 🙏🏾')}catch(e){toast(e.message)}},
   async visit(){try{const r=await NET.api('/api/ac/visit/'+this.chatId);openVisit(r.host)}catch(e){toast(e.message)}},
-  notify(title,body,target){if(!document.hidden||!('Notification' in window)||Notification.permission!=='granted')return;try{const n=new Notification(title,{body,icon:'/pwa-192.png',tag:target?.type||'allconnect'});n.onclick=()=>{window.focus();location.href='/?open='+encodeURIComponent(target?.type||'updates')+(target?.id?'&id='+encodeURIComponent(target.id):'')+(target?.ref?'&ref='+encodeURIComponent(target.ref):'')};}catch(e){}},
-  openDeepLink(){const q=new URLSearchParams(location.search),kind=q.get('open');if(!kind)return;history.replaceState(null,'','/');if(kind==='chat'&&q.get('id')){this.open('messages');setTimeout(()=>this.chat(q.get('id')),80)}else if(kind==='gist'&&q.get('ref')){GIST.openPost(q.get('ref'))}else if(kind==='updates'){this.messages('updates') }},
+  notify(title,body,target){if(window.PUSH&&PUSH.ok===false)return;if(!document.hidden||!('Notification' in window)||Notification.permission!=='granted')return;try{const n=new Notification(title,{body,icon:'/pwa-192.png',tag:target?.type||'allconnect'});n.onclick=()=>{window.focus();location.href='/?open='+encodeURIComponent(target?.type||'updates')+(target?.id?'&id='+encodeURIComponent(target.id):'')+(target?.mid?'&mid='+encodeURIComponent(target.mid):'')+(target?.ref?'&ref='+encodeURIComponent(target.ref):'')};}catch(e){}},
+  openDeepLink(){const q=new URLSearchParams(location.search),kind=q.get('open');if(!kind)return;history.replaceState(null,'','/');if(kind==='chat'&&q.get('id')){this.pendingReply=q.get('mid')||null;this.pendingFocus=q.get('reply')==='1';this.open('messages');setTimeout(()=>this.chat(q.get('id')),80)}else if(kind==='gist'&&q.get('ref')){GIST.openPost(q.get('ref'))}else if(kind==='updates'){this.messages('updates') }},
   /* ----- live events ----- */
   on(ev,p){
     if(ev==='gmsg'||ev==='group'){this.gEvent(ev,p);return}
     if(ev==='gist:new'){if(window.GIST)GIST.onNew(p);return}
     if(ev==='dm'){NET.drop('/api/ac/chats');NET.cache.delete('/api/ac/messages/'+p.from);this.badges.messages++;const open=this.view==='chat'&&this.chatId===p.from;
       if(open){this.push(p);NET.api('/api/ac/messages/'+p.from).catch(()=>{});this.badges.messages=Math.max(0,this.badges.messages-1)}
-      else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+p.text.slice(0,40));this.notify('New message on AllConnect',p.text,{type:'chat',id:p.from});
+      else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+p.text.slice(0,40));this.notify('New message on AllConnect',p.text,{type:'chat',id:p.from,mid:p.id});
         if(this.view==='messages'&&this.tab==='chats')this.drawChats()}
       this.drawBadges()}
     if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}

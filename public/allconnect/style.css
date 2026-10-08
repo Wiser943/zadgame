@@ -427,3 +427,15 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 .bp-i{display:flex;gap:12px;align-items:center;margin-bottom:12px}.bp-i b{display:block;font:800 20px Outfit,system-ui,sans-serif}.bp-i small{color:var(--mut);font-size:14px}.bp-t{width:64px;height:64px;border-radius:50%;background:#eef0f6;display:grid;place-items:center;overflow:hidden}.bp-t img{width:90%}.bp-t .cem{font-size:30px}
 .bp-a{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.bp-a button{border:1.5px solid #e3e6ee;background:#fff;border-radius:99px;padding:14px 6px;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink)}.bp-a .sell{background:#fde8ea;border-color:#fde8ea;color:#d1334a}.bp-a .sell.on{background:#d1334a;color:#fff}
 #buy{pointer-events:none}#buy .top,#buy .sheet,#buy .catbtn{pointer-events:auto}
+
+/* v4 additions */
+.amt{margin-bottom:12px}.amax{border:0;border-radius:99px;background:#e3f6ee;color:#0a8f5a;font:800 12px 'Plus Jakarta Sans',system-ui,sans-serif;padding:7px 13px;flex:none}
+.nsub{display:block;font-size:11px;font-weight:500;color:var(--mut);margin-top:2px}#nright{margin-left:auto;flex:none}
+.cmsgs .msg{-webkit-user-select:none;user-select:none}
+.mrep{display:block;border-left:3px solid rgba(0,0,0,.25);background:rgba(0,0,0,.07);border-radius:8px;padding:4px 8px;margin-bottom:5px;font-size:12px;line-height:1.25}.mrep b{display:block;font-size:11px}.mrep span{display:block;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.me .mrep{border-color:rgba(255,255,255,.75);background:rgba(255,255,255,.18)}
+.crepl{display:flex;align-items:center;gap:8px;margin:0 12px 4px;padding:6px 10px;border-left:3px solid #2f6fdb;background:#eef2fb;border-radius:10px;font-size:12px}.crepl>div{flex:1;min-width:0}.crepl b{display:block;color:#2f6fdb;font-size:11px}.crepl span{display:block;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.crepl button{border:0;background:none;font-size:15px;color:var(--mut)}
+.msg{touch-action:manipulation}
+
+.newdiv{display:flex;align-items:center;gap:10px;margin:10px 0 4px;color:#e0405e;font-size:11.5px;font-weight:700}.newdiv::before,.newdiv::after{content:'';flex:1;height:1px;background:#f3c6cf}
+.msg.hl .mb{animation:hlflash 2.2s ease-out}@keyframes hlflash{0%,55%{box-shadow:0 0 0 3px rgba(47,111,219,.45)}100%{box-shadow:0 0 0 0 rgba(47,111,219,0)}}

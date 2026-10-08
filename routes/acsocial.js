@@ -23,7 +23,7 @@ const rxEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const io = (req) => req.app.get('io');
 const label = (u) => (u.acUsername ? '@' + u.acUsername : u.displayName);
 const pub = (u) => ({ id: String(u._id), username: u.acUsername || '', displayName: u.displayName, avatar: u.avatar || '', online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id) });
-const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.text, kind: m.kind, amount: m.amount || 0, read: !!m.read, at: m.at });
+const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.text, kind: m.kind, amount: m.amount || 0, read: !!m.read, at: m.at, reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined });
 const between = (a, b) => ({ $or: [{ requester: a, recipient: b }, { requester: b, recipient: a }] });
 const areFriends = (a, b) => Friendship.exists({ ...between(a, b), status: 'accepted' });
 const isBlocked = (a, b) => Friendship.exists({ ...between(a, b), status: 'blocked' });
@@ -50,10 +50,10 @@ async function peerOr(req, res) {
   if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
   return { me, other, target, friend: !!(await areFriends(me, other)) };
 }
-async function addMessage(req, { to, text, kind = 'text', amount = 0 }) {
-  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount });
+async function addMessage(req, { to, text, kind = 'text', amount = 0, reply }) {
+  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, ...(reply ? { reply } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
-  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: String(text).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req) } }).catch((e) => console.error('[push dm]', e.message));
+  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: String(text).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
 }
 
@@ -195,7 +195,15 @@ router.post('/messages/:id', async (req, res, next) => {
     const f = await peerOr(req, res); if (!f) return;
     const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 300));
     if (!text) return bad(res, 400, 'Type a message first.');
-    res.json({ message: await addMessage(req, { to: f.other, text }) });
+    // Optional WhatsApp-style reply: the client sends the id of the message it is replying to; we look it up so the quote cannot be faked.
+    let reply;
+    const rid = String((req.body && req.body.replyTo) || '');
+    if (isId(rid)) {
+      const o = await ACMessage.findById(rid).lean();
+      const same = o && o.kind === 'text' && ((o.from === f.me && o.to === f.other) || (o.from === f.other && o.to === f.me));
+      if (same) reply = { mid: String(o._id), from: o.from, text: String(o.text || '').slice(0, 120) };
+    }
+    res.json({ message: await addMessage(req, { to: f.other, text, reply }) });
   } catch (e) { next(e); }
 });
 router.post('/invite/:id', async (req, res, next) => {

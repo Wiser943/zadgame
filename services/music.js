@@ -1,7 +1,6 @@
 'use strict';
 
-const JIOSAAVN_SEARCH_URL = 'https://saavn.dev/api/search/songs';
-const DEFAULT_AUDIOMACK_SEARCH_URL = 'https://api.audiomack.com/v1/music/search';
+const JIOSAAVN_SEARCH_URL = process.env.JIOSAAVN_SEARCH_URL || 'https://saavn.dev/api/search/songs';
 const REQUEST_TIMEOUT_MS = 9000;
 
 function text(value, fallback = '') {
@@ -50,7 +49,7 @@ async function fetchJson(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal, headers: { Accept: 'application/json', ...(options.headers || {}) } });
+    const response = await fetch(url, { ...options, signal: controller.signal, headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; AllConnect/1.0)', ...(options.headers || {}) } });
     if (!response.ok) throw new Error(`Provider returned ${response.status}`);
     return await response.json();
   } finally {
@@ -64,34 +63,68 @@ async function searchJioSaavn(query) {
   return songs.map((song) => normalizeSong(song, 'jiosaavn')).filter(Boolean);
 }
 
-async function searchAudiomack(query) {
-  const base = process.env.AUDIOMACK_SEARCH_URL || DEFAULT_AUDIOMACK_SEARCH_URL;
-  const url = new URL(base);
-  url.searchParams.set('q', query);
-  const key = process.env.AUDIOMACK_API_KEY || process.env.AUDIOMACK_APIKEY || process.env.AUDIOMACK_KEY;
-  const headers = key ? { Authorization: `Bearer ${key}`, 'X-API-Key': key } : {};
-  const data = await fetchJson(url, { headers });
-  const candidates = data?.results || data?.tracks || data?.data?.results || data?.data || [];
-  return (Array.isArray(candidates) ? candidates : []).map((song) => normalizeSong(song, 'audiomack')).filter(Boolean);
+// Audius: free, open music network (full-length tracks, lots of Afrobeats). No key needed, just an app name.
+const AUDIUS_APP = process.env.AUDIUS_APP_NAME || 'allconnect';
+let audiusHost = { url: '', at: 0 };
+async function audiusBase() {
+  if (audiusHost.url && Date.now() - audiusHost.at < 10 * 60 * 1000) return audiusHost.url;
+  const data = await fetchJson('https://api.audius.co');
+  const hosts = Array.isArray(data?.data) ? data.data.filter((h) => typeof h === 'string' && /^https:\/\//.test(h)) : [];
+  if (!hosts.length) throw new Error('No Audius host available');
+  audiusHost = { url: hosts[Math.floor(Math.random() * hosts.length)], at: Date.now() };
+  return audiusHost.url;
 }
 
+function normalizeAudius(track, base) {
+  if (!track?.id || !track.title) return null;
+  if (track.is_streamable === false || track.is_stream_gated || track.is_unlisted) return null;
+  const art = track.artwork || {};
+  return {
+    title: text(track.title),
+    artist: text(track.user?.name, 'Unknown artist'),
+    albumArt: firstUrl(art['480x480'] || art['150x150'] || art['1000x1000']),
+    streamUrl: `${base}/v1/tracks/${encodeURIComponent(track.id)}/stream?app_name=${encodeURIComponent(AUDIUS_APP)}`,
+    provider: 'audius'
+  };
+}
+
+async function searchAudius(query) {
+  const base = await audiusBase();
+  const data = await fetchJson(`${base}/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=${encodeURIComponent(AUDIUS_APP)}`);
+  return (Array.isArray(data?.data) ? data.data : []).map((t) => normalizeAudius(t, base)).filter(Boolean).slice(0, 20);
+}
+
+// iTunes Search: free, no key. Gives 30-second previews, so it is only the last resort.
+function normalizeItunes(song) {
+  const streamUrl = firstUrl(song?.previewUrl);
+  const title = text(song?.trackName);
+  if (!title || !streamUrl) return null;
+  return { title, artist: text(song.artistName, 'Unknown artist'), albumArt: firstUrl((song.artworkUrl100 || '').replace('100x100', '300x300')), streamUrl, provider: 'itunes preview' };
+}
+
+async function searchItunes(query) {
+  const data = await fetchJson(`https://itunes.apple.com/search?media=music&entity=song&limit=20&term=${encodeURIComponent(query)}`);
+  return (Array.isArray(data?.results) ? data.results : []).map(normalizeItunes).filter(Boolean);
+}
+
+const reason = (error) => (error.name === 'AbortError' ? 'timed out' : error.message);
+
 async function searchMusic(query) {
-  const clean = text(query);
+  const clean = text(query).replace(/^\.?play\s+/i, '').trim(); // "play rema calm down" works too
   if (clean.length < 2) return { provider: null, results: [], errors: ['Enter at least 2 characters to search.'] };
   const errors = [];
-  try {
-    const results = await searchJioSaavn(clean);
-    if (results.length) return { provider: 'jiosaavn', results, errors };
-  } catch (error) {
-    errors.push('JioSaavn search was unavailable.');
-  }
-  try {
-    const results = await searchAudiomack(clean);
-    if (results.length) return { provider: 'audiomack', results, errors };
-  } catch (error) {
-    errors.push(process.env.AUDIOMACK_API_KEY || process.env.AUDIOMACK_APIKEY || process.env.AUDIOMACK_KEY ? 'Audiomack search was unavailable.' : 'Audiomack fallback is not configured on the server.');
+  const chain = [['audius', 'Audius', searchAudius], ['jiosaavn', 'JioSaavn', searchJioSaavn], ['itunes', 'iTunes preview', searchItunes]];
+  for (const [id, label, fn] of chain) {
+    try {
+      const results = await fn(clean);
+      if (results.length) return { provider: id, results, errors };
+      errors.push(`${label} had no matches.`);
+    } catch (error) {
+      console.error(`[music] ${label} failed:`, reason(error), error.cause?.code || '');
+      errors.push(`${label} was unavailable (${reason(error)}).`);
+    }
   }
   return { provider: null, results: [], errors };
 }
 
-module.exports = { searchMusic, normalizeSong, searchJioSaavn, searchAudiomack };
+module.exports = { searchMusic, normalizeSong, searchJioSaavn, searchAudius, searchItunes, normalizeAudius, normalizeItunes };

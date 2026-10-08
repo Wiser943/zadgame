@@ -20,20 +20,22 @@ const SONGIFY = {
     this.loadRecent();
     document.querySelector('.screen')?.classList.add('light');
     PH.view = this.view;
-    PH.shell('Songify', 'SONGIFY.close()', `<div class="songify-head"><div><b>Soundtrack your Lagos</b><span>Search Afrobeats, street-hop and more</span></div><span class="songify-mark">♫</span></div><form class="songify-search" onsubmit="event.preventDefault();SONGIFY.search()"><input id="songify-q" class="sinput" placeholder="Search Burna Boy, Asake, Amapiano…" autocomplete="off"><button class="songify-go" type="submit" aria-label="Search">⌕</button></form><div id="songify-status" class="songify-status"></div><div id="songify-player"></div><div class="lab2">RECENTLY PLAYED BY YOU</div><div id="songify-recent" class="songify-recent"></div><div class="lab2">SEARCH RESULTS</div><div id="songify-results" class="songify-results"><p class="empty">Search for a song to start listening.</p></div>`);
+    PH.shell('Songify', 'SONGIFY.close()', `<div class="songify-head"><div><b>Soundtrack your Lagos</b><span>Search Afrobeats, street-hop and more</span></div><span class="songify-mark">♫</span></div><form class="songify-search" onsubmit="event.preventDefault();SONGIFY.search()"><input id="songify-q" class="sinput" placeholder="Search Burna Boy, Asake, Amapiano…" autocomplete="off"><button class="songify-go" type="submit" aria-label="Search">⌕</button></form><div id="songify-status" class="songify-status"></div><div id="songify-player"></div><div class="lab2 sg-lab">RECENTLY PLAYED BY YOU</div><div id="songify-recent" class="songify-recent"></div><div class="lab2 sg-lab">SEARCH RESULTS</div><div id="songify-results" class="songify-results"><p class="empty">Search for a song to start listening.</p></div>`);
     this.paint();
     document.getElementById('songify-q')?.focus();
   },
   close() { this.stop(); PH.close(); },
   setStatus(message, error = false) { const el = document.getElementById('songify-status'); if (el) { el.textContent = message || ''; el.className = `songify-status${error ? ' error' : ''}`; } },
   async search() {
-    const input = document.getElementById('songify-q'); const query = input?.value.trim();
+    const input = document.getElementById('songify-q'); const query = (input?.value || '').trim().replace(/^\.?play\s+/i, '');
     if (!query || query.length < 2) return this.setStatus('Enter at least 2 characters to search.', true);
-    this.busy = true; this.setStatus('Searching JioSaavn…'); this.paintResults();
+    this.busy = true; this.setStatus('Finding your song…'); this.paintResults();
     try {
       const data = await NET.api(`/api/ac/music/search?q=${encodeURIComponent(query)}`);
       this.results = data.results || [];
-      this.setStatus(this.results.length ? `${this.results.length} tracks · ${data.provider === 'audiomack' ? 'Audiomack fallback' : 'JioSaavn'}` : (data.errors || ['No tracks found. Try another search.']).join(' '), !this.results.length);
+      const label = { audius: 'Audius', jiosaavn: 'JioSaavn', itunes: '30s previews (iTunes)' }[data.provider] || data.provider;
+      this.setStatus(this.results.length ? `${this.results.length} tracks · ${label}` : (data.errors || ['No tracks found. Try another search.']).join(' '), !this.results.length);
+      if (this.results.length) { this.busy = false; this.paintResults(); this.play(this.results[0]); return; }
     } catch (error) { this.results = []; this.setStatus(error.message || 'Music search failed.', true); }
     this.busy = false; this.paintResults();
   },

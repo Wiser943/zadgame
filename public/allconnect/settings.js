@@ -31,8 +31,7 @@ Object.assign(PH,{
     const auto=this.me?this.me.autoPostWins!==false:true;
     this.shell('Settings','PH.close()',`<div class="abody">
       <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.avCover(u)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()">Edit ✎</button></div>
-      <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti">🔔</span><span class="tl">Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div>
-        <div class="trow"><span class="ti">📲</span><span class="tl">Background push notifications</span><button class="pbtn blu" onclick="PUSH.enable();setTimeout(()=>PH.settings(),900)">Enable</button></div>
+      <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti">🔔</span><span class="tl">Notifications<small class="nsub">Messages and updates, even when the app is closed</small></span><span id="nright">${np==='unsupported'?'<b>Not supported</b>':'<b>…</b>'}</span></div>
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti">🏆</span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
@@ -40,6 +39,7 @@ Object.assign(PH,{
       <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','🏆',"openHub(b=>b.shop())")}</div>
       <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','🎓',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','📣',"PH.sub('socials')"):''}${this.lrow('About us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
       <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.1 · GameHub 1.0.10141</p></div>`);
+    this.notifPaint();
     const cv=document.querySelector('#swav .avcov');if(cv){const im=new Image();im.onerror=()=>{cv.style.background='#6366f1';cv.textContent=cv.dataset.n};im.src=u.avatar}
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},

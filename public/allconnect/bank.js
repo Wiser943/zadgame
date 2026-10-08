@@ -29,10 +29,14 @@ Object.assign(PH,{
       <button class="opt" onclick="PH.soon()"><span class="oi" style="background:#eef0f6">🏦</span><div><b>To Bank Account</b><small>Send to your bank app</small></div><em class="soonb">Coming soon</em></button></div>`)},
   xfer(){if(!this.B.hasPin)return this.setPinFlow(()=>this.xfer());this.view='bank-x';this.X=null;const B=this.B,left=Math.max(0,B.limits.daily-B.sentToday);
     this.shell('To AllConnect User',this.xBack||'PH.xmenu()',`<div class="abody bk"><div class="lab2">RECIPIENT</div><input class="sinput" id="xto" placeholder="Paste Account ID or @username" oninput="PH.xlook(this.value)" autocomplete="off" inputmode="text"><div id="xwho"></div>
-      <div class="lab2">AMOUNT</div><div class="amt"><span>₦</span><input id="xamt" inputmode="numeric" placeholder="0" oninput="PH.xchk(true)" autocomplete="off"></div>
+      <div class="lab2">AMOUNT</div><div class="amt"><span>₦</span><input id="xamt" inputmode="numeric" placeholder="0" oninput="PH.xchk(true)" autocomplete="off"><button type="button" class="amax" onclick="PH.xmax()">Max</button></div>
       <div class="pre">${[1000,5000,10000,20000].map(n=>`<button onclick="PH.xpick(${n})">${n.toLocaleString('en-NG')}</button>`).join('')}</div>
       <div class="hint2">Balance ${naira(B.cash)} · Max ${naira(B.limits.max)} per transfer · ${naira(left)} left today</div>
       <input class="sinput" id="xnote" placeholder="Remark (optional)" maxlength="60" autocomplete="off"><button class="btn p" id="xnext" disabled onclick="PH.xconfirm()">Next</button></div>`)},
+  xmax(){const B=this.B,left=Math.max(0,B.limits.daily-B.sentToday),cash=Math.floor(B.cash),a=Math.min(cash,B.limits.max,left);
+    if(a<=0)return toast(cash<=0?'You have nothing to send yet':'You have reached your transfer limit for today');
+    document.getElementById('xamt').value=a.toLocaleString('en-NG');this.xchk();
+    toast(a>=cash?'You are about to transfer all your fortune 💸':'Max allowed for now: '+naira(a))},
   xpick(n){document.getElementById('xamt').value=n.toLocaleString('en-NG');this.xchk()},
   xamt(){const v=parseInt((document.getElementById('xamt')||{value:''}).value.replace(/\D/g,''),10);return Number.isFinite(v)?v:0},
   xchk(fmt){const i=document.getElementById('xamt');if(fmt){const n=this.xamt();i.value=n?n.toLocaleString('en-NG'):''}const a=this.xamt();document.getElementById('xnext').disabled=!(this.X&&a>=this.B.limits.min)},
