@@ -12,3 +12,7 @@ Copy these files over your project (same paths), then redeploy.
 ## Notes
 - Active game rooms still live in each server's memory. If you run more than one instance, use sticky sessions.
 - Nothing here moves money. Phase 2 (real rewards/payouts) is a "Coming soon" pre-registration screen only.
+
+## v4
+- services/push.js: web-push is now loaded safely. If the package is missing the server still starts and push is just disabled.
+- Login screen now shows a clear message when the server is unreachable or the session cookie was not saved (before, it silently reshowed the form).

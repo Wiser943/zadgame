@@ -1,6 +1,7 @@
 'use strict';
 
-const webpush = require('web-push');
+let webpush = null;
+try { webpush = require('web-push'); } catch { console.warn('[push] web-push is not installed: push notifications are disabled.'); }
 const PushSubscription = require('../models/PushSubscription');
 
 const config = () => ({
@@ -9,7 +10,7 @@ const config = () => ({
   subject: String(process.env.VAPID_SUBJECT || 'mailto:admin@example.com').trim()
 });
 
-function configured() { const c = config(); return !!(c.publicKey && c.privateKey); }
+function configured() { const c = config(); return !!(webpush && c.publicKey && c.privateKey); }
 function setup() { const c = config(); if (c.publicKey && c.privateKey) webpush.setVapidDetails(c.subject, c.publicKey, c.privateKey); }
 
 async function sendToUser(userId, payload) {

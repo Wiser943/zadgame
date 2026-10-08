@@ -106,7 +106,9 @@ async function doAuth() {
   b.disabled = true;
   try {
     await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw } });
-    await boot()
+    window.JUST_AUTHED = true;
+    await boot();
+    window.JUST_AUTHED = false
   }
   catch (e) { $('aerr').textContent = e.message } b.disabled = false
 }
@@ -132,7 +134,9 @@ async function boot() {
   catch (e) {
     $('auth').style.display = 'block';
     $('resume').style.display = 'none';
-    if (e.status && e.status !== 401) $('aerr').textContent = e.message
+    if (e.status && e.status !== 401) $('aerr').textContent = e.message;
+    else if (!e.status) $('aerr').textContent = 'Cannot reach the server. Check your connection and try again.';
+    else if (window.JUST_AUTHED) $('aerr').textContent = 'Signed in, but your session was not saved. Allow cookies for this site and try again.'
   }
   if (/auth_error/.test(location.search)) {
     $('aerr').textContent = 'Google sign-in is not available right now. Use email or phone.';
