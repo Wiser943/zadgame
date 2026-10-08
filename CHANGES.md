@@ -16,3 +16,5 @@ Copy these files over your project (same paths), then redeploy.
 ## v4
 - services/push.js: web-push is now loaded safely. If the package is missing the server still starts and push is just disabled.
 - Login screen now shows a clear message when the server is unreachable or the session cookie was not saved (before, it silently reshowed the form).
+- Songify now opens: it was missing the "light" class that makes the app screen visible.
+- Settings: removed the duplicate "Edit profile" row (the blue Edit button does the same) and the profile photo now fills its circle.

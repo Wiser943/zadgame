@@ -16,6 +16,9 @@ Object.assign(PH,{
   me:null,
   trow(k,label,ic,on){return `<button class="trow" data-k="${k}" onclick="PH.tgl('${k}')"><span class="ti">${ic}</span><span class="tl">${label}</span><span class="sw2 ${on?'on':''}"><i></i></span></button>`},
   lrow(label,ic,fn,extra){return `<button class="trow" onclick="${fn}"><span class="ti">${ic}</span><span class="tl">${label}</span>${extra||'<span class="chv">›</span>'}</button>`},
+  /* Profile photo drawn as a cover-fit background so any photo fills the circle; falls back to the initial if it can't load. */
+  avCover(u){const a=u.avatar||'';if(!/^(https?:|data:image\/)/.test(a))return this.av(u,1);const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();
+    return `<span class="avi big avcov" data-n="${esc(n)}" style="background:#cbd0dc url('${esc(a)}') center/cover no-repeat"></span>`},
   isOn(k,p){return k==='theme'?p.theme==='dark':!!p[k]},
   tgl(k){const p=GP.get(),on=!this.isOn(k,p);GP.set(k,k==='theme'?(on?'dark':'light'):on);
     const el=document.querySelector(`.trow[data-k="${k}"] .sw2`);if(el)el.classList.toggle('on',on);
@@ -27,9 +30,8 @@ Object.assign(PH,{
     const p=GP.get(),u=Object.assign({},NET.user||{},this.me||{}),np='Notification' in window?Notification.permission:'unsupported';
     const auto=this.me?this.me.autoPostWins!==false:true;
     this.shell('Settings','PH.close()',`<div class="abody">
-      <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()">Edit ✎</button></div>
-      <div class="lab2">ACCOUNT</div><div class="sgrp">${this.lrow('Edit profile · photo, cover, name, @username, bio','👤',"PH.editProfile()")}
-        <div class="trow"><span class="ti">🔔</span><span class="tl">Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div>
+      <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.avCover(u)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()">Edit ✎</button></div>
+      <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti">🔔</span><span class="tl">Message alerts</span>${np==='granted'?'<b class="okc">On</b>':np==='unsupported'?'<b>Not supported</b>':`<button class="pbtn blu" onclick="PH.notifOn();setTimeout(()=>PH.settings(),800)">Turn on</button>`}</div>
         <div class="trow"><span class="ti">📲</span><span class="tl">Background push notifications</span><button class="pbtn blu" onclick="PUSH.enable();setTimeout(()=>PH.settings(),900)">Enable</button></div>
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti">🏆</span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
@@ -38,6 +40,7 @@ Object.assign(PH,{
       <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','🏆',"openHub(b=>b.shop())")}</div>
       <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','🎓',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','📣',"PH.sub('socials')"):''}${this.lrow('About us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
       <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.1 · GameHub 1.0.10141</p></div>`);
+    const cv=document.querySelector('#swav .avcov');if(cv){const im=new Image();im.onerror=()=>{cv.style.background='#6366f1';cv.textContent=cv.dataset.n};im.src=u.avatar}
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},
   tglAuto(){const on=!(this.me?this.me.autoPostWins!==false:true);if(this.me)this.me.autoPostWins=on;const el=document.querySelector('.trow[data-k="autoPost"] .sw2');if(el)el.classList.toggle('on',on);

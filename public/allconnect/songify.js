@@ -18,6 +18,7 @@ const SONGIFY = {
       this.audio.addEventListener('error', () => { this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.paint(); });
     }
     this.loadRecent();
+    document.querySelector('.screen')?.classList.add('light');
     PH.view = this.view;
     PH.shell('Songify', 'SONGIFY.close()', `<div class="songify-head"><div><b>Soundtrack your Lagos</b><span>Search Afrobeats, street-hop and more</span></div><span class="songify-mark">♫</span></div><form class="songify-search" onsubmit="event.preventDefault();SONGIFY.search()"><input id="songify-q" class="sinput" placeholder="Search Burna Boy, Asake, Amapiano…" autocomplete="off"><button class="songify-go" type="submit" aria-label="Search">⌕</button></form><div id="songify-status" class="songify-status"></div><div id="songify-player"></div><div class="lab2">RECENTLY PLAYED BY YOU</div><div id="songify-recent" class="songify-recent"></div><div class="lab2">SEARCH RESULTS</div><div id="songify-results" class="songify-results"><p class="empty">Search for a song to start listening.</p></div>`);
     this.paint();
