@@ -126,23 +126,54 @@ const ADS = {
     } catch (e) { toast((e && e.message) || 'Could not upload that logo') }
     inp.value = ''
   },
-  async loadApps() { try { this.apps = (await NET.api('/api/ac/ads/apps')).apps || [] } catch (e) {} if (window.drawApps) drawApps() },
+  async loadApps() {
+    try { this.apps = (await NET.api('/api/ac/ads/apps')).apps || []; this.apps.forEach(a => { if (a.image) new Image().src = a.image }); this.syncHost() } catch (e) {}
+    if (window.drawApps) drawApps()
+  },
+  /* ----- ad apps are loaded in the background as soon as the platform loads, so they open instantly ----- */
+  sbx(link) { let s = 'allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox'; try { if (new URL(link).origin !== location.origin) s += ' allow-same-origin' } catch (e) {} return s },
+  hostEl() { let h = document.getElementById('adhostbox'); if (!h) { h = document.createElement('div'); h.id = 'adhostbox'; h.className = 'adhostbox'; document.querySelector('.screen').appendChild(h) } return h },
+  syncHost(forceId) {
+    const h = this.hostEl();
+    [...h.children].forEach(c => { const a = this.apps.find(x => x.id === c.dataset.id); if (!a || a.link !== c.dataset.link) c.remove() });
+    this.apps.forEach((a, i) => {
+      if ((i >= 6 && a.id !== forceId) || h.querySelector(`[data-id="${a.id}"]`)) return;
+      const f = document.createElement('div'); f.className = 'adfr'; f.dataset.id = a.id; f.dataset.link = a.link;
+      f.innerHTML = `<iframe class="adif" src="${esc(a.link)}" sandbox="${this.sbx(a.link)}" referrerpolicy="no-referrer" title="${esc(a.title)}"></iframe>`;
+      f.querySelector('iframe').addEventListener('load', () => { f.dataset.ready = 1; if (this.curApp === a.id) { const w = document.getElementById('adwait'); if (w) w.style.display = 'none'; this.hdrAuto() } });
+      h.appendChild(f)
+    })
+  },
+  showHost(a) {
+    this.syncHost(a.id); this.curApp = a.id; const h = this.hostEl(); h.classList.add('on');
+    [...h.children].forEach(c => c.classList.toggle('cur', c.dataset.id === a.id));
+    this.place(); const slot = document.getElementById('adslot');
+    if (slot && window.ResizeObserver) { if (this.ro) this.ro.disconnect(); this.ro = new ResizeObserver(() => this.place()); this.ro.observe(slot) }
+    const c = h.querySelector(`[data-id="${a.id}"]`); if (c && c.dataset.ready) { const w = document.getElementById('adwait'); if (w) w.style.display = 'none'; this.hdrAuto() }
+  },
+  place() {
+    const h = document.getElementById('adhostbox'), slot = document.getElementById('adslot'); if (!h || !slot || !h.classList.contains('on')) return;
+    const sc = document.querySelector('.screen').getBoundingClientRect(), r = slot.getBoundingClientRect();
+    Object.assign(h.style, { left: (r.left - sc.left) + 'px', top: (r.top - sc.top) + 'px', width: r.width + 'px', height: r.height + 'px' })
+  },
+  hideHost() { const h = document.getElementById('adhostbox'); this.curApp = null; if (this.ro) this.ro.disconnect(); if (!h) return; h.classList.remove('on'); [...h.children].forEach(c => c.classList.remove('cur')); ['left', 'top', 'width', 'height'].forEach(k => h.style.removeProperty(k)) },
   /* top bar of an ad app: full bar at first, then it shrinks to two floating buttons so the site gets the whole screen */
-  hdr(min) { const av = PH.$a(); if (!av) return; clearTimeout(this.ht); av.classList.toggle('hdr-min', min === undefined ? !av.classList.contains('hdr-min') : min) },
+  hdr(min) { const av = PH.$a(); if (!av) return; clearTimeout(this.ht); av.classList.toggle('hdr-min', min === undefined ? !av.classList.contains('hdr-min') : min); requestAnimationFrame(() => this.place()) },
   hdrAuto() { clearTimeout(this.ht); this.ht = setTimeout(() => { if (PH.view === 'adapp') this.hdr(true) }, 2600) },
   /* an ad app: the advertiser's website runs inside the phone */
   openApp(id) {
     const a = this.apps.find(x => x.id === id); if (!a) return toast('That app is no longer running.');
-    let host = a.link, sandbox = 'allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox';
-    try { const u = new URL(a.link); host = u.hostname; if (u.origin !== location.origin) sandbox += ' allow-same-origin' } catch (e) {}
+    let host = a.link;
+    try { host = new URL(a.link).hostname } catch (e) {}
     document.querySelector('.screen').classList.add('light'); PH.view = 'adapp';
     let hue = 0; for (const ch of host + a.title) hue = (hue * 31 + ch.charCodeAt(0)) % 360;      // every ad gets its own header tint
     const arrow = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>';
     const open = `<button class="adopen" onclick="ADS.go(ADS.apps.find(x=>x.id==='${a.id}'))" aria-label="Open in browser"><span class="adot">Open<span class="adfull"> in browser</span></span>${arrow}</button>`;
     const tog = '<button class="adtog" onclick="ADS.hdr()" aria-label="Show or hide the top bar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>';
     PH.shell(`${esc(a.title)}<span class="adbadge">Ad</span><small class="adhost">Sponsored · ${esc(host)}</small>`, 'PH.close()', `<div class="adapp"><div class="adwait" id="adwait">Loading ${esc(a.title)}…<small>Blank screen? This site may not allow being shown here. Use Open in browser.</small></div>
-      <iframe class="adif" src="${esc(a.link)}" sandbox="${sandbox}" referrerpolicy="no-referrer" onload="const w=document.getElementById('adwait');if(w)w.style.display='none';ADS.hdrAuto()"></iframe></div>`, '', open + tog);
+      <div class="adslot" id="adslot"></div></div>`, '', open + tog);
     const av = PH.$a(); av.classList.add('adview'); av.style.setProperty('--adh', hue);
+    document.querySelector('.screen').style.setProperty('--hbg', `hsl(${hue} 80% 93%)`); this.showHost(a);
     fetch(`/api/ac/ads/${a.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
   },
   /* ----- what every player sees on the Map ----- */

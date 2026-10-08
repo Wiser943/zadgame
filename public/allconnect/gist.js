@@ -45,7 +45,7 @@ const GIST = {
   back() { const s = this.stack.pop(); if (!s) { this.C = null; const r = this.ret; this.ret = null; if (r) return r(); return PH.close() } this[s.fn](...s.args); requestAnimationFrame(() => { const ab = $('ab'); if (ab) ab.scrollTop = s.scroll || 0 }) },
   set(fn, ...args) { this.cur = { fn, args } },
   err(e) { toast((e && e.message) || 'Something went wrong. Try again.') },
-  bell() { const n = (PH.badges.updates || 0) + (PH.localUnread || 0); return `<button class="gbell" onclick="PH.messages('updates')" aria-label="Notifications">🔔${n ? `<em>${n > 9 ? '9+' : n}</em>` : ''}</button>` },
+  bell() { const n = (PH.badges.updates || 0) + (PH.localUnread || 0); return `<button class="gbell" onclick="PH.shade(true)" aria-label="Notifications">🔔${n ? `<em>${n > 9 ? '9+' : n}</em>` : ''}</button>` },
   /* ---------- post card ---------- */
   imgs(p) {
     const n = p.images.length; if (!n) return '';

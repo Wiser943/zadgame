@@ -69,6 +69,7 @@ const UserSchema = new mongoose.Schema({
     sentDay: { type: String, default: '' },
     sentAmt: { type: Number, default: 0 },
     updatesSeen: { type: Date, default: null },
+    updatesCleared: { type: Date, default: null },
     jobId: { type: String, default: '' },
     jobShifts: { type: Map, of: Number, default: {} },
     autoWork: { type: Boolean, default: true },

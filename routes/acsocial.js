@@ -243,17 +243,30 @@ router.post('/buy-food/:id', async (req, res, next) => {
 /* ---------- updates feed + badges ---------- */
 router.get('/updates', async (req, res, next) => {
   try {
-    const rows = await ACUpdate.find({ $or: [{ user: uid(req) }, { user: null }] }).sort({ at: -1 }).limit(60).lean();
+    const me = await User.findById(uid(req)).select('ac.updatesCleared').lean();
+    const cleared = me && me.ac && me.ac.updatesCleared;
+    const q = { $or: [{ user: uid(req) }, { user: null }] };
+    if (cleared) q.at = { $gt: cleared };
+    const rows = await ACUpdate.find(q).sort({ at: -1 }).limit(60).lean();
     res.json({ updates: rows.map((u) => ({ id: String(u._id), icon: u.icon, text: u.text, kind: u.kind, ref: u.ref || '', from: u.from || '', at: u.at })) });
   } catch (e) { next(e); }
 });
 router.post('/updates/seen', async (req, res, next) => {
   try { await User.updateOne({ _id: uid(req) }, { $set: { 'ac.updatesSeen': new Date() } }); res.json({ ok: true }); } catch (e) { next(e); }
 });
+/* "Clear" in the Updates panel: personal updates are deleted, shared ones are hidden for this player only */
+router.post('/updates/clear', async (req, res, next) => {
+  try {
+    const now = new Date();
+    await ACUpdate.deleteMany({ user: uid(req) });
+    await User.updateOne({ _id: uid(req) }, { $set: { 'ac.updatesCleared': now, 'ac.updatesSeen': now } });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
 router.get('/badges', async (req, res, next) => {
   try {
-    const me = uid(req), u = await User.findById(me).select('createdAt ac.updatesSeen');
-    const seen = (u.ac && u.ac.updatesSeen) || u.createdAt || new Date(0);
+    const me = uid(req), u = await User.findById(me).select('createdAt ac.updatesSeen ac.updatesCleared');
+    const seen = new Date(Math.max(+((u.ac && u.ac.updatesSeen) || u.createdAt || 0), +((u.ac && u.ac.updatesCleared) || 0)));
     const [messages, requests, updates] = await Promise.all([
       ACMessage.countDocuments({ to: me, read: false }), Friendship.countDocuments({ recipient: me, status: 'pending' }),
       ACUpdate.countDocuments({ $or: [{ user: me }, { user: null }], at: { $gt: seen } })]);

@@ -556,3 +556,25 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 .ivflash{position:absolute;top:12px;left:12px;right:12px;z-index:7;background:#fff;border-radius:26px;padding:16px 18px;font:600 15.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);box-shadow:0 10px 30px rgba(15,20,50,.25);animation:ivin .25s ease-out}
 @keyframes ivin{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
 .adfoot a.adlink{color:#2f7fd8;font-weight:700;text-decoration:underline;word-break:break-all}
+
+/* ===== phone headers: tinted per app, slide away on scroll; Updates pull-down; ad apps preloaded; no three-dot on desktop ===== */
+.screen.light{background:var(--hbg,#fff)}.screen.camdark{background:#000}
+.ahw{flex:none;background:var(--hbg,#fff);transition:margin-top .25s ease;border-radius:0 0 18px 18px;position:relative;z-index:3}
+.appview.adview .ahw{background:transparent}
+.sb{touch-action:none}
+.ushade{position:absolute;left:0;right:0;top:44px;bottom:0;z-index:8;background:rgba(15,20,40,0);display:flex;flex-direction:column;pointer-events:none;transition:background .25s}
+.ushade.on{background:rgba(15,20,40,.35);pointer-events:auto}
+.ucard{background:#fff;color:var(--ink);border-radius:0 0 22px 22px;max-height:78%;display:flex;flex-direction:column;box-shadow:0 14px 34px rgba(0,0,0,.28);transform:translateY(-105%);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.ushade.on .ucard{transform:none}
+.uhead{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 8px;flex:none}
+.uttl{font:800 20px Outfit,system-ui,sans-serif}
+.uclr{border:0;border-radius:99px;background:#1b1f33;color:#fff;font:700 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;padding:8px 18px}.uclr:disabled{opacity:.35}
+.ubody{overflow-y:auto;padding:0 16px 8px;min-height:80px;-webkit-overflow-scrolling:touch}
+.ugrab{display:grid;place-items:center;padding:8px 0 10px;flex:none}.ugrab i{display:block;width:44px;height:5px;border-radius:9px;background:#d4d8e4}
+@media(min-width:768px) and (min-height:520px){.ucard{max-width:560px;margin:0 auto;width:100%}.phmenu,.phpop{display:none!important}}
+.adhostbox{position:absolute;left:0;top:0;width:100%;height:100%;z-index:3;visibility:hidden;pointer-events:none;background:#fff}
+.adhostbox.on{visibility:visible}
+.adfr{position:absolute;inset:0;visibility:hidden;pointer-events:none;background:#fff}
+.adfr.cur{visibility:visible;pointer-events:auto}
+.adfr .adif{display:block;width:100%;height:100%;border:0}
+.adslot{flex:1;min-height:0}

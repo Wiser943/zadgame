@@ -146,6 +146,6 @@ Object.assign(PH, {
       if (p.type === 'removed' && inChat) { toast('You are no longer in that group'); return this.messages('chats') }
       if (inChat && p.type !== 'new') this.gRefresh()
     }
-    if (this.view === 'messages' && this.tab === 'chats') this.drawChats()
+    if (this.view === 'messages') { if (this.tab === 'groups') this.drawGroups(); else if (this.tab === 'chats') this.drawChats() }
   }
 });

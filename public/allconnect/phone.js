@@ -5,15 +5,24 @@ const KIND_BG={warn:'#fdecec',good:'#e8f5ee',friend:'#e8f0fe',admin:'#fff4d6',up
 const PH={
   view:null,tab:'chats',chatId:null,peer:null,msgs:[],friends:null,updates:[],local:[],localUnread:0,badges:{messages:0,requests:0,updates:0},low:{},
   $a(){return document.getElementById('appview')},
-  init(){this.refreshBadges()},
+  init(){this.refreshBadges();this.initShade()},
   async refreshBadges(){try{this.badges=await NET.api('/api/ac/badges')}catch(e){}this.drawBadges()},
   drawBadges(){const n={Messages:this.badges.messages+this.badges.updates+this.localUnread,Contacts:this.badges.requests};
     document.querySelectorAll('.app[data-app]').forEach(a=>{const b=a.querySelector('.bdg');if(!b)return;const v=n[a.dataset.app]||0;b.textContent=v>9?'9+':(v||'')});
     const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
   /* ----- shell ----- */
   open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),invest:()=>INV.open(),ads:()=>ADS.open()})[name]()},
-  close(){document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
-  shell(title,back,body,sub,right){const av=this.$a();av.classList.remove('adview','hdr-min','hdr-off');clearTimeout(window.ADS&&ADS.ht);this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}${body}`},
+  close(){const sc=document.querySelector('.screen');sc.classList.remove('light');sc.style.removeProperty('--hbg');this.view=null;this.chatId=null;if(window.ADS)ADS.hideHost();this.shade(false,true);this.$a().innerHTML='';this.refreshBadges()},
+  /* header tint per app, so the status bar + header match the app instead of being plain white everywhere */
+  TINT:{contacts:'#e3f5ec',messages:'#e6eeff',chat:'#e6eeff',group:'#e6eeff',groupinfo:'#e6eeff',settings:'#eceef5',bank:'#e0f3e8',jobs:'#fff0d6',ads:'#fde4ef',gist:'#ffe8d9',police:'#e2e8fb',appsearch:'#eceef5',adapp:'#eceef5'},
+  shell(title,back,body,sub,right){const av=this.$a();av.classList.remove('adview','hdr-min','hdr-off');clearTimeout(window.ADS&&ADS.ht);if(window.ADS)ADS.hideHost();document.querySelector('.screen').style.setProperty('--hbg',this.TINT[this.view]||'#ffffff');
+    av.innerHTML=`<div class="ahw"><div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}</div>${body}`;this.watchScroll()},
+  /* headers slide away when you scroll down and come back when you scroll up (chats keep their header) */
+  watchScroll(){const a=this.$a();if(a._ws)return;a._ws=1;
+    a.addEventListener('scroll',e=>{const b=e.target;if(!b.classList||!b.classList.contains('abody')||b.classList.contains('chat'))return;
+      const w=a.querySelector('.ahw');if(!w)return;const y=b.scrollTop,dy=y-(b._l||0);if(Math.abs(dy)<8)return;b._l=y;
+      const h=w.offsetHeight,room=b.scrollHeight-b.clientHeight;
+      if(dy>0&&y>60&&room>h+80){w.style.marginTop=-h+'px';w.classList.add('hide')}else if(dy<0||y<=0){w.style.marginTop='';w.classList.remove('hide')}},true)},
   sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
   closeSheet(){const s=this.$a().querySelector('.asheet');if(s)s.remove()},
   av(u,big){const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.charCodeAt(0)||0)%6];
@@ -46,33 +55,55 @@ const PH={
   async respond(id,yes){try{NET.drop('/api/ac/friends');await NET.api(`/api/ac/friends/${id}/${yes?'accept':'decline'}`,{method:'POST'});toast(yes?'Friend added 🎉':'Request declined');await this.loadFriends();this.refreshBadges()}catch(e){toast(e.message)}},
   async unfriend(id){try{NET.drop('/api/ac/friends');await NET.api(`/api/ac/friends/${id}`,{method:'DELETE'});await this.loadFriends()}catch(e){toast(e.message)}},
   /* ----- Messages ----- */
-  async messages(tab){this.view='messages';this.chatId=null;if(tab)this.tab=tab;
-    const seg=`<div class="seg2"><button class="${this.tab==='chats'?'on':''}" onclick="PH.messages('chats')">Chats</button><button class="${this.tab==='updates'?'on':''}" onclick="PH.messages('updates')">Updates${this.badges.updates+this.localUnread?` <i class="dot"></i>`:''}</button></div>`;
-    this.shell('Messages','PH.close()',seg+'<div class="abody" id="ab"><p class="empty">Loading…</p></div>');
-    this.tab==='chats'?await this.drawChats():await this.drawUpdates()},
-  async drawChats(){const paint=()=>{if(this.view!=='messages'||this.tab!=='chats')return;this.paintChats(this._chats||[])};NET.swr('/api/ac/groups',d=>{this.groups=d.groups;paint()}).catch(()=>{});try{await NET.swr('/api/ac/chats',d=>{this._chats=d.chats;paint()})}catch(e){toast(e.message)}},
+  async messages(tab){const sh=tab==='updates';if(tab&&!sh)this.tab=tab;if(this.tab!=='groups')this.tab='chats';this.view='messages';this.chatId=null;
+    const seg=`<div class="seg2"><button class="${this.tab==='chats'?'on':''}" onclick="PH.messages('chats')">Chats</button><button class="${this.tab==='groups'?'on':''}" onclick="PH.messages('groups')">Groups</button></div>`;
+    this.shell('Messages','PH.close()','<div class="abody" id="ab"><p class="empty">Loading…</p></div>',seg);
+    if(sh)this.shade(true);
+    this.tab==='groups'?await this.drawGroups():await this.drawChats()},
+  async drawGroups(){const paint=()=>{if(this.view!=='messages'||this.tab!=='groups')return;const ab=document.getElementById('ab');if(ab)ab.innerHTML=this.groupSection()};
+    if(this._gload)paint();try{await NET.swr('/api/ac/groups',d=>{this.groups=d.groups;this._gload=1;paint()})}catch(e){toast(e.message)}},
+  async drawChats(){const paint=()=>{if(this.view!=='messages'||this.tab!=='chats')return;this.paintChats(this._chats||[])};try{await NET.swr('/api/ac/chats',d=>{this._chats=d.chats;paint()})}catch(e){toast(e.message)}},
   paintChats(list){
     const nt='Notification' in window&&Notification.permission==='default';
     const prev=m=>m.kind==='text'?(m.from===NET.user.id?'You: ':'')+esc(m.text):esc(m.text);
     document.getElementById('ab').innerHTML=(nt?`<div class="banner">🔔 <span>Get notified when friends message you</span><button onclick="PH.notifOn()">Turn on</button></div>`:'')+
       `<input class="sinput" id="msgto" placeholder="✏️ Message someone: @username" onkeydown="if(event.key==='Enter')PH.msgTo(this.value)" autocomplete="off">
-       ${this.groupSection()}<div class="lab2">CHATS</div>`+(list.length?list.map(c=>`<div class="row tap" onclick="PH.chat('${c.peer.id}')">${this.av(c.peer,1)}<div class="rt"><b>${this.name(c.peer)}</b><span class="pv">${prev(c.last)}</span></div><div class="rm"><small>${this.rel(c.last.at)}</small>${c.unread?`<em class="cnt">${c.unread}</em>`:''}</div></div>`).join(''):`<p class="empty">No chats yet. Add friends in Contacts, then message them here.</p>`)},
+       <div class="lab2">CHATS</div>`+(list.length?list.map(c=>`<div class="row tap" onclick="PH.chat('${c.peer.id}')">${this.av(c.peer,1)}<div class="rt"><b>${this.name(c.peer)}</b><span class="pv">${prev(c.last)}</span></div><div class="rm"><small>${this.rel(c.last.at)}</small>${c.unread?`<em class="cnt">${c.unread}</em>`:''}</div></div>`).join(''):`<p class="empty">No chats yet. Add friends in Contacts, then message them here.</p>`)},
   async msgTo(v){const q=v.trim().replace(/^@/,'').toLowerCase();if(!q)return;try{const f=await NET.api('/api/ac/friends');const m=f.friends.find(u=>(u.username||'').toLowerCase()===q||u.displayName.toLowerCase()===q);m?this.chat(m.id):toast(`Add @${q} as a friend in Contacts first`)}catch(e){toast(e.message)}},
   notifOn(){return this.notifEnable()},
   /* ONE notifications switch: in-app alerts and background push turn on together, and stay off together if either can't work */
   async notifEnable(){const ok=await PUSH.enable();if(ok)toast('Notifications on 🔔');await PUSH.status();if(this.view==='settings')this.settings();else if(this.view==='messages')this.messages()},
   async notifPaint(){const el=document.getElementById('nright');if(!el)return;const st=await PUSH.status();if(!document.getElementById('nright'))return;
     el.innerHTML=st.perm==='unsupported'?'<b>Not supported</b>':st.on?'<b class="okc">On</b>':st.perm==='denied'?'<b>Blocked in browser</b>':'<button class="pbtn blu" onclick="PH.notifEnable()">Turn on</button>'},
-  async drawUpdates(){
-    const paint=rows=>{this.updates=rows;if(this.view!=='messages'||this.tab!=='updates')return;
-      const all=[...rows,...this.local].sort((a,b)=>new Date(b.at)-new Date(a.at));
-      document.getElementById('ab').innerHTML=all.length?all.map(u=>{const go=u.ref&&!u.local?` tap" onclick="PH.openUpd('${esc(u.ref)}')`:'';return `<div class="upd${go}"><span class="uic">${u.icon}</span><div class="ub" style="background:${KIND_BG[u.kind]||KIND_BG.info}">${esc(u.text)}<small>${this.ago2(u.at)}${u.ref&&!u.local?' · tap to open':''}</small></div></div>`}).join(''):`<p class="empty">Nothing yet. Likes, comments, replies, mentions, new followers, friend requests and news from the team show up here.</p>`};
-    try{await NET.swr('/api/ac/updates',d=>paint(d.updates))}catch(e){paint(this.updates||[])}
+  /* ----- Updates: a panel you pull down from the top-left of the phone (status bar). Clear empties it. ----- */
+  shade(open,instant){let s=document.getElementById('ushade');
+    if(open===false){this.shadeOn=false;if(!s)return;if(instant)return s.remove();s.classList.remove('on');setTimeout(()=>{if(!this.shadeOn)s.remove()},260);return}
+    if(s&&this.shadeOn)return;
+    if(s)s.remove();s=document.createElement('div');s.id='ushade';s.className='ushade';
+    s.innerHTML=`<div class="ucard"><div class="uhead"><span class="uttl">Updates</span><button class="uclr" id="uclr" onclick="PH.clearUpdates()">Clear</button></div><div class="ubody" id="ubody"><p class="empty">Loading…</p></div><div class="ugrab"><i></i></div></div>`;
+    s.onclick=e=>{if(e.target===s)this.shade(false)};
+    let st=null;s.addEventListener('pointerdown',e=>{st={y:e.clientY,id:e.pointerId}});
+    s.addEventListener('pointermove',e=>{if(st&&e.pointerId===st.id&&st.y-e.clientY>50){st=null;this.shade(false)}});
+    ['pointerup','pointercancel'].forEach(k=>s.addEventListener(k,()=>{st=null}));
+    document.querySelector('.screen').appendChild(s);this.shadeOn=true;requestAnimationFrame(()=>s.classList.add('on'));this.drawShade()},
+  initShade(){const sb=document.querySelector('.screen .sb');if(!sb||sb._sh)return;sb._sh=1;let st=null;
+    sb.addEventListener('pointerdown',e=>{const r=sb.getBoundingClientRect();st=(e.clientX-r.left)<r.width*.5?{y:e.clientY,x:e.clientX,id:e.pointerId}:null});
+    sb.addEventListener('pointermove',e=>{if(!st||e.pointerId!==st.id)return;const dy=e.clientY-st.y;if(dy>28&&dy>Math.abs(e.clientX-st.x)){st=null;this.shade(true)}});
+    ['pointerup','pointercancel'].forEach(k=>sb.addEventListener(k,()=>{st=null}));
+    const t=document.getElementById('pt');if(t)t.addEventListener('click',()=>this.shade(true))},
+  async drawShade(){
+    const paint=rows=>{this.updates=rows;const b=document.getElementById('ubody');if(!b)return;
+      const all=[...rows,...this.local].sort((a,b)=>new Date(b.at)-new Date(a.at));const c=document.getElementById('uclr');if(c)c.disabled=!all.length;
+      b.innerHTML=all.length?all.map(u=>{const go=u.ref&&!u.local?` tap" onclick="PH.shade(false,true);PH.openUpd('${esc(u.ref)}')`:'';return `<div class="upd${go}"><span class="uic">${u.icon}</span><div class="ub" style="background:${KIND_BG[u.kind]||KIND_BG.info}">${esc(u.text)}<small>${this.ago2(u.at)}${u.ref&&!u.local?' · tap to open':''}</small></div></div>`}).join(''):`<p class="empty">Nothing yet. Likes, comments, replies, mentions, new followers, friend requests and news from the team show up here.</p>`};
+    paint(this.updates||[]);
+    try{await NET.swr('/api/ac/updates',d=>paint(d.updates))}catch(e){}
     NET.api('/api/ac/updates/seen',{method:'POST'}).then(()=>{this.badges.updates=0;this.localUnread=0;this.drawBadges()}).catch(()=>{})},
+  async clearUpdates(){try{await NET.api('/api/ac/updates/clear',{method:'POST'})}catch(e){return toast(e.message)}
+    this.updates=[];this.local=[];this.localUnread=0;this.badges.updates=0;NET.drop('/api/ac/updates');this.drawShade();this.drawBadges();toast('Updates cleared')},
   ago2(t){const d=new Date(t),s=(Date.now()-d)/1000;return s<60?'just now':s<3600?Math.floor(s/60)+'m ago':s<86400?this.time(t):d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+this.time(t)},
   /* tapping a notification opens the gist / profile it is about */
   openUpd(ref){const back=()=>PH.messages('updates');if(ref.startsWith('u:'))GIST.openProfile(ref.slice(2),back);else GIST.openPost(ref,back)},
-  local_(icon,text,kind){this.local.unshift({id:'l'+Date.now(),icon,text,kind,at:Date.now(),local:true});this.local.length=Math.min(this.local.length,30);if(!(this.view==='messages'&&this.tab==='updates'))this.localUnread++;this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates()},
+  local_(icon,text,kind){this.local.unshift({id:'l'+Date.now(),icon,text,kind,at:Date.now(),local:true});this.local.length=Math.min(this.local.length,30);if(!this.shadeOn)this.localUnread++;this.drawBadges();if(this.shadeOn)this.drawShade()},
   /* ----- Chat ----- */
   async chat(id,back){this.view='chat';this.chatId=id;this.replyTo=null;this._tp=null;this.newId=null;this.newCount=0;this.chatBack=back||null;const bk=this.chatBack||'PH.messages()';document.querySelector('.screen').classList.add('light');
     const hit=NET.cache.get('/api/ac/messages/'+id);
@@ -132,7 +163,7 @@ const PH={
       else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+p.text.slice(0,40));this.notify('New message on AllConnect',p.text,{type:'chat',id:p.from,mid:p.id});
         if(this.view==='messages'&&this.tab==='chats')this.drawChats()}
       this.drawBadges()}
-    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.view==='messages'&&this.tab==='updates')this.drawUpdates();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}
+    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.shadeOn)this.drawShade();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}
     if(ev==='friends'){NET.drop('/api/ac/friends');this.refreshBadges();if(this.view==='contacts')this.loadFriends()}
     if(ev==='seen'&&this.view==='chat'&&this.chatId===p.by){this.msgs.forEach(m=>{if(m.from===NET.user.id)m.read=true});this.drawMsgs()}
     if(ev==='cash'&&this.view==='bank')this.bankLoad();if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}

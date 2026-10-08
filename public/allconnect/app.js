@@ -354,7 +354,8 @@ const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: 
 /* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
 const PHLAY = {
   key: 'allconnect:applayout',
-  get() { try { return localStorage.getItem(this.key) === 'h' ? 'h' : 'v' } catch (e) { return 'v' } },
+  get() { if (this.desk()) return 'v'; try { return localStorage.getItem(this.key) === 'h' ? 'h' : 'v' } catch (e) { return 'v' } },
+  desk() { return window.matchMedia('(min-width:768px) and (min-height:520px)').matches },
   set(v) { try { localStorage.setItem(this.key, v) } catch (e) {} this.close(); drawApps() },
   toggle(e) {
     if (e) e.stopPropagation(); const p = $('phpop'); if (!p) return;
@@ -369,7 +370,7 @@ const PHLAY = {
 document.addEventListener('click', e => { if (!e.target.closest('#phpop,#phmenu')) PHLAY.close() });
 const appBtn = a => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
-const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><span class="nw adtag">Ad</span><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
+const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
 function drawApps() {
   const el = $('apps'), dots = $('pgdots'); if (!el) return;
   const list = [...APPS.map(appBtn), ...((window.ADS && ADS.apps) || []).map(adBtn)], h = PHLAY.get() === 'h';
@@ -408,6 +409,7 @@ const APPSEARCH = {
   go(i) { const a = this.res[i]; if (a) a.run() }
 };
 drawApps();
+try { window.matchMedia('(min-width:768px) and (min-height:520px)').addEventListener('change', () => drawApps()) } catch (e) {}
 async function start(n) {
   if (!S.gender) { $('gp').classList.add('need'); setTimeout(() => $('gp').classList.remove('need'), 800); return toast('Pick your character first 👆') }
   stopPreviews();
@@ -416,7 +418,8 @@ async function start(n) {
   render();
   nav('home');
   if (window.PH) setTimeout(() => PH.openDeepLink && PH.openDeepLink(), 80);
-  if (window.JOBS) JOBS.boot()
+  if (window.JOBS) JOBS.boot();
+  if (window.ADS) ADS.loadApps()      /* ad apps load in the background now, so they open instantly */
 }
 $('sd').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 /* Phone clock = SERVER time (Lagos), not the device clock. Offset is measured against /api/ac/time and re-synced every 5 min. */
