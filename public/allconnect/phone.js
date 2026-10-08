@@ -12,7 +12,7 @@ const PH={
     const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
   /* ----- shell ----- */
   open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),ads:()=>ADS.open()})[name]()},
-  close(){if(this.view==='songify'&&window.SONGIFY)SONGIFY.stop();document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
+  close(){document.querySelector('.screen').classList.remove('light');this.view=null;this.chatId=null;this.$a().innerHTML='';this.refreshBadges()},
   shell(title,back,body,sub,right){this.$a().innerHTML=`<div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}${body}`},
   sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
   closeSheet(){const s=this.$a().querySelector('.asheet');if(s)s.remove()},
@@ -39,8 +39,9 @@ const PH={
   mummy(){toast('Mummy: "Wetin you chop today? Come home o!" 🍲')},
   search(q,quiet){clearTimeout(this.st);const box=document.getElementById('sres');q=q.trim();if(q.replace(/^@/,'').length<2){if(box)box.innerHTML='';return}
     this.st=setTimeout(async()=>{try{const r=await NET.api('/api/ac/search?q='+encodeURIComponent(q));const b=document.getElementById('sres');if(!b)return;
-      b.innerHTML=r.users.length?r.users.map(u=>{const btn={none:`<button class="pbtn blu" onclick="PH.add('${u.id}')">Add</button>`,sent:`<span class="tag">Pending</span>`,received:`<button class="pbtn grn" onclick="PH.respond('${u.id}',1)">Accept</button>`,friend:`<button class="pbtn blu" onclick="PH.chat('${u.id}')">Chat</button>`}[u.relation];
+      b.innerHTML=r.users.length?r.users.map(u=>{const btn={none:`<button class="pbtn blu" onclick="PH.add('${u.id}')">Add</button>`,sent:`<span class="tag">Pending</span>`,received:`<button class="pbtn grn" onclick="PH.respond('${u.id}',1)">Accept</button>`,friend:`<button class="pbtn blu" onclick="PH.chat('${u.id}')">Chat</button>`,blocked:`<button class="pbtn" onclick="PH.unblock('${u.id}')">Unblock</button>`}[u.relation];
         return `<div class="row"><div class="rowp" ${this.prof(u.id,'PH.contacts()')}>${this.av(u)}<div class="rt"><b>${this.name(u)}</b><span>${u.username?esc(u.displayName):'No username yet'}</span></div></div>${btn}</div>`}).join(''):'<p class="empty">No players found.</p>'}catch(e){if(!quiet)toast(e.message)}},quiet?0:300)},
+  async unblock(id){try{await NET.api('/api/ac/unblock/'+id,{method:'POST'});NET.drop('/api/ac/');toast('Unblocked');const q=(document.getElementById('psearch')||{}).value;if(q)this.search(q,true)}catch(e){toast(e.message)}},
   async add(id){try{NET.drop('/api/ac/friends');const r=await NET.api(`/api/ac/friends/${id}/request`,{method:'POST'});toast(r.state==='friend'?'You are now friends 🎉':'Friend request sent ✓');await this.loadFriends()}catch(e){toast(e.message)}},
   async respond(id,yes){try{NET.drop('/api/ac/friends');await NET.api(`/api/ac/friends/${id}/${yes?'accept':'decline'}`,{method:'POST'});toast(yes?'Friend added 🎉':'Request declined');await this.loadFriends();this.refreshBadges()}catch(e){toast(e.message)}},
   async unfriend(id){try{NET.drop('/api/ac/friends');await NET.api(`/api/ac/friends/${id}`,{method:'DELETE'});await this.loadFriends()}catch(e){toast(e.message)}},

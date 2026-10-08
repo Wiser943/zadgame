@@ -76,8 +76,9 @@ router.get('/search', async (req, res, next) => {
     if (q.length < 2) return res.json({ users: [] });
     const rows = await Friendship.find({ $or: [{ requester: me }, { recipient: me }] }).lean();
     const other = (x) => (x.requester === me ? x.recipient : x.requester);
-    const hidden = new Set([me, ...rows.filter((x) => x.status === 'blocked').map(other)]);
-    const state = new Map(rows.filter((x) => x.status !== 'blocked').map((x) => [other(x), x.status === 'accepted' ? 'friend' : (x.requester === me ? 'sent' : 'received')]));
+    // people who blocked ME stay hidden; people I blocked still show up (relation 'blocked') so I can open their profile and unblock
+    const hidden = new Set([me, ...rows.filter((x) => x.status === 'blocked' && x.recipient === me).map(other)]);
+    const state = new Map(rows.filter((x) => x.status !== 'blocked' || x.requester === me).map((x) => [other(x), x.status === 'blocked' ? 'blocked' : x.status === 'accepted' ? 'friend' : (x.requester === me ? 'sent' : 'received')]));
     const users = await User.find({ $or: [{ acUsername: new RegExp('^' + rxEsc(q.toLowerCase())) }, { displayName: new RegExp(rxEsc(q), 'i') }] })
       .select('displayName avatar acUsername').limit(20).lean();
     res.json({ users: users.filter((u) => !hidden.has(String(u._id))).slice(0, 12).map((u) => ({ ...pub(u), relation: state.get(String(u._id)) || 'none' })) });

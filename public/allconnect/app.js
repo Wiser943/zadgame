@@ -257,6 +257,23 @@ function toggleNeeds(force) {
   if (a) a.setAttribute('aria-expanded', S.needsOpen ? 'true' : 'false')
 }
 
+/* HUD balance opens AllConnect Pay; the + opens its Deposit page */
+function openBank(dep) {
+  nav('phone'); PH.open('bank');
+  if (dep) PH.deposit()
+}
+/* offline screen: shown when the device has no connection, hides itself when it is back */
+(function () {
+  const g = document.getElementById('netgate'); if (!g) return;
+  const show = () => { g.style.display = 'flex' }, hide = () => { g.style.display = 'none' };
+  window.netRetry = async () => {
+    const m = document.getElementById('ngmsg');
+    try { const r = await fetch('/health', { cache: 'no-store' }); if (r.ok) { hide(); return } } catch (e) {}
+    m.textContent = "Still offline. Check your connection and try again. Your game is safe: it's saved online."
+  };
+  window.addEventListener('offline', show); window.addEventListener('online', hide);
+  if (!navigator.onLine) show()
+})();
 function toggleClean() {
   S.clean = !S.clean;
   nav('home', true)
@@ -288,8 +305,10 @@ function nav(w, keep) {
   if (window.ROOM3D) ROOM3D.page(w);
   $('hud').style.display = (w == 'buy') ? 'none' : 'flex';
   $('chips').style.display = (home || w == 'map') ? 'flex' : 'none';
+  if (window.SONGIFY) SONGIFY.paintMini();
   $('homeUI').style.display = (home && !cl) ? 'block' : 'none';
   if (w == 'phone') {
+    if (window.ADS) ADS.loadApps();
     $('room').style.display = 'block';
     $('hud').style.display = 'flex'
   }
@@ -361,12 +380,69 @@ const APPS = [
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '🗣️', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
-  ['Songify', '♫', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
-  ['Settings', '⚙️', 'linear-gradient(#9ca3af,#4b5563)']
+  ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
+  ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
+  ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Jobs: "PH.open('jobs')", Ads: "PH.open('ads')" }; 
-$('apps').innerHTML = APPS.map(a => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`).join('');
+const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Ads: "PH.open('ads')" }; 
+/* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
+const PHLAY = {
+  key: 'allconnect:applayout',
+  get() { try { return localStorage.getItem(this.key) === 'h' ? 'h' : 'v' } catch (e) { return 'v' } },
+  set(v) { try { localStorage.setItem(this.key, v) } catch (e) {} this.close(); drawApps() },
+  toggle(e) {
+    if (e) e.stopPropagation(); const p = $('phpop'); if (!p) return;
+    if (p.style.display === 'block') return this.close();
+    const cur = this.get();
+    p.innerHTML = [['v', 'Vertical scroll', 'fa-arrows-up-down'], ['h', 'Horizontal scroll', 'fa-arrows-left-right']]
+      .map(o => `<button class="${cur === o[0] ? 'on' : ''}" onclick="PHLAY.set('${o[0]}')"><i class="fa-solid ${o[2]}"></i><span>${o[1]}</span>${cur === o[0] ? '<i class="fa-solid fa-check"></i>' : ''}</button>`).join('');
+    p.style.display = 'block'
+  },
+  close() { const p = $('phpop'); if (p) p.style.display = 'none' }
+};
+document.addEventListener('click', e => { if (!e.target.closest('#phpop,#phmenu')) PHLAY.close() });
+const appBtn = a => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`;
+const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
+const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><span class="nw adtag">Ad</span><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
+function drawApps() {
+  const el = $('apps'), dots = $('pgdots'); if (!el) return;
+  const list = [...APPS.map(appBtn), ...((window.ADS && ADS.apps) || []).map(adBtn)], h = PHLAY.get() === 'h';
+  el.classList.toggle('h', h); const sc = el.closest('.scroll'); if (sc) sc.classList.toggle('hx', h);
+  if (!h) { el.innerHTML = list.join(''); if (dots) dots.innerHTML = '' }
+  else {
+    const per = 12, pages = []; for (let i = 0; i < list.length; i += per) pages.push(`<div class="pg">${list.slice(i, i + per).join('')}</div>`);
+    el.innerHTML = pages.join(''); el.scrollLeft = 0; paintDots()
+  }
+  if (window.PH && PH.drawBadges) PH.drawBadges()
+}
+function paintDots() {
+  const el = $('apps'), d = $('pgdots'); if (!el || !d) return;
+  const n = el.querySelectorAll('.pg').length, i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+  d.innerHTML = n > 1 ? Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('') : ''
+}
+$('apps').addEventListener('scroll', paintDots, { passive: true });
+/* Search app: find any app on the phone by name */
+const APPSEARCH = {
+  res: [],
+  all() {
+    return [...APPS.filter(a => a[0] !== 'Search').map(a => ({ name: a[0], ic: a[1], bg: a[2], run: () => new Function(OPEN[a[0]] || `toast('${a[0]} opens soon')`)() })),
+      ...((window.ADS && ADS.apps) || []).map(a => ({ name: a.title, ic: adIc(a), bg: '#eef0f6', ad: 1, run: () => ADS.openApp(a.id) }))]
+  },
+  open() {
+    document.querySelector('.screen').classList.add('light'); PH.view = 'appsearch';
+    PH.shell('Search', 'PH.close()', `<div class="abody"><input class="sinput" id="appq" placeholder="Search apps…" oninput="APPSEARCH.draw(this.value)" autocomplete="off"><div id="appres"></div></div>`);
+    this.draw(''); if (window.ADS) ADS.loadApps().then(() => { if (PH.view === 'appsearch') this.draw((($('appq') || {}).value) || '') });
+    setTimeout(() => { const i = $('appq'); if (i) i.focus() }, 60)
+  },
+  draw(q) {
+    q = String(q || '').trim().toLowerCase(); this.res = this.all().filter(a => !q || a.name.toLowerCase().includes(q));
+    const box = $('appres'); if (!box) return;
+    box.innerHTML = this.res.length ? this.res.map((a, i) => `<div class="row tap" onclick="APPSEARCH.go(${i})"><div class="ic sic" style="background:${a.bg}">${a.ic}</div><div class="rt"><b>${esc(a.name)}</b><span>${a.ad ? 'Sponsored app' : 'App'}</span></div></div>`).join('') : '<p class="empty">No apps found.</p>'
+  },
+  go(i) { const a = this.res[i]; if (a) a.run() }
+};
+drawApps();
 async function start(n) {
   if (window.ROOM3D) ROOM3D.init();
   if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { return toast(e.message) } } $('splash').style.display = 'none';
@@ -654,3 +730,27 @@ const CAMV = {
   }
 };
 CAMV.init();
+
+/* Haptics: a short tick when a nav bar icon / tab is tapped (respects Settings > Vibration).
+   Android uses the Vibration API; iPhone (iOS 18+) has no vibrate(), so we toggle a hidden native switch, which gives the system tick. */
+const HAPTIC = {
+  el: null,
+  on() { try { return !window.GP || GP.get().vibration !== false } catch (e) { return true } },
+  tick() {
+    if (!this.on()) return;
+    if (navigator.vibrate) { try { navigator.vibrate(10) } catch (e) {} return }
+    try {
+      if (!this.el) {
+        const l = document.createElement('label'); l.setAttribute('aria-hidden', 'true');
+        l.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+        const i = document.createElement('input'); i.type = 'checkbox'; i.setAttribute('switch', ''); l.appendChild(i); document.body.appendChild(l); this.el = l
+      }
+      this.el.click()
+    } catch (e) {}
+  }
+};
+document.addEventListener('click', (e) => {
+  const t = e.target.closest && e.target.closest('#nav button, .sg-nav button, .gtabs button, .seg2 button');
+  if (t) HAPTIC.tick()
+}, true);
+window.HAPTIC = HAPTIC;

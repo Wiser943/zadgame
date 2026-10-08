@@ -362,7 +362,9 @@ router.get('/profile/:key', async (req, res, next) => {
     const uid = me(req), u = await findUser(req.params.key === 'me' ? uid : req.params.key, PROFILE_FIELDS);
     if (!u) return bad(res, 'Player not found.', 404);
     const id = String(u._id);
-    if ((await blockedSet(uid)).includes(id)) return bad(res, 'Player not found.', 404);
+    // the blocked person cannot see the blocker, but the blocker can still open the profile (to unblock)
+    if (id !== uid && await Friendship.exists({ requester: id, recipient: uid, status: 'blocked' })) return bad(res, 'Player not found.', 404);
+    const iBlocked = id !== uid && !!(await Friendship.exists({ requester: uid, recipient: id, status: 'blocked' }));
     const [followers, following, postsCount, isFollowing, rel, first, pinned] = await Promise.all([
       GistFollow.countDocuments({ following: id }), GistFollow.countDocuments({ follower: id }), GistPost.countDocuments({ author: id }),
       GistFollow.exists({ follower: uid, following: id }),
@@ -375,7 +377,7 @@ router.get('/profile/:key', async (req, res, next) => {
     const played = s.gamesPlayed || 0;
     res.json({
       user: { ...pubUser(u), bio: u.bio || '', cover: u.cover || '' }, isMe: id === uid, isFollowing: !!isFollowing, followers, following, postsCount,
-      relation: id === uid ? 'me' : !rel ? 'none' : rel.status === 'accepted' ? 'friend' : (rel.requester === uid ? 'sent' : 'received'),
+      relation: id === uid ? 'me' : iBlocked ? 'blocked' : !rel ? 'none' : rel.status === 'accepted' ? 'friend' : (rel.requester === uid ? 'sent' : 'received'),
       online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id),
       game: { played, wins: s.wins || 0, losses: s.losses || 0, draws: s.draws || 0, winRate: played ? Math.round(((s.wins || 0) / played) * 100) : 0, level: u.level || 1, bestStreak: u.bestStreak || 0, tournamentWins: u.tournamentWins || 0, rating: u.rating || 1000, since: u.createdAt },
       posts, more: first.more,

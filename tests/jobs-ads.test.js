@@ -44,3 +44,9 @@ test('furniture: no overlap, no leaving the room', () => {
 });
 test('furniture: old accounts migrate to placed items', () => { const m = FU.migrate(['Classic Cream', 'Queen Bed', 'Net', 'Ceiling Bulb']); assert.equal(m.refund, 8000); assert.ok(m.items.some((i) => i.name === 'Queen Bed' && i.placed)); assert.ok(m.items.some((i) => i.name === 'Ceiling Bulb')); });
 test('furniture: browser copy matches the server copy', () => { const src = require('fs').readFileSync(__dirname + '/../public/allconnect/furniture.js', 'utf8'); for (const n of Object.keys(FU.ITEMS)) assert.ok(src.includes('"' + n + '"'), n); assert.ok(src.includes('"price": ' + FU.ITEMS['Fridge'].price)); });
+
+test('phone apps: price, one-day run, names and logos are validated', () => {
+  assert.equal(A.APP.price, 100000); assert.equal(A.APP.days, 1);
+  assert.ok(A.appNameError('a')); assert.ok(A.appNameError('x'.repeat(17))); assert.equal(A.appNameError('Quilox'), null);
+  assert.equal(A.cleanEmoji(''), ''); assert.equal(A.cleanEmoji('🍔'), '🍔'); assert.equal(A.cleanEmoji('abc'), null); assert.equal(A.cleanEmoji('<b>🍔'), null);
+});

@@ -1,7 +1,8 @@
 /* Ads app (Phone -> Ads): book a billboard or rent sea plots. Everyone sees live ads on the Map; tapping one opens its link.
    Prices, slots and expiry are enforced by the server (routes/acads.js, utils/acads.js). */
 const ADS = {
-  mine: [], board: null, cfg: null, pick: [], img: '', photos: null,
+  mine: [], board: null, cfg: null, pick: [], img: '', emoji: '', photos: null, apps: [],
+  abs: u => (u && u.startsWith('/') ? location.origin + u : u),
   naira: n => '₦' + Number(n).toLocaleString('en-NG'),
   left(t) { const s = Math.max(0, (new Date(t) - Date.now()) / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600); return d ? d + 'd ' + h + 'h left' : h ? h + 'h left' : Math.max(1, Math.floor(s / 60)) + 'm left' },
   async open() {
@@ -13,20 +14,22 @@ const ADS = {
   async load() { try { const r = await NET.api('/api/ac/ads/mine'); this.mine = r.ads; this.cfg = r.config } catch (e) { toast(e.message) } },
   draw() {
     const ab = document.getElementById('ab'); if (!ab || !this.cfg) return;
-    const b = this.cfg.billboard, s = this.cfg.sea;
+    const b = this.cfg.billboard, s = this.cfg.sea, ap = this.cfg.app;
     ab.innerHTML = `<div class="adpromo"><h3>Promote your business</h3><p>Every player sees it, and tapping it opens your link.</p>
       <div class="adopts"><button onclick="ADS.sheet('billboard')"><span>📢</span><b>Book a billboard</b><small>${this.naira(b.price)} for ${b.days} days</small></button>
-      <button onclick="ADS.sheet('sea')"><span>🌊</span><b>Rent a Sea Plot</b><small>${this.naira(s.price)} a plot, ${s.days} days</small></button></div></div>
+      <button onclick="ADS.sheet('sea')"><span>🌊</span><b>Rent a Sea Plot</b><small>${this.naira(s.price)} a plot, ${s.days} days</small></button>
+      <button class="wide" onclick="ADS.sheet('app')"><span>📱</span><b>Create your own app</b><small>${this.naira(ap.price)} for ${ap.days === 1 ? '1 day' : ap.days + ' days'} · your logo on every phone, your website inside it</small></button></div></div>
       <div class="lab2">YOUR ADS</div>` +
-      (this.mine.length ? this.mine.map(a => `<div class="adrow"><div class="adth">${a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.remove()">` : (a.kind === 'sea' ? '🌊' : '📢')}</div>
-        <div class="rt"><b>${esc(a.title)}</b><span>${a.kind === 'sea' ? 'Sea plot #' + (a.slot + 1) : 'Billboard #' + (a.slot + 1)} · ${this.left(a.expiresAt)} · ${a.clicks} tap${a.clicks === 1 ? '' : 's'}</span></div>
+      (this.mine.length ? this.mine.map(a => `<div class="adrow"><div class="adth">${a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.remove()">` : (a.kind === 'app' ? esc(a.emoji || '📱') : a.kind === 'sea' ? '🌊' : '📢')}</div>
+        <div class="rt"><b>${esc(a.title)}</b><span>${a.kind === 'app' ? 'Phone app' : a.kind === 'sea' ? 'Sea plot #' + (a.slot + 1) : 'Billboard #' + (a.slot + 1)} · ${this.left(a.expiresAt)} · ${a.clicks} ${a.kind === 'app' ? 'open' : 'tap'}${a.clicks === 1 ? '' : 's'}</span></div>
         <button class="pbtn blu" onclick="ADS.edit('${a.id}')">Edit</button></div>`).join('')
         : `<div class="adempty">You don't have any ads yet. Book one above and it shows up here, where you can change its picture any time.</div>`) +
       `<p class="adfoot">Business without an account? lagoslife.app/advertise</p>`
   },
   /* ----- booking ----- */
   async sheet(kind) {
-    this.pick = []; this.img = '';
+    this.pick = []; this.img = ''; this.emoji = '';
+    if (kind === 'app') return this.appSheet();
     if (kind === 'sea') { try { this.board = await NET.api('/api/ac/ads/board') } catch (e) { return toast(e.message) } }
     const c = this.cfg[kind === 'sea' ? 'sea' : 'billboard'];
     const taken = new Set(this.board ? this.board.plots.map(p => p.slot) : []);
@@ -41,7 +44,8 @@ const ADS = {
     if (kind === 'sea') this.total()
   },
   imgField() { return `<div class="adimg"><div class="adth big" id="adpv">${this.img ? `<img src="${esc(this.img)}" alt="">` : '🖼️'}</div><div class="adimgb"><button class="pbtn blu" onclick="ADS.gallery()">Pick from my gallery</button><input class="sinput" id="adi" maxlength="400" placeholder="or paste an image link https://…" value="${esc(this.img)}" oninput="ADS.img=this.value.trim();ADS.prev()" inputmode="url"></div></div>` },
-  prev() { const e = document.getElementById('adpv'); if (e) e.innerHTML = this.img ? `<img src="${esc(this.img)}" alt="" onerror="this.remove()">` : '🖼️' },
+  prev() { const e = document.getElementById('adpv'); if (e) e.innerHTML = this.logoPv() },
+  logoPv() { return this.img ? `<img src="${esc(this.img)}" alt="" onerror="this.remove()">` : (this.emoji ? esc(this.emoji) : '🖼️') },
   togglePlot(i, el) {
     const k = this.pick.indexOf(i), max = this.cfg.sea.perUser - this.mine.filter(a => a.kind === 'sea').length;
     if (k >= 0) this.pick.splice(k, 1); else { if (this.pick.length >= max) return toast('You can hold ' + this.cfg.sea.perUser + ' plots at most'); this.pick.push(i) }
@@ -58,10 +62,10 @@ const ADS = {
       this._old = { old, keep }
     } catch (e) { toast(e.message) }
   },
-  backSheet() { const card = document.querySelector('.asheet .shcard'); if (!card || !this._old) return; card.innerHTML = this._old.old; ['adt', 'adl'].forEach((id, i) => { const e = document.getElementById(id); if (e) e.value = this._old.keep[i] }); const ii = document.getElementById('adi'); if (ii) ii.value = this.img; this.prev();
+  backSheet() { const card = document.querySelector('.asheet .shcard'); if (!card || !this._old) return; card.innerHTML = this._old.old; ['adt', 'adl'].forEach((id, i) => { const e = document.getElementById(id); if (e) e.value = this._old.keep[i] }); const ii = document.getElementById('adi'); if (ii) ii.value = this.img; const em = document.getElementById('adem'); if (em) em.value = this.emoji; this.prev();
     document.querySelectorAll('#plots button').forEach((b, i) => b.classList.toggle('on', this.pick.includes(i))) },
-  setImg(i) { this.img = this.photos[i].url; this.backSheet(); const ii = document.getElementById('adi'); if (ii) ii.value = this.img; this.prev() },
-  body(extra) { return { title: (document.getElementById('adt') || {}).value, link: (document.getElementById('adl') || {}).value, image: this.img, ...extra } },
+  setImg(i) { this.img = this.abs(this.photos[i].url); this.emoji = ''; this.backSheet(); const ii = document.getElementById('adi'); if (ii) ii.value = this.img; this.prev() },
+  body(extra) { return { title: (document.getElementById('adt') || {}).value, link: (document.getElementById('adl') || {}).value, image: this.img, emoji: this.emoji, ...extra } },
   async book(kind) {
     const btn = document.getElementById('adgo'); if (btn.disabled) return;
     if (kind === 'sea' && !this.pick.length) return toast('Tap at least one free plot');
@@ -69,22 +73,70 @@ const ADS = {
     try {
       const r = await NET.api('/api/ac/ads/book', { method: 'POST', body: this.body({ kind, plots: this.pick }) });
       S.cash = r.cash; render(); PH.closeSheet(); NET.drop('/api/ac/ads');
-      toast(r.skipped ? `Booked ${r.ads.length}, ${r.skipped} was just taken (not charged)` : 'Ad is live 📢');
-      PH.local_('📢', `Your ${kind === 'sea' ? 'sea plot ad' : 'billboard'} "${r.ads[0].title}" is live for ${this.cfg[kind === 'sea' ? 'sea' : 'billboard'].days} days`, 'good');
+      const cf = this.cfg[kind], span = cf.days === 1 ? '1 day' : cf.days + ' days';
+      toast(r.skipped ? `Booked ${r.ads.length}, ${r.skipped} was just taken (not charged)` : kind === 'app' ? 'Your app is live 📱' : 'Ad is live 📢');
+      PH.local_(kind === 'app' ? '📱' : '📢', `Your ${kind === 'sea' ? 'sea plot ad' : kind === 'app' ? 'app' : 'billboard'} "${r.ads[0].title}" is live for ${span}`, 'good');
+      if (kind === 'app') this.loadApps();
       await this.load(); if (PH.view === 'ads') this.draw()
     } catch (e) { btn.disabled = false; toast(e.message) }
   },
   /* ----- change an existing ad (title, link, picture) ----- */
   edit(id) {
-    const a = this.mine.find(x => x.id === id); if (!a) return; this.img = a.image || '';
-    PH.sheet(`<h3>Edit ad</h3><p class="hint2">Change the picture or link any time. It updates for every player straight away.</p>
-      <input class="sinput" id="adt" maxlength="40" value="${esc(a.title)}"><input class="sinput" id="adl" maxlength="300" value="${esc(a.link)}" inputmode="url" style="margin-top:8px">
-      ${this.imgField()}<button class="btn p" id="adgo" onclick="ADS.save('${id}')">Save changes</button>`)
+    const a = this.mine.find(x => x.id === id); if (!a) return; this.img = a.image || ''; this.emoji = a.emoji || '';
+    PH.sheet(`<h3>${a.kind === 'app' ? 'Edit app' : 'Edit ad'}</h3><p class="hint2">Change the ${a.kind === 'app' ? 'logo' : 'picture'} or link any time. It updates for every player straight away.</p>
+      <input class="sinput" id="adt" maxlength="${a.kind === 'app' ? 16 : 40}" value="${esc(a.title)}"><input class="sinput" id="adl" maxlength="300" value="${esc(a.link)}" inputmode="url" style="margin-top:8px">
+      ${a.kind === 'app' ? this.logoField() : this.imgField()}<button class="btn p" id="adgo" onclick="ADS.save('${id}')">Save changes</button>`)
   },
   async save(id) {
     const btn = document.getElementById('adgo'); btn.disabled = true;
-    try { await NET.api(`/api/ac/ads/${id}/update`, { method: 'POST', body: this.body() }); PH.closeSheet(); NET.drop('/api/ac/ads'); toast('Ad updated ✓'); await this.load(); if (PH.view === 'ads') this.draw() }
+    try { await NET.api(`/api/ac/ads/${id}/update`, { method: 'POST', body: this.body() }); PH.closeSheet(); NET.drop('/api/ac/ads'); toast('Ad updated ✓'); this.loadApps(); await this.load(); if (PH.view === 'ads') this.draw() }
     catch (e) { btn.disabled = false; toast(e.message) }
+  },
+  /* ----- phone apps: create one, and open one ----- */
+  appSheet() {
+    const c = this.cfg.app, span = c.days === 1 ? '1 day' : c.days + ' days';
+    PH.sheet(`<h3>📱 Create your app</h3><p class="hint2">${this.naira(c.price)} for ${span}. It shows on every player's phone with your name and logo, and opens your website inside it.</p>
+      <input class="sinput" id="adt" maxlength="16" placeholder="Platform name, e.g. Quilox">
+      <input class="sinput" id="adl" maxlength="300" placeholder="Your website link, https://…" inputmode="url" style="margin-top:8px">
+      <div class="lab2">LOGO</div>${this.logoField()}
+      <button class="btn p" id="adgo" onclick="ADS.book('app')">Create app for ${this.naira(c.price)}</button>
+      <p class="hint2" style="margin-top:8px">Your site has to allow being shown inside other apps. Players also get an Open in browser button.</p>`)
+  },
+  logoField() {
+    const em = ['🍔', '🛍️', '🎵', '🎮', '💼', '🏦', '📚', '🏠', '⚽', '🚗', '💄', '🍕', '📱', '💡', '🎓', '🌍'];
+    return `<div class="adimg"><div class="adth big" id="adpv">${this.logoPv()}</div><div class="adimgb"><div class="adbtns"><button class="pbtn blu" onclick="ADS.gallery()">Gallery</button><label class="pbtn blu pickf">Device<input type="file" accept="image/*" style="display:none" onchange="ADS.pickFile(this)"></label></div>
+      <input class="sinput" id="adem" maxlength="8" placeholder="or type an emoji" value="${esc(this.emoji)}" oninput="ADS.setEmoji(this.value)"></div></div>
+      <div class="emopick">${em.map(e => `<button type="button" onclick="ADS.setEmoji('${e}',1)">${e}</button>`).join('')}</div>`
+  },
+  setEmoji(v, fill) { this.emoji = String(v || '').trim(); if (this.emoji) this.img = ''; const i = document.getElementById('adem'); if (fill && i) i.value = this.emoji; this.prev() },
+  logoData(file) {
+    return new Promise((res, rej) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => { URL.revokeObjectURL(url); const sz = 192, c = document.createElement('canvas'); c.width = c.height = sz; const x = c.getContext('2d'), r = Math.max(sz / img.width, sz / img.height), w = img.width * r, h = img.height * r; x.drawImage(img, (sz - w) / 2, (sz - h) / 2, w, h); res(c.toDataURL('image/png')) };
+      img.onerror = rej; img.src = url
+    })
+  },
+  async pickFile(inp) {
+    const f = inp.files[0]; if (!f) return; if (!f.type.startsWith('image/')) return toast('Please choose an image file.');
+    try {
+      toast('Uploading logo…');
+      const d = await this.logoData(f), r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: d, w: 192, h: 192 } });
+      this.img = this.abs(r.photo.url); this.emoji = ''; this.photos = null;
+      const em = document.getElementById('adem'); if (em) em.value = ''; this.prev(); toast('Logo added')
+    } catch (e) { toast((e && e.message) || 'Could not upload that logo') }
+    inp.value = ''
+  },
+  async loadApps() { try { this.apps = (await NET.api('/api/ac/ads/apps')).apps || [] } catch (e) {} if (window.drawApps) drawApps() },
+  /* an ad app: the advertiser's website runs inside the phone */
+  openApp(id) {
+    const a = this.apps.find(x => x.id === id); if (!a) return toast('That app is no longer running.');
+    let host = a.link, sandbox = 'allow-scripts allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox';
+    try { const u = new URL(a.link); host = u.hostname; if (u.origin !== location.origin) sandbox += ' allow-same-origin' } catch (e) {}
+    document.querySelector('.screen').classList.add('light'); PH.view = 'adapp';
+    PH.shell(esc(a.title), 'PH.close()', `<div class="adapp"><div class="adbar"><span>Sponsored · ${esc(host)}</span><button class="pbtn blu" onclick="ADS.go(ADS.apps.find(x=>x.id==='${a.id}'))">Open in browser</button></div>
+      <div class="adwait" id="adwait">Loading ${esc(a.title)}…<small>Blank screen? This site may not allow being shown here. Use Open in browser.</small></div>
+      <iframe class="adif" src="${esc(a.link)}" sandbox="${sandbox}" referrerpolicy="no-referrer" onload="const w=document.getElementById('adwait');if(w)w.style.display='none'"></iframe></div>`);
+    fetch(`/api/ac/ads/${a.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
   },
   /* ----- what every player sees on the Map ----- */
   go(ad) { if (!ad || !ad.link) return; window.open(ad.link, '_blank', 'noopener'); fetch(`/api/ac/ads/${ad.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {}) },

@@ -2,3 +2,53 @@
 .songify-recent{display:flex;gap:8px;overflow-x:auto;padding:0 16px 6px;scrollbar-width:none}.songify-recent::-webkit-scrollbar{display:none}.songify-recent-item{display:flex;align-items:center;gap:7px;min-width:142px;max-width:175px;padding:7px;border:1px solid #eee9f8;border-radius:13px;background:#faf9ff;text-align:left}.songify-recent-item img{width:32px;height:32px;border-radius:8px;object-fit:cover}.songify-recent-item span{min-width:0;flex:1}.songify-recent-item b,.songify-recent-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.songify-recent-item b{font-size:11px}.songify-recent-item small{font-size:9.5px;color:#88849a;margin-top:2px}.songify-recent-item em{font-style:normal;color:#7c3aed;font-size:12px}.songify-recent-empty{width:100%;margin:0 0 8px;color:#9993aa;font-size:11px}
 
 .sg-lab{margin-left:16px;margin-right:16px}
+
+/* ---- Songify v2: tabs, padding, full controls, mini player ---- */
+.sg-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
+.sg-body{flex:1;overflow-y:auto;padding-bottom:10px;scrollbar-width:none}.sg-body::-webkit-scrollbar{display:none}
+.sg-nav{flex:none;display:flex;border-top:1px solid #eef0f5;background:#fff;padding:6px 8px 2px}
+.sg-nav button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:#9a9db0;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif}
+.sg-nav button i{font-size:18px}.sg-nav button.on{color:#7c3aed}
+.sg-title{font:800 20px Outfit,system-ui,sans-serif;margin:4px 16px 12px;color:#1b1f33}
+.songify-results{padding:0 16px 8px}
+.songify-result{cursor:pointer}
+.songify-result em i{font-size:14px}
+.sg-heart{border:0;background:none;color:#b3b6c6;font-size:16px;padding:6px;flex:none}.sg-heart.on{color:#e11d48}
+.songify-mark{font-size:34px!important;opacity:.9!important}
+.songify-go{display:grid;place-items:center;font-size:16px!important}
+.songify-empty-player>i{font-size:24px;color:#7c3aed}
+.songify-player{display:block!important}
+.sp-top{display:flex;gap:10px;align-items:center}
+.songify-player .songify-track>span{margin:2px 0 0}
+.sp-ic{border:0;background:none;color:#6b6f85;font-size:17px;padding:6px;flex:none}.sp-ic.on{color:#e11d48}
+.songify-player>input[type=range]{display:block;width:100%;margin:10px 0 0;accent-color:#7c3aed}
+.sp-ctl{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:0 6px}
+.sp-ctl button{border:0;background:none;color:#4b4f66;font-size:18px;width:40px;height:40px;border-radius:50%;position:relative}
+.sp-ctl button.on{color:#7c3aed}.sp-ctl sup{position:absolute;top:6px;right:6px;font-size:9px;font-weight:800}
+.sp-ctl button.big{background:#7c3aed;color:#fff;width:50px;height:50px;font-size:19px}
+.songify-retry{margin-top:10px;border:0;border-radius:999px;background:#7c3aed;color:#fff;padding:8px 18px;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif}
+/* mini player on the home / map scenes: a dynamic-island style pill under the HUD */
+.miniplayer{position:absolute;left:50%;transform:translateX(-50%);top:calc(54px + var(--sat));width:min(300px,calc(100% - 24px));height:34px;z-index:7;align-items:center;gap:2px;padding:0 6px 0 5px;overflow:hidden;background:#000;color:#fff;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.miniplayer img{width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;margin-right:5px}
+.miniplayer .mp-t{flex:1;min-width:0;cursor:pointer}.miniplayer .mp-t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:#fff}.miniplayer .mp-t span{display:none}
+.miniplayer button{border:0;background:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:12px;flex:none}
+.miniplayer button.pp{background:#7c3aed}
+.miniplayer .mp-bar{position:absolute;left:14px;right:14px;bottom:0;height:2px;background:rgba(255,255,255,.18);font-style:normal}.miniplayer .mp-bar u{display:block;height:100%;width:0;background:#a78bfa;text-decoration:none}
+.has-mini .chips{display:none!important}
+/* phone dynamic island with music */
+.island{transition:width .25s,height .25s,border-radius .25s}
+.island.music{width:min(168px,calc(100% - 150px));height:30px;top:7px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;background:#000;color:#fff;border-radius:20px;cursor:pointer;padding:0 4px 0 9px}
+.island .isl-row{display:flex;align-items:center;gap:6px;width:100%;min-width:0}
+.island .isl-art,.island .isl-t span,.island .isl-ctl{display:none}
+.island .isl-t{flex:1;min-width:0}.island .isl-t b{display:block;font:700 10.5px 'Plus Jakarta Sans',system-ui,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.island .isl-pp{border:0;background:#7c3aed;color:#fff;width:22px;height:22px;border-radius:50%;font-size:9px;flex:none;display:grid;place-items:center;padding:0}
+.island .eq{display:flex;align-items:flex-end;gap:2px;height:12px;flex:none}.island .eq i{width:3px;background:#a78bfa;border-radius:2px;animation:eqb .8s ease-in-out infinite alternate}
+.island .eq i:nth-child(2){animation-delay:.2s}.island .eq i:nth-child(3){animation-delay:.4s}
+.island.paused .eq i{animation-play-state:paused}
+@keyframes eqb{from{height:3px}to{height:12px}}
+.island.music.open{width:calc(100% - 20px);height:104px;top:8px;border-radius:28px;padding:12px 14px;justify-content:space-between;cursor:default}
+.island.open .isl-art{display:block;width:44px;height:44px;border-radius:12px;object-fit:cover;flex:none}
+.island.open .isl-t span{display:block;font-size:11px;color:#a8abc0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.island.open .isl-t b{font-size:13px}.island.open .isl-pp{display:none}.island.open .eq{height:16px}
+.island.open .isl-ctl{display:flex;justify-content:space-around;align-items:center}
+.island .isl-ctl button{border:0;background:none;color:#fff;font-size:17px;width:42px;height:36px}

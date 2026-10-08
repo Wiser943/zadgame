@@ -210,6 +210,7 @@ const GIST = {
     const since = g.since ? new Date(g.since).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '';
     const st = [['Level', g.level], ['Played', g.played], ['Wins', g.wins], ['Win rate', g.winRate + '%'], ['Losses', g.losses], ['Best streak', g.bestStreak], ['Cups won', g.tournamentWins], ['Rating', g.rating]];
     const btns = r.isMe ? `<button class="btn p" onclick="PH.editProfile('GIST.openProfile(\\'me\\')')">✏️ Edit profile</button><button class="btn s" onclick="GIST.nav('compose')">New gist</button>`
+      : r.relation === 'blocked' ? `<div class="gpb"><button class="btn p" id="gmb2" onclick="GIST.unblock()"><i class="fa-solid fa-lock-open"></i> Unblock</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`
       : `<div class="gpb"><button class="btn ${r.isFollowing ? 's' : 'p'}" id="gfb" onclick="GIST.follow()">${r.isFollowing ? 'Following ✓' : 'Follow'}</button><button class="btn s" id="gmb2" onclick="GIST.message()">💬 Message</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`;
     $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')"` : ''}></div><div class="gavw">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
@@ -222,9 +223,11 @@ const GIST = {
     const p = this.pf; if (!p) return; const r = p.r, was = r.isFollowing; r.isFollowing = !was; r.followers = Math.max(0, r.followers + (was ? -1 : 1)); this.drawProfile();
     this.api('/follow/' + r.user.id, { method: 'POST' }).then(x => { r.isFollowing = x.following; r.followers = x.followers; Object.values(this.F).forEach(f => f.stale = true); NET.drop('/gist/profile'); this.drawProfile() }).catch(e => { r.isFollowing = was; r.followers = Math.max(0, r.followers + (was ? 1 : -1)); this.drawProfile(); this.err(e) })
   },
+  unblock() { const p = this.pf; if (!p) return; this.friendAct(p.r.user.id, 'unblock') },
   message() { const id = this.pf.r.user.id; PH.chat(id, `GIST.openProfile('${id}')`) },
   userMenu() {
     const r = this.pf.r, u = r.user, id = u.id, rel = r.relation;
+    if (rel === 'blocked') return PH.sheet(`<h3>${esc(u.displayName)}</h3><button class="fopt" onclick="GIST.friendAct('${id}','unblock')"><span>Unblock</span></button><button class="fopt" onclick="GIST.friendAct('${id}','report')"><span>⚑ Report player</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`);
     const fr = rel === 'friend' ? `<button class="fopt" onclick="GIST.friendAct('${id}','remove')"><span>👋 Remove friend</span></button>` : rel === 'sent' ? `<button class="fopt" onclick="GIST.friendAct('${id}','remove')"><span>⏳ Cancel friend request</span></button>` : rel === 'received' ? `<button class="fopt" onclick="GIST.friendAct('${id}','accept')"><span>🤝 Accept friend request</span></button>` : `<button class="fopt" onclick="GIST.friendAct('${id}','add')"><span>➕ Add friend</span></button>`;
     PH.sheet(`<h3>${esc(u.displayName)}</h3>${fr}<button class="fopt" onclick="PH.closeSheet();PH.payUser('${id}','${esc(u.username)}','GIST.openProfile(\\'${id}\\')')"><span>💸 Send money</span></button><button class="fopt red" onclick="GIST.friendAct('${id}','block')"><span>🚫 Block</span></button><button class="fopt" onclick="GIST.friendAct('${id}','report')"><span>⚑ Report player</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
   },
@@ -234,7 +237,8 @@ const GIST = {
       if (act === 'add') { const r = await N(`/friends/${id}/request`, { method: 'POST' }); this.pf.r.relation = r.state === 'friend' ? 'friend' : 'sent'; toast(r.state === 'friend' ? 'You are now friends 🎉' : 'Friend request sent ✓') }
       else if (act === 'accept') { await N(`/friends/${id}/accept`, { method: 'POST' }); this.pf.r.relation = 'friend'; toast('Friend added 🎉') }
       else if (act === 'remove') { await N(`/friends/${id}`, { method: 'DELETE' }); this.pf.r.relation = 'none'; toast('Done') }
-      else if (act === 'block') { await N(`/block/${id}`, { method: 'POST' }); toast('Blocked'); NET.drop('/api/ac/'); return this.back() }
+      else if (act === 'block') { await N(`/block/${id}`, { method: 'POST' }); this.pf.r.relation = 'blocked'; toast('Blocked'); NET.drop('/api/ac/'); return this.drawProfile() }
+      else if (act === 'unblock') { await N(`/unblock/${id}`, { method: 'POST' }); this.pf.r.relation = 'none'; toast('Unblocked'); NET.drop('/api/ac/'); return this.drawProfile() }
       else if (act === 'report') return PH.sheet(`<h3>Report this player</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam', 'Harassment', 'Scam', 'Inappropriate'].map(x => `<button class="fopt" onclick="PH.closeSheet();NET.api('/api/ac/report/${id}',{method:'POST',body:{reason:'${x}'}}).then(()=>toast('Report sent. Thank you 🙏🏾')).catch(e=>toast(e.message))"><span>${x}</span></button>`).join('')}`)
       NET.drop('/api/ac/friends')
     } catch (e) { this.err(e) }

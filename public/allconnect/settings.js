@@ -1,7 +1,7 @@
 /* AllConnect Settings app. Everything that used to be on GameHub's profile/settings screen lives here now:
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
-const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][2],SOC_META[k][3],window.SOCIAL[k]]);
+const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
 const GP_DEF={theme:'light',music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:''};
 const GP={
   get(){try{return Object.assign({},GP_DEF,JSON.parse(localStorage.getItem('ghPrefs')||'{}'))}catch(e){return Object.assign({},GP_DEF)}},
@@ -9,13 +9,13 @@ const GP={
     try{const w=document.getElementById('hubf').contentWindow;if(w&&w.GHBridge)w.GHBridge.sync()}catch(e){}}
 };
 /* Sound / display toggles, grouped. Only what players actually need. */
-const FX_SOUND=[['music','Music','🎵'],['sound','Game sound','🔊'],['voice','Voice announcements','📣'],['vibration','Vibration','📳']];
-const FX_LOOK=[['theme','Dark mode','🌙'],['lowPower','Saver mode · less data, no background loading','🔋'],['reducedMotion','Reduce animations','🐢'],['largeText','Larger text','🔠'],['highContrast','High contrast','◐'],['colorSafe','Colour-blind friendly','🎨']];
+const FX_SOUND=[['music','Music','fa-solid fa-music'],['sound','Game sound','fa-solid fa-volume-high'],['voice','Voice announcements','fa-solid fa-bullhorn'],['vibration','Vibration','fa-solid fa-mobile-screen-button']];
+const FX_LOOK=[['theme','Dark mode','fa-solid fa-moon'],['lowPower','Saver mode · less data, no background loading','fa-solid fa-battery-half'],['reducedMotion','Reduce animations','fa-solid fa-gauge'],['largeText','Larger text','fa-solid fa-text-height'],['highContrast','High contrast','fa-solid fa-circle-half-stroke'],['colorSafe','Colour-blind friendly','fa-solid fa-palette']];
 const FALLBACK_RULES={};
 Object.assign(PH,{
   me:null,
-  trow(k,label,ic,on){return `<button class="trow" data-k="${k}" onclick="PH.tgl('${k}')"><span class="ti">${ic}</span><span class="tl">${label}</span><span class="sw2 ${on?'on':''}"><i></i></span></button>`},
-  lrow(label,ic,fn,extra){return `<button class="trow" onclick="${fn}"><span class="ti">${ic}</span><span class="tl">${label}</span>${extra||'<span class="chv">›</span>'}</button>`},
+  trow(k,label,ic,on){return `<button class="trow" data-k="${k}" onclick="PH.tgl('${k}')"><span class="ti"><i class="${ic}"></i></span><span class="tl">${label}</span><span class="sw2 ${on?'on':''}"><i></i></span></button>`},
+  lrow(label,ic,fn,extra){return `<button class="trow" onclick="${fn}"><span class="ti"><i class="${ic}"></i></span><span class="tl">${label}</span>${extra||'<span class="chv">›</span>'}</button>`},
   /* Profile photo drawn as a cover-fit background so any photo fills the circle; falls back to the initial if it can't load. */
   avCover(u){const a=u.avatar||'';if(!/^(https?:|data:image\/)/.test(a))return this.av(u,1);const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();
     return `<span class="avi big avcov" data-n="${esc(n)}" style="background:#cbd0dc url('${esc(a)}') center/cover no-repeat"></span>`},
@@ -30,14 +30,14 @@ Object.assign(PH,{
     const p=GP.get(),u=Object.assign({},NET.user||{},this.me||{}),np='Notification' in window?Notification.permission:'unsupported';
     const auto=this.me?this.me.autoPostWins!==false:true;
     this.shell('Settings','PH.close()',`<div class="abody">
-      <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.avCover(u)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()">Edit ✎</button></div>
-      <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti">🔔</span><span class="tl">Notifications<small class="nsub">Messages and updates, even when the app is closed</small></span><span id="nright">${np==='unsupported'?'<b>Not supported</b>':'<b>…</b>'}</span></div>
-        <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti">🏆</span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
+      <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.avCover(u)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()"><i class="fa-solid fa-pen"></i> Edit</button></div>
+      <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti"><i class="fa-solid fa-bell"></i></span><span class="tl">Notifications<small class="nsub">Messages and updates, even when the app is closed</small></span><span id="nright">${np==='unsupported'?'<b>Not supported</b>':'<b>…</b>'}</span></div>
+        <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
-        <label class="trow"><span class="ti">🌐</span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
-      <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','🏆',"openHub(b=>b.shop())")}</div>
-      <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','🎓',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','📣',"PH.sub('socials')"):''}${this.lrow('About us','ℹ️',"PH.sub('about')")}${this.lrow('Legal','⚖️',"PH.sub('legal')")}</div>
+        <label class="trow"><span class="ti"><i class="fa-solid fa-globe"></i></span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
+      <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','fa-solid fa-bag-shopping',"openHub(b=>b.shop())")}</div>
+      <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','fa-solid fa-graduation-cap',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','fa-solid fa-share-nodes',"PH.sub('socials')"):''}${this.lrow('About us','fa-solid fa-circle-info',"PH.sub('about')")}${this.lrow('Legal','fa-solid fa-scale-balanced',"PH.sub('legal')")}</div>
       <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.1 · GameHub 1.0.10141</p></div>`);
     this.notifPaint();
     const cv=document.querySelector('#swav .avcov');if(cv){const im=new Image();im.onerror=()=>{cv.style.background='#6366f1';cv.textContent=cv.dataset.n};im.src=u.avatar}
@@ -48,9 +48,9 @@ Object.assign(PH,{
   /* ----- edit profile: ONE screen for photo, cover, name, @username and bio ----- */
   editProfile(back){this.view='settings-edit';this.editBack=back||this.editBack||'PH.settings()';const u=Object.assign({},NET.user||{},this.me||{});
     this.shell('Edit profile',this.editBack==='PH.settings()'?'PH.settings()':this.editBack,`<div class="abody"><div class="pedit">
-      <div class="pecover" id="pecov" ${u.cover?`style="background-image:url('${esc(u.cover)}')"`:''}><label class="pbtn blu pick">🖼️ Cover<input type="file" accept="image/*" style="display:none" onchange="PH.pickCover(this)"></label></div>
+      <div class="pecover" id="pecov" ${u.cover?`style="background-image:url('${esc(u.cover)}')"`:''}><label class="pbtn blu pick"><i class="fa-solid fa-image"></i> Cover<input type="file" accept="image/*" style="display:none" onchange="PH.pickCover(this)"></label></div>
       <div id="pedav">${this.av({avatar:u.avatar,displayName:u.displayName,username:u.username},1).replace('class="avi big"','class="avi huge"')}</div>
-      <label class="pbtn blu pick">📷 Change photo<input type="file" accept="image/*" style="display:none" onchange="PH.pickPhoto(this)"></label></div>
+      <label class="pbtn blu pick"><i class="fa-solid fa-camera"></i> Change photo<input type="file" accept="image/*" style="display:none" onchange="PH.pickPhoto(this)"></label></div>
       <div class="lab2">DISPLAY NAME</div><input id="dname" class="sinput" value="${esc(u.displayName||'')}" maxlength="40" placeholder="Your name">
       <div class="lab2">USERNAME</div><div class="cin2"><span class="at">@</span><input id="uname_in" class="sinput" value="${esc(u.username||'')}" placeholder="yourname" maxlength="16" autocapitalize="none" autocomplete="off"></div><p class="hint2">3–16 letters, numbers or _. Friends find you with this.</p>
       <div class="lab2">BIO</div><textarea id="bio_in" class="gedit" maxlength="160" placeholder="Tell people about yourself (160 characters)">${esc(u.bio||'')}</textarea>
@@ -77,7 +77,7 @@ Object.assign(PH,{
     this.shell(T,'PH.settings()',`<div class="abody" id="ab">${this.subBody(name)}</div>`);if(name==='tutorial')this.loadRules()},
   faq(q,a){return `<div class="faq"><b>${esc(q)}</b><p>${esc(a)}</p></div>`},
   subBody(n){
-    if(n==='socials')return `<p class="hint2">Follow along for updates, and hang out with other players.</p><div class="sgrp">${socialList().map(s=>`<a class="trow" href="${esc(s[2])}" target="_blank" rel="noopener"><span class="ti">${s[0]}</span><span class="tl">${esc(s[1])}</span><span class="chv">›</span></a>`).join('')}</div>`;
+    if(n==='socials')return `<p class="hint2">Follow along for updates, and hang out with other players.</p><div class="sgrp">${socialList().map(s=>`<a class="trow" href="${esc(s[2])}" target="_blank" rel="noopener"><span class="ti"><i class="${s[0]}"></i></span><span class="tl">${esc(s[1])}</span><span class="chv">›</span></a>`).join('')}</div>`;
     if(n==='tutorial')return `<div class="lab2">GETTING STARTED</div><div class="sgrp"><ul class="tut"><li>Open GameHub on the phone, pick a game, then Quick match, Create a room, or join with a code.</li><li>Share your room code so a friend can jump straight into your room.</li><li>Win matches to earn coins — your total sits at the top of the lobby.</li><li>Use the emote bar during a match to react without typing.</li><li>Tap any player's avatar in a match to see their profile and stats.</li></ul></div><div id="rules"><p class="empty">Loading game rules…</p></div>`;
     if(n==='about')return `<div class="sgrp"><div class="faq"><p style="margin-top:0">AllConnect is one account for a whole Lagos world: live your life in the city, chat with friends, send money with AllConnect Pay, and play real-time games in GameHub.</p><p>GameHub is a for-fun multiplayer arcade — quick matches of Connect Four, Rock Paper Scissors, Snakes &amp; Ladders, Word Clash and more with friends, right in the browser. Coins track bragging rights across matches.</p><p style="color:var(--mut)">Built with Node.js, Socket.IO and a lot of care for snappy, mobile-first play.</p></div></div>`;
     return `<div class="lab2">TERMS OF SERVICE</div><div class="sgrp"><div class="faq"><p>By using AllConnect and GameHub you agree to play fair, keep your account to yourself, and treat other players with respect. Coins and ₦ earned in-game have no cash value and can’t be withdrawn, exchanged for real money, or sold.</p><p>We can suspend accounts that cheat, abuse other players, or interfere with the service. Features, games and rules may change as the app evolves.</p></div></div>

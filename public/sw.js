@@ -2,8 +2,8 @@
 // cache game pages or API responses. The service worker's only job is to
 // exist — its presence + the manifest is what makes Chrome/Edge/Android
 // consider the site "installable" and fire beforeinstallprompt.
-const CACHE = 'gamehub-shell-v3';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
+const CACHE = 'gamehub-shell-v4';
+const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
@@ -67,6 +67,12 @@ self.addEventListener('notificationclick', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
+    fetch(e.request).catch(async () => {
+      const hit = await caches.match(e.request);
+      if (hit) return hit;
+      // opening the web app with no connection: show the AllConnect offline screen
+      if (e.request.mode === 'navigate') return (await caches.match('/offline.html')) || Response.error();
+      return Response.error();
+    })
   );
 });

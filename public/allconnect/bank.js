@@ -17,6 +17,14 @@ Object.assign(PH,{
       <div class="qgrid">${tiles.map(t=>`<button class="q" onclick="${t[2]}"><span class="qi">${t[0]}${t[3]?'<em>Soon</em>':''}</span>${t[1]}</button>`).join('')}</div>
       <div class="sech"><b>Recent transactions</b>${this.H.length>5?`<a onclick="PH.history()">View all ›</a>`:''}</div>
       ${this.H.length?this.H.slice(0,5).map(t=>this.txRow(t)).join(''):`<p class="empty">No transactions yet. Send or receive money and it shows here.</p>`}`},
+  /* Deposit page (opened from the + next to the balance). Payments are not live yet. */
+  deposit(){this.view='bank-d';this.shell('Deposit','PH.bank()',`<div class="abody bk"><div class="lab2">AMOUNT</div><div class="amt"><span>₦</span><input id="dpamt" inputmode="numeric" placeholder="0" oninput="PH.dpfmt()" autocomplete="off"></div>
+      <div class="pre">${[1000,5000,10000,20000].map(n=>`<button onclick="PH.dppick(${n})">${n.toLocaleString('en-NG')}</button>`).join('')}</div>
+      <div class="hint2">Current balance ${naira(S.cash,2)}</div>
+      <button class="btn p" id="dpbtn" onclick="PH.dpgo()">Deposit now</button></div>`)},
+  dpfmt(){const i=document.getElementById('dpamt'),n=parseInt(i.value.replace(/\D/g,''),10);i.value=Number.isFinite(n)?n.toLocaleString('en-NG'):''},
+  dppick(n){const i=document.getElementById('dpamt');if(i)i.value=n.toLocaleString('en-NG')},
+  dpgo(){const b=document.getElementById('dpbtn');if(b){b.textContent='Coming soon';setTimeout(()=>{const x=document.getElementById('dpbtn');if(x)x.textContent='Deposit now'},2200)}toast('Deposits are coming soon')},
   toggleBal(){this.hideBal=!this.hideBal;this.bankDraw()},
   soon(){toast('Coming soon 🚧')},
   copy(t){const ok=()=>toast('Copied ✓');try{navigator.clipboard.writeText(t).then(ok,()=>this.copyOld(t,ok))}catch(e){this.copyOld(t,ok)}},
