@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#8f1017">
-  <title>GameHub</title>
+  <title>All Connect</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/favicon.png">
   <script src="/js/bgm.js"></script>
@@ -3213,9 +3213,9 @@
       body.split #app { flex: 1 1 auto; min-width: 0; max-width: none; margin: 0; height: 100%; overflow-x: hidden; overflow-y: auto }
       body.split #app > :not(.play):not(.stage-ph) { max-width: 760px; margin-left: auto; margin-right: auto }
       body.split .play { min-height: 100% }
-      /* the in-room side rail duplicates the lobby on the left, so only show it on very wide screens */
-      body.split .play-layout { display: block }
-      body.split .game-rail { display: none }
+      /* the in-room side rail (back to lobby, room info) duplicates the lobby on the left, so it is hidden here */
+      body.split .play-layout { display: block !important }
+      body.split .game-rail { display: none !important }
       body.split .game-main { width: 100% }
       /* fixed overlays centre on the game pane, not the whole window */
       body.split #chatDock, body.split #msgToasts { left: var(--dock-w) }
@@ -3226,10 +3226,7 @@
       .stage-ph h2 { margin: 0; font-size: 24px }
       .stage-ph p { margin: 0; max-width: 340px; font-size: 14px; color: rgba(255, 255, 255, .78) }
     }
-    @media (min-width: 1000px) and (min-width: 1500px) {
-      body.split .play-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; }
-      body.split .game-rail { display: block }
-    }
+    body.split #app:empty { background: repeating-conic-gradient(from 0deg at 50% 45%, #7a0c12 0 7deg, #9c1219 7deg 14deg) }
     html[data-roombg="midnight"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #0a1b3f 0 7deg, #1d3f85 7deg 14deg) }
     html[data-roombg="emerald"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #08382a 0 7deg, #12744f 7deg 14deg) }
     html[data-roombg="royal"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #2a0e4d 0 7deg, #5a2aa0 7deg 14deg) }
@@ -4032,6 +4029,7 @@
     
     async function boot() {
       { const hq = new URLSearchParams(location.search).get('h'); if (hq) { history.replaceState(null, '', location.pathname); watchSavedHighlight(hq); } }
+      document.body.classList.toggle('split', splitMQ.matches); // red game pane shows straight away on desktop
       try { me = await api('/api/me');
         me = me.user || me; } catch { return loginView(); }
       if (!me || (!me._id && !me.id && !me.displayName && !me.name)) return loginView();
@@ -4344,6 +4342,7 @@
         setLobbyMusic(true);
       }
       dockBusy = true;
+      if (isSplit() && !keep) stagePlaceholder();
       let games = [],
         lbTop = [];
       try {
@@ -4359,7 +4358,6 @@
       games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
       dockBusy = false;
       const host = isSplit() ? dock : app;
-      if (isSplit() && !keep) stagePlaceholder();
       host.innerHTML = `
   <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b id="balTop">${naira(me.coins)}</b></div></div>
   <div class="lobtabs" role="tablist" aria-label="${esc(t('tabs.label'))}">
