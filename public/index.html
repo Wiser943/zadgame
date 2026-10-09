@@ -3202,11 +3202,46 @@
     html[data-theme="dark"] .rps-player { background: #1a1a22 }
     html[data-theme="dark"] .rps-player.you { background: #3a3220; border-color: #f7c52b }
     .rps-multi { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)) }
+
+    /* ===== Desktop split view: lobby on the left, game / room on the right ===== */
+    #dock { display: none }
+    @media (min-width: 1000px) {
+      :root { --dock-w: clamp(380px, 32vw, 470px) }
+      body.split { overflow: hidden }
+      body.split #shell { display: flex; width: 100%; height: 100% }
+      body.split #dock { display: block; flex: 0 0 var(--dock-w); width: var(--dock-w); height: 100%; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; background: var(--bg); border-right: 1px solid var(--line); position: relative; z-index: 2 }
+      body.split #app { flex: 1 1 auto; min-width: 0; max-width: none; margin: 0; height: 100%; overflow-x: hidden; overflow-y: auto }
+      body.split #app > :not(.play):not(.stage-ph) { max-width: 760px; margin-left: auto; margin-right: auto }
+      body.split .play { min-height: 100% }
+      /* the in-room side rail duplicates the lobby on the left, so only show it on very wide screens */
+      body.split .play-layout { display: block }
+      body.split .game-rail { display: none }
+      body.split .game-main { width: 100% }
+      /* fixed overlays centre on the game pane, not the whole window */
+      body.split #chatDock, body.split #msgToasts { left: var(--dock-w) }
+      body.split #toast { left: calc(50% + var(--dock-w) / 2) }
+      body.split .play::after { left: calc(var(--dock-w) + 14px) }
+      .stage-ph { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 40px; color: #fff; background: repeating-conic-gradient(from 0deg at 50% 45%, #7a0c12 0 7deg, #9c1219 7deg 14deg) }
+      .stage-ph .sp-ico { font-size: 54px; line-height: 1 }
+      .stage-ph h2 { margin: 0; font-size: 24px }
+      .stage-ph p { margin: 0; max-width: 340px; font-size: 14px; color: rgba(255, 255, 255, .78) }
+    }
+    @media (min-width: 1000px) and (min-width: 1500px) {
+      body.split .play-layout { display: grid; grid-template-columns: minmax(0, 1fr) 250px; }
+      body.split .game-rail { display: block }
+    }
+    html[data-roombg="midnight"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #0a1b3f 0 7deg, #1d3f85 7deg 14deg) }
+    html[data-roombg="emerald"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #08382a 0 7deg, #12744f 7deg 14deg) }
+    html[data-roombg="royal"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #2a0e4d 0 7deg, #5a2aa0 7deg 14deg) }
+    html[data-roombg="sunset"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #7a2410 0 7deg, #d4571f 7deg 14deg) }
+    html[data-roombg="ocean"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #04303f 0 7deg, #0b6b82 7deg 14deg) }
+    html[data-roombg="carbon"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #111114 0 7deg, #2a2a31 7deg 14deg) }
+    html[data-roombg="aurora"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #0b3d3a 0 7deg, #5b2a86 7deg 14deg) }
   </style>
 </head>
 
 <body>
-  <div id="app"></div>
+  <div id="shell"><aside id="dock" aria-label="Lobby"></aside><div id="app"></div></div>
   <div id="toast" role="status"></div>
   <script src="/js/renderer-manager.js"></script>
   <script src="/js/snakes.js"></script>
@@ -3278,6 +3313,43 @@
     const icon = (name, size = 20) => (ICONS[name] || '').replace('<svg ', `<svg width="${size}" height="${size}" style="display:inline-block;vertical-align:-5px" `);
     const $ = s => document.querySelector(s);
     const app = $('#app');
+    const dock = $('#dock');
+    /* ---- desktop split view (lobby left, game right) ---- */
+    const splitMQ = window.matchMedia('(min-width: 1000px)');
+    const isSplit = () => document.body.classList.contains('split');
+    const applySplitClass = () => document.body.classList.toggle('split', splitMQ.matches && !!me);
+    let dockBusy = false;
+    function stagePlaceholder() {
+      app.innerHTML = `<div class="stage-ph" id="stagePh"><div class="sp-ico">🎮</div><h2>Pick a game</h2><p>Choose a game from the lobby on the left, or join a room with a code. Your match will open here.</p></div>`;
+      app.scrollTop = 0;
+    }
+    function ensureDock() { if (isSplit() && !dock.childElementCount && !dockBusy) lobbyView(false, true); }
+    const refreshLobby = () => isSplit() ? lobbyView(false, true) : lobbyView(false);
+    /* In split view the lobby stays clickable during a match, so starting another game must leave the current room first. */
+    async function releaseRoom(nextCode) {
+      if (!room || !isSplit()) return true;
+      if (nextCode && room.code === nextCode) return true;
+      if (room.stake > 0 && room.status === 'playing' && !result && !await askDialog('Leave this match?', `Starting another game forfeits your ${naira(room.stake)} stake to the other player. Do you want to leave?`, 'Leave match')) return false;
+      try { socket.emit(EV.leave, { code: room.code }); } catch {}
+      stopMusic();
+      room = gstate = result = null;
+      return true;
+    }
+    const onSplitChange = () => {
+      if (!me) return;
+      const was = isSplit();
+      applySplitClass();
+      const now = isSplit();
+      if (now === was) return;
+      if (now) { // widened to desktop
+        if (document.getElementById('pnLobby')) lobbyView(false); // lobby was in the main pane: move it to the dock
+        else lobbyView(false, true);
+      } else { // narrowed to mobile
+        dock.innerHTML = '';
+        if (document.getElementById('stagePh')) lobbyView(false);
+      }
+    };
+    if (splitMQ.addEventListener) splitMQ.addEventListener('change', onSplitChange); else if (splitMQ.addListener) splitMQ.addListener(onSplitChange);
     function routePath() { return location.pathname.replace(/\/$/, '') || '/'; }
     function goBackToLobby() {
       if ((history.state?.page === 'game' || history.state?.page === 'spectator') && history.length > 1) history.back();
@@ -3964,6 +4036,7 @@
         me = me.user || me; } catch { return loginView(); }
       if (!me || (!me._id && !me.id && !me.displayName && !me.name)) return loginView();
       applyTheme();
+      applySplitClass();
       connect();
       const qs = new URLSearchParams(location.search);
       const code = qs.get('code'), watch = qs.get('spectate');
@@ -3972,6 +4045,7 @@
     }
     
     function loginView() {
+      document.body.classList.remove('split'); dock.innerHTML = '';
       app.innerHTML = `<div class="login"><h1>GameHub</h1><p>Quick real-time games with friends.<br>Play for bragging rights, not money.</p>
   <a class="btn" href="/auth/google" style="text-decoration:none">Continue with Google</a>
   <div class="divider">or</div>
@@ -4008,6 +4082,7 @@
           if (!r.ok) { authErr = data.message || 'Something went wrong.'; return loginView(); }
           me = data.user;
           authErr = '';
+          applySplitClass();
           connect();
           const code = new URLSearchParams(location.search).get('code');
           if (code) joinRoom(code, false); else { history.replaceState({ page: 'lobby' }, '', '/lobby'); lobbyView(false); }
@@ -4257,14 +4332,18 @@
       if (document.getElementById('tourLayer')) window.dispatchEvent(new Event('resize'));
     }
 
-    async function lobbyView(navigate = true) {
-      closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
-      roomsTabPoll(false);
-      room = gstate = result = null; bgmRoom(false);
-      ludoRollReady = false;
-      chessSelected = null;
-      if (navigate && routePath() !== '/lobby') history.pushState({ page: 'lobby' }, '', '/lobby');
-      setLobbyMusic(true);
+    async function lobbyView(navigate = true, keep = false) {
+      /* keep = refresh the lobby panel only (desktop split view), leaving any open match untouched */
+      if (!keep) {
+        closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
+        roomsTabPoll(false);
+        room = gstate = result = null; bgmRoom(false);
+        ludoRollReady = false;
+        chessSelected = null;
+        if (navigate && routePath() !== '/lobby') history.pushState({ page: 'lobby' }, '', '/lobby');
+        setLobbyMusic(true);
+      }
+      dockBusy = true;
       let games = [],
         lbTop = [];
       try {
@@ -4278,7 +4357,10 @@
       } catch { toast('Could not load games'); }
       GAMES = games;
       games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
-      app.innerHTML = `
+      dockBusy = false;
+      const host = isSplit() ? dock : app;
+      if (isSplit() && !keep) stagePlaceholder();
+      host.innerHTML = `
   <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b id="balTop">${naira(me.coins)}</b></div></div>
   <div class="lobtabs" role="tablist" aria-label="${esc(t('tabs.label'))}">
     <button role="tab" id="tabLobby" data-tab="lobby" aria-controls="pnLobby">${esc(t('tab.lobby'))}</button>
@@ -4331,12 +4413,12 @@
   </section>`;
       const showTab = (name, focus) => {
         lobbyTab = name;
-        app.querySelectorAll('.lobtabs [role=tab]').forEach(t => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; t.classList.toggle('on', on); if (on && focus) t.focus(); });
+        host.querySelectorAll('.lobtabs [role=tab]').forEach(t => { const on = t.dataset.tab === name; t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; t.classList.toggle('on', on); if (on && focus) t.focus(); });
         $('#pnLobby').hidden = name !== 'lobby'; $('#pnTour').hidden = name !== 'tour'; $('#pnUtil').hidden = name !== 'util'; $('#pnRooms').hidden = name !== 'rooms';
         if (name === 'tour') tournamentsView(false, $('#tourMount'));
         if (name === 'rooms') { roomsTabLoad(); roomsTabPoll(true); } else roomsTabPoll(false);
       };
-      const tabEls = [...app.querySelectorAll('.lobtabs [role=tab]')];
+      const tabEls = [...host.querySelectorAll('.lobtabs [role=tab]')];
       tabEls.forEach((t, i) => { t.onclick = () => showTab(t.dataset.tab); t.onkeydown = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); showTab(tabEls[(i + (e.key === 'ArrowRight' ? 1 : tabEls.length - 1)) % tabEls.length].dataset.tab, true); } }; });
       lobbyShowTab = showTab;
       const joinByCode = () => { const c = ($('#roomCodeIn').value || '').trim(); if (!c) return toast(t('rooms.needCode')); joinRoom(c); };
@@ -4354,8 +4436,8 @@
       loadChallengesCard();
       loadDashboard();
       $('#shopOpen').onclick = () => shopView();
-      $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${naira(d.reward)}`); lobbyView(false); } catch(e) { toast(e.message || 'Reward already claimed'); } };
-      app.querySelectorAll('.game').forEach(b => b.onclick = () =>
+      $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${naira(d.reward)}`); refreshLobby(); } catch(e) { toast(e.message || 'Reward already claimed'); } };
+      host.querySelectorAll('.game').forEach(b => b.onclick = () =>
         b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
     }
     
@@ -4452,7 +4534,8 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     }
     let queueTimer = null;
     function closeQueue() { clearInterval(queueTimer); queueTimer = null; document.getElementById('qOverlay')?.remove(); }
-    function rankedQueue(game, name) {
+    async function rankedQueue(game, name) {
+      if (!await releaseRoom()) return;
       socket.emit('queue:join', { game }, res => {
         if (!res || !res.ok) return toast(res?.error || 'Could not start matchmaking');
         const el = document.createElement('div'); el.id = 'qOverlay'; el.className = 'qoverlay'; el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-label', 'Finding opponent');
@@ -4535,7 +4618,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         }).join('');
         box.querySelectorAll('[data-claim]').forEach(b => b.onclick = async () => {
           b.disabled = true;
-          try { const r = await apiPost('/api/social/challenges/' + b.dataset.claim + '/claim', {}); toast('+' + naira(r.reward)); me.coins = r.coins; lobbyView(false); }
+          try { const r = await apiPost('/api/social/challenges/' + b.dataset.claim + '/claim', {}); toast('+' + naira(r.reward)); me.coins = r.coins; refreshLobby(); }
           catch (e) { toast(e.message || 'Could not claim'); b.disabled = false; }
         });
       };
@@ -4745,7 +4828,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     function ghSyncPrefs() {
       let p = {}; try { p = JSON.parse(localStorage.getItem('ghPrefs') || '{}'); } catch {}
       Object.assign(prefs, p);
-      if (p.lang && I18N[p.lang] && p.lang !== LANG) { LANG = p.lang; document.documentElement.lang = LANG; if (document.getElementById('pnLobby')) lobbyView(false); }
+      if (p.lang && I18N[p.lang] && p.lang !== LANG) { LANG = p.lang; document.documentElement.lang = LANG; if (document.getElementById('pnLobby')) refreshLobby(); }
       applyA11y(); applyTheme(); if (!prefs.music) stopMusic();
     }
     window.addEventListener('storage', e => { if (e.key === 'ghPrefs') ghSyncPrefs(); });
@@ -5064,7 +5147,8 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       if ($('#rk')) $('#rk').onclick = () => { bg.remove(); rankedQueue(key, name); };
     }
 
-    function createRoom(game, maxPlayers, vsBot, difficulty, options) {
+    async function createRoom(game, maxPlayers, vsBot, difficulty, options) {
+      if (!await releaseRoom()) return;
       socket.emit(EV.create, { game, maxPlayers, vsBot: !!vsBot, difficulty, options }, res => {
         if (res && res.ok === false) return toast(res.error || 'Could not create room');
         room = res?.room || res;
@@ -5076,8 +5160,9 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       });
     }
     
-    function joinRoom(code, navigate = true) {
+    async function joinRoom(code, navigate = true) {
       code = code.toUpperCase();
+      if (!await releaseRoom(code)) return;
       socket.emit(EV.join, { code }, res => {
         if (res && res.ok === false) { toast(res.error || 'Could not join room'); return lobbyView(false) }
         room = res?.room || res;
@@ -5089,8 +5174,9 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       });
     }
     
-    function spectateRoom(code, navigate = true) {
+    async function spectateRoom(code, navigate = true) {
       code = String(code || '').toUpperCase();
+      if (!await releaseRoom(code)) return;
       socket.emit(EV.spectate, { code }, res => {
         if (!res || res.ok === false) return toast(res?.error || 'Could not watch this match');
         room = res.room; result = room.status === 'over' ? room.result : null; gstate = room.state || null;
@@ -5099,7 +5185,8 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       });
     }
 
-    function quickMatch(game, maxPlayers) {
+    async function quickMatch(game, maxPlayers) {
+      if (!await releaseRoom()) return;
       socket.emit(EV.quick, { game, maxPlayers }, res => {
         if (!res || res.ok === false) return toast(res?.error || 'Could not find a match');
         room = res.room;
@@ -5260,6 +5347,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     /* ---------- game ---------- */
     function gameView() {
       if (!room) return lobbyView();
+      ensureDock();
       bgmRoom(true);
       if (chatRoomCode !== room.code) { chatMessages = [];
         chatRoomCode = room.code;
