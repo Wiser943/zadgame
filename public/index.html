@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#8f1017">
-  <title>All Connect</title>
+  <title>GameHub</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/favicon.png">
   <script src="/js/bgm.js"></script>
@@ -3234,11 +3234,91 @@
     html[data-roombg="ocean"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #04303f 0 7deg, #0b6b82 7deg 14deg) }
     html[data-roombg="carbon"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #111114 0 7deg, #2a2a31 7deg 14deg) }
     html[data-roombg="aurora"] .stage-ph { background: repeating-conic-gradient(from 0deg at 50% 45%, #0b3d3a 0 7deg, #5b2a86 7deg 14deg) }
+
+    /* ===== v3: match strip, chat column, collapsible lobby, bigger boards, match tabs, notifications, mobile input ===== */
+    :root { --chat-w: 0px; --kb: 0px }
+    #dockMini, #dockToggle, .matchstrip, .chathead, .chatkeys { display: none }
+    #matchTabs { display: none }
+    body.hastabs #matchTabs { display: flex; position: fixed; top: 0; left: 0; right: 0; height: 42px; z-index: 6; gap: 6px; padding: 6px 10px; box-sizing: border-box; background: rgba(20, 0, 3, .94); overflow-x: auto }
+    body.hastabs #app { padding-top: 42px; box-sizing: border-box }
+    #matchTabs .mt { display: inline-flex; align-items: center; gap: 7px; flex: 0 1 auto; min-width: 0; padding: 0 8px 0 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, .18); background: rgba(255, 255, 255, .08); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap }
+    #matchTabs .mt.on { background: #d11f2a; border-color: #d11f2a }
+    #matchTabs .mt-st { opacity: .85; font-weight: 600 }
+    #matchTabs .mt.turn .mt-st { color: #ffd36a; opacity: 1 }
+    #matchTabs .mt-un { font-style: normal; background: #f7c52b; color: #1a0508; border-radius: 99px; padding: 0 6px; font-size: 11px }
+    #matchTabs .mt-x { width: 20px; height: 20px; line-height: 18px; text-align: center; border-radius: 50%; background: rgba(0, 0, 0, .3); font-size: 14px }
+    #notifStack { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px; right: 12px; max-width: 496px; margin: 0 auto; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none }
+    #notifStack .invbanner { position: static; margin: 0; max-width: none; pointer-events: auto; animation: toastDown .2s ease both }
+    body:not(.split) #chatDock { bottom: var(--kb, 0px) }
+    @media (max-width: 820px), (pointer: coarse) {
+      input, select, textarea { font-size: 16px !important }  /* 16px stops iOS zooming the page when a field is focused */
+      button, .btn, .game, [role=tab], .cell, .square, .emo { touch-action: manipulation; -webkit-tap-highlight-color: transparent }
+      .chatform input { min-height: 44px }
+      .chatform button { width: 44px; height: 44px }
+      .chatlog { max-height: min(190px, 26vh) }
+      .rules-btn, .game-main > .bar .back, .game-main > .bar .code { min-height: 40px }
+      .emotes button { min-height: 40px }
+    }
+    @media (min-width: 1000px) {
+      body.split { --bsize: min(calc(100vh - 235px), calc(100vw - var(--dock-w) - var(--chat-w) - 90px), 880px) }
+      body.split.inroom { --chat-w: clamp(290px, 22vw, 350px) }
+      body.split.dockmini { --dock-w: 72px }
+      /* collapsible lobby */
+      body.split.dockmini #dock { display: none }
+      body.split #dockMini { display: none }
+      body.split.dockmini #dockMini { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 0 0 72px; width: 72px; height: 100%; padding: 58px 0 14px; box-sizing: border-box; overflow-y: auto; background: var(--bg); border-right: 1px solid var(--line); position: relative; z-index: 2 }
+      .dm-btn { width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: #9c1219; display: flex; align-items: center; justify-content: center; flex: none; padding: 0 }
+      .dm-btn:hover { background: #fbe9ea }
+      .dm-btn.soon { opacity: .45 }
+      .dm-sep { width: 32px; height: 1px; background: var(--line); flex: none }
+      body.split #dockToggle { display: flex; position: fixed; z-index: 7; top: 14px; left: calc(var(--dock-w) - 15px); width: 30px; height: 30px; padding: 0; border-radius: 50%; align-items: center; justify-content: center; font-size: 18px; line-height: 1; background: #fff; color: #9c1219; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0, 0, 0, .25) }
+      body.split.dockmini #dockToggle { left: calc(var(--dock-w) - 15px) }
+      /* match strip */
+      body.split .matchstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 14px; background: rgba(0, 0, 0, .32); border: 1px solid rgba(255, 255, 255, .12); color: #fff; font-size: 13px }
+      .ms-game { font-weight: 800; font-size: 15px }
+      .ms-code { background: rgba(255, 255, 255, .14); color: #fff; border: 0; border-radius: 999px; padding: 5px 11px; font-size: 12px; font-weight: 700 }
+      .ms-chip { padding: 5px 11px; border-radius: 999px; background: rgba(255, 255, 255, .14); font-weight: 700; font-size: 12px }
+      .ms-chip.gold { background: #f7c52b; color: #1a0508 }
+      .ms-turn { flex: 1 1 140px; text-align: center; font-weight: 700 }
+      .ms-turn.mine { color: #ffd36a }
+      .ms-clock { min-width: 46px; text-align: center; padding: 5px 11px; border-radius: 999px; background: rgba(0, 0, 0, .42); font-weight: 800; font-variant-numeric: tabular-nums }
+      .ms-clock.low { background: #d11f2a }
+      .ms-emo { flex: 0 0 100%; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center }
+      .emo { display: inline-flex; align-items: center; gap: 5px; background: rgba(0, 0, 0, .3); color: #fff; border: 0; border-radius: 999px; padding: 5px 11px; font-size: 12px }
+      .emo:hover { background: rgba(255, 255, 255, .2) }
+      .emo kbd { opacity: .6; font: inherit; font-size: 10px }
+      body.split .game-main > .bar .code { display: none }
+      body.split .play:not(.is-waiting):not(.has-gone) .status { display: none }
+      body.split .clocks { display: none }
+      /* chat column beside the board */
+      body.split.inroom #app { margin-right: var(--chat-w) }
+      body.split.inroom #chatDock { display: block; left: auto; right: 0; top: 0; bottom: 0; width: var(--chat-w); z-index: 4 }
+      body.split.inroom #chatDock .chatkb { display: none }
+      body.split.inroom #chatDock .chatpanel { display: flex; flex-direction: column; height: 100%; max-width: none; margin: 0; border-radius: 0; box-sizing: border-box; padding: 0 12px 12px; background: #2a0509; border-left: 1px solid rgba(255, 255, 255, .14) }
+      body.split.inroom .chathead { display: block; padding: 14px 2px 10px; font-weight: 800; font-size: 14px; color: #fff }
+      body.split.inroom #chatDock .chatlog { flex: 1 1 auto; max-height: none; min-height: 0 }
+      body.split.inroom .chatkeys { display: block; margin: 8px 0 0; font-size: 10.5px; line-height: 1.5; color: rgba(255, 255, 255, .5) }
+      body.split.inroom #msgToasts { display: none }
+      body.split.inroom #toast { left: calc(50% + (var(--dock-w) - var(--chat-w)) / 2) }
+      /* bigger boards: scale to the pane height */
+      body.split .game-main > #bd { max-width: none }
+      body.split .board { max-width: var(--bsize) }
+      body.split .board.chess { width: var(--bsize) }
+      body.split .chess-wrap { width: min(100%, var(--bsize)) }
+      body.split .lgrid-wrap { max-width: var(--bsize) }
+      body.split .ludo { width: 100%; max-width: calc(var(--bsize) + 30px) }
+      /* match tabs + notifications on desktop */
+      body.split.hastabs #matchTabs { left: var(--dock-w); right: var(--chat-w) }
+      body.split #notifStack { left: auto; right: calc(var(--chat-w) + 16px); top: 74px; width: 340px; max-width: none; margin: 0 }
+    }
   </style>
 </head>
 
 <body>
-  <div id="shell"><aside id="dock" aria-label="Lobby"></aside><div id="app"></div></div>
+  <div id="shell"><aside id="dock" aria-label="Lobby"></aside><nav id="dockMini" aria-label="Games"></nav><div id="app"></div></div>
+  <button id="dockToggle" type="button" aria-label="Collapse lobby" title="Collapse lobby ( [ )">‹</button>
+  <div id="matchTabs" role="tablist" aria-label="Open matches"></div>
+  <div id="notifStack" aria-live="polite"></div>
   <div id="toast" role="status"></div>
   <script src="/js/renderer-manager.js"></script>
   <script src="/js/snakes.js"></script>
@@ -3326,7 +3406,18 @@
     async function releaseRoom(nextCode) {
       if (!room || !isSplit()) return true;
       if (nextCode && room.code === nextCode) return true;
-      if (room.stake > 0 && room.status === 'playing' && !result && !await askDialog('Leave this match?', `Starting another game forfeits your ${naira(room.stake)} stake to the other player. Do you want to leave?`, 'Leave match')) return false;
+      const open = nextCode && sessions.find(x => x !== activeSess && x.room?.code === nextCode);
+      if (open) { switchSession(open); return false; }
+      const live = room.status !== 'over' && !result;
+      if (live) {
+        const staked = room.stake > 0 && room.status === 'playing';
+        const choices = [];
+        if (sessions.length < 2) choices.push({ label: 'Play both at once', value: 'both' });
+        choices.push({ label: staked ? 'Leave this match (forfeit stake)' : 'Leave this match', value: 'leave' });
+        const pick = await chooseDialog('Start another match?', sessions.length < 2 ? (staked ? `Keep your ${naira(room.stake)} match running in a second tab, or leave it and forfeit your stake?` : 'Keep your current match running in a second tab, or leave it?') : 'Two matches are already open. You can replace this one.', choices);
+        if (!pick) return false;
+        if (pick === 'both') { openSecondSession(); return true; }
+      }
       try { socket.emit(EV.leave, { code: room.code }); } catch {}
       stopMusic();
       room = gstate = result = null;
@@ -3347,6 +3438,192 @@
       }
     };
     if (splitMQ.addEventListener) splitMQ.addEventListener('change', onSplitChange); else if (splitMQ.addListener) splitMQ.addListener(onSplitChange);
+    /* ---- collapsible lobby ---- */
+    const DOCK_KEY = 'gh_dock_mini';
+    function setDockMini(on, persist = true) {
+      document.body.classList.toggle('dockmini', !!on);
+      if (persist) { try { localStorage.setItem(DOCK_KEY, on ? '1' : '0'); } catch {} }
+      const t = document.getElementById('dockToggle');
+      if (t) { t.textContent = on ? '›' : '‹'; t.setAttribute('aria-label', on ? 'Expand lobby' : 'Collapse lobby'); t.title = (on ? 'Expand lobby' : 'Collapse lobby') + ' ( [ )'; }
+      if (on) { try { buildDockMini(); } catch {} }
+    }
+    function buildDockMini() {
+      const el = document.getElementById('dockMini'); if (!el) return;
+      const gs = Array.isArray(GAMES) ? GAMES : [];
+      el.innerHTML = gs.map(g => { const k = g.key || g.id; return `<button type="button" class="dm-btn ${g.available ? '' : 'soon'}" data-dmk="${esc(k)}" title="${esc(g.name)}" aria-label="${esc(g.name)}">${icon(ICON[k] || 'controller', 22)}</button>`; }).join('')
+        + `<div class="dm-sep"></div><button type="button" class="dm-btn" data-dm="lb" title="Leaderboard" aria-label="Leaderboard">${icon('trophy', 22)}</button><button type="button" class="dm-btn" data-dm="rooms" title="Rooms" aria-label="Rooms">${icon('controller', 22)}</button>`;
+      el.onclick = (e) => {
+        const b = e.target.closest('.dm-btn'); if (!b) return;
+        if (b.dataset.dmk) { dock.querySelector(`.game[data-k="${b.dataset.dmk}"]`)?.click(); }
+        else if (b.dataset.dm === 'lb') leaderboardView();
+        else if (b.dataset.dm === 'rooms') { setDockMini(false); dock.querySelector('#tabRooms')?.click(); }
+      };
+    }
+    document.getElementById('dockToggle').onclick = () => setDockMini(!document.body.classList.contains('dockmini'));
+    try { setDockMini(localStorage.getItem(DOCK_KEY) === '1', false); } catch {}
+
+    /* ---- emotes (match strip + number keys) ---- */
+    let lastEmoteAt = 0;
+    function sendEmote(i) {
+      if (!room || room.you == null || room.status !== 'playing' || result) return;
+      if (!EMOTES[i] || Date.now() - lastEmoteAt < 1200) return;
+      lastEmoteAt = Date.now();
+      socket.emit(EV.emote, { code: room.code, i });
+      try { SFX.tap(); } catch {}
+      toast('You: ' + EMOTES[i].label);
+    }
+
+    /* ---- two matches at once (desktop): a second socket carries the second room ---- */
+    let sessions = [], activeSess = null, primarySock = null, secondSock = null;
+    const gameNameOf = (g) => (GAMES.find(x => (x.key || x.id) === g) || {}).name || g || 'Match';
+    const turnOfState = (gs) => gs?.turn ?? gs?.currentPlayer;
+    const sessOf = (sock) => sessions.find(x => x.socket === sock);
+    const isActSock = (sock) => !activeSess || activeSess.socket === sock;
+    const newSess = (sock) => ({ socket: sock, room: null, gstate: null, result: null, chat: [], chatCode: null, reply: null, unread: 0, yourTurn: false });
+    function snapshotInto(x) { x.room = room; x.gstate = gstate; x.result = result; x.chat = chatMessages; x.chatCode = chatRoomCode; x.reply = chatReplyTo; }
+    function loadFrom(x) { room = x.room; gstate = x.gstate; result = x.result; chatMessages = x.chat || []; chatRoomCode = x.chatCode; chatReplyTo = x.reply || null; socket = x.socket; picked = null; animUntil = 0; }
+    function sessInfo(x) {
+      const act = x === activeSess;
+      const rm = act ? room : x.room, gs = act ? gstate : x.gstate, res = act ? result : x.result;
+      let st = 'Starting…';
+      if (rm) {
+        if (res || rm.status === 'over') st = 'Over';
+        else if (rm.status === 'waiting' || (rm.players || []).length < (rm.maxPlayers || 2)) st = 'Waiting';
+        else if (rm.you != null && turnOfState(gs) === rm.you) st = 'Your turn';
+        else st = 'Playing';
+      }
+      return { rm, res, st };
+    }
+    function renderMatchTabs() {
+      const el = document.getElementById('matchTabs'); if (!el) return;
+      const on = sessions.length > 1;
+      document.body.classList.toggle('hastabs', on);
+      if (!on) { el.innerHTML = ''; return; }
+      el.innerHTML = sessions.map((x, i) => {
+        const { rm, st } = sessInfo(x);
+        return `<button type="button" role="tab" class="mt ${x === activeSess ? 'on' : ''} ${st === 'Your turn' ? 'turn' : ''}" data-s="${i}" title="Alt+${i + 1}"><span>${icon(ICON[rm?.game] || 'controller', 14)}</span><span>${esc(rm ? gameNameOf(rm.game) + ' · ' + rm.code : 'New match')}</span><span class="mt-st">${esc(st)}</span>${x.unread ? `<i class="mt-un">${x.unread}</i>` : ''}<span class="mt-x" role="button" data-x="${i}" aria-label="Close match">×</span></button>`;
+      }).join('');
+    }
+    document.getElementById('matchTabs').onclick = async (e) => {
+      const xBtn = e.target.closest('[data-x]');
+      const tab = e.target.closest('[data-s]');
+      if (xBtn) {
+        e.stopPropagation();
+        const x = sessions[+xBtn.dataset.x]; if (!x) return;
+        const { rm, res } = sessInfo(x);
+        if (rm && rm.status === 'playing' && !res && !await askDialog('Close this match?', rm.stake > 0 ? `Closing it forfeits your ${naira(rm.stake)} stake to the other player.` : 'You will leave the match in progress.', 'Close match')) return;
+        closeSession(x);
+        return;
+      }
+      if (tab) switchSession(sessions[+tab.dataset.s]);
+    };
+    function ensureSessions() {
+      if (activeSess) return;
+      primarySock = primarySock || socket;
+      const x0 = newSess(socket); snapshotInto(x0);
+      sessions = [x0]; activeSess = x0;
+    }
+    function openSecondSession() {
+      ensureSessions();
+      snapshotInto(activeSess);
+      const used = sessions.map(x => x.socket);
+      let sock = [primarySock, secondSock].find(k => k && !used.includes(k));
+      if (!sock) { secondSock = io({ withCredentials: true }); connect(secondSock); sock = secondSock; }
+      const x1 = newSess(sock);
+      sessions.push(x1); activeSess = x1; loadFrom(x1);
+      clearInterval(gameView.t); stopMusic();
+      stagePlaceholder();
+      renderMatchTabs();
+    }
+    function switchSession(x) {
+      if (!x || x === activeSess) return;
+      if (activeSess) snapshotInto(activeSess);
+      activeSess = x; x.unread = 0; loadFrom(x);
+      clearInterval(gameView.t);
+      if (room) { history.replaceState({ page: 'game', code: room.code }, '', '/?code=' + room.code); gameView(); }
+      else stagePlaceholder();
+      renderMatchTabs();
+    }
+    function closeSession(x, alreadyLeft) {
+      const idx = sessions.indexOf(x); if (idx < 0) return;
+      const rm = x === activeSess ? room : x.room;
+      if (rm && !alreadyLeft) { try { x.socket.emit(EV.leave, { code: rm.code }); } catch {} }
+      sessions.splice(idx, 1);
+      if (x === activeSess) {
+        const other = sessions[Math.min(idx, sessions.length - 1)];
+        if (other) {
+          activeSess = other; other.unread = 0; loadFrom(other);
+          clearInterval(gameView.t); stopMusic();
+          if (room) { history.replaceState({ page: 'game', code: room.code }, '', '/?code=' + room.code); gameView(); } else stagePlaceholder();
+        } else { activeSess = null; socket = primarySock || socket; room = gstate = result = null; }
+      }
+      renderMatchTabs();
+    }
+    const leaveToLobby = () => {
+      if (activeSess && sessions.length > 1) return closeSession(activeSess, true);
+      // desktop: go straight to the lobby (history.back() could land on a room from an earlier match)
+      if (isSplit()) { history.replaceState({ page: 'lobby' }, '', '/lobby'); return lobbyView(false); }
+      goBackToLobby();
+    };
+    // Events that arrive for a match you are not looking at update that tab only.
+    function bgEvent(sock, ev, a) {
+      const x = sessOf(sock); if (!x) return;
+      if (ev === EV.room) {
+        if (a && a.now) clockSkew = a.now - Date.now();
+        const was = x.yourTurn;
+        x.room = a; if (a.state) x.gstate = a.state;
+        x.result = a.status === 'over' ? a.result : null;
+        x.yourTurn = a.status === 'playing' && a.you != null && turnOfState(a.state) === a.you && !x.result;
+        if (x.yourTurn && !was) { try { SFX.tap(); } catch {} toast('Your turn · ' + gameNameOf(a.game)); }
+      } else if (ev === EV.state) { x.gstate = a?.state || a; }
+      else if (ev === EV.over) {
+        x.result = a; x.yourTurn = false;
+        const won = a.status === 'win' && a.winnerIndex === x.room?.you;
+        toast(gameNameOf(x.room?.game) + ': ' + (a.status === 'win' ? (won ? 'you won' : 'you lost') : 'draw'));
+      } else if (ev === 'chat:message') {
+        x.chat.push(a); if (x.chat.length > 60) x.chat.shift();
+        if (a.from !== x.room?.you) x.unread++;
+      } else if (ev === 'stake:rejected') {
+        if (x.room && (!a?.code || a.code === x.room.code)) closeSession(x, true);
+      } else if (ev === 'connect') {
+        if (x.room && x.room.status !== 'over') x.socket.emit(x.room.you == null ? EV.spectate : EV.join, { code: x.room.code }, res => { if (res?.room) { x.room = res.room; x.gstate = res.room.state || null; renderMatchTabs(); } });
+      }
+      renderMatchTabs();
+    }
+
+    /* ---- keyboard shortcuts ---- */
+    document.addEventListener('keydown', (e) => {
+      if (!me) return;
+      const tg = e.target;
+      const typing = tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable);
+      const modal = document.querySelector('.custom-dialog-bg, .sheet-bg');
+      if (e.key === 'Escape') {
+        if (typing) { if (tg.id === 'chatInput') tg.blur(); return; }
+        if (modal) { modal.click(); return; }
+        if (document.getElementById('qOverlay') || !room || !$('.play')) return;
+        if (room.status === 'playing' && !result && !(room.stake > 0)) {
+          askDialog('Leave this match?', 'The game is still in progress.', 'Leave').then(ok => { if (ok) $('#bk')?.click(); });
+        } else $('#bk')?.click();
+        return;
+      }
+      if (typing || e.ctrlKey || e.metaKey) return;
+      if (e.altKey) {
+        if (e.code === 'Digit1' || e.code === 'Digit2') { const x = sessions[+e.code.slice(5) - 1]; if (x) { e.preventDefault(); switchSession(x); } }
+        return;
+      }
+      if (e.key === '[' && isSplit()) { setDockMini(!document.body.classList.contains('dockmini')); return; }
+      if (!room || !$('.play')) return;
+      if (e.key === '/') { e.preventDefault(); openChat(); return; }
+      if (/^[1-8]$/.test(e.key)) { sendEmote(+e.key - 1); return; }
+      if (e.key === '?') rulesSheet(room.game);
+    });
+
+    /* ---- mobile: keep the chat bar above the on-screen keyboard ---- */
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const upd = () => document.documentElement.style.setProperty('--kb', Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + 'px');
+      vv.addEventListener('resize', upd); vv.addEventListener('scroll', upd);
+    }
     function routePath() { return location.pathname.replace(/\/$/, '') || '/'; }
     function goBackToLobby() {
       if ((history.state?.page === 'game' || history.state?.page === 'spectator') && history.length > 1) history.back();
@@ -4043,15 +4320,16 @@
     }
     
     function loginView() {
-      document.body.classList.remove('split'); dock.innerHTML = '';
+      document.body.classList.remove('split', 'inroom', 'hastabs'); dock.innerHTML = '';
+      try { secondSock?.disconnect(); } catch {} secondSock = null; sessions = []; activeSess = null;
       app.innerHTML = `<div class="login"><h1>GameHub</h1><p>Quick real-time games with friends.<br>Play for bragging rights, not money.</p>
   <a class="btn" href="/auth/google" style="text-decoration:none">Continue with Google</a>
   <div class="divider">or</div>
   ${authErr ? `<div class="err">${esc(authErr)}</div>` : ''}
   <form id="authForm" novalidate>
-    ${authMode === 'register' ? `<input class="plain" id="af_name" placeholder="Your name" autocomplete="name" required>` : ''}
-    <input class="plain" id="af_id" placeholder="Email or phone number" autocomplete="username" required>
-    <input class="plain" id="af_pw" type="password" placeholder="Password" minlength="6" autocomplete="${authMode === 'register' ? 'new-password' : 'current-password'}" required>
+    ${authMode === 'register' ? `<input class="plain" id="af_name" placeholder="Your name" autocomplete="name" autocapitalize="words" enterkeyhint="next" required>` : ''}
+    <input class="plain" id="af_id" placeholder="Email or phone number" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" required>
+    <input class="plain" id="af_pw" type="password" placeholder="Password" minlength="6" enterkeyhint="go" autocomplete="${authMode === 'register' ? 'new-password' : 'current-password'}" required>
     <button class="btn" type="submit" id="af_go">${authMode === 'register' ? 'Create account' : 'Sign in'}</button>
   </form>
   <div class="switch">${authMode === 'register'
@@ -4090,19 +4368,24 @@
     }
     
     function scheduleRender() {
+      renderMatchTabs();
       const wait = animUntil - Date.now();
       if (wait > 0) setTimeout(() => { if ($('.play')) gameView() }, wait);
       else if ($('.play')) gameView();
     }
     
-    function connect() {
-      socket = io({ withCredentials: true });
-      socket.on('connect_error', () => toast('Connection problem. Retrying…'));
-      socket.on(EV.error, e => toast(e?.message || 'Something went wrong'));
-      socket.on('room:spectator', e => { if(e?.room){ room=e.room; gstate=room.state||null; result=room.status==='over'?room.result:null; gameView(); } });
-      socket.on('connect', () => { if (room && room.status !== 'over') { if (room.you == null) spectateRoom(room.code, false); else joinRoom(room.code, false); } });
-      socket.on(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
-      socket.on(EV.room, r => {
+    function connect(secondary) {
+      const sock = secondary || io({ withCredentials: true });
+      if (!secondary) socket = sock;
+      // S = events for one match (routed to the right tab); U = account-wide events, handled once on the main socket
+      const S = (ev, h) => sock.on(ev, (...a) => { if (isActSock(sock)) h(...a); else bgEvent(sock, ev, ...a); });
+      const U = (ev, h) => { if (!secondary) sock.on(ev, h); };
+      sock.on('connect_error', () => toast('Connection problem. Retrying…'));
+      sock.on(EV.error, e => toast(e?.message || 'Something went wrong'));
+      S('room:spectator', e => { if(e?.room){ room=e.room; gstate=room.state||null; result=room.status==='over'?room.result:null; gameView(); } });
+      S('connect', () => { if (room && room.status !== 'over') { if (room.you == null) spectateRoom(room.code, false); else joinRoom(room.code, false); } });
+      S(EV.emote, e => toast(`${e.name}: ${EMOTES[e.i]?.label || ''}`));
+      S(EV.room, r => {
         const previousStatus = room?.status;
         const previousRpsRound = gstate?.lastRound?.id;
         const prevStateForVoice = gstate, prevCodeForVoice = room?.code;
@@ -4123,9 +4406,9 @@
         result = r.status === 'over' ? r.result : null;
         scheduleRender();
       });
-      socket.on(EV.state, s => { { const nx = s.state || s; if (room) voiceFromState(gstate, nx, room.game); } gstate = s.state || s;
+      S(EV.state, s => { { const nx = s.state || s; if (room) voiceFromState(gstate, nx, room.game); } gstate = s.state || s;
         picked = null; if (room) scheduleRender(); });
-      socket.on(EV.over, r => {
+      S(EV.over, r => {
         result = r;
         const won = r.status === 'win' && r.winnerIndex === room?.you;
         if (r.status === 'win') { won ? (SFX.win(), playAudioCue('win')) : (SFX.lose(), playAudioCue('lose'));
@@ -4138,15 +4421,15 @@
         scheduleRender();
         toast(r.reason === 'timeup' ? "Time's up — highest score wins!" : '');
       });
-      socket.on('game:event', handleLudoEvent);
-      socket.on('chat:message', appendChatMessage);
-      socket.on('invite:received', showInvite);
-      socket.on('queue:matched', m => { closeQueue(); toast('Opponent found: ' + (m.opponent?.name || 'Player') + ' (' + m.opponent?.rating + ')'); joinRoom(m.code); });
-      socket.on('balance', b => { if (typeof b?.cash !== 'number') return; me.coins = b.cash; for (const id of ['balTop', 'balShop']) { const el = document.getElementById(id); if (el) el.textContent = naira(b.cash); } });
-      socket.on('stake:charged', m => toast(`${naira(m.stake)} stake taken. Winner gets ${naira(m.pot)}.`));
-      socket.on('stake:rejected', m => { toast(m.message || 'Not enough ₦ for the stake.'); if (room && (!m.code || m.code === room.code)) { room = null; result = null; try { lobbyView(false); } catch {} } });
-      socket.on('rating:update', r => toast('Rating ' + r.after + ' (' + (r.delta >= 0 ? '+' : '') + r.delta + ')'));
-      socket.on('tournament:match', m => showInvite({ from: { name: m.name + ' · ' + m.stage }, code: m.code, game: m.game, tournament: true }));
+      S('game:event', handleLudoEvent);
+      S('chat:message', appendChatMessage);
+      U('invite:received', showInvite);
+      U('queue:matched', m => { closeQueue(); toast('Opponent found: ' + (m.opponent?.name || 'Player') + ' (' + m.opponent?.rating + ')'); joinRoom(m.code); });
+      U('balance', b => { if (typeof b?.cash !== 'number') return; me.coins = b.cash; for (const id of ['balTop', 'balShop']) { const el = document.getElementById(id); if (el) el.textContent = naira(b.cash); } });
+      sock.on('stake:charged', m => toast(`${naira(m.stake)} stake taken. Winner gets ${naira(m.pot)}.`));
+      S('stake:rejected', m => { toast(m.message || 'Not enough ₦ for the stake.'); if (room && (!m.code || m.code === room.code)) { room = null; result = null; try { lobbyView(false); } catch {} } });
+      U('rating:update', r => toast('Rating ' + r.after + ' (' + (r.delta >= 0 ? '+' : '') + r.delta + ')'));
+      U('tournament:match', m => showInvite({ from: { name: m.name + ' · ' + m.stage }, code: m.code, game: m.game, tournament: true }));
     }
     
     function appendChatMessage(m) {
@@ -4161,7 +4444,7 @@
     function renderChatLog() {
       const log = $('#chatLog');
       if (!log) return;
-      log.innerHTML = chatMessages.slice(-20).map(m => {
+      log.innerHTML = chatMessages.slice(isSplit() ? -60 : -20).map(m => {
         const mine = m.from === room?.you;
         const body = m.type === 'voice' ? `<audio controls preload="metadata" src="${esc(m.audio || '')}"></audio>` : esc(m.text || '');
         return `<div class="chatline ${mine ? 'mine' : ''}"><b>${mine ? 'You' : esc(m.name || 'Player')}</b>${body}${mine ? '' : `<button class="mutebtn" data-mute="${esc(m.from)}" aria-label="Mute ${esc(m.name || 'player')}">mute</button>`}</div>`;
@@ -4174,6 +4457,7 @@
     
     // Small popup for an incoming chat message; tap it to reply.
     function showMsgToast(m) {
+      if (isSplit() && $('.play')) return; // the chat column is already on screen
       let box = document.getElementById('msgToasts');
       if (!box) { box = document.createElement('div');
         box.id = 'msgToasts';
@@ -4332,6 +4616,11 @@
 
     async function lobbyView(navigate = true, keep = false) {
       /* keep = refresh the lobby panel only (desktop split view), leaving any open match untouched */
+      if (!keep && activeSess) {
+        if (sessions.length > 1) { closeSession(activeSess); return; } // back to the other open match
+        try { if (room) activeSess.socket.emit(EV.leave, { code: room.code }); } catch {}
+        sessions = []; activeSess = null; socket = primarySock || socket; renderMatchTabs();
+      }
       if (!keep) {
         closeHighlightCinema(true); voiceTurnNudge(false); try { srRec?.abort?.(); } catch {}
         roomsTabPoll(false);
@@ -4358,6 +4647,7 @@
       games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
       dockBusy = false;
       const host = isSplit() ? dock : app;
+      if (isSplit()) setTimeout(buildDockMini, 0);
       host.innerHTML = `
   <div class="top"><div><small>Level ${esc(me.level || 1)} · ${esc(me.xp || 0)} XP</small><b id="balTop">${naira(me.coins)}</b></div></div>
   <div class="lobtabs" role="tablist" aria-label="${esc(t('tabs.label'))}">
@@ -4370,7 +4660,7 @@
     <div class="rmwrap">
       <div class="rmcard" id="roomCodeCard">
         <h3>${esc(t('rooms.codeTitle'))}</h3><p class="rmsub">${esc(t('rooms.codeSub'))}</p>
-        <div class="rmcode"><input id="roomCodeIn" placeholder="${esc(t('sheet.code'))}" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room code"><button type="button" class="btn" id="roomJoinBtn">${esc(t('sheet.join'))}</button></div>
+        <div class="rmcode"><input id="roomCodeIn" placeholder="${esc(t('sheet.code'))}" maxlength="8" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Room code"><button type="button" class="btn" id="roomJoinBtn">${esc(t('sheet.join'))}</button></div>
       </div>
       <div class="rmbox" id="roomsBox">
         <div class="rmhead"><h3>${esc(t('rooms.title'))}</h3><button type="button" class="rmrefresh" id="roomsRefresh" aria-label="Refresh rooms">↻</button></div>
@@ -4521,14 +4811,17 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       }).join('');
     }
     function showInvite(inv) {
-      document.querySelector('.invbanner')?.remove();
-      const el = document.createElement('div'); el.className = 'invbanner'; el.setAttribute('role', 'alert');
+      const st = document.getElementById('notifStack'); if (!st) return;
+      st.querySelectorAll('.invbanner').forEach(n => { if (n.dataset.code === inv.code) n.remove(); });
+      const el = document.createElement('div'); el.className = 'invbanner'; el.setAttribute('role', 'alert'); el.dataset.code = inv.code;
       const g = (GAMES || []).find(x => (x.key || x.id) === inv.game);
       el.innerHTML = `<span><b>${esc(inv.from?.name || 'A friend')}</b> ${inv.tournament ? 'Your tournament match is ready: ' : 'invited you to play '}${esc(g?.name || inv.game)}</span><button data-j>${inv.tournament ? 'Play now' : 'Join'}</button><button class="x" data-x aria-label="Dismiss">✕</button>`;
-      document.body.appendChild(el);
-      el.querySelector('[data-j]').onclick = () => { el.remove(); joinRoom(inv.code); };
-      el.querySelector('[data-x]').onclick = () => el.remove();
-      setTimeout(() => el.remove(), inv.tournament ? 170000 : 30000);
+      while (st.children.length >= 3) st.firstElementChild.remove();
+      st.appendChild(el);
+      try { SFX.tap(); } catch {}
+      const t = setTimeout(() => el.remove(), inv.tournament ? 170000 : 30000);
+      el.querySelector('[data-j]').onclick = () => { clearTimeout(t); el.remove(); joinRoom(inv.code); };
+      el.querySelector('[data-x]').onclick = () => { clearTimeout(t); el.remove(); };
     }
     let queueTimer = null;
     function closeQueue() { clearInterval(queueTimer); queueTimer = null; document.getElementById('qOverlay')?.remove(); }
@@ -4646,7 +4939,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         if (tab === 'requests') body = (data.incoming.map(f => personRow(f, `<button data-acc="${esc(f.id)}">Accept</button><button class="alt" data-rm="${esc(f.id)}">Decline</button>`)).join('') || '<p class="socempty">No incoming requests.</p>')
           + (data.outgoing.length ? '<p style="margin:14px 0 8px;font-size:13px;color:var(--mute)">Sent</p>' + data.outgoing.map(f => personRow(f, `<button class="alt" data-rm="${esc(f.id)}">Cancel</button>`)).join('') : '');
         if (tab === 'blocked') body = data.blocked.length ? data.blocked.map(f => personRow(f, `<button class="alt" data-rm="${esc(f.id)}">Unblock</button>`)).join('') : '<p class="socempty">You have not blocked anyone.</p>';
-        if (tab === 'search') body = `<input class="socsearch" id="socQ" placeholder="Search by display name" value="${esc(q)}" maxlength="30">` + (results.length ? results.map(u => personRow(u,
+        if (tab === 'search') body = `<input class="socsearch" id="socQ" inputmode="search" enterkeyhint="search" autocapitalize="none" autocorrect="off" placeholder="Search by display name" value="${esc(q)}" maxlength="30">` + (results.length ? results.map(u => personRow(u,
           u.relation === 'friend' ? '<button class="alt" disabled>Friends</button>' : u.relation === 'sent' ? '<button class="alt" disabled>Requested</button>'
           : u.relation === 'received' ? `<button data-acc="${esc(u.id)}">Accept</button>` : `<button data-add="${esc(u.id)}">Add friend</button>`)).join('') : `<p class="socempty">${q.length >= 2 ? 'No players found.' : 'Type at least 2 letters.'}</p>`);
         app.innerHTML = `<div class="soc"><div style="display:flex;align-items:center;margin-bottom:6px">
@@ -5215,11 +5508,11 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         d = document.createElement('div');
         d.id = 'chatDock';
         d.innerHTML = `<button type="button" id="chatKb" class="chatkb" aria-label="Open chat">${icon('keyboard',22)}</button>
-  <div class="chatpanel"><div id="chatLog" class="chatlog"></div><div id="chatReplyBar"></div>
+  <div class="chatpanel"><div class="chathead">Match chat</div><div id="chatLog" class="chatlog"></div><div id="chatReplyBar"></div>
     <form id="chatForm" class="chatform" autocomplete="off">
-      <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message" enterkeyhint="send">
+      <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message" enterkeyhint="send" autocapitalize="sentences" autocorrect="on" spellcheck="true" inputmode="text">
       <button class="btn voicebtn" type="button" id="voiceBtn" aria-label="Record voice note">Mic</button><button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
-    </form></div>`;
+    </form><div class="chatkeys">Esc leave · / chat · 1–8 emotes · [ lobby · Alt+1/2 switch match</div></div>`;
         document.body.appendChild(d);
         $('#chatKb').onclick = openChat;
         $('#voiceBtn').onclick = toggleVoiceNote;
@@ -5236,16 +5529,18 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
           renderChatReplyBar();
           SFX.send();
           vibrate(10);
-          closeChat();
+          inp.focus(); // keep typing: no need to reopen the keyboard for every message
         };
         d.addEventListener('focusout', () => setTimeout(() => {
+          if (isSplit()) return;
           const inp = $('#chatInput');
           if (d.classList.contains('open') && inp && !inp.value.trim() && !chatReplyTo && !d.contains(document.activeElement)) closeChat();
         }, 150));
-        new MutationObserver(() => { const on = !!$('.play'); d.classList.toggle('on', on); if (!on) closeChat(); })
+        new MutationObserver(() => { const on = !!$('.play'); d.classList.toggle('on', on); document.body.classList.toggle('inroom', on); if (!on) closeChat(); })
           .observe(app, { childList: true });
       }
       d.classList.toggle('on', !!$('.play'));
+      document.body.classList.toggle('inroom', !!$('.play'));
       renderChatLog();
     }
     async function toggleVoiceNote() {
@@ -5313,6 +5608,12 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
           hs.textContent = Math.max(0, Math.ceil(ms / 1000));
           hs.classList.toggle('low', ms < 5000);
         }
+      }
+      const msClockEl = $('#msClock');
+      if (msClockEl && room.status === 'playing' && room.turnDeadline && !result) {
+        const ms = room.turnDeadline - nowMs();
+        msClockEl.textContent = Math.max(0, Math.ceil(ms / 1000)) + 's';
+        msClockEl.classList.toggle('low', ms < 5000);
       }
       const turnClockEl = $('#turnClock');
       if (turnClockEl && room.status === 'playing' && room.turnDeadline && !result) {
@@ -5416,7 +5717,13 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       // generic players row / clocks / status pill only show while waiting or on a disconnect.
       const showStatus = status && (!isLudo || waiting || goneIdx !== -1);
       const railPlayers = seats.map((p, i) => p ? `<div class="rail-player ${!waiting&&!result&&turn===i?'turn':''}"><img src="${avatar(p)}" alt=""><span>${nameOf(p)}${i===mine?' (you)':''}</span></div>` : '').join('');
-      app.innerHTML = `<div class="play"><div class="play-layout"><main class="game-main">
+      const msPot = room.stake > 0 ? room.stake * Math.max(1, players.length) : 0;
+      const msChip = room.practice ? 'Practice · no stake' : room.stake > 0 ? `Stake ${naira(room.stake)} · Pot ${naira(msPot)}` : 'Friendly · no stake';
+      const msTurn = waiting ? `Waiting for players (${players.length}/${maxPlayers})` : result ? 'Match over' : g === 'rps' ? 'Pick at the same time' : myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
+      const msMs = (!waiting && room.status === 'playing' && room.turnDeadline && !result) ? room.turnDeadline - nowMs() : null;
+      const msEmo = (!spectator && !waiting && !result && room.status === 'playing') ? EMOTES.map((e, i) => `<button type="button" class="emo" data-em="${i}" title="${esc(e.label)} (key ${i + 1})" aria-label="${esc(e.label)}">${e.icon ? icon(e.icon, 15) : ''}${(!e.icon || e.showLabel) ? `<span>${esc(e.label)}</span>` : ''}<kbd>${i + 1}</kbd></button>`).join('') : '';
+      const stripHtml = `<div class="matchstrip" id="matchStrip"><b class="ms-game">${esc(gameNameOf(g))}</b><button type="button" class="ms-code" id="msCode" aria-label="Copy invite link">Room ${esc(room.code)} · copy</button><span class="ms-chip ${room.stake > 0 && !room.practice ? 'gold' : ''}">${esc(msChip)}</span><span class="ms-turn ${myTurn && !result ? 'mine' : ''}" id="msTurn">${esc(msTurn)}</span>${msMs != null ? `<span class="ms-clock ${msMs < 5000 ? 'low' : ''}" id="msClock" aria-label="Time left this turn">${Math.max(0, Math.ceil(msMs / 1000))}s</span>` : ''}${msEmo ? `<div class="ms-emo">${msEmo}</div>` : ''}</div>`;
+      app.innerHTML = `<div class="play${waiting ? ' is-waiting' : ''}${goneIdx !== -1 ? ' has-gone' : ''}"><div class="play-layout"><main class="game-main">${stripHtml}
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <button class="code" id="roomCode" type="button" aria-label="Copy invite link for room ${esc(room.code)}">Room ${esc(room.code)}</button>
       ${(prefs.voiceCmd && VOICE_SR && !spectator && !waiting && !result) ? `<button class="rules-btn micbtn ${srActive ? 'on' : ''}" id="micBtn" type="button" aria-label="Speak a voice command">${icon('speaker',14)} Say</button>` : ''}
@@ -5432,11 +5739,13 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         if (room.stake > 0 && room.status === 'playing' && !result && !await askDialog('Leave this match?', `Leaving now forfeits your ${naira(room.stake)} stake to the other player. Do you want to leave?`, 'Leave match')) return;
         socket.emit(EV.leave, { code: room.code });
         stopMusic();
-        goBackToLobby();
+        leaveToLobby();
       };
       $('#rulesBtn').onclick = () => rulesSheet(g);
       $('#micBtn')?.addEventListener('click', voiceCommandToggle);
       $('#roomCode').onclick = copyInviteLink;
+      $('#msCode')?.addEventListener('click', copyInviteLink);
+      app.querySelectorAll('.emo').forEach(b => b.onclick = () => sendEmote(+b.dataset.em));
       $('#addBots')?.addEventListener('click', (e) => {
         const btn = e.currentTarget;
         btn.disabled = true;
@@ -5452,9 +5761,10 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         $('#watchHl')?.addEventListener('click', () => openHighlightCinema(result.highlights, result.winnerIndex, hlCtx));
       }
       $('#again')?.addEventListener('click', () => { stopMusic();
-        goBackToLobby(); });
+        leaveToLobby(); });
       $('#rm')?.addEventListener('click', () => socket.emit(EV.rematch, { code: room.code }));
       ensureChatDock();
+      renderMatchTabs();
       app.querySelectorAll('[data-uid]').forEach(b => b.onclick = () => profileView(b.dataset.uid));
     }
     
