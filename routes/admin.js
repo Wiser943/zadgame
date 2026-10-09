@@ -216,4 +216,25 @@ router.post('/tournaments/:id/cancel', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Creator programme: review applications. status: approved | rejected | suspended (note is shown to the player)
+router.get('/creators', async (req, res, next) => {
+  try {
+    const status = ['applied', 'approved', 'rejected', 'suspended'].includes(req.query.status) ? req.query.status : 'applied';
+    const rows = await User.find({ 'creator.status': status }).select('displayName acUsername verified createdAt creator').sort({ 'creator.appliedAt': 1 }).limit(100).lean();
+    res.json({ creators: rows.map(u => ({ id: String(u._id), name: u.displayName, username: u.acUsername || '', verified: !!u.verified, joined: u.createdAt, ...u.creator })) });
+  } catch (err) { next(err); }
+});
+router.post('/creators/:id/decide', async (req, res, next) => {
+  try {
+    const status = String(req.body?.status || ''), note = String(req.body?.note || '').trim().slice(0, 200);
+    if (!['approved', 'rejected', 'suspended'].includes(status)) return res.status(400).json({ message: 'status must be approved, rejected or suspended.' });
+    const set = { 'creator.status': status, 'creator.decidedAt': new Date(), 'creator.note': note };
+    if (status === 'approved') set['creator.approvedAt'] = new Date();
+    const u = await User.findByIdAndUpdate(req.params.id, { $set: set }, { new: true }).select('displayName creator');
+    if (!u) return res.status(404).json({ message: 'User not found.' });
+    const text = status === 'approved' ? 'You are in the creator programme! Open Manage on your profile.' : status === 'rejected' ? 'Your creator application was not approved this time.' + (note ? ' ' + note : '') : 'Your creator access is paused.' + (note ? ' ' + note : '');
+    require('../utils/acnotify').notify(req.app.get('io'), req.params.id, { icon: status === 'approved' ? '🎉' : 'ℹ️', text, kind: status === 'approved' ? 'good' : 'info' }).catch(() => {});
+    res.json({ id: String(u._id), name: u.displayName, creator: u.creator });
+  } catch (err) { next(err); }
+});
 module.exports = router;

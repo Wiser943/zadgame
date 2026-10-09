@@ -32,31 +32,34 @@ const INV = {
       <div class="ivnext">Next payout ${this.nextText()}</div>
       <p class="ivnote">Payouts after tax, plus what your land grew. Total also counts what everything would sell for now against what you paid (payouts counted from ${this.sinceText()}).</p></div>`;
     /* land */
-    h += `<div class="lab2">YOUR LAND</div>` + (D.land.length ? D.land.map(l => `<div class="ivrow"><span class="ivic">${l.emoji}</span><div class="rt"><b>${esc(l.name)}</b>
+    h += `<div class="lab2">YOUR LAND</div>` + (D.land.length ? D.land.map(l => `<div class="ivrow">${this.ico(l.emoji)}<div class="rt"><b>${esc(l.name)}</b>
         <span>Worth ${this.money(l.worth)} · <i class="${this.cls(l.delta)}">${this.sg(l.delta)}</i></span><span>Grew ${this.sg(l.grewWeek)} this week · it pays when you sell</span></div>
         <button class="ivbtn out" onclick="INV.askSellLand('${l.id}')">Sell</button></div>`).join('') : `<p class="empty ivempty">You don't own any land yet. Pick a plot below.</p>`);
-    h += `<div class="lab2">LAND FOR SALE</div>` + D.market.map(m => `<div class="ivrow"><span class="ivic">${m.emoji}</span><div class="rt"><b>${esc(m.name)}</b><span>Grows about ${m.weekPct}% a week · sells back for ${this.short(m.sell)}</span></div>
+    h += `<div class="lab2">LAND FOR SALE</div>` + D.market.map(m => `<div class="ivrow">${this.ico(m.emoji)}<div class="rt"><b>${esc(m.name)}</b><span>Grows about ${m.weekPct}% a week · sells back for ${this.short(m.sell)}</span></div>
         <button class="ivbtn grn" onclick="INV.act('land/buy',{place:'${m.id}'})">Buy · ${this.short(m.price)}</button></div>`).join('');
     /* bigger businesses that open as their own apps later */
-    h += `<div class="lab2">GROW BIGGER</div>` + D.coming.map(c => `<div class="ivpromo ${c.key}"><span class="ivic big">${c.emoji}</span><div class="rt"><b>${c.cost ? this.short(c.cost) : esc(c.title)}</b><span>${esc(c.blurb)}</span></div>
+    h += `<div class="lab2">GROW BIGGER</div>` + D.coming.map(c => `<div class="ivpromo ${c.key}">${this.ico(c.emoji, 1)}<div class="rt"><b>${c.cost ? this.short(c.cost) : esc(c.title)}</b><span>${esc(c.blurb)}</span></div>
         <button class="ivbtn wht" onclick="toast('${esc(c.title)} opens soon')">Open</button></div>`).join('');
     /* haulage */
     const T = D.haulage;
-    h += `<div class="lab2">HAULAGE BUSINESS</div><div class="ivbiz"><div class="ivhead"><span class="ivic big">${T.emoji}</span><div class="rt"><b>${esc(T.name)}</b>
+    h += `<div class="lab2">HAULAGE BUSINESS</div><div class="ivbiz"><div class="ivhead">${this.ico(T.emoji, 1)}<div class="rt"><b>${esc(T.name)}</b>
         <span>Earns ${this.short(T.min)}–${this.short(T.max)} a day, minus ${this.short(T.driver)} for the driver. Sometimes it breaks down (${this.short(T.repair)} to fix).</span></div></div>
         ${T.count ? `<div class="ivstat">You run ${T.count} of ${T.maxCount} · today <b class="${this.cls(T.today)}">${this.sg(T.today)}</b> · this week <b class="${this.cls(T.week)}">${this.sg(T.week)}</b> · total <b class="${this.cls(T.total)}">${this.sg(T.total)}</b> (before tax)</div>` : ''}
         <div class="ivbtns"><button class="ivbtn grn wide" ${T.count >= T.maxCount ? 'disabled' : ''} onclick="INV.act('truck/buy',{})">Buy · ${this.short(T.price)}</button>
         <button class="ivbtn out wide" ${T.count ? '' : 'disabled'} onclick="INV.askSellTruck()">Sell one · ${this.short(T.sellOne)}</button></div></div>`;
     /* street businesses */
-    h += `<div class="lab2">OWN A BUSINESS</div>` + D.businesses.map(b => b.owned ? `<div class="ivbiz own"><div class="ivhead"><span class="ivic big">${b.emoji}</span><div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span>
+    h += `<div class="lab2">OWN A BUSINESS</div>` + D.businesses.map(b => b.owned ? `<div class="ivbiz own"><div class="ivhead">${this.ico(b.emoji, 1)}<div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span>
           <span class="mk">Makes ${this.money(b.min)}–${this.money(b.max)} a day</span></div></div>
         <div class="ivstat"><b>Next payout ${this.nextText().replace('at 6:00 PM', 'at 6:00 PM')}.</b> ${b.total ? '' : 'No payouts counted yet. '}today <b class="${this.cls(b.today)}">${this.sg(b.today)}</b> · this week <b class="${this.cls(b.week)}">${this.sg(b.week)}</b> · total <b class="${this.cls(b.total)}">${this.sg(b.total)}</b> (before tax)</div>
         <button class="ivbtn out full" onclick="INV.askSellBiz('${b.key}')">Sell · ${this.short(b.sell)}</button></div>`
-      : `<div class="ivbiz"><div class="ivhead"><span class="ivic big">${b.emoji}</span><div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span><span class="mk">Makes ${this.money(b.min)}–${this.money(b.max)} a day</span></div></div>
+      : `<div class="ivbiz"><div class="ivhead">${this.ico(b.emoji, 1)}<div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span><span class="mk">Makes ${this.money(b.min)}–${this.money(b.max)} a day</span></div></div>
         <button class="ivbtn grn full" onclick="INV.act('biz/buy',{key:'${b.key}'})">Buy · ${this.short(b.price)}</button></div>`).join('');
     h += `<p class="adfoot">Income is paid every evening at 6:00 PM (Lagos time), minus ${s.taxPct}% tax. Prices and payouts are set by the server.</p>`;
     ab.innerHTML = h; ab.scrollTop = st
   },
+  /* emoji from the server data -> proper icons on coloured tiles */
+  ICONS: { '🌴': ['tree', '#16a34a'], '🏝️': ['umbrella-beach', '#0ea5e9'], '🏘️': ['house', '#f59e0b'], '🏙️': ['city', '#6366f1'], '🥤': ['glass-water', '#f97316'], '🏧': ['money-bill-transfer', '#0d9488'], '🍢': ['fire-burner', '#dc2626'], '✂️': ['scissors', '#7c3aed'], '🖥️': ['computer', '#2563eb'], '🏋️': ['dumbbell', '#475569'], '🚛': ['truck-moving', '#b45309'], '🏢': ['store', '#059669'], '🚌': ['bus', '#ea580c'] },
+  ico(e, big) { const k = String(e || '').replace(/\ufe0f/g, ''), key = Object.keys(this.ICONS).find(x => x.replace(/\ufe0f/g, '') === k), m = key && this.ICONS[key]; return m ? `<span class="ivic${big ? ' big' : ''}" style="background:${m[1]}"><i class="fa-solid fa-${m[0]}"></i></span>` : `<span class="ivic${big ? ' big' : ''} emo">${e || ''}</span>` },
   /* ----- actions ----- */
   async act(path, body) {
     if (this.busy) return; this.busy = true;

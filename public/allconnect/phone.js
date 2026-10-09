@@ -145,7 +145,7 @@ const PH={
     if(focus!==false){if(navigator.vibrate)navigator.vibrate(15);const i=document.getElementById('cinput');if(i)i.focus()}},
   cancelReply(){this.replyTo=null;const r=document.getElementById('crep');if(r)r.innerHTML=''},
   async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST'})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
-  foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${f[3].toLocaleString('en-NG')}</b></button>`).join('')}`)},
+  foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${Math.round(f[3]*(window.LAGOS?LAGOS.foodMult():1)).toLocaleString('en-NG')}</b></button>`).join('')}`)},
   async buyFood(k){try{const r=await NET.api('/api/ac/buy-food/'+this.chatId,{method:'POST',body:{item:k}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Food delivered 🍛')}catch(e){toast(e.message)}},
   blockSheet(){this.sheet(`<h3>Block ${this.name(this.peer)}?</h3><p class="hint2">They won't be able to find you, message you or send you money. You can unblock later.</p><button class="fopt red" onclick="PH.block()"><span>🚫 Block</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
   async block(){try{await NET.api('/api/ac/block/'+this.chatId,{method:'POST'});toast('Blocked');this.tab='chats';this.messages()}catch(e){toast(e.message)}},

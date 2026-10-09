@@ -29,6 +29,8 @@ const acItemRoutes = require('./routes/acitems');
 const acInvestRoutes = require('./routes/acinvest');
 const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
+const acLagosRoutes = require('./routes/aclagos');
+const acCreatorRoutes = require('./routes/accreator');
 const acMusicRoutes = require('./routes/acmusic');
 const acPushRoutes = require('./routes/acpush');
 const initAllConnect = require('./sockets/allconnect');
@@ -86,6 +88,8 @@ async function main() {
   app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
+  app.use('/api/ac/lagos', acLagosRoutes);
+  app.use('/api/ac/creator', acCreatorRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
   app.use('/api/ac/music', acMusicRoutes);
   app.use('/api/ac/push', acPushRoutes);
@@ -137,6 +141,15 @@ async function main() {
   initAllConnect(io);
   require('./utils/economy').setIO(io);   // lets every wallet change update open screens live
 
+  /* announce each new city event once (the first server instance to claim the 12-hour window posts it) */
+  const ACSetting = require('./models/ACSetting'), LAGOS = require('./utils/aclagos'), { notify: ncity } = require('./utils/acnotify');
+  const cityTick = async () => {
+    const ev = LAGOS.currentEvent(); if (ev.id === 'calm') return;
+    try { await ACSetting.findOneAndUpdate({ _id: 'cityEvent', 'value.windowKey': { $ne: ev.windowKey } }, { $set: { value: { windowKey: ev.windowKey, id: ev.id } } }, { upsert: true }); }
+    catch (e) { return; }   // duplicate key = somebody else already announced this window
+    ncity(io, null, { icon: ev.icon, text: `${ev.title}: ${ev.pidgin} ${ev.text}`, kind: 'info' }).catch(() => {});
+  };
+  setTimeout(() => cityTick().catch(() => {}), 20000).unref(); setInterval(() => cityTick().catch(() => {}), 5 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);

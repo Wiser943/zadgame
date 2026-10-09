@@ -13,6 +13,7 @@ const { notify, emitUser } = require('../utils/acnotify');
 const push = require('../services/push');
 const { ensureAC } = require('./allconnect');
 const { unreadTotal: groupUnread } = require('./acgroups');
+const L = require('../utils/aclagos');
 const { FOOD, normalizeUsername, validUsername } = require('../utils/allconnect');
 
 const router = express.Router();
@@ -230,7 +231,8 @@ router.post('/buy-food/:id', async (req, res, next) => {
     const item = Object.prototype.hasOwnProperty.call(FOOD, req.body && req.body.item) ? FOOD[req.body.item] : null;
     if (!item) return bad(res, 400, 'Unknown food.');
     await ensureAC(f.me); await ensureAC(f.other);
-    const sender = await User.findOneAndUpdate({ _id: f.me, 'ac.cash': { $gte: item.price } }, { $inc: { 'ac.cash': -item.price } }, { new: true });
+    const price = Math.round(item.price * ((L.currentEvent().mult || {}).food || 1) / 10) * 10;      // the city event moves food prices
+    const sender = await User.findOneAndUpdate({ _id: f.me, 'ac.cash': { $gte: price } }, { $inc: { 'ac.cash': -price } }, { new: true });
     if (!sender) return bad(res, 402, 'Not enough ₦.');
     const r = await User.findById(f.other).select('ac.needs'); const cur = (r.ac.needs && r.ac.needs[0]) || 0;
     await User.updateOne({ _id: f.other }, { $set: { 'ac.needs.0': Math.min(1, cur + item.fill) } });

@@ -45,7 +45,7 @@ const GIST = {
   back() { const s = this.stack.pop(); if (!s) { this.C = null; const r = this.ret; this.ret = null; if (r) return r(); return PH.close() } this[s.fn](...s.args); requestAnimationFrame(() => { const ab = $('ab'); if (ab) ab.scrollTop = s.scroll || 0 }) },
   set(fn, ...args) { this.cur = { fn, args } },
   err(e) { toast((e && e.message) || 'Something went wrong. Try again.') },
-  bell() { const n = (PH.badges.updates || 0) + (PH.localUnread || 0); return `<button class="gbell" onclick="PH.shade(true)" aria-label="Notifications">🔔${n ? `<em>${n > 9 ? '9+' : n}</em>` : ''}</button>` },
+  bell() { const n = (PH.badges.updates || 0) + (PH.localUnread || 0); return `<button class="gbell" onclick="PH.shade(true)" aria-label="Notifications"><i class="fa-solid fa-bell"></i>${n ? `<em>${n > 9 ? '9+' : n}</em>` : ''}</button>` },
   /* ---------- post card ---------- */
   imgs(p) {
     const n = p.images.length; if (!n) return '';
@@ -54,8 +54,8 @@ const GIST = {
     return `<div class="gcar"><div class="gcs" onscroll="GIST.car(this)">${p.images.map((_, i) => one(i)).join('')}</div><span class="gcn">1/${n}</span><div class="gdots">${p.images.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`
   },
   car(el) { const n = el.children.length, i = Math.min(n - 1, Math.round(el.scrollLeft / Math.max(1, el.clientWidth))), w = el.parentNode; w.querySelectorAll('.gdots i').forEach((d, k) => d.classList.toggle('on', k === i)); const c = w.querySelector('.gcn'); if (c) c.textContent = (i + 1) + '/' + n },
-  gamecard(g) { if (!g) return ''; return `<div class="ggame"><span class="gg">🎮</span><div><b>${esc(g.name)}</b><small>${g.code ? 'Room code <code>' + esc(g.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.play('${esc(g.code || '')}')">${g.code ? 'Join' : 'Play'}</button></div>` },
-  matchcard(m, id) { if (!m) return ''; return `<div class="gmatch"><div class="gmt"><span>🏆 VICTORY</span><b>${esc(m.name)}</b></div><div class="gms">${m.score ? esc(m.score) : 'Won!'}</div><div class="gmo">${m.opponent ? 'vs <b>' + esc(m.opponent) + '</b>' : 'Match win'}</div><div class="gmb"><button onclick="GIST.react('${id}','fire')">🔥 Cheer</button><button onclick="GIST.play('')">🎮 Play ${esc(m.name)}</button></div></div>` },
+  gamecard(g) { if (!g) return ''; return `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(g.name)}</b><small>${g.code ? 'Room code <code>' + esc(g.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.play('${esc(g.code || '')}')">${g.code ? 'Join' : 'Play'}</button></div>` },
+  matchcard(m, id) { if (!m) return ''; return `<div class="gmatch"><div class="gmt"><span><i class="fa-solid fa-trophy"></i> VICTORY</span><b>${esc(m.name)}</b></div><div class="gms">${m.score ? esc(m.score) : 'Won!'}</div><div class="gmo">${m.opponent ? 'vs <b>' + esc(m.opponent) + '</b>' : 'Match win'}</div><div class="gmb"><button onclick="GIST.react('${id}','fire')"><i class="fa-solid fa-fire"></i> Cheer</button><button onclick="GIST.play('')"><i class="fa-solid fa-gamepad"></i> Play ${esc(m.name)}</button></div></div>` },
   pollHtml(p) {
     const q = p.poll; if (!q) return '';
     const show = q.myVote >= 0 || q.ended, tot = q.total || 0;
@@ -69,21 +69,21 @@ const GIST = {
     let shared = '';
     if (p.shared) shared = p.shared.deleted ? `<div class="gshared gone">This post is no longer available.</div>` : `<div class="gshared" onclick="GIST.nav('post','${p.shared.id}')"><div class="gsh"><b>${esc(p.shared.author.displayName)}${this.vb(p.shared.author)}</b><i>${p.shared.author.username ? '@' + esc(p.shared.author.username) : ''} · ${this.ago(p.shared.createdAt)}</i></div>${p.shared.text ? `<div class="gtx">${this.txt(p.shared.text)}</div>` : ''}${this.imgs(p.shared)}${this.matchcard(p.shared.match, p.shared.id)}${this.gamecard(p.shared.game)}</div>`;
     const em = p.myRx ? RXE[p.myRx] : '🤍';
-    return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin">📌 Pinned</div>' : ''}<div class="gtop">${who}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
+    return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
       ${p.text ? `<div class="gtx">${this.txt(p.text)}</div>` : ''}${this.matchcard(p.match, p.id)}${this.imgs(p)}${this.pollHtml(p)}${this.gamecard(p.game)}${shared}
       <div class="grs">${this.rxSummary(p)}</div>
       <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em}</span><em>${p.likes || ''}</em></button>
-      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}"><span>💬</span><em>${p.comments || ''}</em></button>
-      <button class="sh" onclick="GIST.shareSheet('${p.id}')"><span>🔁</span><em>${p.shares || ''}</em></button></div></article>`
+      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}"><span><i class="fa-solid fa-comment"></i></span><em>${p.comments || ''}</em></button>
+      <button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${p.shares || ''}</em></button></div></article>`
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
   /* ---------- feed ---------- */
   feed() {
     this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
-    const tabs = [['latest', 'Latest'], ['trending', 'Trending 🔥'], ['following', 'Following'], ['me', 'Me']];
-    const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()">✕ Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+    const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['me', 'Me']];
+    const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
     PH.shell(this.tagF ? '#' + esc(this.tagF) : 'Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
-      <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo">🖼️</button></div>
+      <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button></div>
       <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div>
       <div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`, seg, this.bell());
     this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore()
@@ -91,7 +91,7 @@ const GIST = {
   setTab(t) { if (this.tab === t && !this.tagF) return; this.tab = t; this.tagF = ''; this.stack = []; this.pending = 0; this.feed() },
   tag(t) { t = String(t).toLowerCase(); this.tagF = t; this.pending = 0; this.stack = [{ fn: 'feed', args: [], scroll: 0 }]; this.cur = null; this.feed() },
   untag() { this.tagF = ''; this.stack = []; this.feed() },
-  trendHtml() { return this.trend.length ? `<div class="gtrend"><span>🔥 Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
+  trendHtml() { return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
   loadTrend() { NET.swr('/api/ac/gist/trending', (d) => { this.trend = d.tags || []; const e = $('gtrend'); if (e && !this.tagF) e.innerHTML = this.trendHtml() }, { ttl: 60000 }).catch(() => { }) },
   feedHtml(F) {
     if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : this.tab === 'following' ? '<p class="empty">Nothing here yet. Follow players to see their gists. Find someone, or open a profile from a post.</p>' : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : '<p class="empty">No gists yet. Be the first to post something! 🎉</p>';
@@ -164,7 +164,7 @@ const GIST = {
     this.set('post', id); this.replyTo = null; const have = this.cache.get(id);
     const draw = p => { if (!this.cur || this.cur.fn !== 'post' || this.cur.args[0] !== id) return;
       PH.shell('Gist', 'GIST.back()', `<div class="abody" id="ab">${this.card(p, { detail: 1 })}<div class="lab2">COMMENTS</div><div id="gcm"><p class="empty">Loading…</p></div></div>
-        <div id="grep"></div><div class="gcin"><input id="gc_in" placeholder="Write a comment…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')GIST.send('${id}')"><button onclick="GIST.send('${id}')" aria-label="Send">➤</button></div>`);
+        <div id="grep"></div><div class="gcin"><input id="gc_in" placeholder="Write a comment…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')GIST.send('${id}')"><button onclick="GIST.send('${id}')" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></div>`);
       this.loadComments(id) };
     if (have && !have.deleted) draw(have); else PH.shell('Gist', 'GIST.back()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
     this.api('/posts/' + id).then(r => { this.put([r.post]); this.cache.set(id, r.post); if (!have) draw(r.post); else this.sync(id) }).catch(e => { if (!have) { const ab = $('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>` } })
@@ -176,13 +176,13 @@ const GIST = {
   },
   drawComments() {
     const b = $('gcm'); if (!b || !this.cm) return; const L = this.cm.list, top = L.filter(c => !c.parent);
-    b.innerHTML = top.length ? top.map(c => this.cmOne(c) + L.filter(r => r.parent === c.id).map(r => this.cmOne(r, 1)).join('')).join('') + (this.cm.more ? '<p class="empty">Showing the first 200 comments.</p>' : '') : '<p class="empty">No comments yet. Start the conversation 💬</p>'
+    b.innerHTML = top.length ? top.map(c => this.cmOne(c) + L.filter(r => r.parent === c.id).map(r => this.cmOne(r, 1)).join('')).join('') + (this.cm.more ? '<p class="empty">Showing the first 200 comments.</p>' : '') : '<p class="empty">No comments yet. Start the conversation <i class="fa-solid fa-comment"></i></p>'
   },
   loadComments(id) {
     this.cm = { id, list: [], more: false };
     NET.swr('/api/ac/gist/posts/' + id + '/comments', r => { if (!this.cm || this.cm.id !== id) return; this.cm.list = r.comments.concat(this.cm.list.filter(c => c.pending)); this.cm.more = r.more; this.drawComments() }, { ttl: 0 }).catch(e => { const b = $('gcm'); if (b) b.innerHTML = `<p class="empty">${esc(e.message)}</p>` })
   },
-  reply(pid, name) { this.replyTo = { id: pid, name }; const r = $('grep'); if (r) r.innerHTML = `<div class="grepl">Replying to <b>@${esc(name)}</b><button onclick="GIST.cancelReply()">✕</button></div>`; const i = $('gc_in'); if (i) { i.placeholder = 'Write a reply…'; i.focus() } },
+  reply(pid, name) { this.replyTo = { id: pid, name }; const r = $('grep'); if (r) r.innerHTML = `<div class="grepl">Replying to <b>@${esc(name)}</b><button onclick="GIST.cancelReply()"><i class="fa-solid fa-xmark"></i></button></div>`; const i = $('gc_in'); if (i) { i.placeholder = 'Write a reply…'; i.focus() } },
   cancelReply() { this.replyTo = null; const r = $('grep'); if (r) r.innerHTML = ''; const i = $('gc_in'); if (i) i.placeholder = 'Write a comment…' },
   send(id) {
     const i = $('gc_in'), t = (i.value || '').trim(); if (!t || !this.cm) return; const rt = this.replyTo, u = NET.user || {};
@@ -200,6 +200,38 @@ const GIST = {
     this.cm.list = L.filter(x => !gone.includes(x)); this.drawComments(); if (p) { p.comments = Math.max(0, p.comments - gone.length); this.sync(id) }
     this.api('/comments/' + cid, { method: 'DELETE' }).catch(e => { this.err(e); this.loadComments(id) })
   },
+  /* ---------- Manage: creator programme (eligibility, milestones, stats) ---------- */
+  manage() {
+    this.set('manage'); PH.shell('Manage', 'GIST.back()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
+    NET.api('/api/ac/creator/status').then(d => { this.cr = d; if (this.cur && this.cur.fn === 'manage') this.drawManage() }).catch(e => { const ab = $('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>` })
+  },
+  drawManage() {
+    const d = this.cr, n = x => Number(x || 0).toLocaleString('en-NG'), S = d.stats;
+    const ST = {
+      locked: ['lock', '#64748b', 'Not eligible yet', `You meet ${d.metCount} of ${d.total} requirements. Keep posting and growing.`],
+      eligible: ['circle-check', '#22b573', 'You are eligible!', 'You meet every requirement. Apply to join the creator programme.'],
+      applied: ['hourglass-half', '#f59e0b', 'Under review', 'We got your application. The team will review it soon.'],
+      approved: ['star', '#6366f1', 'You are in the programme', 'Your gists can earn real money once payouts go live.'],
+      rejected: ['circle-xmark', '#e5484d', 'Not approved this time', d.note || 'Keep improving and apply again.'],
+      suspended: ['pause', '#e5484d', 'Access paused', d.note || 'Contact support to find out more.']
+    }[d.state];
+    const action = d.canApply ? `<button class="btn p" onclick="GIST.applyCreator(this)">Apply for the creator programme</button>` : d.state === 'rejected' && d.waitDays ? `<p class="gmnote">You can apply again in ${d.waitDays} day${d.waitDays === 1 ? '' : 's'}.</p>` : '';
+    const crit = d.criteria.map(c => `<div class="gmc ${c.met ? 'ok' : ''}"><span class="gmck"><span class="fa-solid fa-${c.met ? 'check' : 'minus'}"></span></span><div><b>${esc(c.title)}</b><small>${c.met ? 'Done' : esc(c.hint)}</small>${c.flag ? '' : `<div class="gmbar"><i style="width:${c.pct}%"></i></div>`}</div>${c.flag ? '' : `<span class="gmv">${n(Math.min(c.have, c.need))}/${n(c.need)}</span>`}</div>`).join('');
+    const ms = d.milestones.map(m => `<div class="gmm"><div class="gmmh"><span class="gmi"><span class="fa-solid fa-${m.fa}"></span></span><b>${esc(m.label)}</b><span>${n(m.value)}</span></div><div class="gmbar"><i style="width:${m.pct}%"></i></div><div class="gmsteps">${m.steps.map((s, i) => `<em class="${i < m.reached ? 'on' : ''}">${s >= 1000 ? s / 1000 + 'k' : s}</em>`).join('')}</div><small>${m.next ? `${n(m.next - m.value)} more to reach ${n(m.next)}` : 'All milestones reached!'}</small></div>`).join('');
+    const grid = [['Followers', n(S.followers), S.newFollowers ? `+${n(S.newFollowers)} this month` : ''], ['Gists', n(S.posts), S.posts30 ? `${n(S.posts30)} this month` : ''], ['Reactions', n(S.reactions), S.reactions30 ? `+${n(S.reactions30)} this month` : ''], ['Comments', n(S.comments), S.comments30 ? `+${n(S.comments30)} this month` : ''], ['Shares', n(S.shares), ''], ['Avg reactions', n(S.avgReactions), 'per gist']];
+    $('ab').innerHTML = `<div class="gm">
+      <div class="gmst" style="--c:${ST[1]}"><span class="gmsi"><span class="fa-solid fa-${ST[0]}"></span></span><div><h3>${ST[2]}</h3><p>${esc(ST[3])}</p></div></div>${action}
+      <h4>Requirements <small>${d.metCount}/${d.total}</small></h4><div class="gmcard">${crit}</div>
+      <h4>Milestones</h4>${ms}
+      <h4>Your stats</h4><div class="gmgrid">${grid.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span>${x[2] ? `<small>${x[2]}</small>` : ''}</div>`).join('')}</div>
+      ${S.top ? `<div class="gmtop"><small>Top gist</small><p>${esc(S.top.text) || 'Photo or poll gist'}</p><span><span class="fa-solid fa-heart"></span> ${n(S.top.likes)} &nbsp; <span class="fa-solid fa-comment"></span> ${n(S.top.comments)}</span></div>` : ''}
+      <h4>Earnings</h4><div class="gmpay"><span class="fa-solid fa-wallet"></span><div><b>Real-money payouts</b><p>${esc(d.payouts.text)}</p></div></div>
+    </div>`;
+  },
+  async applyCreator(btn) {
+    if (btn) btn.disabled = true;
+    try { this.cr = await NET.api('/api/ac/creator/apply', { method: 'POST' }); toast('Application sent'); this.drawManage() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
+  },
   /* ---------- the ONE profile ---------- */
   profile(key) {
     this.set('profile', key); PH.shell('Profile', 'GIST.back()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
@@ -207,15 +239,17 @@ const GIST = {
   },
   drawProfile() {
     const { r, posts, more } = this.pf, u = r.user, g = r.game || {}; if (!this.cur || this.cur.fn !== 'profile') return;
+    const hd = document.querySelector('.appview .ahead');
+    if (hd && r.isMe && !hd.querySelector('.gmanage')) hd.insertAdjacentHTML('beforeend', '<button class="gmanage" onclick="GIST.nav(\'manage\')"><span class="fa-solid fa-sliders"></span> Manage</button>');
     const since = g.since ? new Date(g.since).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '';
     const st = [['Level', g.level], ['Played', g.played], ['Wins', g.wins], ['Win rate', g.winRate + '%'], ['Losses', g.losses], ['Best streak', g.bestStreak], ['Cups won', g.tournamentWins], ['Rating', g.rating]];
-    const btns = r.isMe ? `<button class="btn p" onclick="PH.editProfile('GIST.openProfile(\\'me\\')')">✏️ Edit profile</button><button class="btn s" onclick="GIST.nav('compose')">New gist</button>`
+    const btns = r.isMe ? `<button class="btn p" onclick="PH.editProfile('GIST.openProfile(\\'me\\')')"><i class="fa-solid fa-pen"></i> Edit profile</button><button class="btn s" onclick="GIST.nav('compose')">New gist</button>`
       : r.relation === 'blocked' ? `<div class="gpb"><button class="btn p" id="gmb2" onclick="GIST.unblock()"><i class="fa-solid fa-lock-open"></i> Unblock</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`
-      : `<div class="gpb"><button class="btn ${r.isFollowing ? 's' : 'p'}" id="gfb" onclick="GIST.follow()">${r.isFollowing ? 'Following ✓' : 'Follow'}</button><button class="btn s" id="gmb2" onclick="GIST.message()">💬 Message</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`;
+      : `<div class="gpb"><button class="btn ${r.isFollowing ? 's' : 'p'}" id="gfb" onclick="GIST.follow()">${r.isFollowing ? 'Following ✓' : 'Follow'}</button><button class="btn s" id="gmb2" onclick="GIST.message()"><i class="fa-solid fa-comment"></i> Message</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`;
     $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')"` : ''}></div><div class="gavw">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
-      <div class="ggs"><div class="ggh">🎮 Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
+      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
       <div class="lab2">GISTS</div>${posts.length ? this.list(posts) + (more ? '<button class="gmorebtn" onclick="GIST.moreProfile()">Load more</button>' : '') : '<p class="empty">No gists yet.</p>'}`
   },
   async moreProfile() { const p = this.pf; try { const last = p.posts.filter(x => !x.pinned); const r = await this.api('/profile/' + p.r.user.id + '/posts?before=' + encodeURIComponent((last[last.length - 1] || p.posts[p.posts.length - 1]).createdAt)); this.put(r.posts); p.posts = p.posts.concat(r.posts); p.more = r.more; const s = $('ab').scrollTop; this.drawProfile(); $('ab').scrollTop = s } catch (e) { this.err(e) } },
@@ -227,9 +261,9 @@ const GIST = {
   message() { const id = this.pf.r.user.id; PH.chat(id, `GIST.openProfile('${id}')`) },
   userMenu() {
     const r = this.pf.r, u = r.user, id = u.id, rel = r.relation;
-    if (rel === 'blocked') return PH.sheet(`<h3>${esc(u.displayName)}</h3><button class="fopt" onclick="GIST.friendAct('${id}','unblock')"><span>Unblock</span></button><button class="fopt" onclick="GIST.friendAct('${id}','report')"><span>⚑ Report player</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`);
-    const fr = rel === 'friend' ? `<button class="fopt" onclick="GIST.friendAct('${id}','remove')"><span>👋 Remove friend</span></button>` : rel === 'sent' ? `<button class="fopt" onclick="GIST.friendAct('${id}','remove')"><span>⏳ Cancel friend request</span></button>` : rel === 'received' ? `<button class="fopt" onclick="GIST.friendAct('${id}','accept')"><span>🤝 Accept friend request</span></button>` : `<button class="fopt" onclick="GIST.friendAct('${id}','add')"><span>➕ Add friend</span></button>`;
-    PH.sheet(`<h3>${esc(u.displayName)}</h3>${fr}<button class="fopt" onclick="PH.closeSheet();PH.payUser('${id}','${esc(u.username)}','GIST.openProfile(\\'${id}\\')')"><span>💸 Send money</span></button><button class="fopt red" onclick="GIST.friendAct('${id}','block')"><span>🚫 Block</span></button><button class="fopt" onclick="GIST.friendAct('${id}','report')"><span>⚑ Report player</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
+    if (rel === 'blocked') return PH.sheet(`<h3>${esc(u.displayName)}</h3><button class="fopt" onclick="GIST.friendAct('${id}','unblock')"><span>Unblock</span></button><button class="fopt" onclick="GIST.friendAct('${id}','report')"><span><i class="fa-solid fa-flag"></i> Report player</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`);
+    const fr = rel === 'friend' ? `<button class="fopt" onclick="GIST.friendAct('${id}','remove')"><span><i class="fa-solid fa-user-xmark"></i> Remove friend</span></button>` : rel === 'sent' ? `<button class="fopt" onclick="GIST.friendAct('${id}','remove')"><span>⏳ Cancel friend request</span></button>` : rel === 'received' ? `<button class="fopt" onclick="GIST.friendAct('${id}','accept')"><span><i class="fa-solid fa-user-check"></i> Accept friend request</span></button>` : `<button class="fopt" onclick="GIST.friendAct('${id}','add')"><span><i class="fa-solid fa-plus"></i> Add friend</span></button>`;
+    PH.sheet(`<h3>${esc(u.displayName)}</h3>${fr}<button class="fopt" onclick="PH.closeSheet();PH.payUser('${id}','${esc(u.username)}','GIST.openProfile(\\'${id}\\')')"><span><i class="fa-solid fa-money-bill-transfer"></i> Send money</span></button><button class="fopt red" onclick="GIST.friendAct('${id}','block')"><span><i class="fa-solid fa-ban"></i> Block</span></button><button class="fopt" onclick="GIST.friendAct('${id}','report')"><span><i class="fa-solid fa-flag"></i> Report player</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
   },
   async friendAct(id, act) {
     PH.closeSheet(); const N = (u, o) => NET.api('/api/ac' + u, o);
@@ -254,7 +288,7 @@ const GIST = {
   /* ---------- menus ---------- */
   menu(id) {
     const p = this.cache.get(id); if (!p) return;
-    PH.sheet(`<h3>Gist options</h3>${p.mine ? `${p.text || !p.shared ? `<button class="fopt" onclick="GIST.editSheet('${id}')"><span>✏️ Edit gist</span></button>` : ''}<button class="fopt" onclick="GIST.pin('${id}')"><span>📌 ${p.pinned ? 'Unpin from profile' : 'Pin to my profile'}</span></button><button class="fopt red out" onclick="GIST.askDelete('${id}')"><span>🗑 Delete gist</span></button>` : `<button class="fopt" onclick="PH.closeSheet();GIST.nav('profile','${p.author.id}')"><span>👤 View ${esc(p.author.displayName)}’s profile</span></button><button class="fopt" onclick="GIST.reportSheet('${id}')"><span>⚑ Report gist</span></button>`}${p.text ? `<button class="fopt" onclick="GIST.copy('${id}')"><span>📋 Copy text</span></button>` : ''}<button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
+    PH.sheet(`<h3>Gist options</h3>${p.mine ? `${p.text || !p.shared ? `<button class="fopt" onclick="GIST.editSheet('${id}')"><span><i class="fa-solid fa-pen"></i> Edit gist</span></button>` : ''}<button class="fopt" onclick="GIST.pin('${id}')"><span><i class="fa-solid fa-thumbtack"></i> ${p.pinned ? 'Unpin from profile' : 'Pin to my profile'}</span></button><button class="fopt red out" onclick="GIST.askDelete('${id}')"><span><i class="fa-solid fa-trash"></i> Delete gist</span></button>` : `<button class="fopt" onclick="PH.closeSheet();GIST.nav('profile','${p.author.id}')"><span><i class="fa-solid fa-user"></i> View ${esc(p.author.displayName)}’s profile</span></button><button class="fopt" onclick="GIST.reportSheet('${id}')"><span><i class="fa-solid fa-flag"></i> Report gist</span></button>`}${p.text ? `<button class="fopt" onclick="GIST.copy('${id}')"><span><i class="fa-solid fa-copy"></i> Copy text</span></button>` : ''}<button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
   },
   async copy(id) { PH.closeSheet(); try { await navigator.clipboard.writeText(this.cache.get(id).text); toast('Copied ✓') } catch (e) { toast('Could not copy') } },
   editSheet(id) {
@@ -284,7 +318,7 @@ const GIST = {
   async report(id, r) { PH.closeSheet(); try { await this.api('/posts/' + id + '/report', { method: 'POST', body: { reason: r } }); toast('Report sent. Thank you 🙏🏾') } catch (e) { this.err(e) } },
   shareSheet(id) {
     const p = this.cache.get(id); if (!p || String(id).startsWith('tmp')) return; if (p.shared && p.shared.id) id = p.shared.id;
-    PH.sheet(`<h3>Share this gist</h3><button class="fopt" onclick="GIST.repost('${id}')"><span>🔁 Repost to my feed</span></button><button class="fopt" onclick="PH.closeSheet();GIST.nav('compose','share','${id}')"><span>✍️ Share with a comment</span></button>${navigator.share ? `<button class="fopt" onclick="GIST.ext('${id}')"><span>📤 Share outside AllConnect</span></button>` : ''}<button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
+    PH.sheet(`<h3>Share this gist</h3><button class="fopt" onclick="GIST.repost('${id}')"><span><i class="fa-solid fa-retweet"></i> Repost to my feed</span></button><button class="fopt" onclick="PH.closeSheet();GIST.nav('compose','share','${id}')"><span><i class="fa-solid fa-pen-nib"></i> Share with a comment</span></button>${navigator.share ? `<button class="fopt" onclick="GIST.ext('${id}')"><span><i class="fa-solid fa-share-nodes"></i> Share outside AllConnect</span></button>` : ''}<button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)
   },
   async ext(id) { PH.closeSheet(); const p = this.cache.get(id); try { await navigator.share({ title: 'AllConnect Gist', text: ((p.text || 'A gist on AllConnect') + '').slice(0, 120), url: location.origin }) } catch (e) { } },
   async repost(id) { PH.closeSheet(); try { const r = await this.api('/posts', { method: 'POST', body: { sharedFrom: id } }); this.afterPost(r.post, id); toast('Reposted ✓') } catch (e) { this.err(e) } },
@@ -297,7 +331,7 @@ const GIST = {
   lightbox(id, i) { const p = this.cache.get(id); if (!p || !p.images[i]) return; this.lb = { id, i }; this.drawLb() },
   drawLb() {
     const { id, i } = this.lb, p = this.cache.get(id), n = p.images.length; let el = $('glb'); if (!el) { el = document.createElement('div'); el.id = 'glb'; el.className = 'glb'; PH.$a().appendChild(el) }
-    el.innerHTML = `<div class="glbt"><button onclick="GIST.closeLb()" aria-label="Close">✕</button><span>${i + 1} / ${n}</span><button onclick="GIST.shareImg()">Share photo</button></div><div class="glbi"><button class="vnav l" ${i ? '' : 'disabled'} onclick="GIST.lbGo(-1)">‹</button><img src="${esc(p.images[i].url)}" alt=""><button class="vnav r" ${i < n - 1 ? '' : 'disabled'} onclick="GIST.lbGo(1)">›</button></div>`;
+    el.innerHTML = `<div class="glbt"><button onclick="GIST.closeLb()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><span>${i + 1} / ${n}</span><button onclick="GIST.shareImg()">Share photo</button></div><div class="glbi"><button class="vnav l" ${i ? '' : 'disabled'} onclick="GIST.lbGo(-1)">‹</button><img src="${esc(p.images[i].url)}" alt=""><button class="vnav r" ${i < n - 1 ? '' : 'disabled'} onclick="GIST.lbGo(1)">›</button></div>`;
     const z = el.querySelector('.glbi'); let x0 = null; z.ontouchstart = e => { x0 = e.touches[0].clientX }; z.ontouchend = e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if (Math.abs(dx) > 45) this.lbGo(dx < 0 ? 1 : -1) }
   },
   lbGo(d) { const n = this.cache.get(this.lb.id).images.length, k = this.lb.i + d; if (k < 0 || k >= n) return; this.lb.i = k; this.drawLb() }, closeLb() { const e = $('glb'); if (e) e.remove() },
@@ -310,8 +344,8 @@ const GIST = {
     if (mode === 'share' && arg) { C.shared = this.cache.get(arg) || null }
     if (mode === 'image' && arg && !C.images.some(i => i.url === arg.url)) C.images.push(arg);
     PH.shell(C.shared ? 'Share gist' : 'New gist', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp"><div class="gcwho">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></div>
-      <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'What’s the gist? Use #hashtags and @mentions 🎮'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
-      <div id="gc_att"></div><div class="gtools"><button onclick="GIST.pickOpen()">🖼️ Photos</button><button onclick="GIST.pollSheet()">📊 Poll</button><button onclick="GIST.gameSheet()">🎮 Game</button></div>
+      <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'What’s the gist? Use #hashtags and @mentions <i class="fa-solid fa-gamepad"></i>'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
+      <div id="gc_att"></div><div class="gtools"><button onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
       <div class="aerr" id="gc_e"></div><button class="btn p" id="gc_b" onclick="GIST.submit()">${C.shared ? 'Share' : 'Post'}</button></div></div>`);
     this.attDraw(); this.cc(); if (mode === 'photos') this.pickOpen(); else if (!('ontouchstart' in window)) $('gc_t').focus()
   },
@@ -320,15 +354,15 @@ const GIST = {
   btn() { const C = this.C, b = $('gc_b'); if (!b) return; b.disabled = C.busy || !(C.text.trim() || C.images.length || C.game || C.shared || C.poll); b.textContent = C.shared ? 'Share' : 'Post' },
   attDraw() {
     const C = this.C, a = $('gc_att'); if (!a) return;
-    a.innerHTML = (C.images.length ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button onclick="GIST.rmImg(${i})" aria-label="Remove">✕</button></div>`).join('')}</div>` : '') +
-      (C.poll ? `<div class="gpollp"><b>📊 Poll · ${C.poll.hours >= 24 ? C.poll.hours / 24 + 'd' : C.poll.hours + 'h'}</b>${C.poll.options.map(o => `<span>${esc(o)}</span>`).join('')}<button onclick="GIST.C.poll=null;GIST.attDraw()" aria-label="Remove poll">✕</button></div>` : '') +
-      (C.game ? `<div class="ggame"><span class="gg">🎮</span><div><b>${esc(C.game.name)}</b><small>${C.game.code ? 'Room code <code>' + esc(C.game.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.C.game=null;GIST.attDraw()">✕</button></div>` : '') +
+    a.innerHTML = (C.images.length ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
+      (C.poll ? `<div class="gpollp"><b><i class="fa-solid fa-chart-simple"></i> Poll · ${C.poll.hours >= 24 ? C.poll.hours / 24 + 'd' : C.poll.hours + 'h'}</b>${C.poll.options.map(o => `<span>${esc(o)}</span>`).join('')}<button onclick="GIST.C.poll=null;GIST.attDraw()" aria-label="Remove poll"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
+      (C.game ? `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(C.game.name)}</b><small>${C.game.code ? 'Room code <code>' + esc(C.game.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.C.game=null;GIST.attDraw()"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.shared ? `<div class="gshared"><div class="gsh"><b>${esc(C.shared.author.displayName)}</b></div>${C.shared.text ? `<div class="gtx">${this.txt(C.shared.text.slice(0, 200))}</div>` : ''}${this.imgs(C.shared)}</div>` : ''); this.btn()
   },
   rmImg(i) { this.C.images.splice(i, 1); this.attDraw() },
   pollSheet() {
     const P = this.C.poll || { options: ['', ''], hours: 24 }; this.pp = { options: P.options.slice(), hours: P.hours };
-    PH.sheet(`<h3>Create a poll</h3><div id="pp_o"></div><button class="fopt" id="pp_add" onclick="GIST.ppAdd()"><span>➕ Add option</span></button><div class="lab2">POLL LENGTH</div><div class="pre" id="pp_h">${[[1, '1 hour'], [6, '6 hours'], [24, '1 day'], [72, '3 days'], [168, '7 days']].map(h => `<button class="${h[0] === this.pp.hours ? 'on' : ''}" onclick="GIST.pp.hours=${h[0]};GIST.ppDraw()">${h[1]}</button>`).join('')}</div><div class="aerr" id="pp_e"></div><button class="btn p" onclick="GIST.ppSave()">Add poll</button>`); this.ppDraw()
+    PH.sheet(`<h3>Create a poll</h3><div id="pp_o"></div><button class="fopt" id="pp_add" onclick="GIST.ppAdd()"><span><i class="fa-solid fa-plus"></i> Add option</span></button><div class="lab2">POLL LENGTH</div><div class="pre" id="pp_h">${[[1, '1 hour'], [6, '6 hours'], [24, '1 day'], [72, '3 days'], [168, '7 days']].map(h => `<button class="${h[0] === this.pp.hours ? 'on' : ''}" onclick="GIST.pp.hours=${h[0]};GIST.ppDraw()">${h[1]}</button>`).join('')}</div><div class="aerr" id="pp_e"></div><button class="btn p" onclick="GIST.ppSave()">Add poll</button>`); this.ppDraw()
   },
   ppDraw() { const o = $('pp_o'); if (!o) return; o.innerHTML = this.pp.options.map((t, i) => `<input class="sinput" maxlength="40" placeholder="Option ${i + 1}" value="${esc(t)}" oninput="GIST.pp.options[${i}]=this.value" autocomplete="off">`).join(''); $('pp_add').style.display = this.pp.options.length >= 4 ? 'none' : ''; document.querySelectorAll('#pp_h button').forEach((b, i) => b.classList.toggle('on', [1, 6, 24, 72, 168][i] === this.pp.hours)) },
   ppAdd() { if (this.pp.options.length < 4) { this.pp.options.push(''); this.ppDraw() } },
@@ -356,7 +390,7 @@ const GIST = {
     const k = this.pk, t = $('pk_tabs'), b = $('pk_body'); if (!t || !b) return;
     t.innerHTML = [['mine', 'My gallery'], ['plat', 'Platform'], ['dev', 'Device']].map(x => `<button class="${k.tab === x[0] ? 'on' : ''}" onclick="GIST.pickTab('${x[0]}')">${x[1]}</button>`).join('');
     const n = this.C.images.length, head = `<p class="hint2">${n} of 10 selected</p>`;
-    if (k.tab === 'dev') { b.innerHTML = head + `<label class="btn s pickf">📁 Choose photos from this device<input type="file" accept="image/*" multiple hidden onchange="GIST.pickFiles(this)"></label><p class="hint2">${k.busy ? 'Uploading…' : 'Photos you pick are also saved to your gallery.'}</p>`; return }
+    if (k.tab === 'dev') { b.innerHTML = head + `<label class="btn s pickf"><i class="fa-solid fa-folder-open"></i> Choose photos from this device<input type="file" accept="image/*" multiple hidden onchange="GIST.pickFiles(this)"></label><p class="hint2">${k.busy ? 'Uploading…' : 'Photos you pick are also saved to your gallery.'}</p>`; return }
     const L = k.tab === 'mine' ? k.mine : k.plat; if (!L) { b.innerHTML = head + '<p class="empty">Loading…</p>'; return }
     if (!L.length) { b.innerHTML = head + `<p class="empty">${k.tab === 'mine' ? 'Your gallery is empty. Take a photo with the Camera app or choose one from your device.' : 'No platform photos yet.'}</p>`; return }
     b.innerHTML = head + `<div class="gpick">${L.map((p, i) => `<button class="${this.has(p) ? 'sel' : ''}" onclick="GIST.pickToggle('${k.tab}',${i})"><img src="${esc(p.thumb || p.url)}" alt=""><i>✓</i></button>`).join('')}</div>`

@@ -9,12 +9,12 @@ Object.assign(PH,{
     try{const [s,h]=await Promise.all([NET.api('/api/ac/bank/summary'),NET.api('/api/ac/bank/history')]);NET.cache.set('/api/ac/bank/summary',{d:s,t:Date.now()});NET.cache.set('/api/ac/bank/history',{d:h,t:Date.now()});this.B=s;this.H=h.txns;S.cash=s.cash;render()}catch(e){if(!this.B)return toast(e.message)}if(this.view==='bank')this.bankDraw()},
   txRow(t){const cr=t.type==='credit';return `<div class="tx"><span class="tic ${cr?'in':'out'}">${cr?'↙':'↗'}</span><div class="rt"><b>${cr?'Received from':'Transfer to'} ${esc(t.name||'')}</b><span>${fdate(t.at)}${t.note?' · '+esc(t.note):''}</span></div><div class="tam ${cr?'in':''}">${cr?'+':'-'}${naira(t.amount,2)}</div></div>`},
   bankDraw(){const B=this.B,el=document.getElementById('ab');if(!el)return;
-    const tiles=[['💸','Transfer','PH.xmenu()'],['📥','Receive','PH.receive()'],['🧾','History','PH.history()'],['🔐','Pay PIN','PH.pinMenu()'],['📱','Airtime','PH.soon()',1],['📶','Data','PH.soon()',1],['💡','Bills','PH.soon()',1],['🐷','Savings','PH.soon()',1]];
-    el.innerHTML=`<div class="bcard"><div class="bt"><span>Total Balance</span><button onclick="PH.toggleBal()">${this.hideBal?'🙈':'👁'}</button></div>
+    const tiles=[['<i class="fa-solid fa-money-bill-transfer"></i>','Transfer','PH.xmenu()'],['<i class="fa-solid fa-download"></i>','Receive','PH.receive()'],['<i class="fa-solid fa-receipt"></i>','History','PH.history()'],['<i class="fa-solid fa-lock"></i>','Pay PIN','PH.pinMenu()'],['<i class="fa-solid fa-mobile-screen"></i>','Airtime','PH.soon()',1],['<i class="fa-solid fa-wifi"></i>','Data','PH.soon()',1],['<i class="fa-solid fa-lightbulb"></i>','Bills','PH.bills()',window.LAGOS?LAGOS.dueLabel():''],['<i class="fa-solid fa-piggy-bank"></i>','Savings','PH.soon()',1]];
+    el.innerHTML=`<div class="bcard"><div class="bt"><span>Total Balance</span><button onclick="PH.toggleBal()">${this.hideBal?'<i class="fa-solid fa-eye-slash"></i>':'<i class="fa-solid fa-eye"></i>'}</button></div>
       <div class="bamt">${this.hideBal?'₦ ••••••':naira(B.cash,2)}</div>
-      <div class="bid"><span>Account ID&nbsp; <b>${B.acNum}</b></span><button onclick="PH.copy('${B.acNum}')">⧉ Copy</button></div></div>
-      ${B.hasPin?'':`<div class="pinbn" onclick="PH.setPinFlow()"><span>🔐</span><div><b>Set your payment PIN</b><small>Required before you can send money</small></div><i>›</i></div>`}
-      <div class="qgrid">${tiles.map(t=>`<button class="q" onclick="${t[2]}"><span class="qi">${t[0]}${t[3]?'<em>Soon</em>':''}</span>${t[1]}</button>`).join('')}</div>
+      <div class="bid"><span>Account ID&nbsp; <b>${B.acNum}</b></span><button onclick="PH.copy('${B.acNum}')"><i class="fa-solid fa-copy"></i> Copy</button></div></div>
+      ${B.hasPin?'':`<div class="pinbn" onclick="PH.setPinFlow()"><span><i class="fa-solid fa-lock"></i></span><div><b>Set your payment PIN</b><small>Required before you can send money</small></div><i>›</i></div>`}
+      <div class="qgrid">${tiles.map(t=>`<button class="q" onclick="${t[2]}"><span class="qi">${t[0]}${t[3]?`<em${t[3]===1?'':' class="due"'}>${t[3]===1?'Soon':t[3]}</em>`:''}</span>${t[1]}</button>`).join('')}</div>
       <div class="sech"><b>Recent transactions</b>${this.H.length>5?`<a onclick="PH.history()">View all ›</a>`:''}</div>
       ${this.H.length?this.H.slice(0,5).map(t=>this.txRow(t)).join(''):`<p class="empty">No transactions yet. Send or receive money and it shows here.</p>`}`},
   /* Deposit page (opened from the + next to the balance). Payments are not live yet. */
@@ -26,6 +26,7 @@ Object.assign(PH,{
   dppick(n){const i=document.getElementById('dpamt');if(i)i.value=n.toLocaleString('en-NG')},
   dpgo(){const b=document.getElementById('dpbtn');if(b){b.textContent='Coming soon';setTimeout(()=>{const x=document.getElementById('dpbtn');if(x)x.textContent='Deposit now'},2200)}toast('Deposits are coming soon')},
   toggleBal(){this.hideBal=!this.hideBal;this.bankDraw()},
+  bills(){this.view='bank-bills';this.shell('Bills','PH.bank()','<div class="abody bk"><div id="lgbills"><p class="empty">Loading…</p></div></div>');if(window.LAGOS)LAGOS.loadBills()},
   soon(){toast('Coming soon 🚧')},
   copy(t){const ok=()=>toast('Copied ✓');try{navigator.clipboard.writeText(t).then(ok,()=>this.copyOld(t,ok))}catch(e){this.copyOld(t,ok)}},
   copyOld(t,ok){const i=document.createElement('textarea');i.value=t;document.body.appendChild(i);i.select();try{document.execCommand('copy');ok()}catch(e){toast('Copy failed')}i.remove()},
@@ -33,8 +34,8 @@ Object.assign(PH,{
   receive(){this.view='bank-r';const B=this.B;this.shell('Receive money','PH.bank()',`<div class="abody bk"><div class="rcv"><span class="avi big" style="background:#00a86b">${esc((B.name||'?')[0].toUpperCase())}</span><h3>${esc(B.name)}</h3><p>${B.username?'@'+esc(B.username):'Set a username in Settings'}</p>
       <div class="rid">${B.acNum}</div><button class="btn p" onclick="PH.copy('${B.acNum}')">Copy Account ID</button><p class="hint2" style="margin-top:12px">Share your Account ID (or @username) with another AllConnect player so they can send you money.</p></div></div>`)},
   /* ----- transfer ----- */
-  xmenu(){this.xBack=null;this.view='bank-m';this.shell('Transfer','PH.bank()',`<div class="abody bk"><button class="opt" onclick="PH.xfer()"><span class="oi" style="background:#e3f6ee">👑</span><div><b>To AllConnect User</b><small>Instant · Free · Needs Account ID</small></div><i>›</i></button>
-      <button class="opt" onclick="PH.soon()"><span class="oi" style="background:#eef0f6">🏦</span><div><b>To Bank Account</b><small>Send to your bank app</small></div><em class="soonb">Coming soon</em></button></div>`)},
+  xmenu(){this.xBack=null;this.view='bank-m';this.shell('Transfer','PH.bank()',`<div class="abody bk"><button class="opt" onclick="PH.xfer()"><span class="oi" style="background:#e3f6ee"><i class="fa-solid fa-crown"></i></span><div><b>To AllConnect User</b><small>Instant · Free · Needs Account ID</small></div><i>›</i></button>
+      <button class="opt" onclick="PH.soon()"><span class="oi" style="background:#eef0f6"><i class="fa-solid fa-building-columns"></i></span><div><b>To Bank Account</b><small>Send to your bank app</small></div><em class="soonb">Coming soon</em></button></div>`)},
   xfer(){if(!this.B.hasPin)return this.setPinFlow(()=>this.xfer());this.view='bank-x';this.X=null;const B=this.B,left=Math.max(0,B.limits.daily-B.sentToday);
     this.shell('To AllConnect User',this.xBack||'PH.xmenu()',`<div class="abody bk"><div class="lab2">RECIPIENT</div><input class="sinput" id="xto" placeholder="Paste Account ID or @username" oninput="PH.xlook(this.value)" autocomplete="off" inputmode="text"><div id="xwho"></div>
       <div class="lab2">AMOUNT</div><div class="amt"><span>₦</span><input id="xamt" inputmode="numeric" placeholder="0" oninput="PH.xchk(true)" autocomplete="off"><button type="button" class="amax" onclick="PH.xmax()">Max</button></div>
@@ -67,13 +68,13 @@ Object.assign(PH,{
     const q=username?'@'+username:id,go=()=>{this.xBack=back||null;this.xfer();const i=document.getElementById('xto');if(i){i.value=q;this.xlook(q)}};
     if(!this.B.hasPin)return this.setPinFlow(go);go()},
   /* ----- payment PIN ----- */
-  pinMenu(){this.sheet(`<h3>Payment PIN</h3><p class="hint2">${this.B.hasPin?'Your 4-digit PIN protects every transfer.':'Create a 4-digit PIN to start sending money.'}</p><button class="fopt" onclick="PH.closeSheet();PH.${this.B.hasPin?'changePin':'setPinFlow'}()"><span>${this.B.hasPin?'🔄 Change PIN':'🔐 Set PIN'}</span></button>`)},
+  pinMenu(){this.sheet(`<h3>Payment PIN</h3><p class="hint2">${this.B.hasPin?'Your 4-digit PIN protects every transfer.':'Create a 4-digit PIN to start sending money.'}</p><button class="fopt" onclick="PH.closeSheet();PH.${this.B.hasPin?'changePin':'setPinFlow'}()"><span>${this.B.hasPin?'🔄 Change PIN':'<i class="fa-solid fa-lock"></i> Set PIN'}</span></button>`)},
   async setPinFlow(next,cur){const a=await this.askPin(cur?'New payment PIN':'Create payment PIN','Choose a 4-digit PIN');if(!a)return;const b=await this.askPin('Confirm payment PIN','Enter it again');if(!b)return;
     if(a!==b)return toast('PINs do not match. Try again');
     try{await NET.api('/api/ac/bank/pin',{method:'POST',body:{pin:a,current:cur||''}});this.B.hasPin=true;toast('Payment PIN saved ✓');if(next)next();else if(this.view==='bank')this.bankDraw()}catch(e){toast(e.message)}},
   async changePin(){const cur=await this.askPin('Current PIN','Enter your current payment PIN');if(!cur)return;this.setPinFlow(null,cur)},
   askPin(title,sub){return new Promise(res=>{let v='';const ov=document.createElement('div');ov.className='asheet';
-    ov.innerHTML=`<div class="shcard pinpad"><button class="px">✕</button><h3>${title}</h3><p class="hint2">${sub||''}</p><div class="dots">${'<i></i>'.repeat(4)}</div><div class="keys">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button data-k="${k}">${k}</button>`).join('')}</div></div>`;
+    ov.innerHTML=`<div class="shcard pinpad"><button class="px"><i class="fa-solid fa-xmark"></i></button><h3>${title}</h3><p class="hint2">${sub||''}</p><div class="dots">${'<i></i>'.repeat(4)}</div><div class="keys">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button data-k="${k}">${k}</button>`).join('')}</div></div>`;
     this.$a().appendChild(ov);const dots=[...ov.querySelectorAll('.dots i')];
     const done=val=>{document.removeEventListener('keydown',kd,true);ov.remove();res(val)};
     const press=k=>{if(k==='⌫')v=v.slice(0,-1);else if(/^\d$/.test(k)&&v.length<4)v+=k;dots.forEach((d,i)=>d.classList.toggle('f',i<v.length));if(v.length===4)setTimeout(()=>done(v),130)};

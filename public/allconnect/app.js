@@ -300,7 +300,8 @@ function nav(w, keep) {
   if (window.SONGIFY) SONGIFY.paintMini();
   $('homeUI').style.display = (home && !cl) ? 'block' : 'none';
   if (w == 'phone') {
-    if (window.ADS) ADS.loadApps();
+    if (window.LAGOS) LAGOS.boot();
+  if (window.ADS) ADS.loadApps();
     $('room').style.display = 'block';
     $('hud').style.display = 'flex'
   }
@@ -335,16 +336,16 @@ function setPaint(c) {
   document.documentElement.style.setProperty('--wall', c)
 }
 const APPS = [
-  ['Camera', '📷', '#2a2d36'],
+  ['Camera', '<i class="fa-solid fa-camera"></i>', '#2a2d36'],
   ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
-  ['Bank', '🏦', '#151a35'],
+  ['Bank', '<i class="fa-solid fa-building-columns"></i>', '#151a35'],
   ['GameHub', '🎮', '#151a35'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
-  ['P-Gist', '🗣️', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
+  ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']

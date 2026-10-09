@@ -53,6 +53,10 @@ const UserSchema = new mongoose.Schema({
     termsAccepted: { type: Boolean, default: false },
     registeredAt: { type: Date, default: null }
   },
+  creator: {                                              // creator programme (real-money payouts, reviewed by the team)
+    status: { type: String, enum: ['', 'applied', 'approved', 'rejected', 'suspended'], default: '' },
+    appliedAt: { type: Date, default: null }, approvedAt: { type: Date, default: null }, decidedAt: { type: Date, default: null }, note: { type: String, default: '' }
+  },
   acUsername: { type: String, unique: true, sparse: true, lowercase: true, trim: true }, // @handle used to find friends
   // ONE balance for the whole platform: ac.cash is the AllConnect balance AND the GameHub balance (₦). Changed only by the server.
   ac: {
@@ -75,7 +79,11 @@ const UserSchema = new mongoose.Schema({
     autoWork: { type: Boolean, default: true },
     lastShift: { type: Date, default: null },
     shiftDay: { type: String, default: '' },
-    shiftsToday: { type: Number, default: 0 }
+    shiftsToday: { type: Number, default: 0 },
+    bills: { type: [{ _id: false, key: String, cycle: String, amount: Number, due: Date, paidAt: { type: Date, default: null }, fee: { type: Number, default: 0 } }], default: [] },
+    questsClaimed: { type: [String], default: [] },
+    streak: { type: Number, default: 0 },
+    lastDaily: { type: String, default: '' }
   },
   stats: {
     gamesPlayed: { type: Number, default: 0 },

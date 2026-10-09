@@ -159,6 +159,8 @@ const ADS = {
   hideHost() { const h = document.getElementById('adhostbox'); this.curApp = null; if (this.ro) this.ro.disconnect(); if (!h) return; h.classList.remove('on'); [...h.children].forEach(c => c.classList.remove('cur')); ['left', 'top', 'width', 'height'].forEach(k => h.style.removeProperty(k)) },
   /* top bar of an ad app: full bar at first, then it shrinks to two floating buttons so the site gets the whole screen */
   hdr(min) { const av = PH.$a(); if (!av) return; clearTimeout(this.ht); av.classList.toggle('hdr-min', min === undefined ? !av.classList.contains('hdr-min') : min); requestAnimationFrame(() => this.place()) },
+  /* the site runs in another origin so we cannot see it scroll; instead, touching or pulling down on the top edge brings the bar back */
+  rv(e) { const y0 = e.clientY, mv = ev => { if (ev.clientY - y0 > 8) { this.hdr(false); cl() } }, up = () => { this.hdr(false); cl() }, cl = () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up) }; window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up) },
   hdrAuto() { clearTimeout(this.ht); this.ht = setTimeout(() => { if (PH.view === 'adapp') this.hdr(true) }, 2600) },
   /* an ad app: the advertiser's website runs inside the phone */
   openApp(id) {
@@ -171,7 +173,7 @@ const ADS = {
     const open = `<button class="adopen" onclick="ADS.go(ADS.apps.find(x=>x.id==='${a.id}'))" aria-label="Open in browser"><span class="adot">Open<span class="adfull"> in browser</span></span>${arrow}</button>`;
     const tog = '<button class="adtog" onclick="ADS.hdr()" aria-label="Show or hide the top bar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>';
     PH.shell(`${esc(a.title)}<span class="adbadge">Ad</span><small class="adhost">Sponsored · ${esc(host)}</small>`, 'PH.close()', `<div class="adapp"><div class="adwait" id="adwait">Loading ${esc(a.title)}…<small>Blank screen? This site may not allow being shown here. Use Open in browser.</small></div>
-      <div class="adslot" id="adslot"></div></div>`, '', open + tog);
+      <div class="adslot" id="adslot"></div><div class="adreveal" id="adreveal" onpointerdown="ADS.rv(event)"></div></div>`, '', open + tog);
     const av = PH.$a(); av.classList.add('adview'); av.style.setProperty('--adh', hue);
     document.querySelector('.screen').style.setProperty('--hbg', `hsl(${hue} 80% 93%)`); this.showHost(a);
     fetch(`/api/ac/ads/${a.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})

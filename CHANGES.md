@@ -61,3 +61,17 @@ Copy these files over your project (same paths), then redeploy.
 ## Ad apps, Search app, app layout menu
 - Ads app: third option "Create your own app" (₦100,000 for 1 day, max 3 per advertiser, 12 on the phone). Advertiser enters platform name (16 chars), https website link and a logo from the in-game gallery, a device upload, or an emoji. Paying adds an app (name + logo + "Ad" tag) to every player's phone; opening it runs the website inside the phone (sandboxed iframe) with an Open in browser button. Apps can be edited while live and expire after the day. Server: utils/acads.js (APP), models/ACAd.js (kind 'app', emoji), routes/acads.js (/apps, booking, updating), plus a test.
 - Phone: new Search app (find any app by name, incl. ad apps) and a three-dot menu on the home screen to switch the app layout between vertical scroll and horizontal pages (remembered per device).
+
+## Lagos Life update
+- **City events** (`utils/aclagos.js`): a new event every 12 hours (6 AM / 6 PM Lagos), the same for every player: fuel scarcity, power outage, Third Mainland go-slow, heavy rain, owambe weekend, Balogun market day, or a calm day. Each has an English and a Pidgin line, district flavour, and real effects: job pay (drivers earn more in a go-slow), electricity and water bills, and food prices when you buy food for a friend. A global update is posted when a new event starts.
+- **Bills**: electricity, water and waste, issued every Monday, due Sunday night, scaled by what is in your room and by the city event. 3 free days for new players, 10% late fee, unpaid electricity = power cut (screen dims). Phone → Bank → Bills, or the Lagos Life sheet. Payments are atomic and show in transaction history.
+- **Starter quests** (8, each verified on the server, small cash rewards) and a **daily streak** (7-day cycle).
+- New endpoints under `/api/ac/lagos`: `city`, `bills`, `bills/pay`, `quests`, `quests/claim`, `daily`. Tests in `tests/aclagos.test.js`.
+- Updates panel: pull down from the top-left of the phone; "Clear" empties it (`/api/ac/updates/clear`).
+
+## Creator programme (real-money payouts, reviewed by the team)
+- Own profile → **Manage** button (top right of the Profile header) → creator screen: status, requirements checklist, milestones, stats, earnings note.
+- Requirements (edit in `utils/accreator.js`): verified tick, 1,000 followers, 20 gists, 500 reactions+comments, account 30 days old, no penalties or suspension.
+- States: locked → eligible → applied → approved (or rejected with a 14-day wait / suspended).
+- API: `GET /api/ac/creator/status`, `POST /api/ac/creator/apply`. Admin: `GET /api/admin/creators?status=applied`, `POST /api/admin/creators/:id/decide {status, note}` (no admin screen yet).
+- Payouts are NOT live: the screen says so. Nothing pays out until payments are connected.

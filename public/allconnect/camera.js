@@ -51,7 +51,7 @@ const CAM={
     if(this.ndev===1&&!/Android|iPhone|iPad/i.test(navigator.userAgent))toast('Only one camera found on this device');
     this.s.flash=false;await this.start()},
   msg(t,retry){const m=this.$('cam-msg');if(!m)return;
-    m.style.display=t?'flex':'none';m.innerHTML=t?`<div>${esc(t)}</div>${retry?`<button class="pbtn grn" onclick="CAM.start()">Try again</button>`:''}<label class="pbtn blu pickf">📁 Choose a photo<input type="file" accept="image/*" capture="${this.facing==='user'?'user':'environment'}" hidden onchange="CAM.importFile(this)"></label>`:''},
+    m.style.display=t?'flex':'none';m.innerHTML=t?`<div>${esc(t)}</div>${retry?`<button class="pbtn grn" onclick="CAM.start()">Try again</button>`:''}<label class="pbtn blu pickf"><i class="fa-solid fa-folder-open"></i> Choose a photo<input type="file" accept="image/*" capture="${this.facing==='user'?'user':'environment'}" hidden onchange="CAM.importFile(this)"></label>`:''},
   /* ---------- view helpers ---------- */
   fit(){const st=this.$('cam-stage'),v=this.$('cam-view');if(!st||!v)return;
     const W=st.clientWidth,H=st.clientHeight;if(!W||!H)return;
@@ -90,20 +90,20 @@ const CAM={
         <div class="cam-filters" id="cam-filters"></div>
         <div class="cam-bar"><button class="cam-th" id="cam-th" onclick="CAM.gallery()" aria-label="Open gallery"></button>
           <button class="cam-shut" id="cam-shut" onclick="CAM.snap()" aria-label="Take photo"><i></i></button>
-          <button class="cam-flip" onclick="CAM.flip()" aria-label="Switch camera">🔄</button></div></div></div>`;
+          <button class="cam-flip" onclick="CAM.flip()" aria-label="Switch camera"><i class="fa-solid fa-camera-rotate"></i></button></div></div></div>`;
     this.drawTop();this.drawFilters();this.drawThumb();this.drawZoom();this.pinch(this.$('cam-stage'))},
   drawTop(){const t=this.$('cam-top');if(!t)return;const s=this.s,g=this.$('cam-grid');if(g)g.style.display=s.grid?'block':'none';
     const b=(fn,ic,lab,on,x)=>`<button class="cam-b ${on?'on':''}" onclick="${fn}" aria-label="${lab}">${ic}${x?`<small>${x}</small>`:''}</button>`;
     t.innerHTML=`<button class="cam-b" onclick="CAM.exit()" aria-label="Close camera">‹</button><span class="cam-sp"></span>`+
-      b('CAM.tFlash()',s.flash?'⚡':'🚫','Flash',s.flash)+b('CAM.tTimer()','⏱','Timer',s.timer,s.timer?s.timer+'s':'')+b('CAM.tGrid()','▦','Grid',s.grid)+
-      b('CAM.tRatio()','▭','Ratio',false,CAMR[s.ratio])+(this.isFront?b('CAM.tMirror()','🪞','Mirror',s.mirror):'')+b('CAM.tFilters()','🎨','Filters',s.fOpen||s.filter)+
-      `<label class="cam-b" aria-label="Import a photo">⬆<input type="file" accept="image/*" hidden onchange="CAM.importFile(this)"></label>`},
+      b('CAM.tFlash()',s.flash?'<i class="fa-solid fa-bolt"></i>':'<i class="fa-solid fa-ban"></i>','Flash',s.flash)+b('CAM.tTimer()','<i class="fa-solid fa-stopwatch"></i>','Timer',s.timer,s.timer?s.timer+'s':'')+b('CAM.tGrid()','<i class="fa-solid fa-border-all"></i>','Grid',s.grid)+
+      b('CAM.tRatio()','<i class="fa-solid fa-crop-simple"></i>','Ratio',false,CAMR[s.ratio])+(this.isFront?b('CAM.tMirror()','<i class="fa-solid fa-left-right"></i>','Mirror',s.mirror):'')+b('CAM.tFilters()','<i class="fa-solid fa-wand-magic-sparkles"></i>','Filters',s.fOpen||s.filter)+
+      `<label class="cam-b" aria-label="Import a photo"><i class="fa-solid fa-upload"></i><input type="file" accept="image/*" hidden onchange="CAM.importFile(this)"></label>`},
   drawFilters(){const f=this.$('cam-filters');if(!f)return;f.style.display=this.s.fOpen?'flex':'none';
     f.innerHTML=CAMF.map((x,i)=>`<button class="${i===this.s.filter?'on':''}" onclick="CAM.setFilter(${i})">${x[0]}</button>`).join('')},
   drawZoom(){const r=this.$('cam-zr'),h=this.hw.zoom;if(!r)return;r.min=h?h.min:1;r.max=h?h.max:4;r.step=h?h.step:.1;r.value=this.s.zoom;this.setZoom(this.s.zoom)},
   drawThumb(){const t=this.$('cam-th');if(!t)return;const l=this.pending[this.pending.length-1],p=this.photos[0],src=l?l.thumb:p&&(p.thumb||p.url);
     const n=this.pending.length+this.photos.length;
-    t.innerHTML=src?`<img src="${esc(src)}" alt="">${l?`<i class="${l.state==='fail'?'bad':'spin'}">${l.state==='fail'?'!':''}</i>`:''}${n>1?`<b>${n>99?'99+':n}</b>`:''}`:'🖼️'},
+    t.innerHTML=src?`<img src="${esc(src)}" alt="">${l?`<i class="${l.state==='fail'?'bad':'spin'}">${l.state==='fail'?'!':''}</i>`:''}${n>1?`<b>${n>99?'99+':n}</b>`:''}`:'<i class="fa-solid fa-image"></i>'},
   /* ---------- taking a photo ---------- */
   snap(){
     if(!this.stream||!this.video||!this.video.videoWidth)return toast('Camera is not ready yet');
