@@ -5406,6 +5406,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       <button type="button" class="btn" id="qk">${esc(t('sheet.quick'))}</button>
       ${(!counts || counts.includes(2)) ? `<button type="button" class="btn ghost" id="rk">🏆 ${esc(t('sheet.ranked'))}</button>` : ''}
       <button type="button" class="btn ghost" id="mk">${esc(t('sheet.create'))}</button>
+      <button type="button" class="btn ghost" id="bq" title="Free matches with other new players, no ₦ at risk">🌱 Beginner queue</button>
     </div>
     <div class="gs-card">
       <div class="gs-label">${esc(t('sheet.level'))}</div>
@@ -5432,6 +5433,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       $('#howto').onclick = () => tutorialSheet(key, name, n);
       try { if (!localStorage.getItem('gh_tut_' + key)) { localStorage.setItem('gh_tut_' + key, '1'); setTimeout(() => tutorialSheet(key, name, n), 250); } } catch {}
       $('#qk').onclick = () => { bg.remove(); quickMatch(key, n); };
+      $('#bq').onclick = () => { bg.remove(); quickMatch(key, n, true); };
       const gameOpts = () => readOptions(key, bg);
       $('#mk').onclick = () => { const o = gameOpts(); bg.remove(); createRoom(key, n, false, chosenLevel(), o); };
       $('#vb').onclick = () => { const o = gameOpts(); bg.remove(); createRoom(key, n, true, chosenLevel(), o); };
@@ -5476,9 +5478,9 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       });
     }
 
-    async function quickMatch(game, maxPlayers) {
+    async function quickMatch(game, maxPlayers, beginner) {
       if (!await releaseRoom()) return;
-      socket.emit(EV.quick, { game, maxPlayers }, res => {
+      socket.emit(EV.quick, { game, maxPlayers, beginner: beginner === true }, res => {
         if (!res || res.ok === false) return toast(res?.error || 'Could not find a match');
         room = res.room;
         result = gstate = null;

@@ -79,6 +79,7 @@ router.post('/transfer', async (req, res, next) => {
     const me = uid(req); if (limited(me + ':t', 12)) return bad(res, 429, 'Slow down a little.');
     const b = req.body || {}, amount = parseAmount(b.amount), err = moneyError(amount);
     if (err) return bad(res, 400, err);
+    { const H = require('../utils/achub'); if (H.isProtected(req.user.createdAt) && amount > H.PROTECT.transferMax) return bad(res, 403, `New-player protection: transfers are limited to ₦${H.PROTECT.transferMax.toLocaleString('en-NG')} in your first ${H.PROTECT_DAYS} days.`); }
     if (!B.validPin(b.pin)) return bad(res, 400, 'Enter your 4-digit payment PIN.');
     const w = await ensureWallet(me);
     if (!w.pinHash) return bad(res, 409, 'Set your payment PIN first.');

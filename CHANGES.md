@@ -75,3 +75,22 @@ Copy these files over your project (same paths), then redeploy.
 - States: locked → eligible → applied → approved (or rejected with a 14-day wait / suspended).
 - API: `GET /api/ac/creator/status`, `POST /api/ac/creator/apply`. Admin: `GET /api/admin/creators?status=applied`, `POST /api/admin/creators/:id/decide {status, note}` (no admin screen yet).
 - Payouts are NOT live: the screen says so. Nothing pays out until payments are connected.
+
+## Lagos hub: onboarding, missions, news, help, result cards (this update)
+**Fixes**
+- Creator "Manage" requirements list: completed rows had white, overlapping text. A global `.ok` style (green circle) was hitting the row. Renamed to `.gmdone`.
+
+**Reusable UI** (`public/allconnect/ui.js`)
+- `SHEET.open({id,title,tabs,body,back})`: the Lagos Life style bottom sheet, now generic. Lagos Life itself uses it.
+- `CARD.show({icon,title,text,lines,tone,btn})`: the "Back from Work" style result popup. Cards queue. Server can send them too (`utils/accards.js` → `queueCard`), stored on the player so offline results still show. Used for: Back from Work (summed shifts), promotions, investment payouts / truck repairs, daily bonus, quest and mission rewards, welcome parcel, invite bonus, welcome back.
+
+**Hub** (`public/allconnect/hub.js`, `routes/achub.js`, `utils/achub.js`; API under `/api/ac/hub`)
+- Day-one promise, new-player setup (area, starter job, hobby, interest-based username suggestions), recovery code, 60-second tour, replayable interactive controls tutorial, guest city tour on the sign-in screen, city-world loading sequence.
+- "What can I do now?" pill on Home (also shows a rotating live ticker). City hub app (Phone → City) with: missions + onboarding progress map, life timeline, newspaper (also a Gazette app), near me, play path (placement matches, bot-to-human, Beginner queue), map legend, help desk, roadmap, feature voting, changelog (also a What's New app), lore archive, city anthem (tune generated in the browser), status, invite, recovery.
+- Missions are verified on the server (friend, group, first shift, decorating, bills, placement matches vs bots, first human match, 2-day game streak) and paid once. Welcome parcel (7 days), welcome-back gift after 3+ days away, invite bonus (both sides, first week only).
+- New-player protection (first 7 days): transfers ≤ ₦20,000, investments ≤ ₦1.5m each, no ad booking. Limits in `PROTECT` (`utils/achub.js`).
+- Beginner queue: GameHub game sheet → "Beginner queue". Free (no stake), only for players in their first week or with under 10 games, never mixed with the normal quick match, hidden from the room list.
+- Recovery: sign-in screen → "Recover account" with the 12-character code (stored as a salted scrypt hash; 8 tries / 15 min per IP).
+- Public status: `/status` page and `GET /api/ac/public/status`.
+- Invite links: `/?ref=<username>`; redeemed after setup.
+- Tests: `tests/achub.test.js`. Service worker cache bumped to v5.

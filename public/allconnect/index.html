@@ -20,7 +20,7 @@
  <aside class="deskside">
   <img class="lg" src="/icon-192.png" alt="AllConnect" width="84" height="84">
   <h2>AllConnect</h2>
-  <p>One account. Every app.</p>
+  <p>Live a whole Lagos life, online. One account. Every app.</p>
   <ul>
    <li>🏙️ Live your Lagos life</li>
    <li>🎮 GameHub multiplayer games</li>
@@ -114,12 +114,14 @@
     <div><b>Daily gem hunt</b><span id="gem">176107 found · next prize ₦3,000</span></div>
    </div>
    <div class="pill quest q3" id="q3" onclick="LAGOS.open()" style="display:none"></div>
+   <div class="pill quest q4" id="q4" onclick="HUB.now()" style="display:none"><i>✨</i><div><b>What can I do now?</b><span id="q4sub">Lagos is waking up…</span></div></div>
    <button class="pill clean" onclick="toggleClean()">^ Clean screen</button>
   </div>
   
   <!-- MAP -->
   <div id="map">
    <canvas id="mapCv" aria-label="Map of Lagos. Drag to move, pinch or scroll to zoom, twist with two fingers to rotate."></canvas>
+   <button class="pill maplg" onclick="HUB.view('legend')" aria-label="Map legend"><i class="fa-solid fa-circle-info"></i> Legend</button>
    <div class="pill cats"><span>🟠 Go-slow</span><span>📢 Ads</span><span>🏠 Homes</span><span>🌊 Sea</span><span>🏛 Gov</span></div>
   </div>
 
@@ -177,6 +179,7 @@
     <div id="aerr" class="aerr"></div><button class="btn p" id="abtn" onclick="doAuth()">Sign in</button>
     <a class="btn s gbtn" id="gbtn" href="/auth/google">Continue with Google</a>
     <p class="note">Already play GameHub? Sign in with that same account.</p>
+    <div class="altlinks"><a onclick="HUB.guestTour()">🏙️ Take a city tour first</a><a onclick="HUB.recover()">🔑 Recover account</a></div>
    </div>
    <div class="card" id="resume" style="display:none">
     <div class="who">
@@ -212,6 +215,7 @@
  <script src="/socket.io/socket.io.js"></script>
  <script src="/allconnect/avatar.js"></script>
  <script src="/allconnect/map3d.js"></script>
+ <script src="/allconnect/ui.js"></script>
  <script src="/allconnect/app.js"></script>
  <script src="/allconnect/furniture.js"></script>
  <script src="/allconnect/room3d.js"></script>
@@ -226,6 +230,7 @@
  <script src="/allconnect/invest.js"></script>
  <script src="/allconnect/ads.js"></script>
  <script src="/allconnect/lagos.js"></script>
+ <script src="/allconnect/hub.js"></script>
  <script src="/allconnect/settings.js"></script>
  <script src="/allconnect/songify.js"></script>
  <script src="/allconnect/push.js"></script>

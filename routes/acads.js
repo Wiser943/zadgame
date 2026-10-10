@@ -57,6 +57,7 @@ router.get('/mine', async (req, res, next) => {
 router.post('/book', async (req, res, next) => {
   try {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
+    { const H = require('../utils/achub'); if (H.isProtected(req.user.createdAt)) return bad(res, 403, `New-player protection: ad booking opens after your first ${H.PROTECT_DAYS} days.`); }
     const b = req.body || {}, kind = ['sea', 'billboard', 'app'].includes(b.kind) ? b.kind : null;
     if (!kind) return bad(res, 400, 'Pick a billboard, a sea plot or an app.');
     const f = fields(b, kind, req.hostname); if (f.error) return bad(res, 400, f.error);

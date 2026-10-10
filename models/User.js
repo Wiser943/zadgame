@@ -83,7 +83,18 @@ const UserSchema = new mongoose.Schema({
     bills: { type: [{ _id: false, key: String, cycle: String, amount: Number, due: Date, paidAt: { type: Date, default: null }, fee: { type: Number, default: 0 } }], default: [] },
     questsClaimed: { type: [String], default: [] },
     streak: { type: Number, default: 0 },
-    lastDaily: { type: String, default: '' }
+    lastDaily: { type: String, default: '' },
+    hub: {                                                 // onboarding, missions, result cards, life timeline (see routes/achub.js)
+      hood: { type: String, default: '' }, hobby: { type: String, default: '' },
+      done: { type: Boolean, default: false }, tourDone: { type: Boolean, default: false }, controlsDone: { type: Boolean, default: false },
+      recoveryHash: { type: String, default: '' }, recoverySalt: { type: String, default: '' },
+      missionsClaimed: { type: [String], default: [] },
+      parcelDay: { type: String, default: '' }, parcelCount: { type: Number, default: 0 },
+      lastSeen: { type: Date, default: null }, returnGiftDay: { type: String, default: '' },
+      invitedBy: { type: String, default: '' }, invites: { type: Number, default: 0 },
+      cards: { type: [{ _id: false, id: String, icon: String, title: String, text: String, tone: String, btn: String, lines: [{ _id: false, k: String, v: String }], at: { type: Date, default: Date.now } }], default: [] },
+      timeline: { type: [{ _id: false, at: { type: Date, default: Date.now }, icon: String, text: String }], default: [] }
+    }
   },
   stats: {
     gamesPlayed: { type: Number, default: 0 },

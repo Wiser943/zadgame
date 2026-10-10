@@ -7,6 +7,7 @@ const ensureAuth = require('../middleware/auth');
 const econ = require('../utils/economy');
 const { notify } = require('../utils/acnotify');
 const I = require('../utils/acinvest');
+const { queueCard } = require('../utils/accards');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -14,6 +15,14 @@ const uid = (req) => String(req.user.id);
 const bad = (res, code, message) => res.status(code).json({ message });
 const hits = new Map();
 const limited = (id) => { const n = Date.now(), a = (hits.get(id) || []).filter((t) => n - t < 60000); if (a.length >= 30) { hits.set(id, a); return true; } a.push(n); hits.set(id, a); return false; };
+const H = require('../utils/achub');
+// New-player protection: big-ticket purchases wait until the player's first week is over
+router.post(['/land/buy', '/biz/buy', '/truck/buy'], (req, res, next) => {
+  if (!H.isProtected(req.user.createdAt)) return next();
+  const b = req.body || {}, price = req.path.startsWith('/land') ? (I.landOf(String(b.place || '')) || {}).price : req.path.startsWith('/biz') ? (I.bizOf(String(b.key || '')) || {}).price : I.TRUCK.price;
+  if (price > H.PROTECT.investMax) return bad(res, 403, `New-player protection: you can buy investments up to ${naira(H.PROTECT.investMax)} for your first ${H.PROTECT_DAYS} days.`);
+  next();
+});
 const nid = () => crypto.randomBytes(6).toString('hex');
 const naira = (n) => '₦' + Math.floor(n).toLocaleString('en-NG');
 
@@ -35,6 +44,10 @@ async function settle(io, id) {
     if (!won) { doc = await ACInvest.findOne({ user: id }); continue; }   // another screen settled first
     if (calc.net) {
       await econ.adjust(id, calc.net);
+      const tax = calc.entries.reduce((t, e) => t + (e.tax || 0), 0), nights = new Set(calc.entries.map((e) => e.k)).size || 1;
+      queueCard(io, id, calc.net >= 0
+        ? { icon: '💰', title: 'Investment payout', text: 'Your businesses and trucks paid out. Money don enter.', lines: [['Paid in', naira(calc.net)], ['Tax paid', naira(tax)], ['Evenings', String(nights)]], tone: 'gold', btn: 'Collect' }
+        : { icon: '🔧', title: 'Truck repairs', text: 'Your trucks needed fixing today.', lines: [['Cost', naira(-calc.net)]], tone: 'warn', btn: 'Okay' }).catch(() => {});
       notify(io, id, { icon: calc.net >= 0 ? '💰' : '🔧', text: calc.net >= 0 ? `Invest payout: +${naira(calc.net)} after tax` : `Invest: truck repairs cost you ${naira(-calc.net)} today`, kind: calc.net >= 0 ? 'good' : 'warn' }).catch(() => {});
     }
     doc = won; if (!calc.more) break;

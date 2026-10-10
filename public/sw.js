@@ -2,7 +2,7 @@
 // cache game pages or API responses. The service worker's only job is to
 // exist — its presence + the manifest is what makes Chrome/Edge/Android
 // consider the site "installable" and fire beforeinstallprompt.
-const CACHE = 'gamehub-shell-v4';
+const CACHE = 'gamehub-shell-v5';
 const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
 
 self.addEventListener('install', (e) => {

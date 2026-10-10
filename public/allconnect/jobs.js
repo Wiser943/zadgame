@@ -26,8 +26,8 @@ const JOBS = {
     if (this.busy) return; this.busy = true;
     try {
       const r = await NET.api('/api/ac/jobs/work', { method: 'POST' });
-      this.take(r);
-      if (r.promoted) { toast('🎉 Promoted to ' + r.promoted + '!'); PH.local_('🎉', 'You were promoted to ' + r.promoted + ' · pay ' + fmt(r.mine.pay) + ' per shift', 'good') }
+      this.take(r); if (window.WORKCARD) WORKCARD.add(r);
+      if (r.promoted) { toast('🎉 Promoted to ' + r.promoted + '!'); if (window.WORKCARD) WORKCARD.p = null; PH.local_('🎉', 'You were promoted to ' + r.promoted + ' · pay ' + fmt(r.mine.pay) + ' per shift', 'good') }
       else if (!auto) toast('💼 Shift done +' + fmt(r.earned));
       else toast('💼 +' + fmt(r.earned) + ' shift pay')
     } catch (e) {

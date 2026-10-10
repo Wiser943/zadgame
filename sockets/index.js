@@ -86,7 +86,7 @@ function newCode() {
 // ---- Stakes: every human-vs-human match costs each player a stake, taken when the match starts.
 // The winner is credited the whole pot; a draw means everyone loses their stake. Matches with a bot, and
 // tournament matches, are free and never touch rankings, stats, XP or ₦.
-const stakeOf = (r) => (r.tournament || r.players.some((p) => p.bot) ? 0 : stakeFor(r.game));
+const stakeOf = (r) => (r.tournament || r.beginner || r.players.some((p) => p.bot) ? 0 : stakeFor(r.game));   // beginner rooms are free: new players learn without risking ₦
 const naira = (n) => '₦' + Number(n).toLocaleString('en-NG');
 
 module.exports = function initSockets(io, sessionMiddleware) {
@@ -669,14 +669,20 @@ module.exports = function initSockets(io, sessionMiddleware) {
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
     } catch (e) { console.error('[room:join]', e.message); ack({ ok: false, error: 'Server error' }); } });
 
-    guard('room:quick', 6, 60000, async ({ game, maxPlayers, mode }, ack) => { try {
+    guard('room:quick', 6, 60000, async ({ game, maxPlayers, mode, beginner }, ack) => { try {
       if (!engineFor(game)) return ack({ ok: false, error: 'Unknown game' });
       if (!gameEnabled(game)) return ack({ ok: false, error: 'This game is currently disabled.' });
-      { const blocked = await stakeBlock(uid, game, null); if (blocked) return ack({ ok: false, error: blocked }); }
+      beginner = beginner === true;
+      if (beginner) {   // Beginner queue: free matches, only for new players (first week or fewer than 10 games), never mixed with the regular queue
+        const bu = await User.findById(uid).select('createdAt stats').lean();
+        const isNew = bu && (Date.now() - new Date(bu.createdAt).getTime() < 7 * 864e5 || ((bu.stats && bu.stats.gamesPlayed) || 0) < 10);
+        if (!isNew) return ack({ ok: false, error: 'The beginner queue is for new players. Use Quick match instead.' });
+      } else { const blocked = await stakeBlock(uid, game, null); if (blocked) return ack({ ok: false, error: blocked }); }
       const mp = resolveMaxPlayers(game, maxPlayers);
-      const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting' && !r.reserved && !r.ranked
+      const open = [...rooms.values()].find((r) => r.game === game && r.maxPlayers === mp && r.status === 'waiting' && !r.reserved && !r.ranked && !!r.beginner === beginner
         && r.players.length < mp && !r.players.some((p) => p.id === uid));
       const r = open && attach(socket, open) ? open : createRoom(socket, game, mp, false, mode);
+      if (beginner) r.beginner = true;
       ack({ ok: true, room: view(r, r.players.findIndex((p) => p.id === uid)) });
     } catch (e) { console.error('[room:quick]', e.message); ack({ ok: false, error: 'Server error' }); } });
 
@@ -686,7 +692,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
         spectators: r.spectators ? r.spectators.size : 0,
         players: r.players.map((p) => ({ name: p.name }))
       });
-      const visible = (r) => !(r.reserved && r.status === 'waiting');
+      const visible = (r) => !(r.reserved && r.status === 'waiting') && !(r.beginner && r.status === 'waiting');
       const isOpen = (r) => r.status === 'waiting' && r.players.length < r.maxPlayers;
       const isLive = (r) => r.status === 'playing' && r.players.some((p) => !p.bot && p.connected);
       if (!game) {

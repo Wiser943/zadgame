@@ -12,7 +12,7 @@ const PH={
     const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
   /* ----- shell ----- */
   open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),invest:()=>INV.open(),ads:()=>ADS.open()})[name]()},
-  close(){const sc=document.querySelector('.screen');sc.classList.remove('light');sc.style.removeProperty('--hbg');this.view=null;this.chatId=null;if(window.ADS)ADS.hideHost();this.shade(false,true);this.$a().innerHTML='';this.refreshBadges()},
+  close(){if(this.view==='jobs'&&window.WORKCARD)setTimeout(()=>WORKCARD.flush(true),300);const sc=document.querySelector('.screen');sc.classList.remove('light');sc.style.removeProperty('--hbg');this.view=null;this.chatId=null;if(window.ADS)ADS.hideHost();this.shade(false,true);this.$a().innerHTML='';this.refreshBadges()},
   /* header tint per app, so the status bar + header match the app instead of being plain white everywhere */
   TINT:{contacts:'#e3f5ec',messages:'#e6eeff',chat:'#e6eeff',group:'#e6eeff',groupinfo:'#e6eeff',settings:'#eceef5',bank:'#e0f3e8',jobs:'#fff0d6',ads:'#fde4ef',gist:'#ffe8d9',police:'#e2e8fb',appsearch:'#eceef5',adapp:'#eceef5'},
   shell(title,back,body,sub,right){const av=this.$a();av.classList.remove('adview','hdr-min','hdr-off');clearTimeout(window.ADS&&ADS.ht);if(window.ADS)ADS.hideHost();document.querySelector('.screen').style.setProperty('--hbg',this.TINT[this.view]||'#ffffff');

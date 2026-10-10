@@ -13,7 +13,7 @@ const LAGOS = {
     try { this.d = await NET.api('/api/ac/lagos/city') } catch (e) { return }
     this.draw();
     document.body.classList.toggle('powercut', !!(this.d.bills && this.d.bills.powerCut));
-    if (first && this.d.daily && this.d.daily.claimable) setTimeout(() => { if (!document.getElementById('lgm')) this.open('today') }, 1800);
+    if (first && this.d.daily && this.d.daily.claimable) setTimeout(() => { if (!SHEET.isOpen() && !CARD.cur && !(window.HUB && HUB.busy())) this.open('today') }, 2600);
   },
   /* the pill on the home screen */
   draw() {
@@ -33,25 +33,21 @@ const LAGOS = {
     if (j.all && j.all !== 1) out.push(['Other jobs', pct(j.all), j.all < 1]);
     return out;
   },
-  /* ----- the Lagos Life sheet ----- */
+  /* ----- the Lagos Life sheet (built on the shared SHEET component in ui.js) ----- */
   open(tab) {
     if (!this.d) return toast('Loading the city…');
-    this.close(); this.tab = tab || 'today';
-    const m = document.createElement('div'); m.id = 'lgm'; m.className = 'lgm';
-    m.innerHTML = '<div class="lgcard"><div class="lghd"><b>Lagos Life</b><button onclick="LAGOS.close()" aria-label="Close"><span class="fa-solid fa-xmark"></span></button></div><div class="lgtabs" id="lgtabs"></div><div class="lgbody" id="lgbody"></div></div>';
-    m.addEventListener('click', e => { if (e.target === m) this.close() });
-    document.body.appendChild(m); requestAnimationFrame(() => m.classList.add('on')); this.paint();
-    if (this.tab === 'bills') this.loadBills();
+    this.tab = tab || 'today';
+    SHEET.open({ id: 'lagos', title: 'Lagos Life', tab: this.tab, onTab: t => { this.tab = t; if (t === 'quests') this.loadQuests(true) },
+      tabs: () => { const d = this.d; return [{ id: 'today', label: 'Today', badge: d.daily && d.daily.claimable ? 1 : 0 }, { id: 'quests', label: 'Quests', badge: d.quests.claimable }, { id: 'bills', label: 'Bills', badge: d.bills.count }] },
+      body: t => this.bodyFor(t) });
   },
-  close() { const m = document.getElementById('lgm'); if (m) m.remove() },
-  setTab(t) { this.tab = t; this.paint(); if (t === 'bills') this.loadBills(); if (t === 'quests') this.loadQuests() },
-  paint() {
-    const t = document.getElementById('lgtabs'), b = document.getElementById('lgbody'); if (!t || !b || !this.d) return;
-    const d = this.d, tabs = [['today', 'Today', d.daily && d.daily.claimable ? 1 : 0], ['quests', 'Quests', d.quests.claimable], ['bills', 'Bills', d.bills.count]];
-    t.innerHTML = tabs.map(x => `<button class="${this.tab === x[0] ? 'on' : ''}" onclick="LAGOS.setTab('${x[0]}')">${x[1]}${x[2] ? `<i>${x[2]}</i>` : ''}</button>`).join('');
-    if (this.tab === 'today') b.innerHTML = this.todayHtml();
-    else if (this.tab === 'quests') { b.innerHTML = this.Q ? this.questsHtml() : '<p class="empty">Loading…</p>'; this.loadQuests() }
-    else b.innerHTML = '<div id="lgbills"><p class="empty">Loading…</p></div>';
+  close() { if (SHEET.isOpen('lagos')) SHEET.close() },
+  setTab(t) { SHEET.setTab(t) },
+  paint() { if (SHEET.isOpen('lagos')) SHEET.paint() },
+  bodyFor(t) {
+    if (t === 'today') return this.todayHtml();
+    if (t === 'quests') return this.Q ? this.questsHtml() : this.loadQuests().then(() => this.questsHtml());
+    setTimeout(() => this.loadBills(), 0); return '<div id="lgbills"><p class="empty">Loading…</p></div>';
   },
   todayHtml() {
     const d = this.d, ev = d.event, nx = d.next, eff = this.effects(ev);
@@ -69,13 +65,13 @@ const LAGOS = {
     if (btn) btn.disabled = true;
     try {
       const r = await NET.api('/api/ac/lagos/daily', { method: 'POST' });
-      this.setCash(r.cash); toast('Daily bonus +' + this.fmt(r.amount));
+      this.setCash(r.cash); this.close(); CARD.show({ icon: '📅', title: 'Daily bonus', text: r.streak >= 7 ? 'Day 7! The biggest one. Come back tomorrow to start again.' : 'Come back tomorrow for more.', lines: [['You got', this.fmt(r.amount)], ['Streak', 'Day ' + r.streak]], tone: 'gold', btn: 'Collect' });
       this.d.daily = r.daily; this.draw(); this.paint();
     } catch (e) { toast(e.message); if (btn) btn.disabled = false }
   },
   setCash(c) { if (typeof S !== 'undefined' && Number.isFinite(c)) { S.cash = c; if (typeof render === 'function') render() } },
   /* ----- quests ----- */
-  async loadQuests() { try { this.Q = (await NET.api('/api/ac/lagos/quests')).quests; if (this.tab === 'quests') { const b = document.getElementById('lgbody'); if (b) b.innerHTML = this.questsHtml() } } catch (e) { toast(e.message) } },
+  async loadQuests(refresh) { try { this.Q = (await NET.api('/api/ac/lagos/quests')).quests; if (refresh && this.tab === 'quests') this.paint() } catch (e) { toast(e.message) } },
   questsHtml() {
     const q = this.Q || [], done = q.filter(x => x.claimed).length;
     return `<div class="lgprog"><div><b>${done} of ${q.length} done</b><small>Finish these to get started in Lagos. Each one pays.</small></div><i style="width:${Math.round(done / Math.max(1, q.length) * 100)}%"></i></div>` +
@@ -84,7 +80,7 @@ const LAGOS = {
   },
   async claim(id, btn) {
     if (btn) btn.disabled = true;
-    try { const r = await NET.api('/api/ac/lagos/quests/claim', { method: 'POST', body: { id } }); this.Q = r.quests; this.setCash(r.cash); toast('Quest reward +' + this.fmt(r.reward)); await this.load(); this.paint() }
+    try { const r = await NET.api('/api/ac/lagos/quests/claim', { method: 'POST', body: { id } }); this.Q = r.quests; this.setCash(r.cash); CARD.show({ icon: '✅', title: 'Quest done', text: 'Reward added to your balance.', lines: [['Reward', this.fmt(r.reward)]], tone: 'gold', btn: 'Nice one' }); await this.load(); this.paint() }
     catch (e) { toast(e.message); if (btn) btn.disabled = false }
   },
   /* ----- bills (used by the Lagos Life sheet and by Phone > Bank > Bills) ----- */

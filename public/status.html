@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AllConnect status</title><link rel="icon" href="/favicon.png">
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1b1f33;--mut:#6b7390;--ok:#22b573;--bad:#e5484d}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1222;--card:#1a2038;--ink:#eef0f8;--mut:#98a0bd}}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}main{max-width:520px;margin:0 auto;padding:28px 16px}
+h1{font-size:24px;margin:0 0 4px}.sub{color:var(--mut);margin:0 0 18px}
+.banner{border-radius:18px;padding:16px;font-weight:700;display:flex;gap:12px;align-items:center;margin-bottom:14px}.banner.ok{background:#e6f6ee;color:#127a4a}.banner.bad{background:#fdecec;color:#b42318}
+.card{background:var(--card);border-radius:18px;padding:4px 16px}.row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid rgba(128,128,128,.18)}.row:last-child{border:0}.row b{flex:1}.row small{color:var(--mut)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--ok)}.dot.bad{background:var(--bad)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.stats div{background:var(--card);border-radius:16px;padding:12px 14px}.stats b{display:block;font-size:20px}.stats small{color:var(--mut)}
+a{color:inherit}
+</style></head><body><main>
+<h1>AllConnect status</h1><p class="sub" id="t">Checking…</p>
+<div id="b" class="banner ok">Checking…</div><div class="card" id="s"></div><div class="stats" id="st"></div>
+<p class="sub" style="margin-top:18px"><a href="/">← Back to AllConnect</a></p>
+<script>
+const e=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function up(s){const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return(d?d+'d ':'')+h+'h '+m+'m'}
+async function go(){
+  try{
+    const r=await fetch('/api/ac/public/status',{cache:'no-store'}).then(x=>x.json());
+    b.className='banner '+(r.ok?'ok':'bad');b.textContent=r.ok?'✅ All systems normal':'⚠️ Some things are not working';
+    s.innerHTML=r.services.map(x=>`<div class="row"><i class="dot ${x.ok?'':'bad'}"></i><b>${e(x.name)}</b><small>${x.ok?(x.ms!=null?x.ms+' ms':'Working'):'Down'}</small></div>`).join('');
+    st.innerHTML=`<div><b>${up(r.uptimeSec)}</b><small>Uptime</small></div><div><b>${r.online}</b><small>Online now</small></div><div><b>${e(r.event.title)}</b><small>City event</small></div><div><b>v${e(r.version)}</b><small>Version</small></div>`;
+    t.textContent='Updated '+new Date(r.checkedAt).toLocaleTimeString();
+  }catch(x){b.className='banner bad';b.textContent='⚠️ Cannot reach the server';t.textContent='Retrying…'}
+}
+go();setInterval(go,30000);
+</script></main></body></html>

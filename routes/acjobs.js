@@ -6,6 +6,7 @@ const ensureAuth = require('../middleware/auth');
 const { ensureAC } = require('./allconnect');
 const J = require('../utils/acjobs');
 const L = require('../utils/aclagos');
+const { queueCard, timeline } = require('../utils/accards');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -63,6 +64,10 @@ router.post('/work', async (req, res, next) => {
       return res.status(429).json({ message: 'Still on your break. Next shift is not ready yet.', ...reply(u) });
     }
     const after = mine(upd), promoted = after.level > cur.level ? after.title : null;
+    if (promoted) {
+      timeline(uid, '🎉', 'Promoted to ' + promoted);
+      queueCard(req.app.get('io'), uid, { icon: '🏆', title: 'Promotion!', text: `You are now ${promoted}. Oga is proud of you.`, lines: [['New pay', '₦' + after.pay.toLocaleString('en-NG') + ' per shift']], tone: 'gold', btn: 'Let us go' }).catch(() => {});
+    } else if (cur.shifts === 0) timeline(uid, '💼', 'Worked the first shift as ' + cur.title);
     res.json(reply(upd, { earned: pay, promoted, event: L.currentEvent(now).id }));
   } catch (e) { next(e); }
 });

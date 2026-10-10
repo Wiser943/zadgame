@@ -43,6 +43,7 @@ const NET = {
     });
     this.sock.on('players', drawPlayers);
     ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new', 'gmsg', 'group'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
+    this.sock.on('card', () => window.CARD && CARD.fetch());   // result cards: promotions, investment payouts, invite bonuses
     this.sock.on('gem', m => {
       S.cash = m.cash;
       toast(m.prize ? `💎 Gem found! +₦${m.prize.toLocaleString()}` : '💎 Gem found!');
@@ -279,6 +280,7 @@ function nav(w, keep) {
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
+  if (w === 'home' && window.WORKCARD) setTimeout(() => WORKCARD.flush(), 400);
   toggleNeeds(false);
   $('nav').innerHTML = NAV.map(n => `<button class="${n[0]==w?'on':''}" onclick="nav('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
   const home = w == 'home';
@@ -346,12 +348,15 @@ const APPS = [
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
+  ['City', '<i class="fa-solid fa-city"></i>', 'linear-gradient(135deg,#f59e0b,#e8337a)', 1],
+  ['Gazette', '<i class="fa-solid fa-newspaper"></i>', 'linear-gradient(135deg,#0ea5e9,#1e3a8a)'],
+  ["What's New", '<i class="fa-solid fa-clock-rotate-left"></i>', 'linear-gradient(135deg,#f97316,#c2410c)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Ads: "PH.open('ads')" }; 
+const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Ads: "PH.open('ads')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 /* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
 const PHLAY = {
   key: 'allconnect:applayout',
@@ -411,16 +416,30 @@ const APPSEARCH = {
 };
 drawApps();
 try { window.matchMedia('(min-width:768px) and (min-height:520px)').addEventListener('change', () => drawApps()) } catch (e) {}
+/* ?ref=<code> invite links: remembered until the player has finished setup (see HUB.redeemRef) */
+try { const rf = new URLSearchParams(location.search).get('ref'); if (rf && /^[A-Za-z0-9_]{2,40}$/.test(rf)) { localStorage.setItem('ac:ref', rf); history.replaceState(null, '', location.pathname) } } catch (e) {}
+/* city-world loading sequence: a few Lagos lines while the room and map get ready */
+function cityLoader() {
+  const L = ['Waking up Lagos…', 'Starting the generators…', 'Sweeping Third Mainland Bridge…', 'Heating the jollof…', 'Tuning the danfo horns…', 'Opening your front door…'], T = ['Tip: pay bills before Sunday night so the light stays on.', 'Tip: tick "Go automatically" in Jobs and your shifts run themselves.', 'Tip: the city event changes every 12 hours.', 'Tip: new players are protected from big-money risks for 7 days.'];
+  const el = document.createElement('div'); el.id = 'cityload'; el.innerHTML = `<div class="sk">🏙️</div><b>AllConnect</b><p id="clmsg">${L[0]}</p><div class="bar"><i id="clbar"></i></div><small>${T[Math.floor(Math.random() * T.length)]}</small>`;
+  $('app').appendChild(el); let i = 0; const t0 = Date.now();
+  const tm = setInterval(() => { i = Math.min(L.length - 1, i + 1); const m = $('clmsg'), b = $('clbar'); if (m) m.textContent = L[i]; if (b) b.style.width = Math.round((i + 1) / L.length * 100) + '%' }, 420);
+  requestAnimationFrame(() => { const b = $('clbar'); if (b) b.style.width = '12%' });
+  return () => { const wait = Math.max(0, 1500 - (Date.now() - t0)); setTimeout(() => { clearInterval(tm); const b = $('clbar'); if (b) b.style.width = '100%'; el.classList.add('off'); setTimeout(() => el.remove(), 400) }, wait) };
+}
 async function start(n) {
   if (!S.gender) { $('gp').classList.add('need'); setTimeout(() => $('gp').classList.remove('need'), 800); return toast('Pick your character first 👆') }
   stopPreviews();
+  const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
-  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { return toast(e.message) } } $('splash').style.display = 'none';
+  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
   render();
   nav('home');
   if (window.PH) setTimeout(() => PH.openDeepLink && PH.openDeepLink(), 80);
   if (window.JOBS) JOBS.boot();
   if (window.ADS) ADS.loadApps()      /* ad apps load in the background now, so they open instantly */
+  loaded();
+  if (window.HUB) setTimeout(() => HUB.boot(), 1900)   /* setup, recap, parcel and result cards appear after the loading screen */
 }
 $('sd').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
 /* Phone clock = SERVER time (Lagos), not the device clock. Offset is measured against /api/ac/time and re-synced every 5 min. */
