@@ -193,6 +193,7 @@ router.post('/onboard', async (req, res, next) => {
     const u0 = await ensureAC(me), first = !(u0.ac.hub && u0.ac.hub.done);
     const set = { 'ac.hub.hood': hood, 'ac.hub.hobby': hobby, 'ac.hub.done': true };
     if (job && !u0.ac.jobId) set['ac.jobId'] = job;
+    if ((b.gender === 'male' || b.gender === 'female') && !u0.ac.gender) set['ac.gender'] = b.gender;   // chosen once; later changes go through Style
     if (!(u0.ac.hub && u0.ac.hub.lastSeen)) set['ac.hub.lastSeen'] = new Date(now);
     let recovery = null;
     if (!u0.ac.hub.recoveryHash) { recovery = makeRecovery(); const salt = crypto.randomBytes(12).toString('hex'); set['ac.hub.recoverySalt'] = salt; set['ac.hub.recoveryHash'] = scrypt(recovery, salt); }

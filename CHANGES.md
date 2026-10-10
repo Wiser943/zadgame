@@ -1,3 +1,17 @@
+## City districts and maps (items 41-60) + one-time character pick
+
+Twenty new districts on the 3D map (`public/allconnect/map3d.js`): 41 Lagos Island (cathedral, mosque, market stalls, rowhouses), 42 Victoria Island commerce towers, 43 Yaba creators, 44 Ikeja business, 45 Surulere sports, 46 Lekki nightlife, 47 Ajah residential, 48 Agege market, 49 mainland transport, 50 university campus, 51 beach resort, 52 stadium, 53 convention centre, 54 port (cranes, containers, ship), 55 technology park, 56 film village, 57 museum quarter, 58 government quarter, 59 rural outskirts, 60 offshore island (new land mass reached by a jetty from Lekki).
+
+Each district has a tinted ground zone, its own buildings, and a map pin. Tap a pin for a one-line description; your character walks there. At far zoom the district pins show only the emoji so the map stays readable. The pathfinder was checked: every district is reachable on foot.
+
+Character picker (Male / Female):
+- Moved off the login card. It now appears once, on the "Pick a username" step of first-time setup, under the username suggestions. "Move into Lagos" stays disabled until both a username and a character are chosen.
+- Saved with the account (`POST /api/ac/onboard` now accepts `gender`, only when none is saved yet). It never shows again at login.
+- Players who finished setup before this change and never picked get the picker once (`HUB.charSheet`).
+- To change it later: Phone → Settings → Avatar → Style → Model 1 / Model 2.
+
+Login card footer (Official / X / TikTok) sits higher: bottom padding of `.sfoot` raised.
+
 ## Chat: press-and-hold menu, reactions, forward, edit, delete, photos
 
 Press and hold a message (or right-click it) in a private chat or a group chat: React (6 quick emojis + 6 more), Reply, Forward (to up to 5 chats or groups), Copy, Edit (your own, 15 minutes, shows "edited"), Delete (for me, or for everyone within 2 days; group admins can remove anyone's). Double-tap still replies. The new photo button sends a picture with an optional caption in private and group chats; tap a photo to open it full screen.

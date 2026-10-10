@@ -327,7 +327,7 @@ i.spin::after{content:"";width:18px;height:18px;border-radius:50%;border:3px sol
 .glbi{touch-action:pan-y}
 
 /* ---- splash footer ---- */
-.sfoot{position:relative;margin-top:auto;padding:14px 0 calc(14px + var(--sab));display:flex;gap:8px;justify-content:center;align-items:center;flex:none}
+.sfoot{position:relative;margin-top:auto;padding:14px 0 calc(46px + var(--sab));display:flex;gap:8px;justify-content:center;align-items:center;flex:none}
 .sfoot a,.sfoot .official{display:inline-flex;align-items:center;justify-content:center;height:38px;min-width:38px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.12);color:#17203d;font-size:16px;text-decoration:none}
 .sfoot .official{padding:0 14px;gap:6px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:#4a5068}.sfoot .official i{color:#1d9a5b}
 /* ---- HUD mute ---- */
@@ -439,6 +439,7 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 .gpr{display:flex;gap:10px}.gpr button{flex:1;border:2px solid #e3e6ef;background:#f6f8fc;border-radius:18px;padding:6px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);transition:transform .12s,border-color .12s,background .12s}
 .gpr button canvas{width:100%;max-width:110px;height:auto;aspect-ratio:220/280;display:block}
 .gpr button.on{border-color:var(--grn);background:#e9f8f1;box-shadow:0 4px 14px rgba(34,181,115,.25);transform:translateY(-1px)}
+.gpnote{display:block;text-align:center;color:var(--mut);font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin:2px 0 6px}
 .gp.need button{animation:gpn .35s 2}@keyframes gpn{50%{transform:translateX(3px)}0%,100%{transform:none}}
 .emotes{position:absolute;right:10px;bottom:calc(138px + var(--sab));z-index:6;display:none;flex-direction:column;gap:6px}
 .emotes button{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:19px;line-height:1}

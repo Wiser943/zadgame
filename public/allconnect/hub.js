@@ -16,6 +16,7 @@ const HUB = {
     setInterval(() => { if (!document.hidden) this.loadMe(true) }, 120000);
     await CARD.fetch();
     if (!this.me.hub.done) return this.setup(0);
+    if (!S.gender) return this.charSheet();
     await this.afterSetup();
   },
   /* things that pop up once the setup is done, one at a time */
@@ -148,7 +149,8 @@ const HUB = {
     const su = this.su; su.step = step == null ? su.step : step;
     if (!this.C) return;
     if (!su.name) su.name = (NET.user && NET.user.displayName) || '';
-    SHEET.open({ id: 'setup', title: 'Welcome to Lagos', body: () => this.setupHtml(), onClose: () => { if (!this.me.hub.done && !this._skipped) { this._skipped = true; toast('You can finish setup any time from "What can I do now?"'); this.afterSkip() } } });
+    if (su.askChar == null) su.askChar = !S.gender;     /* the character is chosen once, on the username step */
+    SHEET.open({ id: 'setup', title: 'Welcome to Lagos', body: () => this.setupHtml(), after: () => { if (this.su.step === 4 && this.su.askChar) initCharPicker(); else stopPreviews() }, onClose: () => { if (!this.me.hub.done && !this._skipped) { this._skipped = true; toast('You can finish setup any time from "What can I do now?"'); this.afterSkip() } } });
   },
   afterSkip() { if (this.me.parcel.claimable) setTimeout(() => this.parcelCard(), 500) },
   setupHtml() {
@@ -163,9 +165,16 @@ const HUB = {
     if (st === 4) {
       if (!su.names) this.loadNames();
       const names = su.names || [];
-      return `${dots}<h3 class="hq">Pick a username</h3><p class="hsub">Friends find you with this. 3 to 16 letters, numbers or _</p><div class="hnames">${names.map(n => `<button class="${su.username === n ? 'on' : ''}" onclick="HUB.pickName('${n}')">@${n}</button>`).join('') || '<small>Finding names…</small>'}<button class="hre" onclick="HUB.loadNames(true)"><span class="fa-solid fa-rotate"></span></button></div><input class="sinput" id="hun" placeholder="or type your own" value="${this.esc(su.username)}" maxlength="16" autocapitalize="off" autocomplete="off" oninput="HUB.su.username=this.value.trim().replace(/^@/,'').toLowerCase();document.getElementById('hgo').disabled=!HUB.su.username"><div id="herr" class="aerr"></div><button class="rbigbtn" id="hgo" ${su.username ? '' : 'disabled'} onclick="HUB.finishSetup(this)">Move into Lagos</button>${back}`;
+      return `${dots}<h3 class="hq">Pick a username</h3><p class="hsub">Friends find you with this. 3 to 16 letters, numbers or _</p><div class="hnames">${names.map(n => `<button class="${su.username === n ? 'on' : ''}" onclick="HUB.pickName('${n}')">@${n}</button>`).join('') || '<small>Finding names…</small>'}<button class="hre" onclick="HUB.loadNames(true)"><span class="fa-solid fa-rotate"></span></button></div><input class="sinput" id="hun" placeholder="or type your own" value="${this.esc(su.username)}" maxlength="16" autocapitalize="off" autocomplete="off" oninput="HUB.su.username=this.value.trim().replace(/^@/,'').toLowerCase();HUB.syncGo()">${su.askChar ? charPickerHtml() : ''}<div id="herr" class="aerr"></div><button class="rbigbtn" id="hgo" ${this.goOk() ? '' : 'disabled'} onclick="HUB.finishSetup(this)">Move into Lagos</button>${back}`;
     }
     return '';
+  },
+  goOk() { return !!this.su.username && (!this.su.askChar || !!S.gender) },
+  syncGo() { const b = document.getElementById('hgo'); if (b) b.disabled = !this.goOk() },
+  /* people who finished setup before the character picker existed get it once */
+  charSheet() {
+    SHEET.open({ id: 'character', title: 'Choose your character', body: () => charPickerHtml() + '<button class="rbigbtn" onclick="SHEET.close()">Done</button>', after: () => initCharPicker(),
+      onClose: () => { if (!S.gender) setGender('male'); this.afterSetup() } });
   },
   pick(k, v) { this.su[k] = v; SHEET.paint() },
   pickName(n) { this.su.username = n; SHEET.paint() },
@@ -177,8 +186,8 @@ const HUB = {
   async finishSetup(btn) {
     const su = this.su, err = document.getElementById('herr'); if (btn) btn.disabled = true; if (err) err.textContent = '';
     try {
-      const r = await this.api('/onboard', { method: 'POST', body: { hood: su.hood, job: su.job, hobby: su.hobby, username: su.username } });
-      this._skipped = true; await this.loadMe(); try { if (window.JOBS) JOBS.load() } catch (e) {}
+      const r = await this.api('/onboard', { method: 'POST', body: { hood: su.hood, job: su.job, hobby: su.hobby, username: su.username, gender: su.askChar ? S.gender : undefined } });
+      stopPreviews(); this.su.askChar = false; this._skipped = true; await this.loadMe(); try { if (window.JOBS) JOBS.load() } catch (e) {}
       SHEET.open({ id: 'recovery', title: 'You are in!', body: () => this.recoveryHtml(r.recovery, r.username) });
     } catch (e) { if (err) err.textContent = e.message; if (btn) btn.disabled = false }
   },

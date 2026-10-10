@@ -431,7 +431,6 @@ function cityLoader() {
   return () => { const wait = Math.max(0, 1500 - (Date.now() - t0)); setTimeout(() => { clearInterval(tm); const b = $('clbar'); if (b) b.style.width = '100%'; el.classList.add('off'); setTimeout(() => el.remove(), 400) }, wait) };
 }
 async function start(n) {
-  if (!S.gender) { $('gp').classList.add('need'); setTimeout(() => $('gp').classList.remove('need'), 800); return toast('Pick your character first 👆') }
   stopPreviews();
   const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
@@ -716,16 +715,24 @@ function paintPortraits() {
   if (!window.ACAvatar) return; const g = S.gender || 'male';
   [$('avbtn'), document.querySelector('#resume .who .a')].forEach(el => { if (!el) return; el.innerHTML = ''; el.appendChild(ACAvatar.portrait(g, 96)) })
 }
-function initCharacter() {
-  if (!window.ACAvatar) return;
-  stopPreviews();
-  GP_PREV = [ACAvatar.preview($('gpMc'), 'male', { state: 'wave' }), ACAvatar.preview($('gpFc'), 'female', { state: 'wave' })];
-  $('gpM').classList.toggle('on', S.gender === 'male'); $('gpF').classList.toggle('on', S.gender === 'female');
-  paintPortraits()
+function initCharacter() { paintPortraits() }
+/* The Male / Female picker lives in the first-time setup (next to the username suggestions), see HUB.setupHtml.
+   It is asked once; after that it is changed in Phone → Settings → Avatar → Style (Model 1 / Model 2). */
+function charPickerHtml() {
+  const g = S.gender || '';
+  return `<div class="gp" id="gp"><p>Choose your character</p><div class="gpr">
+   <button type="button" id="gpM" class="${g === 'male' ? 'on' : ''}" onclick="pickChar('male')"><canvas id="gpMc" width="220" height="280"></canvas><span>Male</span></button>
+   <button type="button" id="gpF" class="${g === 'female' ? 'on' : ''}" onclick="pickChar('female')"><canvas id="gpFc" width="220" height="280"></canvas><span>Female</span></button></div>
+   <small class="gpnote">You pick this once. Change it any time in Settings → Avatar.</small></div>`
 }
+function initCharPicker() {
+  stopPreviews(); if (!window.ACAvatar || !$('gpMc')) return;
+  GP_PREV = [ACAvatar.preview($('gpMc'), 'male', { state: 'wave' }), ACAvatar.preview($('gpFc'), 'female', { state: 'wave' })]
+}
+function pickChar(g) { setGender(g); if (window.HUB && HUB.syncGo) HUB.syncGo() }
 function setGender(g) {
   S.gender = g === 'female' ? 'female' : 'male';
-  $('gpM').classList.toggle('on', S.gender === 'male'); $('gpF').classList.toggle('on', S.gender === 'female');
+  const m = $('gpM'), f = $('gpF'); if (m) m.classList.toggle('on', S.gender === 'male'); if (f) f.classList.toggle('on', S.gender === 'female');
   paintPortraits(); NET.save();
   if (window.ROOM3D) ROOM3D.setGender(S.gender);
   if (window.STYLE && STYLE.me) setTimeout(() => STYLE.reload(), 900)

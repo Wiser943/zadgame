@@ -29,6 +29,7 @@ const SHEET = {
   isOpen(id) { const m = document.getElementById('lgm'); return !!m && (!id || m.dataset.sheet === id) },
   close(quiet) {
     const m = document.getElementById('lgm'), o = this.o; if (m) m.remove(); this.o = null;
+    if (typeof stopPreviews === 'function') stopPreviews();
     if (!quiet && o && o.onClose) try { o.onClose() } catch (e) {}
   },
   setTab(t) { this.tab = t; if (this.o && this.o.onTab) this.o.onTab(t); this.paint(); const b = document.getElementById('lgbody'); if (b) b.scrollTop = 0 },
@@ -44,6 +45,7 @@ const SHEET = {
     if (h && typeof h.then === 'function') { if (!b.dataset.t || b.dataset.t !== String(tab)) b.innerHTML = '<p class="empty">Loading…</p>'; try { h = await h } catch (e) { h = `<p class="empty">${UI.esc(e.message || 'Something went wrong')}</p>` } }
     if (this.o !== o || this.tab !== tab || !document.getElementById('lgbody')) return;
     b.innerHTML = h; b.dataset.t = String(tab); b.scrollTop = y;
+    if (o.after) try { o.after(tab) } catch (e) {}
   }
 };
 window.SHEET = SHEET;
