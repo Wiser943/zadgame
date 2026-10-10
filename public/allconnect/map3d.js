@@ -286,14 +286,16 @@
   function spawnPoint(h) { for (let k = 0; k < 60; k++) { const a = (h + k * 977) % 9973, x = 60 + (a * 7) % 880, y = 60 + (a * 13) % 880; if (walkable(x, y)) return [x, y]; } return [470, 300]; }
   function ensureMe() {
     const gender = gx();
-    if (!M.me || M.me.g !== gender) { const old = M.me; M.me = new Avatar(gender); M.me.scale = SC; const n = nearestFree(...cellOf(470, 290)) || [23, 14]; M.me.x = old ? old.x : (n[0] + .5) * CELL; M.me.y = old ? old.y : (n[1] + .5) * CELL; M.me.h = old ? old.h : Math.PI / 2; }
+    if (!M.me || M.me.g !== gender) { const old = M.me; M.me = new Avatar(gender, M.look && M.look.g === gender ? { look: M.look } : {}); M.me.setExt(M.ext || {}); M.me.scale = SC; const n = nearestFree(...cellOf(470, 290)) || [23, 14]; M.me.x = old ? old.x : (n[0] + .5) * CELL; M.me.y = old ? old.y : (n[1] + .5) * CELL; M.me.h = old ? old.h : Math.PI / 2; }
   }
   function setPlayers(list) {
     const keep = new Set(), myName = getNET() && getNET().user && getNET().user.displayName;
     (list || []).filter(p => p.name !== myName).slice(0, 30).forEach(p => {
       keep.add(p.name); let o = M.others.get(p.name);
-      if (!o) { const h = hashStr(p.name), sp = spawnPoint(h), av = new Avatar(p.g === 'female' || p.g === 'male' ? p.g : (h % 2 ? 'female' : 'male'), { top: ['#d9b24a', '#2f9e63', '#d6455a', '#3a7bd5', '#8e5bd1', '#f08a3c'][h % 6] });
-        av.x = sp[0]; av.y = sp[1]; av.h = (h % 628) / 100; av.dance = h % 4; o = { av, name: p.name, next: 2 + (h % 7), h }; M.others.set(p.name, o); }
+      const ls = p.l ? JSON.stringify(p.l) : '';
+      if (o && o.ls !== ls) { o.ls = ls; o.av.setLook(p.l || ACAvatar.defaultRender(o.av.g, { top: o.top })); }       // someone changed their look (or their privacy)
+      if (!o) { const h = hashStr(p.name), sp = spawnPoint(h), top = ['#d9b24a', '#2f9e63', '#d6455a', '#3a7bd5', '#8e5bd1', '#f08a3c'][h % 6], av = new Avatar(p.l && p.l.g ? p.l.g : p.g === 'female' || p.g === 'male' ? p.g : (h % 2 ? 'female' : 'male'), p.l ? { look: p.l } : { top });
+        av.x = sp[0]; av.y = sp[1]; av.h = (h % 628) / 100; av.dance = h % 4; o = { av, name: p.name, next: 2 + (h % 7), h, ls, top }; M.others.set(p.name, o); }
     });
     for (const k of [...M.others.keys()]) if (!keep.has(k)) M.others.delete(k);
   }
@@ -472,6 +474,9 @@
     resetNorth() { cam.yaw = 0; cam.update(); },
     recenter() { M.follow = true; M.tD = Math.min(M.tD, 240); },
     setAds(b) { ads.plots = new Map((b.plots || []).map(p => [p.slot, p])); ads.billboards = b.billboards || []; ads.n = (b.config && b.config.sea && b.config.sea.plots) || 30; },
+    /* the player's own look and personal styles from the Style app */
+    setLook(r) { M.look = r; if (M.me && r) M.me.setLook(r); },
+    setExt(e) { M.ext = e || {}; if (M.me) M.me.setExt(M.ext); },
     setPlayers, setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
     get me() { return M.me; }, get state() { return M }
   };

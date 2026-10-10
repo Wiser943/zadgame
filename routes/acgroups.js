@@ -28,7 +28,10 @@ const hits = new Map();
 const limited = (id) => { const n = Date.now(), a = (hits.get(id) || []).filter((t) => n - t < 60000); if (a.length >= 30) { hits.set(id, a); return true; } a.push(n); hits.set(id, a); return false; };
 const isAdmin = (g, id) => g.owner === id || g.admins.includes(id);
 const roleOf = (g, id) => (g.owner === id ? 'owner' : g.admins.includes(id) ? 'admin' : 'member');
-const mv = (m) => ({ id: String(m._id), group: m.group, from: m.from, text: m.deleted ? '' : m.text, kind: m.kind, deleted: !!m.deleted, at: m.at });
+const CH = require('../utils/acchat');
+const mv = (m) => ({ id: String(m._id), group: m.group, from: m.from, text: m.deleted ? '' : m.text, kind: m.kind, deleted: !!m.deleted, at: m.at,
+  image: CH.imageView(m), reply: !m.deleted && m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
+  reactions: CH.reactionsView(m), edited: !!m.edited, fwd: !!m.fwd });
 const mapGet = (m, k) => (m && (m.get ? m.get(k) : m[k])) || null;
 
 async function myGroup(req, res) {
@@ -42,8 +45,8 @@ async function unreadFor(g, id) {
   const since = mapGet(g.reads, id) || sinceFor(g, id);
   return ACGroupMsg.countDocuments({ group: String(g._id), kind: 'text', from: { $ne: id }, deleted: false, at: { $gt: since } });
 }
-async function say(req, g, text, kind = 'system', from = '') {
-  const m = await ACGroupMsg.create({ group: String(g._id), from, text, kind });
+async function say(req, g, text, kind = 'system', from = '', extra = {}) {
+  const m = await ACGroupMsg.create({ group: String(g._id), from, text, kind, ...extra });
   g.lastAt = m.at; await g.save();
   g.members.forEach((id) => emitUser(io(req), id, 'gmsg', mv(m)));
   return m;
@@ -74,7 +77,7 @@ router.get('/', async (req, res, next) => {
     const me = uid(req), rows = await ACGroup.find({ members: me }).sort({ lastAt: -1 }).limit(MAX_GROUPS);
     const out = [];
     for (const g of rows) {
-      const last = await ACGroupMsg.findOne({ group: String(g._id), at: { $gte: sinceFor(g, me) } }).sort({ at: -1 }).lean();
+      const last = await ACGroupMsg.findOne({ group: String(g._id), at: { $gte: sinceFor(g, me) }, hidden: { $ne: me } }).sort({ at: -1 }).lean();
       out.push({ id: String(g._id), name: g.name, members: g.members.length, role: roleOf(g, me), onlyAdmins: g.onlyAdmins, unread: await unreadFor(g, me), lastAt: g.lastAt, last: last ? mv(last) : null });
     }
     res.json({ groups: out });
@@ -104,7 +107,7 @@ router.get('/:id', async (req, res, next) => {
     const g = await myGroup(req, res); if (!g) return;
     const me = uid(req);
     const [users, rows] = await Promise.all([User.find({ _id: { $in: g.members } }).select('displayName avatar acUsername').lean(),
-      ACGroupMsg.find({ group: String(g._id), at: { $gte: sinceFor(g, me) } }).sort({ at: -1 }).limit(80).lean()]);
+      ACGroupMsg.find({ group: String(g._id), at: { $gte: sinceFor(g, me) }, hidden: { $ne: me } }).sort({ at: -1 }).limit(80).lean()]);
     const by = new Map(users.map((u) => [String(u._id), u]));
     g.reads.set(me, new Date()); await g.save();
     res.json({ group: { id: String(g._id), name: g.name, onlyAdmins: g.onlyAdmins, owner: g.owner, role: roleOf(g, me), max: MAX_MEMBERS },
@@ -119,23 +122,75 @@ router.post('/:id/messages', async (req, res, next) => {
     if (limited(me)) return bad(res, 429, 'Slow down a little.');
     const g = await myGroup(req, res); if (!g) return;
     if (g.onlyAdmins && !isAdmin(g, me)) return bad(res, 403, 'Only admins can send messages in this group.');
-    const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 500));
-    if (!text) return bad(res, 400, 'Type a message first.');
-    const m = await say(req, g, text, 'text', me);
+    const b = req.body || {};
+    let text = profanity.clean(String(b.text || '').trim().slice(0, 500)), image = null, fwd = false;
+    if (b.forward) {
+      const src = await CH.resolveForward(b.forward, me);
+      if (!src) return bad(res, 404, 'That message is no longer available to forward.');
+      text = profanity.clean(src.text.slice(0, 500)); image = src.image; fwd = true;
+    } else if (b.image) {
+      image = CH.cleanImage(b.image);
+      if (!image) return bad(res, 400, 'That photo could not be sent.');
+    }
+    if (!text && !image) return bad(res, 400, 'Type a message first.');
+    let reply;
+    const rid = String(b.replyTo || '');
+    if (!fwd && CH.isId(rid)) {
+      const o = await ACGroupMsg.findOne({ _id: rid, group: String(g._id), kind: 'text', deleted: { $ne: true } }).lean();
+      if (o) reply = { mid: String(o._id), from: o.from, text: CH.quoteText(o) };
+    }
+    const m = await say(req, g, text, 'text', me, { ...(image ? { image } : {}), ...(reply ? { reply } : {}), ...(fwd ? { fwd: true } : {}) });
     g.reads.set(me, new Date()); await g.save();
     res.json({ message: mv(m) });
   } catch (e) { next(e); }
 });
 
+const sendUpd = (req, g, m) => { const v = mv(m); g.members.forEach((id) => emitUser(io(req), id, 'gmsgupd', v)); return v; };
+async function groupMsg(req, res, g) {
+  const m = CH.isId(req.params.mid) ? await ACGroupMsg.findOne({ _id: req.params.mid, group: String(g._id), kind: 'text' }) : null;
+  if (!m || (m.hidden || []).includes(uid(req))) { bad(res, 404, 'Message not found.'); return null; }
+  return m;
+}
+router.post('/:id/messages/:mid/react', async (req, res, next) => {
+  try {
+    const me = uid(req);
+    if (limited(me)) return bad(res, 429, 'Slow down a little.');
+    const g = await myGroup(req, res); if (!g) return;
+    const m = await groupMsg(req, res, g); if (!m) return;
+    if (m.deleted) return bad(res, 400, 'This message was deleted.');
+    const e = String((req.body && req.body.emoji) || '');
+    if (e && !CH.REACTIONS.includes(e)) return bad(res, 400, 'That reaction is not available.');
+    m.reactions = CH.toggleReaction(m.reactions, me, e); await m.save();
+    res.json({ message: sendUpd(req, g, m) });
+  } catch (e) { next(e); }
+});
+router.put('/:id/messages/:mid', async (req, res, next) => {
+  try {
+    const me = uid(req);
+    if (limited(me)) return bad(res, 429, 'Slow down a little.');
+    const g = await myGroup(req, res); if (!g) return;
+    const m = await groupMsg(req, res, g); if (!m) return;
+    if (m.from !== me) return bad(res, 403, 'You can only edit your own messages.');
+    if (!CH.canEdit(m, me)) return bad(res, 403, 'You can only edit a message within 15 minutes of sending it.');
+    const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 500));
+    if (!text && !(m.image && m.image.url)) return bad(res, 400, 'A message cannot be empty.');
+    if (text !== m.text) { m.text = text; m.edited = true; await m.save(); }
+    res.json({ message: sendUpd(req, g, m) });
+  } catch (e) { next(e); }
+});
 router.delete('/:id/messages/:mid', async (req, res, next) => {
   try {
     const g = await myGroup(req, res); if (!g) return;
     const me = uid(req), m = isId(req.params.mid) ? await ACGroupMsg.findOne({ _id: req.params.mid, group: String(g._id), kind: 'text' }) : null;
     if (!m) return bad(res, 404, 'Message not found.');
+    if (String(req.query.scope) === 'me') {   // delete for me: only hides it from this player
+      await ACGroupMsg.updateOne({ _id: m._id }, { $addToSet: { hidden: me } });
+      return res.json({ ok: true, scope: 'me' });
+    }
     if (m.from !== me && !isAdmin(g, me)) return bad(res, 403, 'Only the sender or an admin can delete this.');
-    m.deleted = true; m.text = ''; await m.save();
-    ping(req, g, null, 'msgs');
-    res.json({ ok: true });
+    if (m.from === me && !isAdmin(g, me) && !CH.canDeleteAll(m, me)) return bad(res, 403, 'You can delete for everyone only within 2 days. You can still delete it for yourself.');
+    m.deleted = true; m.text = ''; m.reactions = []; m.set('image', undefined); await m.save();
+    res.json({ ok: true, scope: 'all', message: sendUpd(req, g, m) });
   } catch (e) { next(e); }
 });
 

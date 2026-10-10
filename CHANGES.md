@@ -1,3 +1,43 @@
+## Chat: press-and-hold menu, reactions, forward, edit, delete, photos
+
+Press and hold a message (or right-click it) in a private chat or a group chat: React (6 quick emojis + 6 more), Reply, Forward (to up to 5 chats or groups), Copy, Edit (your own, 15 minutes, shows "edited"), Delete (for me, or for everyone within 2 days; group admins can remove anyone's). Double-tap still replies. The new photo button sends a picture with an optional caption in private and group chats; tap a photo to open it full screen.
+- Server: `utils/acchat.js` (rules), `routes/acsocial.js` and `routes/acgroups.js` (react / edit / delete / forward / photo fields), `POST /api/ac/photos/chat` (same storage as the gallery, not added to it). Live updates arrive as `dmupd` / `gmsgupd`.
+- Client: `public/allconnect/chatx.js`. Tests: `tests/acchat.test.js`.
+
+## Avatar & identity: Style app (items 141-160)
+
+New phone app **Style** (👗). Everything is priced and validated on the server (`utils/acstyle.js`, `routes/acstyle.js`, model `ACStyle`); the browser only sends item ids and colours.
+
+| # | Feature | Where |
+|---|---------|-------|
+| 141 | 10 free body types + 10 skin tones (separate from the base model and from pronouns) | Style > Body |
+| 142 | 22 hairstyles (cuts, afros, braids, locs, twists, wigs...) + 12 hair colours + 7 beard styles | Style > Salon |
+| 143 | 12 traditional outfits (agbada, buba & sokoto, iro & buba, isiagu, babariga, etibo, aso-oke, George...) each with where it comes from | Style > Culture |
+| 144 | 6 work uniforms, free while you hold that job, optional "wear it 8-5 on weekdays" | Style > Work |
+| 145 | Seasonal fashion for Harmattan, Rainy season, Detty December, Independence and Sallah (moon-based dates). Buy in season, wear forever | Style > Seasonal |
+| 146 | Tailor-made clothing: base garment, fabric, fit, 2 colours, embroidered name, ready time, rush order, 20% off for fashion workers | Style > Tailor |
+| 147 | Dye any dyeable garment (palette or custom colour), reset is free | the 🎨 button |
+| 148 | 8 outfit presets (clothes, shoes, accessories, jewellery, makeup) | Style > Outfits |
+| 149 | Durability: clothes and shoes wear out with worn time (server-side, capped per day), look ragged, can't be worn until repaired | Style > Outfits |
+| 150 | 14 collectable sneakers with rarities, progress bar, milestone rewards and titles | Style > Shoes |
+| 151 | 16 pieces of jewellery (necklaces, earrings, wrist, rings, waist beads, anklets), collection rewards | Style > Jewels |
+| 152 | 12 wearable cultural items (gele, fila, red cap, Hausa cap, coral beads, adire/aso-oke scarves, abebe fan, staff...) | Style > Culture |
+| 153 | Makeup: lips, eyes, liner, cheeks, glow, face gems, each with shades and strength | Style > Makeup |
+| 154 | Barber & salon visits: style, colour, beard, touch-up, wash, facial. Hair grows out, "fresh" glow after a visit, every 5th visit 10% off | Style > Salon |
+| 155 | 11 photo poses + backdrops; "Take photo" saves into the Camera gallery | Style > Photo |
+| 156 | 10 moods with faces and body language; "mood follows my needs" | Style > Motion |
+| 157 | 8 walk styles | Style > Motion |
+| 158 | 9 idle animations | Style > Motion |
+| 159 | Pronouns (presets + custom), collector title, accessibility: reduce avatar motion, text description, high-contrast outlines, captions, no sparkles, colour names | Style > Identity (also linked from Settings) |
+| 160 | Privacy: who sees look / pronouns / mood / collections / photo poses (everyone, friends, only me), hide from the map, hide model, "what strangers/friends can see" summary, erase identity info | Style > Identity |
+
+How it fits together
+- `GET /api/ac/style/state` returns the catalogue and the player's resolved look. `PUT /look`, `/motion`, `/identity`, `POST /buy /dye /repair /salon /tailor/order /tailor/collect /presets /wear`, `GET /of/:id` (what *you* may see of someone else).
+- `public/allconnect/avatar.js` draws any look on the map (2D) and `room3d.js` in the room (3D). Both take the same "render look" object produced by `resolve()` on the server. `styleapp.js` keeps map, room, HUD portrait and live roster in sync.
+- The live roster (`sockets/allconnect.js`) only carries a player's look when their privacy allows strangers to see it.
+- "New life" now also wipes the wardrobe (bought clothes go with the old balance). Body, skin, hair, pronouns, privacy and accessibility settings stay.
+- Tests: `tests/acstyle*.test.js` (rules, routes with an in-memory database, client/server consistency, 3D smoke test).
+
 ## One balance, match stakes, Invest app, public /advertise
 
 - **One balance.** The GameHub balance is now `User.ac.cash` (₦), the same number as AllConnect. The old `coins` field is gone; API responses still call it `coins` so older screens keep working. All wallet changes go through `utils/economy.js` and are pushed live to the phone and GameHub (`balance` / `cash` events). Shop prices, daily reward, challenge rewards and tournament prizes are multiplied by `COIN` (1000) in `config/economy.js`. Old coin totals are not converted.

@@ -33,6 +33,7 @@ const acLagosRoutes = require('./routes/aclagos');
 const acCreatorRoutes = require('./routes/accreator');
 const acMusicRoutes = require('./routes/acmusic');
 const acHubRoutes = require('./routes/achub');
+const acStyleRoutes = require('./routes/acstyle');
 const acPushRoutes = require('./routes/acpush');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
@@ -94,6 +95,7 @@ async function main() {
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
   app.use('/api/ac/music', acMusicRoutes);
   app.use('/api/ac/public', acHubRoutes.pub);   // no login: public status + account recovery
+  app.use('/api/ac/style', acStyleRoutes);
   app.use('/api/ac/hub', acHubRoutes);          // onboarding, missions, news, votes, result cards
   app.use('/api/ac/push', acPushRoutes);
   app.get('/health', (req,res) => res.json({ ok: true, service: 'allconnect', time: new Date().toISOString() }));

@@ -17,6 +17,7 @@ const L = require('../utils/aclagos');
 const { FOOD, normalizeUsername, validUsername } = require('../utils/allconnect');
 
 const router = express.Router();
+const CH = require('../utils/acchat');
 router.use(ensureAuth);
 const uid = (req) => String(req.user.id);
 const isId = (s) => /^[a-f\d]{24}$/i.test(String(s));
@@ -24,7 +25,9 @@ const rxEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const io = (req) => req.app.get('io');
 const label = (u) => (u.acUsername ? '@' + u.acUsername : u.displayName);
 const pub = (u) => ({ id: String(u._id), username: u.acUsername || '', displayName: u.displayName, avatar: u.avatar || '', online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id) });
-const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.text, kind: m.kind, amount: m.amount || 0, read: !!m.read, at: m.at, reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined });
+const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, amount: m.amount || 0, read: !!m.read, at: m.at,
+  reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
+  image: CH.imageView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
 const between = (a, b) => ({ $or: [{ requester: a, recipient: b }, { requester: b, recipient: a }] });
 const areFriends = (a, b) => Friendship.exists({ ...between(a, b), status: 'accepted' });
 const isBlocked = (a, b) => Friendship.exists({ ...between(a, b), status: 'blocked' });
@@ -51,10 +54,10 @@ async function peerOr(req, res) {
   if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
   return { me, other, target, friend: !!(await areFriends(me, other)) };
 }
-async function addMessage(req, { to, text, kind = 'text', amount = 0, reply }) {
-  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, ...(reply ? { reply } : {}) });
+async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, fwd }) {
+  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(fwd ? { fwd: true } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
-  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: String(text).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
+  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
 }
 
@@ -171,7 +174,7 @@ router.get('/chats', async (req, res, next) => {
   try {
     const me = uid(req);
     const agg = await ACMessage.aggregate([
-      { $match: { $or: [{ from: me }, { to: me }] } }, { $sort: { at: -1 } },
+      { $match: { $or: [{ from: me }, { to: me }], hidden: { $ne: me } } }, { $sort: { at: -1 } },
       { $group: { _id: { $cond: [{ $eq: ['$from', me] }, '$to', '$from'] }, last: { $first: '$$ROOT' }, unread: { $sum: { $cond: [{ $and: [{ $eq: ['$to', me] }, { $eq: ['$read', false] }] }, 1, 0] } } } },
       { $sort: { 'last.at': -1 } }, { $limit: 50 }]);
     const bl = await Friendship.find({ $or: [{ requester: me }, { recipient: me }], status: 'blocked' }).lean();
@@ -185,7 +188,7 @@ router.get('/chats', async (req, res, next) => {
 router.get('/messages/:id', async (req, res, next) => {
   try {
     const f = await peerOr(req, res); if (!f) return;
-    const rows = await ACMessage.find({ $or: [{ from: f.me, to: f.other }, { from: f.other, to: f.me }] }).sort({ at: -1 }).limit(60).lean();
+    const rows = await ACMessage.find({ $or: [{ from: f.me, to: f.other }, { from: f.other, to: f.me }], hidden: { $ne: f.me } }).sort({ at: -1 }).limit(60).lean();
     await ACMessage.updateMany({ from: f.other, to: f.me, read: false }, { $set: { read: true } });
     emitUser(io(req), f.other, 'seen', { by: f.me });
     res.json({ messages: rows.reverse().map(mv), peer: pub(f.target), isFriend: f.friend });
@@ -195,17 +198,75 @@ router.post('/messages/:id', async (req, res, next) => {
   try {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
     const f = await peerOr(req, res); if (!f) return;
-    const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 300));
-    if (!text) return bad(res, 400, 'Type a message first.');
+    const b = req.body || {};
+    let text = profanity.clean(String(b.text || '').trim().slice(0, 300)), image = null, fwd = false;
+    if (b.forward) {   // forward: the server copies the original so it cannot be faked
+      const src = await CH.resolveForward(b.forward, f.me);
+      if (!src) return bad(res, 404, 'That message is no longer available to forward.');
+      text = profanity.clean(src.text.slice(0, 300)); image = src.image; fwd = true;
+    } else if (b.image) {
+      image = CH.cleanImage(b.image);
+      if (!image) return bad(res, 400, 'That photo could not be sent.');
+    }
+    if (!text && !image) return bad(res, 400, 'Type a message first.');
     // Optional WhatsApp-style reply: the client sends the id of the message it is replying to; we look it up so the quote cannot be faked.
     let reply;
-    const rid = String((req.body && req.body.replyTo) || '');
-    if (isId(rid)) {
+    const rid = String(b.replyTo || '');
+    if (!fwd && CH.isId(rid)) {
       const o = await ACMessage.findById(rid).lean();
-      const same = o && o.kind === 'text' && ((o.from === f.me && o.to === f.other) || (o.from === f.other && o.to === f.me));
-      if (same) reply = { mid: String(o._id), from: o.from, text: String(o.text || '').slice(0, 120) };
+      const same = o && o.kind === 'text' && !o.deleted && ((o.from === f.me && o.to === f.other) || (o.from === f.other && o.to === f.me));
+      if (same) reply = { mid: String(o._id), from: o.from, text: CH.quoteText(o) };
     }
-    res.json({ message: await addMessage(req, { to: f.other, text, reply }) });
+    res.json({ message: await addMessage(req, { to: f.other, text, reply, image, fwd }) });
+  } catch (e) { next(e); }
+});
+
+/* ---------- react / edit / delete one message ---------- */
+async function myMsg(req, res, { open = true } = {}) {
+  const me = uid(req), mid = String(req.params.mid);
+  if (!CH.isId(mid)) { bad(res, 400, 'Invalid message.'); return null; }
+  const m = await ACMessage.findById(mid);
+  if (!m || m.kind !== 'text' || (m.from !== me && m.to !== me) || (m.hidden || []).includes(me)) { bad(res, 404, 'Message not found.'); return null; }
+  const other = m.from === me ? m.to : m.from;
+  if (open && await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
+  return { m, me, other };
+}
+const pushUpd = (req, c) => { const v = mv(c.m); emitUser(io(req), c.other, 'dmupd', v); emitUser(io(req), c.me, 'dmupd', v); return v; };
+router.post('/message/:mid/react', async (req, res, next) => {
+  try {
+    if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
+    const c = await myMsg(req, res); if (!c) return;
+    if (c.m.deleted) return bad(res, 400, 'This message was deleted.');
+    const e = String((req.body && req.body.emoji) || '');
+    if (e && !CH.REACTIONS.includes(e)) return bad(res, 400, 'That reaction is not available.');
+    c.m.reactions = CH.toggleReaction(c.m.reactions, c.me, e); await c.m.save();
+    res.json({ message: pushUpd(req, c) });
+  } catch (e) { next(e); }
+});
+router.put('/message/:mid', async (req, res, next) => {
+  try {
+    if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
+    const c = await myMsg(req, res); if (!c) return;
+    if (c.m.from !== c.me) return bad(res, 403, 'You can only edit your own messages.');
+    if (!CH.canEdit(c.m, c.me)) return bad(res, 403, 'You can only edit a message within 15 minutes of sending it.');
+    const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 300));
+    if (!text && !(c.m.image && c.m.image.url)) return bad(res, 400, 'A message cannot be empty.');
+    if (text !== c.m.text) { c.m.text = text; c.m.edited = true; await c.m.save(); }
+    res.json({ message: pushUpd(req, c) });
+  } catch (e) { next(e); }
+});
+router.delete('/message/:mid', async (req, res, next) => {
+  try {
+    const c = await myMsg(req, res, { open: false }); if (!c) return;
+    if (String(req.query.scope) === 'me') {   // delete for me: only hides it from this player
+      await ACMessage.updateOne({ _id: c.m._id }, { $addToSet: { hidden: c.me } });
+      return res.json({ ok: true, scope: 'me' });
+    }
+    if (c.m.from !== c.me) return bad(res, 403, 'You can only delete your own messages for everyone.');
+    if (c.m.deleted) return res.json({ ok: true, message: mv(c.m) });
+    if (!CH.canDeleteAll(c.m, c.me)) return bad(res, 403, 'You can delete for everyone only within 2 days. You can still delete it for yourself.');
+    c.m.deleted = true; c.m.text = ''; c.m.reactions = []; c.m.set('image', undefined); await c.m.save();
+    res.json({ ok: true, scope: 'all', message: pushUpd(req, c) });
   } catch (e) { next(e); }
 });
 router.post('/invite/:id', async (req, res, next) => {

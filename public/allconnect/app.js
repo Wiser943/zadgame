@@ -42,7 +42,8 @@ const NET = {
       gemText()
     });
     this.sock.on('players', drawPlayers);
-    ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new', 'gmsg', 'group'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
+    ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new', 'gmsg', 'group', 'dmupd', 'gmsgupd'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
+    this.sock.on('style:changed', () => { if (window.STYLE && STYLE.me) STYLE.reload() });
     this.sock.on('card', () => window.CARD && CARD.fetch());   // result cards: promotions, investment payouts, invite bonuses
     this.sock.on('gem', m => {
       S.cash = m.cash;
@@ -72,7 +73,8 @@ function applyAC(ac) {
   S.wish = ac.wish || [];
   setPaint(S.paint);
   if (window.ROOM3D) { ROOM3D.setGender(S.gender || 'male'); ROOM3D.sync() }
-  if (window.BUY && BUY.active) BUY.draw()
+  if (window.BUY && BUY.active) BUY.draw();
+  if (window.STYLE) STYLE.boot()
 }
 let AM = 'login';
 
@@ -346,6 +348,7 @@ const APPS = [
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
+  ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['City', '<i class="fa-solid fa-city"></i>', 'linear-gradient(135deg,#f59e0b,#e8337a)', 1],
@@ -356,7 +359,7 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Ads: "PH.open('ads')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 /* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
 const PHLAY = {
   key: 'allconnect:applayout',
@@ -724,7 +727,8 @@ function setGender(g) {
   S.gender = g === 'female' ? 'female' : 'male';
   $('gpM').classList.toggle('on', S.gender === 'male'); $('gpF').classList.toggle('on', S.gender === 'female');
   paintPortraits(); NET.save();
-  if (window.ROOM3D) ROOM3D.setGender(S.gender)
+  if (window.ROOM3D) ROOM3D.setGender(S.gender);
+  if (window.STYLE && STYLE.me) setTimeout(() => STYLE.reload(), 900)
 }
 /* kind: 'dance' (tap again for the next move) | 'wave' | null (stop). Both the room and the map character do it. */
 function doEmote(kind) {

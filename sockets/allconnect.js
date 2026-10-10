@@ -3,6 +3,7 @@
 const User = require('../models/User');
 const ACStat = require('../models/ACStat');
 const { ensureAC } = require('../routes/allconnect');
+const { rosterEntry } = require('../routes/acstyle');
 const acPresence = require('../utils/acpresence');
 const { notify } = require('../utils/acnotify');
 
@@ -16,7 +17,7 @@ module.exports = function initAllConnect(io) {
     if (f === 'visits') ACStat.updateOne({ _id: 'day:' + new Date(Date.now() + 3600000).toISOString().slice(0, 10) }, { $inc: { visits: 1 } }, { upsert: true }).catch(() => {});   // visits today (Lagos day) for the public stats page
   };
   const snapshot = () => ({ online: new Set([...online.values()].map((v) => v.id)).size, visits: stats.visits, gems: stats.gems });
-  const roster = () => [...new Map([...online.values()].map((v) => [v.id, { name: v.name, g: v.g }])).values()].slice(0, 40);
+  const roster = () => [...new Map([...online.values()].map((v) => [v.id, { name: v.name, g: v.g, l: v.l || undefined }])).values()].slice(0, 40);
   const push = () => { nsp.emit('stats', snapshot()); nsp.emit('players', roster()); };
 
   nsp.use((socket, next) => {
@@ -28,7 +29,10 @@ module.exports = function initAllConnect(io) {
 
   nsp.on('connection', (socket) => {
     const u = socket.request.user;
-    online.set(socket.id, { id: u.id, name: u.displayName, g: (u.ac && (u.ac.gender === 'male' || u.ac.gender === 'female')) ? u.ac.gender : '' });
+    online.set(socket.id, { id: u.id, name: u.displayName, g: (u.ac && (u.ac.gender === 'male' || u.ac.gender === 'female')) ? u.ac.gender : '', l: null });
+    // What strangers see on the map follows this player's privacy choices (Style app > Identity). Loaded after connecting so it never delays login.
+    const loadLook = () => rosterEntry(u.id).then((e) => { const o = online.get(socket.id); if (o && e) { o.g = e.g; o.l = e.l; push(); } }).catch(() => {});
+    loadLook(); socket.on('style', loadLook);
     socket.join('u:' + u.id); acPresence.connect(u.id);   // private room for DMs, friend events, notifications
     stats.visits++; bump('visits'); push();
     let last = 0;

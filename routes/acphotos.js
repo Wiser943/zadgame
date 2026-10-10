@@ -96,6 +96,33 @@ router.post('/', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Photo for a chat message. Same storage as the gallery (imgbb, else our own backup) but it is NOT added to the player's gallery.
+router.post('/chat', async (req, res, next) => {
+  try {
+    const uid = String(req.user.id);
+    if (limited(uid)) return res.status(429).json({ message: 'Slow down a little. Try again in a minute.' });
+    const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=\s]+)$/.exec(String((req.body && req.body.image) || ''));
+    if (!m) return res.status(400).json({ message: 'That is not a valid photo.' });
+    const b64 = m[2].replace(/\s/g, ''), bytes = Math.floor(b64.length * 0.75);
+    if (bytes > MAX_BYTES) return res.status(413).json({ message: 'Photo is too large.' });
+    const w = Number(req.body.w) || undefined, h = Number(req.body.h) || undefined;
+    const r = await imgbbUpload(b64, `chat-${uid.slice(-6)}-${Date.now()}`);
+    let image;
+    if (r.ok) {
+      const d = r.data;
+      image = { url: d.display_url || d.url, thumb: (d.medium && d.medium.url) || (d.thumb && d.thumb.url) || d.display_url || d.url, w: w || d.width, h: h || d.height };
+    } else {
+      if (bytes > MAX_DB_BYTES) return res.status(502).json({ message: 'Could not send that photo right now. Try a smaller one, or try again.' });
+      if (await ACPhotoBlob.countDocuments({ user: uid }) >= MAX_DB_PHOTOS) return res.status(502).json({ message: 'Photo storage is busy. Please try again later.' });
+      const id = new mongoose.Types.ObjectId();
+      await ACPhotoBlob.create({ _id: id, user: uid, mime: 'image/' + (m[1] === 'jpeg' ? 'jpeg' : m[1]), data: Buffer.from(b64, 'base64') });
+      const url = '/api/ac/photos/raw/' + id;
+      image = { url, thumb: url, w, h };
+    }
+    res.json({ image });
+  } catch (e) { next(e); }
+});
+
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!/^[a-f\d]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid photo.' });

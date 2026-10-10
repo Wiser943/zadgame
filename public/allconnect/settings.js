@@ -36,6 +36,7 @@ Object.assign(PH,{
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
         <label class="trow"><span class="ti"><i class="fa-solid fa-globe"></i></span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
+      <div class="lab2">AVATAR</div><div class="sgrp">${this.lrow('Style, pronouns & avatar privacy','fa-solid fa-user-astronaut',"PH.open('style');STYLE.go('id')")}</div>
       <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','fa-solid fa-bag-shopping',"openHub(b=>b.shop())")}</div>
       <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','fa-solid fa-graduation-cap',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','fa-solid fa-share-nodes',"PH.sub('socials')"):''}${this.lrow('About us','fa-solid fa-circle-info',"PH.sub('about')")}${this.lrow('Legal','fa-solid fa-scale-balanced',"PH.sub('legal')")}</div>
       <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect 1.1 · GameHub 1.0.10141</p></div>`);

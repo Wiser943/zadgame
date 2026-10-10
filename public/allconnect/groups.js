@@ -8,7 +8,7 @@ Object.assign(PH, {
   isAdm() { return !!this.g && this.g.group.role !== 'member' },
   /* ----- list shown in Messages -> Chats (matches the "Groups" block in the design) ----- */
   groupSection() {
-    const me = NET.user.id, prev = l => !l ? 'No messages yet' : l.deleted ? '🚫 Message deleted' : l.kind === 'text' ? (l.from === me ? 'You: ' : '') + esc(l.text) : esc(l.text);
+    const me = NET.user.id, prev = l => !l ? 'No messages yet' : l.deleted ? '🚫 Message deleted' : l.kind === 'text' ? (l.from === me ? 'You: ' : '') + (l.image ? '📷 ' : '') + esc(l.text || (l.image ? 'Photo' : '')) : esc(l.text);
     return `<div class="grph"><span class="lab2">GROUPS</span><button class="newg" onclick="PH.newGroup()">+ New group</button></div>` +
       (this.groups.length ? this.groups.map(g => `<div class="row tap" onclick="PH.group('${g.id}')">${this.gav(1)}<div class="rt"><b>${esc(g.name)}</b><span class="pv">${prev(g.last)}</span></div><div class="rm"><small>${this.rel(g.last ? g.last.at : g.lastAt)}</small>${g.unread ? `<em class="cnt">${g.unread}</em>` : ''}</div></div>`).join('')
         : `<div class="gpromo" onclick="PH.newGroup()"><span class="gpi">👯</span><div><b>Make a group with your friends</b><small>Add them by username, chat together and plan Quilox nights 🍾</small></div></div>`)
@@ -50,7 +50,7 @@ Object.assign(PH, {
   /* ----- chat screen ----- */
   async gload(id) { const r = await NET.api('/api/ac/groups/' + id); this.g = r; return r },
   async group(id) {
-    this.view = 'group'; this.gid = id; document.querySelector('.screen').classList.add('light');
+    this.view = 'group'; this.gid = id; this.replyTo = null; this.editing = null; document.querySelector('.screen').classList.add('light');
     try { await this.gload(id) } catch (e) { this.view = 'messages'; toast(e.message); return this.messages('chats') }
     NET.drop('/api/ac/groups'); this.refreshBadges(); this.gdraw()
   },
@@ -58,10 +58,11 @@ Object.assign(PH, {
     const g = this.g.group, adm = this.isAdm(), locked = g.onlyAdmins && !adm, typed = keep !== undefined ? keep : (document.getElementById('cinput') || {}).value || '';
     this.shell(`<span onclick="PH.groupInfo()" style="cursor:pointer">${esc(g.name)}</span>`, 'PH.messages()', `<div class="abody chat" id="ab"><div class="cmsgs" id="cm"></div></div>` +
       (locked ? `<div class="glock">🔒 Only admins can send messages in this group</div>` : `<div class="emo" id="emo" style="display:none">${['😂', '😍', '🙏🏾', '🔥', '👏🏾', '😭', '🎉', '🍾'].map(e => `<button onclick="PH.emoji('${e}')">${e}</button>`).join('')}</div>
-        <div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><input id="cinput" placeholder="Message the group…" maxlength="500" autocomplete="off" onkeydown="if(event.key==='Enter')PH.gSendInput()"><button class="sbtn" onclick="PH.gSendInput()">➤</button></div>`),
+        <div id="crep"></div><div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><button class="ebtn" onclick="CHATX.pick()" aria-label="Send a photo"><span class="fa-solid fa-image"></span></button><input id="cinput" placeholder="Message the group…" maxlength="500" autocomplete="off" onkeydown="if(event.key==='Enter')PH.gSendInput()"><button class="sbtn" onclick="PH.gSendInput()">➤</button></div>`),
       `<div class="csub" onclick="PH.groupInfo()" style="cursor:pointer">👥 ${this.g.members.length} members${g.onlyAdmins ? ' · admins only' : ''} · tap for group info</div>`);
     const i = document.getElementById('cinput'); if (i) i.value = typed;
-    this.gmsgs()
+    this.gmsgs();
+    const cm = document.getElementById('cm'); if (cm) { cm.addEventListener('click', e => this.tapMsg(e)); if (window.CHATX) { CHATX.bind(cm); CHATX.bars() } }
   },
   gbubble(m) {
     const me = NET.user.id, mine = m.from === me;
@@ -70,10 +71,10 @@ Object.assign(PH, {
     if (m.deleted) return `<div class="msg ${mine ? 'me' : 'th'}"><div class="mb gdel">🚫 This message was deleted</div><small>${this.time(m.at)}</small></div>`;
     return `<div class="msg ${mine ? 'me' : 'th'}">${mine ? '' : `<span class="gsn" style="color:${this.gcolor(m.from)}">${this.gname(m.from)}</span>`}<div class="mb" ${tap}>${esc(m.text)}</div><small>${this.time(m.at)}</small></div>`
   },
-  gmsgs() {
-    const el = document.getElementById('cm'); if (!el) return;
+  gmsgs(keep) {
+    const el = document.getElementById('cm'); if (!el) return; const st0 = document.getElementById('ab').scrollTop;
     el.innerHTML = this.g.messages.length ? this.g.messages.map(m => this.gbubble(m)).join('') : '<p class="empty">No messages yet. Say hi to the group 👋</p>';
-    const b = document.getElementById('ab'); b.scrollTop = b.scrollHeight
+    const b = document.getElementById('ab'); b.scrollTop = keep === true ? st0 : b.scrollHeight
   },
   gSendInput() { const i = document.getElementById('cinput'); const t = i.value.trim(); if (!t) return; i.value = ''; this.gSend(t) },
   async gSend(t) {
