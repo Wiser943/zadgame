@@ -880,3 +880,354 @@ html[data-theme="dark"] .pbtn:not(.blu):not(.grn) { background:#242940; color:#d
 html[data-theme="dark"] .bal { background:#1c2036; }
 html[data-theme="dark"] .chip { background:rgba(40,44,68,.85); color:#c7cce0; }
 html[data-theme="dark"] .nav button.on { background:#2a3050; }
+/* ---- map tools (items 61-80) ---- */
+#mttools{position:absolute;left:10px;top:calc(136px + var(--sat));z-index:6;display:none;flex-direction:column;gap:6px;align-items:flex-start}
+#mttools .pill{border:0;padding:8px 13px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;color:var(--ink)}
+#mtnote{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--sab));z-index:6;padding:8px 14px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap}#mtnote button{border:0;background:none;font:inherit;color:#2f7fd8}
+#mtbar{position:absolute;left:10px;right:10px;bottom:calc(84px + var(--sab));z-index:7;background:#fff;border-radius:22px;padding:12px 12px 10px;box-shadow:0 10px 30px rgba(10,20,50,.28);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);max-width:520px;margin:0 auto}
+.mth{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.mth b{font:800 16px Outfit,system-ui,sans-serif;display:block}.mth small{color:var(--mut);font-size:12px}
+.mtx{border:0;width:30px;height:30px;border-radius:50%;background:#eef0f7;color:var(--ink);flex:none}
+.mtm{display:flex;gap:6px;margin:10px 0 6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mtm button{flex:none;min-width:62px;border:2px solid #e3e6ef;background:#f6f8fc;border-radius:14px;padding:6px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;font:600 11px inherit;color:var(--ink)}.mtm button span{font-size:18px}.mtm button b{font-size:13px}.mtm button small{color:var(--mut);font-size:10.5px}
+.mtm button.on{border-color:var(--grn);background:#e9f8f1}
+.mtn{font-size:12px;color:#3a4160;line-height:1.45;margin:2px 0 8px}.mtn small{color:var(--mut)}
+.mta{display:flex;gap:8px}.mta .rbigbtn{flex:1;margin:0}.mtf{border:2px solid #e3e6ef;background:#fff;border-radius:14px;width:48px;font-size:20px;color:#b8860b}.mtf.on{background:#fff7d6;border-color:#f5b301}
+.mtr{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eef0f7}.mtr .e{font-size:22px;width:30px;text-align:center;flex:none}.mtr>div{flex:1;min-width:0}.mtr b{display:block;font-size:14px}.mtr small{display:block;color:var(--mut);font-size:11.5px}
+.mtr>button,.mts button{border:0;background:#eef0f7;border-radius:99px;padding:6px 12px;font:700 12px inherit;color:var(--ink);flex:none}
+.mtc{border:0;background:#eef0f7;border-radius:99px;padding:5px 10px;margin:6px 6px 0 0;font:700 11.5px inherit;color:var(--ink)}
+.mtc2{background:#f1f3f9;border-radius:14px;padding:8px 12px;margin:6px 0 8px;font-size:12.5px;color:#3a4160}
+.mtchips{display:flex;gap:6px;margin:8px 0}.mtchips button{flex:1;border:0;border-radius:99px;background:#eef0f7;color:var(--mut);font:700 12.5px inherit;padding:8px 6px}.mtchips button.on{background:#1b1f33;color:#fff}
+.mtl{border-left:4px solid;background:#f8f9fc;border-radius:0 14px 14px 0;padding:8px 10px;margin:8px 0}.mtl>b{display:block;margin-bottom:4px;font-size:13.5px}
+.mts{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px}.mts span{flex:1;font-weight:600}.mts small{color:var(--mut);font-size:11.5px}
+.mtd{display:block;color:var(--mut);font-size:11px;font-weight:500;margin-top:1px}
+.mtacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.mtacts button{border:0;background:#eef0f7;border-radius:99px;padding:8px 13px;font:700 12.5px inherit;color:var(--ink)}.mtacts button:disabled{opacity:.5}
+
+/* ===== Settings: segmented choices (Night mode Off / On / Auto, Camera, Data & battery saver) ===== */
+.segrow{padding:14px 16px 12px}
+.segt{display:flex;align-items:center;gap:8px;font:700 17px Outfit,system-ui,sans-serif;color:var(--ink)}
+.sege{font-size:19px;line-height:1}
+.segd{margin:6px 0 12px;font-size:14px;line-height:1.45;color:var(--mut)}
+.seg{display:flex;gap:4px;background:#e9ecf4;border-radius:99px;padding:4px}
+.seg button{flex:1 1 0;min-width:0;border:0;background:transparent;color:var(--mut);border-radius:99px;padding:11px 6px;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(20,30,60,.18)}
+.segh{margin:10px 2px 0;font-size:13px;line-height:1.4;color:var(--mut);min-height:0}
+.segh:empty{display:none}
+html[data-theme="dark"] .seg{background:#232e3d}
+html[data-theme="dark"] .seg button.on{background:#33465e;color:#fff;box-shadow:none}
+
+/* dark mode: the app header colour is set inline by PH.shell (--hbg), so it needs !important; Venues "Collect all" stays a white button on the purple card */
+html[data-theme="dark"] .screen{--hbg:#14182a !important}
+html[data-theme="dark"] .vnall{background:#fff;color:#5b21b6}
+html[data-theme="dark"] .vnpip{background:#3a4160}
+html[data-theme="dark"] .vnpip.on{background:#22b573}
+
+/* >>> AUTO-GENERATED DARK MODE OVERRIDES (do not edit by hand; regenerate with: python3 scripts/gen-dark.py). :where() keeps each rule at the same specificity as the light rule it mirrors, so .on / .sel states still win >>> */
+:where(html[data-theme="dark"]) .bal{background:#232842}
+:where(html[data-theme="dark"]) .chip{color:#a9afc6}
+:where(html[data-theme="dark"]) .av{background:#1b2034}
+:where(html[data-theme="dark"]) .bar{background:#232842}
+:where(html[data-theme="dark"]) .card{background:#1b2034}
+:where(html[data-theme="dark"]) .who{background:#1b2034}
+:where(html[data-theme="dark"]) .who .a{background:#232842}
+:where(html[data-theme="dark"]) .btn.s{background:#1b2034;border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .seg{background:#1b2034}
+:where(html[data-theme="dark"]) .seg .on{background:#1b2034}
+:where(html[data-theme="dark"]) #auth input{border:1px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .bld{background:#232842}
+:where(html[data-theme="dark"]) .sheet{background:#1b2034}
+:where(html[data-theme="dark"]) .sheet h2 small{background:#1b2034}
+:where(html[data-theme="dark"]) .tabs button{background:#1b2034}
+:where(html[data-theme="dark"]) .sw{background:#1b2034}
+:where(html[data-theme="dark"]) .close{background:#1b2034}
+:where(html[data-theme="dark"]) .screen.light{background:#1b2034}
+:where(html[data-theme="dark"]) .appview{background:#1b2034}
+:where(html[data-theme="dark"]) .row{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .avi{background:#2b3150}
+:where(html[data-theme="dark"]) .rbtn.gry{background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .pbtn:not(.blu):not(.grn){background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .sinput, :where(html[data-theme="dark"]) .cin input, :where(html[data-theme="dark"]) .cin2 input{background:#1b2034}
+:where(html[data-theme="dark"]) .seg2{background:#1b2034}
+:where(html[data-theme="dark"]) .seg2 .on{background:#1b2034}
+:where(html[data-theme="dark"]) .banner{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .banner button{color:#a9afc6}
+:where(html[data-theme="dark"]) .uic{background:#1b2034}
+:where(html[data-theme="dark"]) .chips2{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .c1{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .c2{background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .c3{background:#1b2034}
+:where(html[data-theme="dark"]) .c4{background:#232842}
+:where(html[data-theme="dark"]) .c5{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .th .mb{background:#1b2034}
+:where(html[data-theme="dark"]) .sys{background:#1b2034}
+:where(html[data-theme="dark"]) .sys.inv{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .qr button{background:#1b2034}
+:where(html[data-theme="dark"]) .ebtn{background:#1b2034}
+:where(html[data-theme="dark"]) .shcard{background:#1b2034}
+:where(html[data-theme="dark"]) .pre button{background:#1b2034}
+:where(html[data-theme="dark"]) .fopt{background:#1b2034}
+:where(html[data-theme="dark"]) .fopt.red{background:#1b2034}
+:where(html[data-theme="dark"]) .card2{background:#1b2034}
+:where(html[data-theme="dark"]) .app .bdg{border:1.5px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .pinbn{background:#1b2034}
+:where(html[data-theme="dark"]) .qi{background:#1b2034}
+:where(html[data-theme="dark"]) .tx{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .tic.in{background:#1b2034}
+:where(html[data-theme="dark"]) .tic.out{background:#1b2034}
+:where(html[data-theme="dark"]) .opt{background:#1b2034}
+:where(html[data-theme="dark"]) .soonb{background:#1b2034}
+:where(html[data-theme="dark"]) .amt{background:#1b2034}
+:where(html[data-theme="dark"]) .who2{background:#1b2034}
+:where(html[data-theme="dark"]) .rid{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .pinpad .px{background:#1b2034}
+:where(html[data-theme="dark"]) .dots i{border:2px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .keys button{background:#1b2034}
+:where(html[data-theme="dark"]) .keys button:active{background:#232842}
+:where(html[data-theme="dark"]) .swho{background:#1b2034}
+:where(html[data-theme="dark"]) .sgrp{background:#1b2034}
+:where(html[data-theme="dark"]) .sgrp>*+*{border-top:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .sw2{background:#2b3150}
+:where(html[data-theme="dark"]) .sw2 i{background:#1b2034}
+:where(html[data-theme="dark"]) .ssel{background:#232842}
+:where(html[data-theme="dark"]) .polcard{background:#1b2034}
+:where(html[data-theme="dark"]) .polcard .sinput{background:#1b2034}
+:where(html[data-theme="dark"]) .cam-b.on{color:#e3e6f1}
+:where(html[data-theme="dark"]) .cam-flash{background:#1b2034}
+:where(html[data-theme="dark"]) .cam-filters .on{color:#e3e6f1}
+:where(html[data-theme="dark"]) .cam-shut{border:4px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .cam-shut i{background:#1b2034}
+:where(html[data-theme="dark"]) i.spin::after{border-top-color:rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gwhat{background:#1b2034}
+:where(html[data-theme="dark"]) .gphoto{background:#1b2034}
+:where(html[data-theme="dark"]) .gp{background:#1b2034;border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gtx a, :where(html[data-theme="dark"]) .gcb a{color:#a9afc6}
+:where(html[data-theme="dark"]) .gim{background:#232842}
+:where(html[data-theme="dark"]) .ggame{border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .ggame code{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .gshared{border:1px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .gact{border-top:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gmorebtn, :where(html[data-theme="dark"]) .gretry{background:#1b2034}
+:where(html[data-theme="dark"]) .gcin{border-top:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gcin input{background:#1b2034}
+:where(html[data-theme="dark"]) .gcb{background:#1b2034}
+:where(html[data-theme="dark"]) .gstats>*{background:#1b2034}
+:where(html[data-theme="dark"]) .gperson{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gfollow.on{background:#1b2034}
+:where(html[data-theme="dark"]) .gcomp textarea{background:#1b2034}
+:where(html[data-theme="dark"]) .gtools button{background:#1b2034}
+:where(html[data-theme="dark"]) .gpick button{background:#232842}
+:where(html[data-theme="dark"]) .gpick i{background:#1b2034;border:2px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .ahead .gbell{background:#1b2034}
+:where(html[data-theme="dark"]) .gtabs button{background:#1b2034}
+:where(html[data-theme="dark"]) .gtagbar{background:#1b2034}
+:where(html[data-theme="dark"]) .gtagbar button{background:#1b2034}
+:where(html[data-theme="dark"]) .gtrend a{background:#1b2034}
+:where(html[data-theme="dark"]) .grx{background:#1b2034}
+:where(html[data-theme="dark"]) .gcs .gim{background:#232842}
+:where(html[data-theme="dark"]) .gdots i.on{background:#1b2034}
+:where(html[data-theme="dark"]) .gpo{border:1.5px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .gpo.res{border-color:rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .gpo.res u{background:#232842}
+:where(html[data-theme="dark"]) .gpo.res.mine u{background:#2b3150}
+:where(html[data-theme="dark"]) .gpollp{background:#1b2034}
+:where(html[data-theme="dark"]) .gpollp>button{background:#1b2034}
+:where(html[data-theme="dark"]) .gedit{background:#1b2034}
+:where(html[data-theme="dark"]) .grepl{background:#1b2034}
+:where(html[data-theme="dark"]) .gavw .avi.huge{border:4px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gon{border:3px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .ggs{background:#1b2034}
+:where(html[data-theme="dark"]) .ggg div{background:#1b2034}
+:where(html[data-theme="dark"]) .pedit .avi.huge{border:4px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .sfoot a, :where(html[data-theme="dark"]) .sfoot .official{color:#e3e6f1}
+:where(html[data-theme="dark"]) .sfoot .official{color:#a9afc6}
+:where(html[data-theme="dark"]) .banner2{background:#1b2034}
+:where(html[data-theme="dark"]) .viewctl button{color:#e3e6f1}
+:where(html[data-theme="dark"]) .newg{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .gdel{background:#1b2034}
+:where(html[data-theme="dark"]) .glock{background:#1b2034}
+:where(html[data-theme="dark"]) .gchip{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .gpick button{background:#1b2034}
+:where(html[data-theme="dark"]) .rtag{color:#a9afc6;background:#1b2034}
+:where(html[data-theme="dark"]) .rtag.own{background:#1b2034}
+:where(html[data-theme="dark"]) .gset{background:#1b2034}
+:where(html[data-theme="dark"]) .gsw{background:#2b3150}
+:where(html[data-theme="dark"]) .gsw::after{background:#1b2034}
+:where(html[data-theme="dark"]) .jmine{background:#1b2034}
+:where(html[data-theme="dark"]) .jauto{color:#a9afc6}
+:where(html[data-theme="dark"]) .jbar{background:#232842}
+:where(html[data-theme="dark"]) .jmine small{color:#a9afc6}
+:where(html[data-theme="dark"]) .jcard{background:#1b2034}
+:where(html[data-theme="dark"]) .jic{background:#1b2034}
+:where(html[data-theme="dark"]) .adopts button{background:#1b2034}
+:where(html[data-theme="dark"]) .adempty{background:#1b2034}
+:where(html[data-theme="dark"]) .adrow{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .adth{background:#1b2034}
+:where(html[data-theme="dark"]) .plots button{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .plots button.tk{background:#1b2034}
+:where(html[data-theme="dark"]) #adlayer .sp.on{border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .bbcard{background:#1b2034}
+:where(html[data-theme="dark"]) .cc{background:#1b2034}
+:where(html[data-theme="dark"]) .cbtns button.x{background:#232842;color:#e3e6f1}
+:where(html[data-theme="dark"]) .pad button{background:#1b2034;color:#e3e6f1}
+:where(html[data-theme="dark"]) .bp-t{background:#1b2034}
+:where(html[data-theme="dark"]) .bp-a button{border:1.5px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .bp-a .sell{background:#232842;border-color:rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gpr button{border:2px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .gpr button.on{background:#1b2034}
+:where(html[data-theme="dark"]) .amax{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .crepl{background:#1b2034}
+:where(html[data-theme="dark"]) .crepl b{color:#a9afc6}
+:where(html[data-theme="dark"]) .ti i{color:#a9afc6}
+:where(html[data-theme="dark"]) #netgate{background:#1b2034}
+:where(html[data-theme="dark"]) #netgate h1{color:#e3e6f1}
+:where(html[data-theme="dark"]) #netgate .ngl{color:#a9afc6}
+:where(html[data-theme="dark"]) #netgate .ngm{color:#a9afc6}
+:where(html[data-theme="dark"]) #netgate .ngs{background:#1b2034;color:#e3e6f1;border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .emopick button{background:#1b2034}
+:where(html[data-theme="dark"]) .phpop{background:#1b2034}
+:where(html[data-theme="dark"]) .phpop button.on{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .phpop button i:first-child{color:#a9afc6}
+:where(html[data-theme="dark"]) .pgdots i.on{background:#1b2034}
+:where(html[data-theme="dark"]) .ic.adic{color:#e3e6f1}
+:where(html[data-theme="dark"]) .adif{background:#1b2034}
+:where(html[data-theme="dark"]) .mutebtn{color:#e3e6f1}
+:where(html[data-theme="dark"]) .adbadge{color:#a9afc6}
+:where(html[data-theme="dark"]) .adtog{color:#a9afc6}
+:where(html[data-theme="dark"]) .appview.adview.hdr-min .aback, :where(html[data-theme="dark"]) .appview.adview.hdr-min .adopen, :where(html[data-theme="dark"]) .appview.adview.hdr-min .adtog{color:#e3e6f1}
+:where(html[data-theme="dark"]) .ivrow{background:#1b2034}
+:where(html[data-theme="dark"]) .ivempty{background:#1b2034}
+:where(html[data-theme="dark"]) .ivbtn.out{background:#1b2034;border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .ivbtn.wht{background:#1b2034}
+:where(html[data-theme="dark"]) .ivbiz{background:#1b2034}
+:where(html[data-theme="dark"]) .ivbiz.own{background:#1b2034;border:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .ivbiz.own .ivstat>b:first-child{color:#a9afc6}
+:where(html[data-theme="dark"]) .ivpromo.shop{background:#1b2034}
+:where(html[data-theme="dark"]) .ivflash{background:#1b2034}
+:where(html[data-theme="dark"]) .ucard{background:#1b2034}
+:where(html[data-theme="dark"]) .ugrab i{background:#2b3150}
+:where(html[data-theme="dark"]) .adhostbox{background:#1b2034}
+:where(html[data-theme="dark"]) .adfr{background:#1b2034}
+:where(html[data-theme="dark"]) .ivic{background:#232842}
+:where(html[data-theme="dark"]) .lgcard{background:#1b2034}
+:where(html[data-theme="dark"]) .lghd button{background:#1b2034}
+:where(html[data-theme="dark"]) .lgtabs button{background:#1b2034}
+:where(html[data-theme="dark"]) .lgev{border:1px solid color-mix(in srgb,var(--c) 28%,rgba(255,255,255,.12))}
+:where(html[data-theme="dark"]) .lgev p{color:#a9afc6}
+:where(html[data-theme="dark"]) .lgfx span{background:#1b2034}
+:where(html[data-theme="dark"]) .lgfx .bad{background:#232842}
+:where(html[data-theme="dark"]) .lgfx .good{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .lgdist li{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .lgdaily{background:#1b2034}
+:where(html[data-theme="dark"]) .lgbtn:disabled{background:#2b3150}
+:where(html[data-theme="dark"]) .lgprog{background:#1b2034}
+:where(html[data-theme="dark"]) .lgq, :where(html[data-theme="dark"]) .lgb{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .lgsum{background:#1b2034}
+:where(html[data-theme="dark"]) .lgwarn{background:#1b2034}
+:where(html[data-theme="dark"]) .gmst{border:1px solid color-mix(in srgb,var(--c) 28%,rgba(255,255,255,.12))}
+:where(html[data-theme="dark"]) .gmst p{color:#a9afc6}
+:where(html[data-theme="dark"]) .gmcard{background:#1b2034}
+:where(html[data-theme="dark"]) .gmc{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .gmck{background:#232842}
+:where(html[data-theme="dark"]) .gmbar{background:#232842}
+:where(html[data-theme="dark"]) .gmm{background:#1b2034}
+:where(html[data-theme="dark"]) .gmsteps em.on{color:#a9afc6}
+:where(html[data-theme="dark"]) .gmgrid>div{background:#1b2034}
+:where(html[data-theme="dark"]) .gmgrid small{color:#a9afc6}
+:where(html[data-theme="dark"]) .gmtop{background:#1b2034}
+:where(html[data-theme="dark"]) .gmpay{background:#1b2034}
+:where(html[data-theme="dark"]) .lgbtn.ghost{background:#1b2034}
+:where(html[data-theme="dark"]) .rcard{background:#1b2034}
+:where(html[data-theme="dark"]) .rcard p{color:#a9afc6}
+:where(html[data-theme="dark"]) .rclines{background:#1b2034}
+:where(html[data-theme="dark"]) .rclines li{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .hlead{color:#a9afc6}
+:where(html[data-theme="dark"]) .htile{background:#1b2034}
+:where(html[data-theme="dark"]) .hbanner{border:1px solid color-mix(in srgb,var(--c,#6366f1) 26%,rgba(255,255,255,.12))}
+:where(html[data-theme="dark"]) .hbanner small{color:#a9afc6}
+:where(html[data-theme="dark"]) .hprot{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .hprot small{color:#a9afc6}
+:where(html[data-theme="dark"]) .hmore button{background:#1b2034}
+:where(html[data-theme="dark"]) .hnow{background:#1b2034}
+:where(html[data-theme="dark"]) .hnode::before{background:#232842}
+:where(html[data-theme="dark"]) .hnode span{background:#232842}
+:where(html[data-theme="dark"]) .hdots i{background:#232842}
+:where(html[data-theme="dark"]) .hhero p{color:#a9afc6}
+:where(html[data-theme="dark"]) .hopt{background:#1b2034}
+:where(html[data-theme="dark"]) .hopt.on{background:#1b2034}
+:where(html[data-theme="dark"]) .rbigbtn:disabled{background:#2b3150}
+:where(html[data-theme="dark"]) .rbigbtn.ghost{background:#1b2034}
+:where(html[data-theme="dark"]) .hnames button{background:#1b2034}
+:where(html[data-theme="dark"]) .hcode{background:#1b2034}
+:where(html[data-theme="dark"]) .htour p{color:#a9afc6}
+:where(html[data-theme="dark"]) .htimer{background:#232842}
+:where(html[data-theme="dark"]) .hstep{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .hstep>span{background:#232842}
+:where(html[data-theme="dark"]) .htl{border-left:3px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .htl>div>span{background:#1b2034}
+:where(html[data-theme="dark"]) .hticks li{border-bottom:1px dashed rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .hpaper article{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .hpaper article p{color:#a9afc6}
+:where(html[data-theme="dark"]) .hcls{background:#1b2034}
+:where(html[data-theme="dark"]) .hq2{background:#1b2034}
+:where(html[data-theme="dark"]) .hq2 p{color:#a9afc6}
+:where(html[data-theme="dark"]) .hlog{background:#1b2034}
+:where(html[data-theme="dark"]) .hlog li{color:#a9afc6}
+:where(html[data-theme="dark"]) .hstat.ok{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .hstat.bad{background:#1b2034}
+:where(html[data-theme="dark"]) #cityload .bar i{background:#1b2034}
+:where(html[data-theme="dark"]) .sttry button{background:#1b2034;color:#e3e6f1}
+:where(html[data-theme="dark"]) .sttabs button{background:#1b2034}
+:where(html[data-theme="dark"]) .stchips button{background:#1b2034}
+:where(html[data-theme="dark"]) .stcard{background:#1b2034}
+:where(html[data-theme="dark"]) .stcard.eq{background:#1b2034}
+:where(html[data-theme="dark"]) .ownd{color:#a9afc6;background:#1b2034}
+:where(html[data-theme="dark"]) .rar{background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .rar.uncommon{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .rar.rare{background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .rar.epic{background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .rar.legendary{background:#232842}
+:where(html[data-theme="dark"]) .stb{background:#232842}
+:where(html[data-theme="dark"]) .stb.ghost{background:#1b2034}
+:where(html[data-theme="dark"]) .stb.dis{background:#1b2034}
+:where(html[data-theme="dark"]) .stdur{background:#232842}
+:where(html[data-theme="dark"]) .stinfo{background:#1b2034}
+:where(html[data-theme="dark"]) .stwarn{background:#1b2034}
+:where(html[data-theme="dark"]) .stseason{background:#1b2034}
+:where(html[data-theme="dark"]) .stseason.on{background:#1b2034}
+:where(html[data-theme="dark"]) .stcol-set{background:#1b2034}
+:where(html[data-theme="dark"]) .stmile span{background:#232842;color:#a9afc6}
+:where(html[data-theme="dark"]) .stmile span.got{background:#232842}
+:where(html[data-theme="dark"]) #rcid, :where(html[data-theme="dark"]) #rccode, :where(html[data-theme="dark"]) #rcpw{border:1.5px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) #rcid:focus, :where(html[data-theme="dark"]) #rccode:focus, :where(html[data-theme="dark"]) #rcpw:focus{background:#1b2034}
+:where(html[data-theme="dark"]) .mimg{background:#232842}
+:where(html[data-theme="dark"]) .rx{border:1.5px solid rgba(255,255,255,.12);background:#1b2034;color:#e3e6f1}
+:where(html[data-theme="dark"]) .rx.on{background:#232842}
+:where(html[data-theme="dark"]) .cxbar{background:#1b2034}
+:where(html[data-theme="dark"]) .cxbar button.on{background:#232842}
+:where(html[data-theme="dark"]) .cxbar .more{background:#1b2034}
+:where(html[data-theme="dark"]) .cxact{background:#1b2034}
+:where(html[data-theme="dark"]) .cxact button{color:#e3e6f1}
+:where(html[data-theme="dark"]) .cxact button+button{border-top:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .cxact button:active{background:#1b2034}
+:where(html[data-theme="dark"]) .crepl.ed{background:#1b2034}
+:where(html[data-theme="dark"]) .pvimg{background:#1b2034}
+:where(html[data-theme="dark"]) .fwlist{background:#1b2034}
+:where(html[data-theme="dark"]) .fwrow+.fwrow{border-top:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .vnall{color:#e3e6f1}
+:where(html[data-theme="dark"]) .vnpip{background:#2b3150}
+:where(html[data-theme="dark"]) #mtbar{background:#1b2034}
+:where(html[data-theme="dark"]) .mtx{background:#1b2034}
+:where(html[data-theme="dark"]) .mtm button{border:2px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .mtm button.on{background:#1b2034}
+:where(html[data-theme="dark"]) .mtn{color:#a9afc6}
+:where(html[data-theme="dark"]) .mtf{border:2px solid rgba(255,255,255,.12);background:#1b2034}
+:where(html[data-theme="dark"]) .mtf.on{background:#1b2034}
+:where(html[data-theme="dark"]) .mtr{border-bottom:1px solid rgba(255,255,255,.12)}
+:where(html[data-theme="dark"]) .mtr>button, :where(html[data-theme="dark"]) .mts button{background:#1b2034}
+:where(html[data-theme="dark"]) .mtc{background:#1b2034}
+:where(html[data-theme="dark"]) .mtc2{background:#1b2034;color:#a9afc6}
+:where(html[data-theme="dark"]) .mtchips button{background:#1b2034}
+:where(html[data-theme="dark"]) .mtl{background:#1b2034}
+:where(html[data-theme="dark"]) .mtacts button{background:#1b2034}
+:where(html[data-theme="dark"]) .seg{background:#232842}
+:where(html[data-theme="dark"]) .seg button.on{background:#1b2034}
+/* <<< END AUTO-GENERATED DARK MODE OVERRIDES <<< */

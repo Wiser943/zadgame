@@ -541,22 +541,47 @@
   }
   function turn(a, b, k) { let d = ((b - a + Math.PI * 3) % TAU) - Math.PI; return a + d * Math.min(1, k); }
 
+  /* ---------- map tools support (61-80): layers, routing, travel ---------- */
+  const LAYERS = { world: [], screen: [] };
+  let wideGrid = null;
+  function route(x0, y0, x1, y1, wide) {                 // tries a few spots around the target when it sits inside a walled-in pocket
+    for (const [dx, dy] of [[0, 0], [0, 40], [0, -40], [48, 0], [-48, 0], [0, 72], [0, -72], [80, 0], [-80, 0]]) { const p = route1(x0, y0, x1 + dx, y1 + dy, wide); if (p) return p; }
+    return null;
+  }
+  function route1(x0, y0, x1, y1, wide) {                // wide = accessible route: keeps 1+ cell clear of buildings
+    if (!wide) return findPath(x0, y0, x1, y1);
+    if (!wideGrid) { wideGrid = new Uint8Array(grid); for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) { const x = (i + .5) * CELL, y = (j + .5) * CELL; if (blocks.some(b => x > b[0] - 12 && x < b[2] + 12 && y > b[1] - 12 && y < b[3] + 12)) wideGrid[j * GN + i] = 1; } }
+    const keep = grid; grid = wideGrid; try { return findPath(x0, y0, x1, y1); } finally { grid = keep; }
+  }
+  function free(x, y) { const c = nearestFree(...cellOf(x, y)); return c ? [(c[0] + .5) * CELL, (c[1] + .5) * CELL] : [x, y]; }
+  function walkPath(p, o) {
+    o = o || {}; ensureMe(); if (!p || p.length < 2) { if (o.cb) o.cb(); return false; }
+    M.mul = o.mul || 1; M.path = p; M.pi = 1; M.cb = o.cb || null; M.dest = p[p.length - 1]; M.emote = null;
+    M.run = o.run != null ? o.run : p.reduce((s, q, i) => i ? s + Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]) : 0, 0) > 320; M.follow = true; return true;
+  }
+  function teleport(x, y) { ensureMe(); const f = free(x, y); M.path = null; M.me.x = f[0]; M.me.y = f[1]; M.mul = 1; M.me.setState('idle'); M.follow = true; cam.tx = f[0]; cam.ty = f[1]; cam.update(); }
+  function focus(x, y, D) { M.follow = false; cam.tx = x; cam.ty = y; if (D) M.tD = D; cam.update(); }
+  const HELP = { cam, M, W, isLand, onBridge, poly, rect, project(x, y, z) { cam.project(x, y, z || 0, tmp); return tmp.z < NEAR ? null : { x: tmp.x, y: tmp.y, k: tmp.k }; } };
+
   function walkTo(x, y, cb) {
     ensureMe(); const p = findPath(M.me.x, M.me.y, x, y);
     if (!p || p.length < 2) { M.path = null; M.dest = null; return false; }
-    M.path = p; M.pi = 1; M.cb = cb || null; M.dest = p[p.length - 1]; M.emote = null; M.run = p.reduce((s, q, i) => i ? s + Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]) : 0, 0) > 320; M.follow = true; return true;
+    M.mul = 1; M.path = p; M.pi = 1; M.cb = cb || null; M.dest = p[p.length - 1]; M.emote = null; M.run = p.reduce((s, q, i) => i ? s + Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]) : 0, 0) > 320; M.follow = true; return true;
   }
+  /* Settings > "Camera turns by itself": while you walk, the map camera swings round so you walk "up" the screen. Off = it stays where you leave it. */
+  let camAutoAt = 0, camAutoOn = false;
+  const camAuto = () => { const n = performance.now(); if (n - camAutoAt > 1000) { camAutoAt = n; try { camAutoOn = JSON.parse(localStorage.getItem('ghPrefs') || '{}').camAuto === true } catch (e) { camAutoOn = false } } return camAutoOn; };
   function updateMe(dt) {
     const a = M.me; if (!a) return;
     if (M.path && M.pi < M.path.length) {
-      const tg = M.path[M.pi], dx = tg[0] - a.x, dy = tg[1] - a.y, d = Math.hypot(dx, dy), sp = (M.run ? 95 : 48) * dt;
+      const tg = M.path[M.pi], dx = tg[0] - a.x, dy = tg[1] - a.y, d = Math.hypot(dx, dy), sp = (M.run ? 95 : 48) * dt * (M.mul || 1);
       if (d <= sp) { a.x = tg[0]; a.y = tg[1]; M.pi++; if (M.pi >= M.path.length) { M.path = null; a.setState('idle'); a.speed = 0; if (M.cb) { const c = M.cb; M.cb = null; c(); } } }
       else { a.x += dx / d * sp; a.y += dy / d * sp; a.h = turn(a.h, Math.atan2(dy, dx), dt * 10); }
-      if (M.path) { a.speed = M.run ? 3.4 : 1.5; a.setState(M.run ? 'run' : 'walk'); }
+      if (M.path) { a.speed = (M.run ? 3.4 : 1.5) * Math.min(1.6, M.mul || 1); a.setState(M.run ? 'run' : 'walk'); }
     } else if (M.emote) { if (a.state !== M.emote) a.setState(M.emote); if (M.emote === 'dance' && getS() && getS().needs) { getS().needs[2] = Math.min(1, getS().needs[2] + dt * .012); } }
     else if (a.state === 'walk' || a.state === 'run') a.setState('idle');
     a.update(dt);
-    if (M.follow && cam) { const k = 1 - Math.exp(-dt * 3.2); cam.tx += (a.x - cam.tx) * k; cam.ty += (a.y - cam.ty) * k; }
+    if (M.follow && cam) { const k = 1 - Math.exp(-dt * 3.2); cam.tx += (a.x - cam.tx) * k; cam.ty += (a.y - cam.ty) * k; if (M.path && !M.drag && camAuto()) cam.yaw = turn(cam.yaw, a.h + Math.PI / 2, dt * 1.4); }
   }
 
   /* ---------- frame ---------- */
@@ -605,6 +630,7 @@
       ctx.fillStyle = a === M.me ? '#22b573' : 'rgba(27,34,54,.82)'; rr(ctx, x - w / 2, y - 9, w, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(nm, x, y + .5);
       if (a !== M.me) M.hits.push({ x: x - w / 2, y: y - 9, w, h: info.h + 20, name: nm, kind: 'player' });
     }
+    for (const f of LAYERS.world) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
     // pin labels
     ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
     for (const p of PINS) {
@@ -621,6 +647,7 @@
     // night tint from the in-game clock
     const hrs = ((getS() && getS().min) || 720) / 60 % 24, night = hrs >= 19.5 || hrs < 5.5 ? 1 : hrs >= 18 ? (hrs - 18) / 1.5 : hrs < 7 ? (7 - hrs) / 1.5 : 0;
     if (night > 0) { ctx.fillStyle = `rgba(10,20,70,${.27 * night})`; ctx.fillRect(0, 0, M.w, M.h); }
+    for (const f of LAYERS.screen) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
   }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
@@ -672,23 +699,25 @@
     club: 'Music, lights and a late one.', tower: 'Views over the whole city from up here.', home: 'Your place.'
   };
   function openPlace(pin) {
-    const [nm, em, px, py, kind, act] = pin, blurb = pin[6], title = nm.replace(' · Coming soon', '');
-    const near = PINS.filter(p => p !== pin && p[5] !== 'district')
-      .map(p => ({ p, d: Math.hypot(p[2] - px, p[3] - py) })).sort((a, b) => a.d - b.d).slice(0, 5);
+    const [nm, em, px, py, kind, act] = pin, blurb = pin[6], clean = t => t.replace(' · Coming soon', ''), title = clean(nm), q = t => t.replace(/'/g, "\\'");
+    const near = PINS.filter(p => p !== pin && p[5] !== 'home')
+      .map(p => ({ p, d: Math.hypot(p[2] - px, p[3] - py) })).sort((a, b) => a.d - b.d).slice(0, 6);
+    const walk = d => d < 90 ? 'Right next door' : d < 180 ? 'A short walk' : d < 320 ? 'Down the road' : 'Across the city';
     SHEET.open({
       id: 'place', title: `${em} ${title}`,
-      tabs: () => [{ id: 'details', label: 'Details' }, { id: 'nearby', label: 'Nearby' }],
+      tabs: () => [{ id: 'details', label: 'Details' }, { id: 'nearby', label: 'Nearby', badge: near.length }],
       body: (tab) => {
         if (tab === 'nearby') {
           if (!near.length) return '<p class="empty">Nothing else close by.</p>';
-          return near.map(({ p }) => UI.row({
-            ic: UI.ic('location-dot', '#64748b', 34), title: p[0].replace(' · Coming soon', ''),
-            sub: p[5] === 'home' ? 'Home' : (KIND_BLURB[p[4]] || ''), go: `MAP3D.openByName('${p[0].replace(/'/g, "\\'")}')`
+          return near.map(({ p, d }) => UI.row({
+            ic: `<span class="lgi" style="background:#eef0f7;font-size:20px;width:34px;height:34px">${p[1]}</span>`, title: UI.esc(clean(p[0])),
+            sub: UI.esc((p[5] === 'district' ? (p[6] || '') : (KIND_BLURB[p[4]] || '')) + (p[5] === 'soon-y' ? ' Coming soon.' : '')) + ` <b style="color:var(--mut);font-weight:600">· ${walk(d)}</b>`,
+            go: `MAP3D.openByName('${q(p[0])}')`
           })).join('');
         }
         return `<p class="lgnote" style="margin-top:0;font-size:14px;color:var(--ink)">${UI.esc(blurb || KIND_BLURB[kind] || 'A spot worth seeing in the city.')}</p>
           <div class="lgdaily"><div><b>${UI.esc(title)}</b><small>${act === 'soon-y' ? 'Not open yet — coming to the city soon.' : 'Pay a visit and see what\u2019s here.'}</small></div>
-          <button class="lgbtn" onclick="MAP3D.visit('${em.replace(/'/g, "\\'")}','${title.replace(/'/g, "\\'")}')">Visit</button></div>`;
+          <button class="lgbtn" onclick="MAP3D.visit('${q(em)}','${q(title)}')">Visit</button></div>${g.MT && g.MT.placeActions ? g.MT.placeActions(pin) : ''}`;
       }
     });
   }
@@ -697,7 +726,8 @@
     if (hit && hit.kind === 'pin') {
       const [nm, em, px, py, , act] = hit.pin;
       if (act === 'home') return g.nav('home');
-      if (act === 'district') { g.toast(`${em} ${nm}: ${hit.pin[6]}`); for (const [dx, dy] of [[0, 40], [0, -40], [48, 0], [-48, 0], [0, 72], [0, -72], [80, 0], [-80, 0]]) if (walkTo(px + dx, py + dy)) break; return; }
+      if (API.onPin && API.onPin(hit.pin)) return;
+      if (act === 'district') { for (const [dx, dy] of [[0, 40], [0, -40], [48, 0], [-48, 0], [0, 72], [0, -72], [80, 0], [-80, 0]]) if (walkTo(px + dx, py + dy)) break; openPlace(hit.pin); return; }
       walkTo(px, py + 40); openPlace(hit.pin); return;
     }
     if (hit && hit.kind === 'plot') { const ad = ads.plots.get(hit.slot); if (ad && g.ADS) g.ADS.goPlot(hit.slot); else g.toast('🌊 Free sea plot · book it in Phone → Ads'); return; }
@@ -745,7 +775,9 @@
     setPlayers, setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
     visit(em, title) { SHEET.close(); g.toast(`${em} ${title} is coming soon`); },
-    get me() { return M.me; }, get state() { return M }
+    get me() { return M.me; }, get state() { return M },
+    pins: PINS, zones: ZONES, bridges: BRIDGES, isLand, onBridge, route, free, walkPath, walkTo, teleport, focus, helpers: HELP, onPin: null,
+    addLayer(kind, fn) { LAYERS[kind].push(fn); }
   };
   g.MAP3D = API;
 })(window);

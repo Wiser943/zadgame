@@ -2,16 +2,17 @@
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
 const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
-const GP_DEF={theme:'light',music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:''};
+const GP_DEF={theme:'light',night:'off',saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:''};
 const GP={
-  get(){try{return Object.assign({},GP_DEF,JSON.parse(localStorage.getItem('ghPrefs')||'{}'))}catch(e){return Object.assign({},GP_DEF)}},
+  get(){let st={};try{st=JSON.parse(localStorage.getItem('ghPrefs')||'{}')}catch(e){}
+    const o=Object.assign({},GP_DEF,st);if(window.PREFX){o.night=PREFX.night(st);o.saver=PREFX.saver(st)}return o},
   set(k,v){const p=this.get();p[k]=v;try{localStorage.setItem('ghPrefs',JSON.stringify(p))}catch(e){}
-    if(window.applyTheme)window.applyTheme();
+    if(window.PREFX)PREFX.derive();else if(window.applyTheme)window.applyTheme();      // night / saver choices -> theme + lowPower, applied everywhere
     try{const w=document.getElementById('hubf').contentWindow;if(w&&w.GHBridge)w.GHBridge.sync()}catch(e){}}
 };
 /* Sound / display toggles, grouped. Only what players actually need. */
-const FX_SOUND=[['music','Music','fa-solid fa-music'],['sound','Game sound','fa-solid fa-volume-high'],['voice','Voice announcements','fa-solid fa-bullhorn'],['vibration','Vibration','fa-solid fa-mobile-screen-button']];
-const FX_LOOK=[['theme','Dark mode','fa-solid fa-moon'],['lowPower','Saver mode · less data, no background loading','fa-solid fa-battery-half'],['reducedMotion','Reduce animations','fa-solid fa-gauge'],['largeText','Larger text','fa-solid fa-text-height'],['highContrast','High contrast','fa-solid fa-circle-half-stroke'],['colorSafe','Colour-blind friendly','fa-solid fa-palette']];
+const FX_SOUND=[['music','Music','fa-solid fa-music'],['voice','Voice announcements','fa-solid fa-bullhorn'],['vibration','Vibration','fa-solid fa-mobile-screen-button']];
+const FX_LOOK=[['reducedMotion','Reduce animations','fa-solid fa-gauge'],['largeText','Larger text','fa-solid fa-text-height'],['highContrast','High contrast','fa-solid fa-circle-half-stroke'],['colorSafe','Colour-blind friendly','fa-solid fa-palette']];
 const FALLBACK_RULES={};
 Object.assign(PH,{
   me:null,
@@ -20,6 +21,17 @@ Object.assign(PH,{
   /* Profile photo drawn as a cover-fit background so any photo fills the circle; falls back to the initial if it can't load. */
   avCover(u){const a=u.avatar||'';if(!/^(https?:|data:image\/)/.test(a))return this.av(u,1);const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();
     return `<span class="avi big avcov" data-n="${esc(n)}" style="background:#cbd0dc url('${esc(a)}') center/cover no-repeat"></span>`},
+  /* segmented choice row (Off / On / Auto style) */
+  seg(k,emo,title,desc,opts,cur,hint){return `<div class="segrow" data-seg="${k}"><div class="segt"><span class="sege">${emo}</span><b>${title}</b></div><p class="segd">${desc}</p>
+    <div class="seg" role="radiogroup" aria-label="${title}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o[0]===cur}" class="${o[0]===cur?'on':''}" data-v="${o[0]}" onclick="PH.setSeg('${k}','${o[0]}')">${o[1]}</button>`).join('')}</div>${hint?`<p class="segh" id="segh-${k}">${hint}</p>`:`<p class="segh" id="segh-${k}"></p>`}</div>`},
+  nightHint(p){const m=window.PREFX&&PREFX.night(p||GP.get());return m==='auto'?`Auto: dark from 6:30 pm to 6:30 am, Lagos time (${PREFX.nightNow(p)?'on':'off'} now).`:''},
+  saverHint(p){const m=window.PREFX&&PREFX.saver(p||GP.get());if(m!=='auto')return m==='on'?'On: nothing loads in the background and music stays off.':'';const r=PREFX.saverReason();return `Auto: turns on when battery is low or network is slow (${PREFX.saverNow(p)?'on now'+(r?', '+r:''):'off now'}).`},
+  paintDisplayHints(){const a=document.getElementById('segh-night'),b=document.getElementById('segh-saver');if(a)a.textContent=this.nightHint();if(b)b.textContent=this.saverHint()},
+  setSeg(k,v){const val=k==='camAuto'?v==='true':v;GP.set(k,val);
+    const row=document.querySelector(`.segrow[data-seg="${k}"]`);if(row)row.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
+    const h=document.getElementById('segh-'+k);if(h)h.textContent=k==='night'?this.nightHint():k==='saver'?this.saverHint():(val?'On: the map camera swings round to follow the way you walk.':'');
+    if(k==='saver'){if(window.BGM)BGM.sync();if(window.refreshMute)refreshMute();const now=PREFX.saverNow();now?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off'),window.warmUp&&warmUp(true))}
+    if(k==='night')toast(PREFX.nightNow()?'🌙 Night mode on':'☀️ Night mode off')},
   isOn(k,p){return k==='theme'?p.theme==='dark':!!p[k]},
   tgl(k){const p=GP.get(),on=!this.isOn(k,p);GP.set(k,k==='theme'?(on?'dark':'light'):on);
     const el=document.querySelector(`.trow[data-k="${k}"] .sw2`);if(el)el.classList.toggle('on',on);
@@ -35,7 +47,11 @@ Object.assign(PH,{
       <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti"><i class="fa-solid fa-bell"></i></span><span class="tl">Notifications<small class="nsub">Messages and updates, even when the app is closed</small></span><span id="nright">${np==='unsupported'?'<b>Not supported</b>':'<b>…</b>'}</span></div>
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
-      <div class="lab2">DISPLAY</div><div class="sgrp">${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
+      <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
+        ${this.seg('camAuto','🎥','Camera turns by itself','The camera stays where you leave it. Drag to turn it.',[['false','Off'],['true','On']],String(!!p.camAuto),p.camAuto?'On: the map camera swings round to follow the way you walk.':'')}
+        ${this.seg('saver','🔋','Data & battery saver','Uses less data and keeps your phone cool. Lagos still looks like Lagos.',[['auto','Auto'],['on','On'],['off','Off']],p.saver,this.saverHint(p))}
+        ${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}
+        ${FX_LOOK.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}
         <label class="trow"><span class="ti"><i class="fa-solid fa-globe"></i></span><span class="tl">Language</span><select class="ssel" onchange="PH.setPref('lang',this.value)"><option value="" ${p.lang?'':'selected'}>Auto</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
       <div class="lab2">AVATAR</div><div class="sgrp">${this.lrow('Style, pronouns & avatar privacy','fa-solid fa-user-astronaut',"PH.open('style');STYLE.go('id')")}</div>
       <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','fa-solid fa-bag-shopping',"openHub(b=>b.shop())")}</div>

@@ -764,15 +764,49 @@ function doEmote(kind) {
 }
 function emoteUI() { $('emDance').classList.toggle('on', S.emote === 'dance'); $('emStop').style.display = S.emote ? 'block' : 'none' }
 window.emoteEnded = () => { S.emote = null; if (window.MAP3D) MAP3D.setEmote(null); emoteUI() };
-/* ================= global theme: applies to the AllConnect shell itself (not just the GameHub iframe).
-   Reads the same 'ghPrefs' key the Settings app and GameHub already share, so one toggle covers all three. */
+/* ================= global theme + saver: applies to the AllConnect shell, the phone apps AND the embedded GameHub.
+   Settings stores the player's CHOICE in 'ghPrefs' (night: off|on|auto, saver: auto|on|off, camAuto) and this file turns it into the two values
+   everything else already reads: ghPrefs.theme ('dark'|'light') and ghPrefs.lowPower (true|false). So GameHub, the map, music and loaders need no changes. */
+const PREFX = {
+  bat: null, net: null,
+  lagosMin() { try { const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date()), g = t => +(p.find(x => x.type === t) || {}).value || 0; return g('hour') * 60 + g('minute') } catch (e) { const d = new Date(Date.now() + 36e5); return d.getUTCHours() * 60 + d.getUTCMinutes() } },
+  isNight() { const m = this.lagosMin(); return m >= 18 * 60 + 30 || m < 6 * 60 + 30 },          // same window as the sun / moon icon on the home screen
+  /* Auto saver: low battery (20% or less and not charging), Data Saver on, or a slow connection */
+  slowNet() { const c = navigator.connection || navigator.mozConnection; if (!c) return false; return !!c.saveData || /(^|-)2g$/.test(c.effectiveType || '') || (c.downlink > 0 && c.downlink < 0.7) },
+  lowBat() { const b = this.bat; return !!b && !b.charging && b.level <= 0.2 },
+  saverReason() { return this.lowBat() ? 'battery is low' : this.slowNet() ? 'network is slow' : '' },
+  prefs() { try { return JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch (e) { return {} } },
+  /* old saves only had theme / lowPower: turn them into the new choices once */
+  night(p) { return p.night || (p.theme === 'dark' ? 'on' : 'off') },
+  saver(p) { return p.saver || (p.lowPower ? 'on' : 'auto') },
+  nightNow(p) { const n = this.night(p || this.prefs()); return n === 'on' || (n === 'auto' && this.isNight()) },
+  saverNow(p) { const s = this.saver(p || this.prefs()); return s === 'on' || (s === 'auto' && (this.lowBat() || this.slowNet())) },
+  /* work out theme + lowPower from the choices, store them where GameHub reads them, and tell every screen */
+  derive() {
+    const p = this.prefs(), theme = this.nightNow(p) ? 'dark' : 'light', low = this.saverNow(p), changed = p.theme !== theme || !!p.lowPower !== low || !p.night || !p.saver;
+    if (changed) { p.night = this.night(p); p.saver = this.saver(p); p.theme = theme; p.lowPower = low; try { localStorage.setItem('ghPrefs', JSON.stringify(p)) } catch (e) {} }
+    applyTheme();
+    if (changed) { try { const w = document.getElementById('hubf').contentWindow; if (w && w.GHBridge) w.GHBridge.sync() } catch (e) {} try { if (window.BGM) BGM.sync() } catch (e) {} if (window.refreshMute) refreshMute(); if (this.low !== undefined && this.low !== low && window.PH && PH.view === 'settings') PH.paintDisplayHints && PH.paintDisplayHints() }
+    this.low = low; return changed;
+  },
+  start() {
+    this.derive();
+    try { if (navigator.getBattery) navigator.getBattery().then(b => { this.bat = b; ['levelchange', 'chargingchange'].forEach(e => b.addEventListener(e, () => this.derive())); this.derive() }) } catch (e) {}
+    try { const c = navigator.connection; if (c && c.addEventListener) c.addEventListener('change', () => this.derive()) } catch (e) {}
+    setInterval(() => this.derive(), 60000);                                   // "Auto" night mode flips at 6:30 pm / 6:30 am even if the app stays open
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this.derive() })
+  }
+};
+window.PREFX = PREFX;
 function applyTheme() {
-  let p = {}; try { p = JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch (e) {}
-  document.documentElement.setAttribute('data-theme', p.theme === 'dark' ? 'dark' : 'light');
+  const p = PREFX.prefs(), dark = PREFX.nightNow(p);
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#0a1230' : '#0b4fe0');
 }
 window.applyTheme = applyTheme;
 applyTheme();
-window.addEventListener('storage', e => { if (e.key === 'ghPrefs') applyTheme() });
+window.addEventListener('storage', e => { if (e.key === 'ghPrefs') { PREFX.derive() } });
+window.addEventListener('load', () => PREFX.start());
 
 /* Haptics: a short tick when a nav bar icon / tab is tapped (respects Settings > Vibration).
    Android uses the Vibration API; iPhone (iOS 18+) has no vibrate(), so we toggle a hidden native switch, which gives the system tick. */

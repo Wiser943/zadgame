@@ -195,7 +195,7 @@ const ADS = {
   goPlot(i) { this.go(this.board.plots.find(p => p.slot === i)) },
   showBB() {
     const el = document.getElementById('bbstrip'); if (!el) return;
-    if (!this.live.length) { el.innerHTML = `<div class="bbcard empty" onclick="nav('phone');setTimeout(()=>PH.open('ads'),0)"><span>📢</span><div><b>Your ad could be here</b><small>Phone → Ads</small></div></div>`; return }
+    if (!this.live.length) { el.innerHTML = ''; return }      /* no live ads: show nothing */
     const a = this.live[this.cur % this.live.length];
     el.innerHTML = `<div class="bbcard" onclick="ADS.go(ADS.live[${this.cur % this.live.length}])"><div class="adth">${a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.remove()">` : '📢'}</div><div><b>${esc(a.title)}</b><small>Sponsored · tap to open</small></div></div>`
   }

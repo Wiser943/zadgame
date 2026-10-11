@@ -129,3 +129,12 @@ Open one of each: 101 cinema, 102 restaurant, 103 salon, 104 gym, 105 football p
 - Income is stored for up to 24 hours: tap **Collect** (or **Collect all**). Running costs are 25% of sales, then 10% tax. Collections are compare-and-set on `last`, so the same hours can never be paid twice.
 - Upgrade to level 2 (60% of the price) and 3 (100%): income x1.35 and x1.75. Closing pays back 50% of everything invested.
 - New-player protection applies like Invest: during the first week purchases above `PROTECT.investMax` (₦1.5m) are refused.
+
+## Night mode everywhere, Settings display controls, map place sheet
+- **Night mode** is now **Off / On / Auto** (Settings -> Display) and covers AllConnect, the phone apps, the map sheets and GameHub. Auto = dark from 6:30 pm to 6:30 am Lagos time (same window as the home-screen sun/moon), re-checked every minute.
+- **How it works** (`PREFX` in `app.js`): Settings stores the choices (`ghPrefs.night`, `ghPrefs.saver`, `ghPrefs.camAuto`); `PREFX.derive()` turns them into `ghPrefs.theme` and `ghPrefs.lowPower`, which GameHub, the map, music and the loaders already read, so none of them changed. Old saves are migrated (theme dark -> night On, lowPower -> saver On).
+- **Data & battery saver**: Auto / On / Off. Auto turns on when the battery is 20% or less and not charging, Data Saver is on, or the connection is slow (2g or under 0.7 Mbps). The row says whether it is on right now and why.
+- **Camera turns by itself** (Off / On): when On, the map camera swings round to follow the way you walk. Off = stays where you leave it.
+- **Sound effects** is a switch in Display; Music, Voice announcements and Vibration stay under Sound.
+- **Dark styles**: `scripts/gen-dark.py` reads `style.css` and appends dark versions of every light surface/ink/border at the end of the file (inside `AUTO-GENERATED DARK MODE OVERRIDES`). They use `:where()` so they keep the specificity of the light rule and `.on`/`.sel` states still win. Re-run `python3 scripts/gen-dark.py` after adding CSS; hand-written dark rules go above that block.
+- **Map place sheet**: tapping any pin label (places and districts) opens the Lagos Life style sheet: **Details** tab (description + **Visit**, which says "coming soon") and **Nearby** tab (the closest places with a short distance label; tap one to open it).

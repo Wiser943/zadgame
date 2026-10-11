@@ -1,3 +1,19 @@
+## Map interaction (items 61-80)
+
+New file `public/allconnect/maptools.js` plus layer/routing hooks in `map3d.js`. Open it with the 🧭 Tools button on the map; tap any landmark to get a sheet (preview route, walk now, fast travel, bookmark).
+
+- 61 Fast travel: walk near a landmark once to unlock it, then jump between unlocked ones (free, 20 s cooldown).
+- 62 Route preview: coloured line on the map, start/finish markers and an ETA bubble, with a mode bar (walk, bike, keke, bus, ride, ferry).
+- 63 Traffic-aware times: rush hours, the city event (go-slow, rain, fuel) and bridge sections change the ETA. Optional traffic layer colours the main roads.
+- 64 Bus stops: four BRT lines with moving buses. The timetable is read from the same buses, so "next in N min" matches what you see. No service 11:30 pm to 5 am.
+- 65 Ride-hail pickup points (14), 66 bike and tricycle stands, 67 three ferry routes with departures every 15 min, 68 airport terminal guide (departures and arrivals walks).
+- 69-71 Search by business, player or event; 72 bookmarks (30); 73 favourite routes (12).
+- 74 Accessible routes: wide, step-free paths; buses and rides only.
+- 75 Night safety, 76 crowd density, 77 weather (rain and flood zones from the city event), 78 festival overlay, 79 treasure hunt (6 daily spots, each pickup uses the existing gem socket so the server still rate-limits payouts), 80 photo spots with best-light hours (opens the camera).
+
+Fares shown are estimates and are not charged. Bookmarks, favourites, unlocks and layer choices are stored per account in the browser.
+
+
 ## City districts and maps (items 41-60) + one-time character pick
 
 Twenty new districts on the 3D map (`public/allconnect/map3d.js`): 41 Lagos Island (cathedral, mosque, market stalls, rowhouses), 42 Victoria Island commerce towers, 43 Yaba creators, 44 Ikeja business, 45 Surulere sports, 46 Lekki nightlife, 47 Ajah residential, 48 Agege market, 49 mainland transport, 50 university campus, 51 beach resort, 52 stadium, 53 convention centre, 54 port (cranes, containers, ship), 55 technology park, 56 film village, 57 museum quarter, 58 government quarter, 59 rural outskirts, 60 offshore island (new land mass reached by a jetty from Lekki).
