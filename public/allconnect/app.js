@@ -160,6 +160,21 @@ function hubQuiet(cb) {
   first ? f.addEventListener('load', () => hubRun(cb), { once: true }) : hubRun(cb)
 }
 
+/* Lagos Run opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
+function openLagosRun() {
+  const f = $('lrf');
+  if (f.getAttribute('src') !== '/lagosrun/') f.src = '/lagosrun/'; /* closing sets it to about:blank, so each open starts the game fresh */
+  $('lagosrun').style.display = 'block';
+  try { if (window.BGM) BGM.pause() } catch (e) {}
+  try { document.documentElement.requestFullscreen && !document.fullscreenElement && /Android|iPad/.test(navigator.userAgent) && document.documentElement.requestFullscreen().catch(() => {}) } catch (e) {}
+}
+function closeLagosRun() {
+  const f = $('lrf'); $('lagosrun').style.display = 'none'; f.removeAttribute('src'); f.src = 'about:blank';
+  try { if (document.fullscreenElement) document.exitFullscreen() } catch (e) {}
+  try { if (window.BGM) BGM.sync() } catch (e) {}
+  nav('home')
+}
+
 function closeHub() {
   $('hub').style.display = 'none';
   nav('home')
@@ -344,9 +359,11 @@ const APPS = [
   ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
   ['Bank', '<i class="fa-solid fa-building-columns"></i>', '#151a35'],
   ['GameHub', '🎮', '#151a35'],
+  ['Lagos Run', '🚌', 'linear-gradient(135deg,#f2b705,#e0301e 60%,#14110f)'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
+  ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
@@ -359,7 +376,7 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 /* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
 const PHLAY = {
   key: 'allconnect:applayout',
@@ -747,6 +764,16 @@ function doEmote(kind) {
 }
 function emoteUI() { $('emDance').classList.toggle('on', S.emote === 'dance'); $('emStop').style.display = S.emote ? 'block' : 'none' }
 window.emoteEnded = () => { S.emote = null; if (window.MAP3D) MAP3D.setEmote(null); emoteUI() };
+/* ================= global theme: applies to the AllConnect shell itself (not just the GameHub iframe).
+   Reads the same 'ghPrefs' key the Settings app and GameHub already share, so one toggle covers all three. */
+function applyTheme() {
+  let p = {}; try { p = JSON.parse(localStorage.getItem('ghPrefs') || '{}') } catch (e) {}
+  document.documentElement.setAttribute('data-theme', p.theme === 'dark' ? 'dark' : 'light');
+}
+window.applyTheme = applyTheme;
+applyTheme();
+window.addEventListener('storage', e => { if (e.key === 'ghPrefs') applyTheme() });
+
 /* Haptics: a short tick when a nav bar icon / tab is tapped (respects Settings > Vibration).
    Android uses the Vibration API; iPhone (iOS 18+) has no vibrate(), so we toggle a hidden native switch, which gives the system tick. */
 const HAPTIC = {

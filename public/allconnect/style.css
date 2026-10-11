@@ -284,7 +284,7 @@ i.spin::after{content:"";width:18px;height:18px;border-radius:50%;border:3px sol
 @media (min-width:768px) and (min-height:520px){.asheet .shcard{max-width:560px;margin:0 auto;border-radius:22px 22px 0 0}.gimgs{max-height:360px}.gimgs.n1 .gim{aspect-ratio:16/9}.gimgs.n2 .gim,.gimgs.n4 .gim{aspect-ratio:3/2}}
 
 /* ---- brand ---- */
-#splash .brandlogo{display:block;width:min(210px,52vw);height:auto;margin-top:calc(14px + var(--sat));position:relative;filter:drop-shadow(0 6px 14px rgba(11,79,224,.18))}
+#splash .brandlogo{display:block;width:min(150px,38vw);height:auto;margin-top:calc(10px + var(--sat));position:relative;filter:drop-shadow(0 6px 14px rgba(11,79,224,.18))}
 .deskside img.lg{width:84px;height:84px;border-radius:20px;display:inline-block;box-shadow:0 8px 24px rgba(0,0,0,.3)}
 
 /* ================= Gist 2.0 ================= */
@@ -327,7 +327,7 @@ i.spin::after{content:"";width:18px;height:18px;border-radius:50%;border:3px sol
 .glbi{touch-action:pan-y}
 
 /* ---- splash footer ---- */
-.sfoot{position:relative;margin-top:auto;padding:14px 0 calc(46px + var(--sab));display:flex;gap:8px;justify-content:center;align-items:center;flex:none}
+.sfoot{position:relative;margin-top:auto;padding:6px 0 calc(8px + var(--sab));display:flex;gap:8px;justify-content:center;align-items:center;flex:none}
 .sfoot a,.sfoot .official{display:inline-flex;align-items:center;justify-content:center;height:38px;min-width:38px;border-radius:99px;background:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.12);color:#17203d;font-size:16px;text-decoration:none}
 .sfoot .official{padding:0 14px;gap:6px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:#4a5068}.sfoot .official i{color:#1d9a5b}
 /* ---- HUD mute ---- */
@@ -748,7 +748,7 @@ body.powercut::after{content:'';position:fixed;inset:0;background:rgba(6,9,28,.4
 #cityload small{margin-top:26px;font-size:12px;opacity:.75;max-width:280px;line-height:1.45}
 
 /* ===== sign-in screen extras + map legend button ===== */
-.altlinks{display:flex;flex-direction:column;gap:6px;margin-top:10px}.altlinks a{color:var(--mut);font-weight:700;font-size:13px;cursor:pointer;text-decoration:none}
+.altlinks{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 18px;margin-top:10px}.altlinks a{color:var(--mut);font-weight:700;font-size:13px;cursor:pointer;text-decoration:none}
 .maplg{position:absolute;right:10px;top:calc(100px + var(--sat));z-index:5;border:0;padding:8px 13px;font:700 12.5px inherit;cursor:pointer}
 
 /* ---------- Style app (styleapp.js) ---------- */
@@ -840,3 +840,43 @@ body.powercut::after{content:'';position:fixed;inset:0;background:rgba(6,9,28,.4
 .fwrow{display:flex;align-items:center;gap:12px;padding:11px 14px;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif}.fwrow+.fwrow{border-top:1px solid #eceef6}
 .fwrow input{width:20px;height:20px;accent-color:#6d4cff;flex:none}.fwrow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){.cxm{animation:none}}
+
+/* Lagos Run: full-screen standalone app (like GameHub, but with none of the AllConnect frame) */
+#lagosrun{position:fixed;inset:0;z-index:120;display:none;background:#14110f}
+#lagosrun iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#14110f}
+#lrx{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);background:rgba(20,17,15,.55);color:#fff6e0;font:700 14px/1 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;opacity:.55;z-index:2;-webkit-tap-highlight-color:transparent;padding:0}
+#lrx:active,#lrx:hover{opacity:1}
+
+/* Venues app (reuses the Invest card styles) */
+.vncard{background:linear-gradient(135deg,#a855f7 0%,#7c3aed 55%,#5b21b6 100%);box-shadow:0 10px 22px rgba(109,40,217,.28)}
+.vnlab{display:block;font-size:13px;opacity:.9;margin-bottom:2px}
+.vnall{margin-top:14px;width:100%;padding:13px;color:#5b21b6}
+.vnpips{display:flex;align-items:center;gap:4px;margin-top:3px}
+.vnpip{width:16px;height:6px;border-radius:4px;background:#cfd4e2;display:inline-block}
+.vnpip.on{background:#16a361}
+.vnpips em{font-style:normal;font-size:12px;color:var(--mut);margin-left:4px}
+
+/* ================= dark mode: applies across AllConnect itself, not just the embedded GameHub.
+   Driven by the same 'ghPrefs.theme' value the Settings app and GameHub both read — see app.js applyTheme(). ================= */
+html[data-theme="dark"] { color-scheme: dark; }
+html[data-theme="dark"] { --ink:#eef0f7; --mut:#9aa0b8; --pill:rgba(28,32,52,.92); }
+html[data-theme="dark"] body { background:#0a1230; }
+html[data-theme="dark"] .screen.light { background:#14182a; }
+html[data-theme="dark"] .screen.light { --hbg:#14182a; }
+html[data-theme="dark"] .sgrp { background:#1c2036; }
+html[data-theme="dark"] .sgrp > * + * { border-top-color:rgba(255,255,255,.08); }
+html[data-theme="dark"] .sw2 { background:#363c58; }
+html[data-theme="dark"] .ssel { background:#242940; }
+html[data-theme="dark"] .sinput, html[data-theme="dark"] .cin input, html[data-theme="dark"] .cin2 input { background:#1e2238; }
+html[data-theme="dark"] .lgcard, html[data-theme="dark"] .rcard { background:#181c2e; }
+html[data-theme="dark"] .lghd button { background:#242940; }
+html[data-theme="dark"] .lgtabs button { background:#242940; }
+html[data-theme="dark"] .lgtabs button.on { background:#3b4164; color:#fff; }
+html[data-theme="dark"] .lgdaily { background:#20243a; }
+html[data-theme="dark"] .lgq, html[data-theme="dark"] .lgb { border-bottom-color:rgba(255,255,255,.08); }
+html[data-theme="dark"] .lgbtn.ghost { background:#242940; }
+html[data-theme="dark"] .rcard p { color:#aab0c8; }
+html[data-theme="dark"] .pbtn:not(.blu):not(.grn) { background:#242940; color:#d7dae6; }
+html[data-theme="dark"] .bal { background:#1c2036; }
+html[data-theme="dark"] .chip { background:rgba(40,44,68,.85); color:#c7cce0; }
+html[data-theme="dark"] .nav button.on { background:#2a3050; }

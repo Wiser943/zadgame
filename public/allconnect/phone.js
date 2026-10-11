@@ -11,7 +11,7 @@ const PH={
     document.querySelectorAll('.app[data-app]').forEach(a=>{const b=a.querySelector('.bdg');if(!b)return;const v=n[a.dataset.app]||0;b.textContent=v>9?'9+':(v||'')});
     const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
   /* ----- shell ----- */
-  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),invest:()=>INV.open(),style:()=>STYLE.open(),ads:()=>ADS.open()})[name]()},
+  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),invest:()=>INV.open(),venues:()=>VEN.open(),style:()=>STYLE.open(),ads:()=>ADS.open()})[name]()},
   close(){if(this.view==='jobs'&&window.WORKCARD)setTimeout(()=>WORKCARD.flush(true),300);const sc=document.querySelector('.screen');sc.classList.remove('light');sc.style.removeProperty('--hbg');this.view=null;this.chatId=null;if(window.ADS)ADS.hideHost();this.shade(false,true);this.$a().innerHTML='';this.refreshBadges()},
   /* header tint per app, so the status bar + header match the app instead of being plain white everywhere */
   TINT:{contacts:'#e3f5ec',messages:'#e6eeff',chat:'#e6eeff',group:'#e6eeff',groupinfo:'#e6eeff',settings:'#eceef5',bank:'#e0f3e8',jobs:'#fff0d6',ads:'#fde4ef',gist:'#ffe8d9',police:'#e2e8fb',appsearch:'#eceef5',adapp:'#eceef5'},
@@ -177,6 +177,6 @@ function closeVisit(){document.getElementById('visit').style.display='none'}
 
 /* Desktop: Esc steps back (visit -> GameHub -> phone app) */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const vis=document.getElementById('visit'),hub=document.getElementById('hub');
-  if(vis&&vis.style.display==='block')closeVisit();else if(hub&&hub.style.display==='flex')closeHub();else if(PH.view==='chat'||PH.view==='group')PH.messages();else if(PH.view==='groupinfo')PH.group(PH.gid);else if(PH.view)PH.close()});
+  const lr=document.getElementById('lagosrun');if(lr&&lr.style.display==='block')closeLagosRun();else if(vis&&vis.style.display==='block')closeVisit();else if(hub&&hub.style.display==='flex')closeHub();else if(PH.view==='chat'||PH.view==='group')PH.messages();else if(PH.view==='groupinfo')PH.group(PH.gid);else if(PH.view)PH.close()});
 
 window.PH = PH;

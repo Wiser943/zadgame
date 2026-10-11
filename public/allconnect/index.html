@@ -199,6 +199,8 @@
   <div id="hub">
    <div class="hubbar"><button onclick="closeHub()">‹ Back</button><b>🎮 GameHub</b><span></span></div><iframe id="hubf" title="GameHub" allow="autoplay; fullscreen; clipboard-write"></iframe>
   </div>
+  <!-- Lagos Run: a full-screen app of its own (no AllConnect header, phone frame or nav). Only a small floating close button. -->
+  <div id="lagosrun" aria-label="Lagos Run"><iframe id="lrf" title="Lagos Run" allow="autoplay; fullscreen; accelerometer; gyroscope; clipboard-write"></iframe><button id="lrx" onclick="closeLagosRun()" aria-label="Close Lagos Run">✕</button></div>
   <div id="visit"></div>
   <div id="netgate" role="alert"><div class="ng">
    <h1>AllConnect</h1>
@@ -226,6 +228,7 @@
  <script src="/allconnect/chatx.js"></script>
  <script src="/allconnect/jobs.js"></script>
  <script src="/allconnect/invest.js"></script>
+ <script src="/allconnect/venues.js"></script>
  <script src="/allconnect/ads.js"></script>
  <script src="/allconnect/lagos.js"></script>
  <script src="/allconnect/styleapp.js"></script>

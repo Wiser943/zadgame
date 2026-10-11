@@ -110,3 +110,22 @@ Also fixed: `PH`, `GIST`, `CAM`, `POL` are now attached to `window` (top-level `
 - Key is read from IMGBB_KEY (also IMGBB_API_KEY, IBB_KEY, ... quotes/spaces are stripped). Uploads try multipart then url-encoded, and the real imgbb error is logged.
 - If imgbb fails or is not configured, the photo is saved in our own database so the player never sees an error (max 80 such photos per user, 1.6 MB each).
 - Admin panel -> **Photo storage**: shows whether the key is found, the last real result, and a "Test imgbb now" button with imgbb's exact reply.
+
+## Lagos Run (full-screen app) + Lagos Run art on the map
+- **Lagos Run** (the danfo game from `lagos.zip`) is now an app on the phone (Phone -> Lagos Run). Like GameHub it takes over the whole screen:
+  no AllConnect header, phone frame or nav, just a small ✕ at the top-left (Esc also closes it). The game is unloaded on close so it never runs or plays sound in the background.
+- Files: `public/lagosrun/` (game, fonts, SW, manifest) served at `/lagosrun/`. Its paths were rewritten from `/assets`, `/api`, `/sw.js` to `/lagosrun/...` so nothing clashes with AllConnect/GameHub;
+  its service worker is scoped to `/lagosrun/` only. It can also be installed on its own (`/lagosrun/manifest.webmanifest`, fullscreen).
+- Leaderboard/account API: not part of AllConnect, `/lagosrun/api/*` answers 503 "offline" (set in `server.js`), so the game runs in guest/local mode.
+- The upload did not include `facades/`, `pickups/`, `keyart/` or most `buses/` sprites; the game skips them (console warns "missing sprite"). Drop them into `public/lagosrun/assets/sprites/<folder>/` to get them back.
+- **Map** (`public/allconnect/map3d.js`, block "Lagos Run art on the map"): asphalt texture on the roads, potholes / manholes / drains / puddles / oil / litter / skid marks, zebra crossings at some junctions,
+  Lagos roofs (zinc, red metal, tarp, clothesline, dish, water tank) on small flat roofs, and danfos driving the horizontal roads. Images are loaded lazily from `/lagosrun/assets/sprites/`; with Saver mode or a missing image the map draws exactly as before.
+
+## Venues app (Phone -> Venues): "Open a ..." 101-120
+Open one of each: 101 cinema, 102 restaurant, 103 salon, 104 gym, 105 football pitch, 106 gaming café, 107 recording studio, 108 fashion boutique, 109 supermarket, 110 pharmacy,
+111 clinic, 112 school, 113 library, 114 coworking space, 115 nightclub, 116 art gallery, 117 church / community hall, 118 repair workshop, 119 hotel, 120 wedding venue.
+- Files: `utils/acvenues.js` (all prices, rates, peak hours, upgrade/close rules; tune here), `routes/acvenues.js` (`/api/ac/venues`: GET state, POST open | upgrade | collect | close), `models/ACVenue.js`, `public/allconnect/venues.js`, `tests/acvenues.test.js`.
+- Money: opening costs the price (server-side, same wallet as Invest/Bank). Each venue earns hourly, shaped by its busy hours (nightclub at night, church hall on Sunday, wedding venue on Saturday, restaurant at meals ...) with a daily +/-30% "how was business" luck that is the same for the same player/venue/day.
+- Income is stored for up to 24 hours: tap **Collect** (or **Collect all**). Running costs are 25% of sales, then 10% tax. Collections are compare-and-set on `last`, so the same hours can never be paid twice.
+- Upgrade to level 2 (60% of the price) and 3 (100%): income x1.35 and x1.75. Closing pays back 50% of everything invested.
+- New-player protection applies like Invest: during the first week purchases above `PROTECT.investMax` (₦1.5m) are refused.

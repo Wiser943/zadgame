@@ -6,6 +6,7 @@ const GP_DEF={theme:'light',music:true,sound:true,vibration:true,voice:true,lowP
 const GP={
   get(){try{return Object.assign({},GP_DEF,JSON.parse(localStorage.getItem('ghPrefs')||'{}'))}catch(e){return Object.assign({},GP_DEF)}},
   set(k,v){const p=this.get();p[k]=v;try{localStorage.setItem('ghPrefs',JSON.stringify(p))}catch(e){}
+    if(window.applyTheme)window.applyTheme();
     try{const w=document.getElementById('hubf').contentWindow;if(w&&w.GHBridge)w.GHBridge.sync()}catch(e){}}
 };
 /* Sound / display toggles, grouped. Only what players actually need. */

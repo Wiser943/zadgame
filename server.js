@@ -27,6 +27,7 @@ const acJobRoutes = require('./routes/acjobs');
 const acAdRoutes = require('./routes/acads');
 const acItemRoutes = require('./routes/acitems');
 const acInvestRoutes = require('./routes/acinvest');
+const acVenuesRoutes = require('./routes/acvenues');
 const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
 const acLagosRoutes = require('./routes/aclagos');
@@ -87,6 +88,7 @@ async function main() {
   app.use('/api/ac/ads', acAdRoutes);
   app.use('/api/ac/items', acItemRoutes);
   app.use('/api/ac/invest', acInvestRoutes);
+  app.use('/api/ac/venues', acVenuesRoutes);
   app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
@@ -106,6 +108,11 @@ async function main() {
     res.status(ok ? 200 : 503).json({ ok, db, redis, time: new Date().toISOString() });
   });
   app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+  // Lagos Run: a standalone full-screen app (own folder, own service-worker scope, own manifest).
+  // Its leaderboard/account API is not part of AllConnect, so it answers "offline" and the game runs in guest mode.
+  app.use('/lagosrun/api', (req, res) => res.status(503).json({ ok: false, error: 'offline' }));
+  app.get(['/lagosrun', '/lagosrun/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'lagosrun', 'index.html')));
 
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
   app.use(express.static(path.join(__dirname, 'public'), { index: false }));
