@@ -1,3 +1,33 @@
+## Extended map (fills the screen when zoomed out or dragged)
+
+The city now continues past its edges: a sea channel, then outer land with decorative streets, buildings and trees on all four sides (scenery only, tapping there does nothing). You can pan about 490 units past the edge, and zoom out further (2100 on wide screens, 1700 on phones, was 1500), so the screen is always full of map, even on desktop. Battery saver uses fewer outer buildings. Code: `extendWorld`, `XLAND`, `XOBJ`, `maxD` in `map3d.js`.
+
+## Transport systems (items 81-100) + dark-mode night map
+
+New phone app **Transport** (🚕), built on the shared `SHEET` (tabs) and `CARD` (result popup) from `ui.js`, the same rows/bars/buttons as Lagos Life, Jobs and Invest, and the Lagos quest list. Files: `public/allconnect/transport.js`, `routes/actransport.js` (`/api/ac/transport`), `utils/actransport.js` (all numbers live here), `models/ACTrafficReport.js`, tests in `tests/actransport.test.js`.
+
+| # | Feature | Where |
+|---|---------|-------|
+| 81 / 83 / 85 | Buy a bicycle, motorcycle, car (also bus, van, boat for businesses and careers). Motor vehicles need the licence | Shop |
+| 82 | Rent a bicycle (3 h). Counts as your bicycle for Delivery Rider shifts | Shop |
+| 84 | Okada minigame: pick a free lane for 6 rounds, fare from lanes cleared, daily limits | Drive |
+| 86 | Fuel per vehicle (price follows the city event) and maintenance: condition wears, service restores it | Garage > Manage > Care |
+| 87 | Customisation garage: 10 paints and per-vehicle upgrades, each adds up to 10% pay | Manage > Style |
+| 88 | Driving licence: theory test (fee, 8/10) then practical traffic-light test | Drive |
+| 89 | Road-sign quiz (21 signs, rules bank), daily limit, reward per correct answer | Drive |
+| 90 | Traffic-light timing challenge, server checks the timings are humanly possible | Drive |
+| 91 / 95 | Bus route business and airport shuttle business: assign a bus or van to a route, collect up to 12 h of fares, uses fuel and condition, rush hours pay more | Routes |
+| 92 / 93 / 94 | Taxi Driver, Delivery Rider, Boat Captain careers added to **Jobs** (vehicle needed; shifts use its fuel and condition; work uniforms added in Style) | Jobs |
+| 96 | Vehicle insurance (third-party / comprehensive, 30 days) + three quests (licence, first vehicle, insure) in Lagos Life | Manage > Cover |
+| 97 | Roadside assistance: membership or pay-per-call emergency fuel and fix | Shop / Manage > Care |
+| 98 | Parking lots with shared capacity (6 lots, one space per player per lot); street-parked vehicles can get a ticket after a trip | Manage > Park |
+| 99 | Community traffic reports (12 roads), confirm / dispute, reporter paid when 3 drivers confirm | Traffic |
+| 100 | Public transport reputation (0-100, 5 tiers): lifts route income, cuts insurance, top-10 board | Routes |
+
+Rounds that need answers (quiz, lights, Okada) keep the right answers on the server and can be finished once; every payout has a daily cap. Rented bicycle, fuel, condition and money changes are single atomic updates.
+
+**Dark mode map**: with the dark theme on, the map is always drawn as a night scene (deeper blue tint) with glowing street lights along both sides of every road. In the light theme the lights also come on at night by the in-game clock. Battery saver draws plain dots instead of glows (`map3d.js`: `lampBuild`, `drawLamps`).
+
 ## Map interaction (items 61-80)
 
 New file `public/allconnect/maptools.js` plus layer/routing hooks in `map3d.js`. Open it with the 🧭 Tools button on the map; tap any landmark to get a sheet (preview route, walk now, fast travel, bookmark).

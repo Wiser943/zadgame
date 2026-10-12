@@ -36,6 +36,7 @@ const acMusicRoutes = require('./routes/acmusic');
 const acHubRoutes = require('./routes/achub');
 const acStyleRoutes = require('./routes/acstyle');
 const acPushRoutes = require('./routes/acpush');
+const acTransportRoutes = require('./routes/actransport');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
 const initSockets = require('./sockets');
@@ -88,6 +89,7 @@ async function main() {
   app.use('/api/ac/ads', acAdRoutes);
   app.use('/api/ac/items', acItemRoutes);
   app.use('/api/ac/invest', acInvestRoutes);
+  app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/venues', acVenuesRoutes);
   app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats
   app.use('/api/ac', allconnectRoutes);

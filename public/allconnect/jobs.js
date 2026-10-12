@@ -29,6 +29,7 @@ const JOBS = {
       this.take(r); if (window.WORKCARD) WORKCARD.add(r);
       if (r.promoted) { toast('🎉 Promoted to ' + r.promoted + '!'); if (window.WORKCARD) WORKCARD.p = null; PH.local_('🎉', 'You were promoted to ' + r.promoted + ' · pay ' + fmt(r.mine.pay) + ' per shift', 'good') }
       else if (!auto) toast('💼 Shift done +' + fmt(r.earned));
+      if (r.incident) setTimeout(() => toast(r.incident), 1500);
       else toast('💼 +' + fmt(r.earned) + ' shift pay')
     } catch (e) {
       if (e.status === 429) { await this.load() }
@@ -63,6 +64,7 @@ const JOBS = {
   btn(m) {
     if (this.busy) return { t: 'Working…', off: true };
     if (m.closed) return { t: 'Closed today', off: true };
+    if (m.blocked) return { t: 'Vehicle needed', off: true };
     if (m.shiftsToday >= m.maxPerDay) return { t: 'Done for today', off: true };
     const s = this.left(); return s > 0 ? { t: 'On break · ' + this.clock(s), off: true } : { t: 'Work a shift now', off: false }
   },
@@ -77,10 +79,11 @@ const JOBS = {
         <div class="jbar"><u style="width:${pct}%"></u></div>
         <small>${nx ? `Next: ${esc(nx.title)} (${pay(nx.pay)}/shift) in ${nx.shiftsLeft} shift${nx.shiftsLeft === 1 ? '' : 's'}` : 'Top of the ladder 👑'} · ${m.shiftsToday}/${m.maxPerDay} shifts today</small>
         ${m.closed ? `<small class="jwarn">${esc(m.closed)}</small>` : ''}
+        ${m.blocked ? `<small class="jwarn">${esc(m.blocked)} <a href="#" onclick="TR.open('shop');return false">Open Transport</a></small>` : ''}
         <button class="jwork" id="jwork" onclick="JOBS.work(false)" ${b.off ? 'disabled' : ''}>${b.t}</button></div>`;
     } else h += '<p class="jhint">Pick a job to start earning ₦ every shift. You can switch any time.</p>';
     h += d.jobs.filter(j => !m || j.id !== m.id).map(j => `<div class="jcard"><div class="jrow"><span class="jic">${j.emoji}</span><div class="jnm"><b>${esc(j.name)}</b><span>Starts as ${esc(j.startTitle)}</span></div><div class="jpay"><b>${pay(j.startPay)}</b><span>per shift</span></div></div>
-        <p class="jdesc">${esc(j.blurb)}</p><div class="jmeta">🕘 ${esc(j.hours)}</div><div class="jmeta">${esc(j.days)}</div>
+        <p class="jdesc">${esc(j.blurb)}</p><div class="jmeta">🕘 ${esc(j.hours)}</div><div class="jmeta">${esc(j.days)}</div>${j.needsText ? `<div class="jmeta">🚗 ${esc(j.needsText)}</div>` : ''}
         <button class="jsw" onclick="JOBS.switchTo('${j.id}')">Switch to this job</button></div>`).join('');
     ab.innerHTML = h
   }

@@ -84,6 +84,19 @@ const UserSchema = new mongoose.Schema({
     questsClaimed: { type: [String], default: [] },
     streak: { type: Number, default: 0 },
     lastDaily: { type: String, default: '' },
+    tr: {                                                  // Transport app (see utils/actransport.js, routes/actransport.js)
+      vehicles: { type: [{ _id: false, id: String, kind: String, cond: { type: Number, default: 100 }, fuel: { type: Number, default: 0 }, paint: { type: String, default: '' }, mods: { type: [String], default: [] },
+        insTier: { type: String, default: '' }, insUntil: { type: Date, default: null }, bought: { type: Date, default: null },
+        park: { lot: { type: String, default: '' }, until: { type: Date, default: null } }, route: { id: { type: String, default: '' }, since: { type: Date, default: null } } }], default: [] },
+      rentUntil: { type: Date, default: null },
+      licTheory: { type: Date, default: null }, licOk: { type: Date, default: null }, licLast: { type: Date, default: null }, licTries: { type: Number, default: 0 },
+      rep: { type: Number, default: 20 }, repDay: { type: String, default: '' }, repToday: { type: Number, default: 0 },
+      day: { type: String, default: '' }, signsToday: { type: Number, default: 0 }, lightToday: { type: Number, default: 0 }, rideToday: { type: Number, default: 0 }, rideEarn: { type: Number, default: 0 }, callsToday: { type: Number, default: 0 },
+      assistUntil: { type: Date, default: null }, lastRide: { type: Date, default: null },
+      reportsDay: { type: String, default: '' }, reportsToday: { type: Number, default: 0 }, reportPaidDay: { type: String, default: '' }, reportPaidToday: { type: Number, default: 0 }, lastReport: { type: Date, default: null },
+      rides: { type: Number, default: 0 }, fines: { type: Number, default: 0 }, crashes: { type: Number, default: 0 }, earned: { type: Number, default: 0 },
+      sess: { type: mongoose.Schema.Types.Mixed, default: null }     // the one quiz / light / okada round in progress (answers stay on the server)
+    },
     hub: {                                                 // onboarding, missions, result cards, life timeline (see routes/achub.js)
       hood: { type: String, default: '' }, hobby: { type: String, default: '' },
       done: { type: Boolean, default: false }, tourDone: { type: Boolean, default: false }, controlsDone: { type: Boolean, default: false },
@@ -103,5 +116,8 @@ const UserSchema = new mongoose.Schema({
     draws: { type: Number, default: 0 }
   }
 }, { timestamps: true });
+
+UserSchema.index({ 'ac.tr.vehicles.park.until': 1 }, { sparse: true });      // parking lot occupancy
+UserSchema.index({ 'ac.tr.rep': -1 }, { sparse: true });                      // public transport reputation board
 
 module.exports = mongoose.model('User', UserSchema);

@@ -17,7 +17,14 @@ const JOBS = {
   fashion: { name: 'Fashion', emoji: '🧵', blurb: 'Sew for owambe season and grow your own label.', hours: '1-hour shifts, any time', days: '5 days a week',
     ladder: [{ title: 'Tailor Apprentice', field: 'Tailoring', pay: 7500, shifts: 0 }, { title: 'Tailor', field: 'Tailoring', pay: 16000, shifts: 40 }, { title: 'Designer', field: 'Design', pay: 36000, shifts: 150 }, { title: 'Creative Director', field: 'Design', pay: 80000, shifts: 360 }, { title: 'Fashion House Owner', field: 'Executive', pay: 180000, shifts: 750 }] },
   health: { name: 'Healthcare', emoji: '🩺', blurb: 'Care for patients at LUTH and rise through the ranks.', hours: '1-hour shifts, any time', days: '5 days a week',
-    ladder: [{ title: 'Nursing Assistant', field: 'Nursing', pay: 10500, shifts: 0 }, { title: 'Nurse', field: 'Nursing', pay: 20000, shifts: 50 }, { title: 'Doctor', field: 'Medicine', pay: 48000, shifts: 180 }, { title: 'Consultant', field: 'Medicine', pay: 100000, shifts: 420 }, { title: 'Chief Medical Director', field: 'Executive', pay: 210000, shifts: 800 }] }
+    ladder: [{ title: 'Nursing Assistant', field: 'Nursing', pay: 10500, shifts: 0 }, { title: 'Nurse', field: 'Nursing', pay: 20000, shifts: 50 }, { title: 'Doctor', field: 'Medicine', pay: 48000, shifts: 180 }, { title: 'Consultant', field: 'Medicine', pay: 100000, shifts: 420 }, { title: 'Chief Medical Director', field: 'Executive', pay: 210000, shifts: 800 }] },
+  // Transport careers (items 92-94). `requires` = vehicle kinds that will do; the shift uses that vehicle's fuel and condition (see routes/acjobs.js, utils/actransport.js).
+  taxi: { name: 'Taxi Driver', emoji: '🚕', blurb: 'Pick up fares in your own car. Go-slow days pay extra, but keep the tank full.', hours: '1-hour shifts, any time', days: '5 days a week', requires: ['car'], needsText: 'Needs a car and a driving licence',
+    ladder: [{ title: 'Cab Trainee', field: 'Road', pay: 11000, shifts: 0 }, { title: 'Cab Driver', field: 'Road', pay: 20000, shifts: 50 }, { title: 'Senior Cab Driver', field: 'Road', pay: 38000, shifts: 160 }, { title: 'Cab Fleet Owner', field: 'Fleet', pay: 80000, shifts: 380 }, { title: 'Ride-hail Boss', field: 'Executive', pay: 175000, shifts: 780 }] },
+  delivery: { name: 'Delivery Rider', emoji: '📦', blurb: 'Bring food and parcels across town on a bicycle or motorcycle. A rented bicycle works too.', hours: '1-hour shifts, any time', days: '5 days a week', requires: ['motorcycle', 'bicycle'], needsText: 'Needs a bicycle (buy or rent) or a motorcycle',
+    ladder: [{ title: 'Bicycle Courier', field: 'Road', pay: 9000, shifts: 0 }, { title: 'Dispatch Rider', field: 'Road', pay: 16500, shifts: 45 }, { title: 'Senior Rider', field: 'Road', pay: 34000, shifts: 150 }, { title: 'Logistics Lead', field: 'Logistics', pay: 72000, shifts: 340 }, { title: 'Courier Company Owner', field: 'Executive', pay: 165000, shifts: 730 }] },
+  boat: { name: 'Boat Captain', emoji: '⛵', blurb: 'Ferry people across the lagoon from Ikorodu to Lagos Island.', hours: '1-hour shifts, any time', days: '5 days a week', requires: ['boat'], needsText: 'Needs a passenger boat and a driving licence',
+    ladder: [{ title: 'Ferry Mate', field: 'Marine', pay: 13000, shifts: 0 }, { title: 'Boat Captain', field: 'Marine', pay: 26000, shifts: 55 }, { title: 'Senior Captain', field: 'Marine', pay: 52000, shifts: 190 }, { title: 'Harbour Master', field: 'Marine', pay: 105000, shifts: 420 }, { title: 'Marine Director', field: 'Executive', pay: 230000, shifts: 800 }] }
 };
 const jobOf = (id) => (Object.prototype.hasOwnProperty.call(JOBS, id) ? JOBS[id] : null);
 const levelOf = (job, shifts) => { let l = 0; job.ladder.forEach((r, i) => { if (shifts >= r.shifts) l = i; }); return l; };
@@ -29,7 +36,7 @@ function describe(id, shifts = 0) {
   return { id, name: job.name, emoji: job.emoji, title: rung.title, field: rung.field, pay: rung.pay, level, shifts,
     next: next ? { title: next.title, pay: next.pay, shiftsLeft: Math.max(0, next.shifts - shifts), at: next.shifts, from: rung.shifts } : null };
 }
-const catalogue = () => Object.entries(JOBS).map(([id, j]) => ({ id, name: j.name, emoji: j.emoji, blurb: j.blurb, hours: j.hours, days: j.days, startTitle: j.ladder[0].title, startPay: j.ladder[0].pay }));
+const catalogue = () => Object.entries(JOBS).map(([id, j]) => ({ id, name: j.name, emoji: j.emoji, blurb: j.blurb, hours: j.hours, days: j.days, startTitle: j.ladder[0].title, startPay: j.ladder[0].pay, needs: j.requires || null, needsText: j.needsText || '' }));
 
 const lagos = (ms) => new Date(ms + 3600000);   // Africa/Lagos is UTC+1 all year
 const dayKey = (ms) => lagos(ms).toISOString().slice(0, 10);

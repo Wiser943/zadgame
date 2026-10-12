@@ -228,7 +228,7 @@
     [[130, 126], [380, 246], [600, 356], [880, 126], [160, 646], [520, 756], [380, 866], [860, 756], [680, 946]].forEach(([x, y], i) => { boards.push({ x, y, mega: i % 4 === 0 }); objs.push({ t: 'board', x, y, r: 14, mega: i % 4 === 0, idx: i }); blocks.push([x - 14, y - 6, x + 14, y + 6]); });
     PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
     buildGrid();
-    lrBuild();
+    lrBuild(); lampBuild(); extendWorld();
   }
 
   /* ---------- walking grid + A* ---------- */
@@ -309,6 +309,8 @@
      Everything is optional: if an image has not loaded (or Saver mode is on) the map simply draws as before. */
   const LRA = '/lagosrun/assets/sprites/';
   const LRX = { img: {}, on: false, tiles: [], decals: [], buses: [], asph: null, started: false };
+  const EXT = 650, GAP = 70, XLAND = [], XOBJ = [];       // the extended world: sea gap, outer land and decorative buildings beyond the playable 1000x1000
+  const LAMPS = [];                                  // street lights: [x, y] world positions along both edges of every road
   const LR_FILES = { asphalt: 'textures/asphalt-seamless', zinc: 'textures/zinc-patchwork', red: 'textures/roof-red-metal', tarp: 'textures/roof-blue-tarp', cloth: 'textures/roof-clothesline', sat: 'textures/roof-satellite', tank: 'textures/roof-watertank',
     pothole: 'decals/pothole-dry', manhole: 'decals/manhole-cover', drain: 'decals/drain-grate', mud: 'decals/puddle-mud', puddle: 'decals/puddle-shallow', oil: 'decals/oil-slick', sachet: 'decals/sachet-litter', trash: 'decals/trash-scatter',
     skidA: 'decals/skid-straight-a', skidB: 'decals/skid-straight-b', zebra: 'decals/zebra-block', bus: 'buses/fresh' };
@@ -342,6 +344,58 @@
     ctx.globalAlpha = alpha;
     ctx.transform((tr.x - tl.x) / sw, (tr.y - tl.y) / sw, (bl.x - tl.x) / sh, (bl.y - tl.y) / sh, tl.x, tl.y);
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    ctx.restore();
+  }
+
+  /* ---------- extended world: land and districts continue past the edges so the screen is always full when zooming out or dragging ---------- */
+  function extendWorld() {
+    XLAND.length = 0; XOBJ.length = 0;
+    const R = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    XLAND.push(R(-EXT, -EXT, W + EXT, -GAP), R(-EXT, W + GAP, W + EXT, W + EXT), R(-EXT, -GAP, -GAP, W + GAP), R(W + GAP, -GAP, W + EXT, W + GAP));
+    let sd = 4242; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647, pk = (a) => a[Math.floor(r() * a.length)];
+    const walls = ['#e7d9bb', '#f1e6cf', '#d9e8f2', '#f2d58a', '#e9e4d6', '#c9b79c', '#dfe3e6', '#f4efe6'], roofs = ['#a4452c', '#b3392b', '#8b2d22', '#2f6fd8', '#9aa3ab', '#d94f2b', '#7a3ea1'];
+    const low = lrSaver(), S = low ? 110 : 70;
+    for (let gx = -EXT + 40, ci = 0; gx < W + EXT - 30; gx += S, ci++) for (let gy = -EXT + 40, cj = 0; gy < W + EXT - 30; gy += S, cj++) {
+      const x = gx + (r() - .5) * 14, y = gy + (r() - .5) * 14;
+      if (x > -GAP - 24 && x < W + GAP + 24 && y > -GAP - 24 && y < W + GAP + 24) continue;       // keep the playable city and its sea gap clear
+      if (ci % 4 === 3 || cj % 4 === 3) continue;                                                // streets
+      if (r() < .16) { XOBJ.push({ t: 'tree', x, y, s: 1 + r() * .5, r: 12, c: pk(['#3f8f4a', '#2f7d3f', '#4c9c52', '#378443']) }); continue; }
+      const w = 26 + r() * 24, d = 26 + r() * 24, h = 16 + Math.pow(r(), 2) * 70, hip = r() < .45;
+      XOBJ.push({ t: 'box', x, y, w, d, h, wall: pk(walls), roof: pk(roofs), style: hip ? 'hip' : 'flat', rh: hip ? 10 : 0, r: Math.max(w, d), o: {} });
+    }
+  }
+  const inWorld = (x, y) => x >= 0 && x <= W && y >= 0 && y <= W;
+
+  /* ---------- night look: street lights + dark-mode night ---------- */
+  function lampBuild() {
+    LAMPS.length = 0;
+    for (const f of flats) {
+      if (!f.r || f.c !== '#b4b8bd') continue;
+      const [x, y, w, h] = f.r, horiz = w > h, L = horiz ? w : h, STEP = 44;
+      for (let d = 18, i = 0; d < L - 8; d += STEP, i++) {
+        const side = i % 2 ? 1 : -1;                                                  // alternate sides like real lamp posts
+        const lx = horiz ? x + d : x + w / 2 + side * (w / 2 + 2), ly = horiz ? y + h / 2 + side * (h / 2 + 2) : y + d;
+        if (isLand(lx, ly) || onBridge(lx, ly)) LAMPS.push([lx, ly]);
+      }
+    }
+  }
+  const darkTheme = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  let glowSprite = null;
+  function glow() {                                                                  // one soft warm blob, drawn scaled for every lamp
+    if (glowSprite) return glowSprite;
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, 'rgba(255,236,170,1)'); r.addColorStop(.18, 'rgba(255,214,120,.75)'); r.addColorStop(.5, 'rgba(255,180,70,.22)'); r.addColorStop(1, 'rgba(255,170,60,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64); return (glowSprite = c);
+  }
+  function drawLamps(ctx, amt) {
+    const low = lrSaver(), spr = glow(), tmp = {}; ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (const [lx, ly] of LAMPS) {
+      cam.project(lx, ly, 16, tmp); if (tmp.z < NEAR || tmp.x < -40 || tmp.x > M.w + 40 || tmp.y < -40 || tmp.y > M.h + 40) continue;
+      const r = clamp(30 * tmp.k, 5, 44);
+      ctx.globalAlpha = amt * .95;
+      if (low) { ctx.fillStyle = 'rgba(255,214,120,.9)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, Math.max(1.6, r * .16), 0, TAU); ctx.fill(); }
+      else ctx.drawImage(spr, tmp.x - r, tmp.y - r, r * 2, r * 2);
+    }
     ctx.restore();
   }
   /* called once at the end of build(): lay out asphalt tiles, road decals and danfos (own random stream, so the rest of the city is unchanged) */
@@ -495,6 +549,8 @@
       const a = cam.project(x, y, 0, tmp); if (tmp.z < NEAR || tmp.x < -30 || tmp.x > M.w + 30 || tmp.y < -10 || tmp.y > M.h + 10) continue;
       const b = cam.project(x + 14, y, 0, {}); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     }
+    // extended outer land (beyond the playable edges)
+    XLAND.forEach(p => { dep(p, -9, '#6b7d4b'); }); XLAND.forEach(p => { poly(ctx, p.map(q => [q[0], q[1], -4.5]), '#8aa05f'); }); XLAND.forEach(p => { poly(ctx, p.map(q => [q[0], q[1], 0]), '#a9c88c'); });
     // land thickness then land
     LAND.forEach(p => { dep(p, -9, '#6b7d4b'); });
     LAND.forEach(p => { poly(ctx, p.map(q => [q[0], q[1], -4.5]), '#8aa05f'); });
@@ -564,6 +620,7 @@
   const HELP = { cam, M, W, isLand, onBridge, poly, rect, project(x, y, z) { cam.project(x, y, z || 0, tmp); return tmp.z < NEAR ? null : { x: tmp.x, y: tmp.y, k: tmp.k }; } };
 
   function walkTo(x, y, cb) {
+    if (!inWorld(x, y)) return false;                            // the extended land is scenery only
     ensureMe(); const p = findPath(M.me.x, M.me.y, x, y);
     if (!p || p.length < 2) { M.path = null; M.dest = null; return false; }
     M.mul = 1; M.path = p; M.pi = 1; M.cb = cb || null; M.dest = p[p.length - 1]; M.emote = null; M.run = p.reduce((s, q, i) => i ? s + Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]) : 0, 0) > 320; M.follow = true; return true;
@@ -593,7 +650,7 @@
     const dz = M.tD - M.D; if (Math.abs(dz) > .01) { const before = M.zoomAt ? (cam.update(), cam.pick(M.zoomAt[0], M.zoomAt[1], 0)) : null; M.D += dz * (1 - Math.exp(-dt * 10)); cam.D = M.D; cam.update(); if (before) { const after = cam.pick(M.zoomAt[0], M.zoomAt[1], 0); if (after) { cam.tx += before.x - after.x; cam.ty += before.y - after.y; } } }
     if (!M.drag && (Math.abs(M.vel[0]) + Math.abs(M.vel[1]) > .05)) { cam.tx += M.vel[0] * dt; cam.ty += M.vel[1] * dt; const f = Math.exp(-dt * 4); M.vel[0] *= f; M.vel[1] *= f; }
     updateMe(dt); updateOthers(dt);
-    cam.tx = clamp(cam.tx, 0, W); cam.ty = clamp(cam.ty, 0, W); cam.update();
+    cam.tx = clamp(cam.tx, -EXT * .75, W + EXT * .75); cam.ty = clamp(cam.ty, -EXT * .75, W + EXT * .75); cam.update();
     draw(t);
     const cp = $('mpCompass'); if (cp) cp.firstElementChild.style.transform = `rotate(${-cam.yaw}rad)`;
   }
@@ -602,12 +659,13 @@
     lrLoad(); M.hits = []; drawWorld(ctx, t);
     // collect visible standing things
     const list = [], m = 90;
-    for (const o of objs) {
+    const scan = arr => { for (const o of arr) {
       const p = cam.project(o.x, o.y, 0, tmp); if (tmp.z < NEAR) continue; const rr = (o.r + (o.h || 40)) * tmp.k + m;
       if (tmp.x < -rr || tmp.x > M.w + rr || tmp.y < -rr * 1.5 || tmp.y > M.h + rr) continue;
       if (o.t === 'tree' && cam.D > 800) continue;
       list.push([tmp.z, o]);
-    }
+    } };
+    scan(objs); scan(XOBJ);
     if (LRX.on && LRX.img.bus && cam.D < 1000) for (const bu of LRX.buses) {            // danfos drive back and forth along their road
       const span = 940, px = ((bu.x0 + bu.dir * bu.sp * t) % span + span) % span, bx = 30 + px, ob = { t: 'bus', x: bx, y: bu.y, dir: bu.dir, r: 14, h: 16 };
       if (!isLand(bx, bu.y) || onBridge(bx, bu.y)) continue;
@@ -646,7 +704,9 @@
     }
     // night tint from the in-game clock
     const hrs = ((getS() && getS().min) || 720) / 60 % 24, night = hrs >= 19.5 || hrs < 5.5 ? 1 : hrs >= 18 ? (hrs - 18) / 1.5 : hrs < 7 ? (7 - hrs) / 1.5 : 0;
-    if (night > 0) { ctx.fillStyle = `rgba(10,20,70,${.27 * night})`; ctx.fillRect(0, 0, M.w, M.h); }
+    const dk = darkTheme(), nightAmt = dk ? 1 : night;                         // dark mode always shows the city at night
+    if (nightAmt > 0) { ctx.fillStyle = dk ? 'rgba(6,14,58,.52)' : `rgba(10,20,70,${.27 * night})`; ctx.fillRect(0, 0, M.w, M.h); }
+    if (nightAmt > .3) drawLamps(ctx, Math.min(1, (nightAmt - .3) / .5));
     for (const f of LAYERS.screen) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
   }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -654,7 +714,8 @@
   /* ---------- input ---------- */
   const ptrs = new Map();
   function rectXY(e) { const r = M.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
-  function zoomBy(f, at) { M.tD = clamp(M.tD * f, 80, 1500); M.zoomAt = at || [M.w / 2, M.h / 2]; }
+  const maxD = () => (M.w > 900 ? 2100 : 1700);                  // wider screens can zoom out further, the extended world fills the view
+  function zoomBy(f, at) { M.tD = clamp(M.tD * f, 80, maxD()); M.zoomAt = at || [M.w / 2, M.h / 2]; }
   function onDown(e) {
     M.cv.setPointerCapture(e.pointerId); const [x, y] = rectXY(e); ptrs.set(e.pointerId, { x, y, sx: x, sy: y, t: performance.now(), btn: e.button });
     M.vel = [0, 0];
@@ -676,7 +737,7 @@
       M.follow = false;
       if (parallel && (Math.abs(a.y - a.sy) > 14 || pn.tilting)) { pn.tilting = true; cam.tilt = clamp(cam.tilt - (dyA + dyB) / 2 * .006, 0, 1.15); cam.update(); }
       else {
-        cam.yaw -= (rot) * 1; M.D = M.tD = clamp(M.D / sc, 80, 1500); cam.D = M.D; cam.update();
+        cam.yaw -= (rot) * 1; M.D = M.tD = clamp(M.D / sc, 80, maxD()); cam.D = M.D; cam.update();
         const q = cam.pick(mx, my, 0); if (q && pn.anchor) { cam.tx += pn.anchor.x - q.x; cam.ty += pn.anchor.y - q.y; cam.update(); }
         pn.d = dist; pn.a = ang;
       }

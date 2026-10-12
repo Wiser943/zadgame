@@ -6,6 +6,8 @@ const ensureAuth = require('../middleware/auth');
 const { ensureAC } = require('./allconnect');
 const J = require('../utils/acjobs');
 const L = require('../utils/aclagos');
+const T = require('../utils/actransport');
+const TR = require('./actransport');
 const { queueCard, timeline } = require('../utils/accards');
 
 const router = express.Router();
@@ -18,7 +20,8 @@ function mine(u) {
   const d = a.jobId ? J.describe(a.jobId, shifts) : null;
   if (!d) return null;
   const today = J.dayKey(Date.now());
-  return { ...d, auto: a.autoWork !== false, nextShiftAt: a.lastShift ? new Date(a.lastShift).getTime() + SHIFT_MS : 0,
+  const jb = J.jobOf(a.jobId), pk = jb && jb.requires ? T.pickVehicle(a.tr, jb.requires, Date.now(), 0.5) : null;      // transport careers need a vehicle that is ready
+  return { ...d, blocked: pk && pk.err ? pk.err : '', needs: jb && jb.requires ? jb.requires : null, auto: a.autoWork !== false, nextShiftAt: a.lastShift ? new Date(a.lastShift).getTime() + SHIFT_MS : 0,
     shiftsToday: a.shiftDay === today ? a.shiftsToday || 0 : 0, maxPerDay: J.MAX_SHIFTS_PER_DAY, closed: J.offDuty(Date.now()) };
 }
 const reply = (u, extra = {}) => ({ mine: mine(u), cash: u.ac.cash, now: Date.now(), shiftSeconds: J.SHIFT_SECONDS, ...extra });
@@ -54,21 +57,27 @@ router.post('/work', async (req, res, next) => {
     const closed = J.offDuty(now); if (closed) return bad(res, 409, closed);
     const today = J.dayKey(now);
     await User.updateOne({ _id: uid, 'ac.shiftDay': { $ne: today } }, { $set: { 'ac.shiftDay': today, 'ac.shiftsToday': 0 } });
-    const pay = Math.round(cur.pay * L.jobMult(L.currentEvent(now), cur.field) / 100) * 100 || cur.pay;     // city events change what shifts pay
-    const upd = await User.findOneAndUpdate(
-      { _id: uid, 'ac.jobId': cur.id, 'ac.shiftsToday': { $lt: J.MAX_SHIFTS_PER_DAY }, $or: [{ 'ac.lastShift': null }, { 'ac.lastShift': { $lte: new Date(now - SHIFT_MS + SLACK) } }] },
-      { $inc: { 'ac.cash': pay, ['ac.jobShifts.' + cur.id]: 1, 'ac.shiftsToday': 1 }, $set: { 'ac.lastShift': new Date(now) } }, { new: true });
+    const job = J.jobOf(cur.id), pick = job && job.requires ? T.pickVehicle(u.ac.tr, job.requires, now, 0.5) : null;     // taxi, delivery and boat shifts use a vehicle
+    if (pick && pick.err) return bad(res, 409, pick.err);
+    const pay = Math.round(cur.pay * L.jobMult(L.currentEvent(now), cur.field) * (pick ? 1 + T.tipPct(pick.v) / 100 : 1) / 100) * 100 || cur.pay;     // city events and vehicle upgrades change what shifts pay
+    const q = { _id: uid, 'ac.jobId': cur.id, 'ac.shiftsToday': { $lt: J.MAX_SHIFTS_PER_DAY }, $or: [{ 'ac.lastShift': null }, { 'ac.lastShift': { $lte: new Date(now - SHIFT_MS + SLACK) } }] };
+    const inc = { 'ac.cash': pay, ['ac.jobShifts.' + cur.id]: 1, 'ac.shiftsToday': 1 };
+    if (pick && !pick.rental) { q['ac.tr.vehicles'] = { $elemMatch: { id: pick.v.id, fuel: { $gte: pick.burn }, cond: { $gte: pick.wear } } }; inc['ac.tr.vehicles.$.fuel'] = -pick.burn; inc['ac.tr.vehicles.$.cond'] = -pick.wear; }
+    let upd = await User.findOneAndUpdate(q, { $inc: inc, $set: { 'ac.lastShift': new Date(now) } }, { new: true });
     if (!upd) {
       u = await User.findById(uid); const m = mine(u);
       if (m && m.shiftsToday >= J.MAX_SHIFTS_PER_DAY) return bad(res, 409, 'You have worked enough shifts today. Rest and come back tomorrow.');
+      if (m && m.blocked) return bad(res, 409, m.blocked);
       return res.status(429).json({ message: 'Still on your break. Next shift is not ready yet.', ...reply(u) });
     }
+    const inci = pick ? await TR.afterTrip(uid, pick.v, now) : null;      // a ticket or a small crash can follow a motor shift
+    if (inci) upd = await User.findById(uid);
     const after = mine(upd), promoted = after.level > cur.level ? after.title : null;
     if (promoted) {
       timeline(uid, '🎉', 'Promoted to ' + promoted);
       queueCard(req.app.get('io'), uid, { icon: '🏆', title: 'Promotion!', text: `You are now ${promoted}. Oga is proud of you.`, lines: [['New pay', '₦' + after.pay.toLocaleString('en-NG') + ' per shift']], tone: 'gold', btn: 'Let us go' }).catch(() => {});
     } else if (cur.shifts === 0) timeline(uid, '💼', 'Worked the first shift as ' + cur.title);
-    res.json(reply(upd, { earned: pay, promoted, event: L.currentEvent(now).id }));
+    res.json(reply(upd, { earned: pay, promoted, event: L.currentEvent(now).id, incident: TR.incidentLine(inci) }));
   } catch (e) { next(e); }
 });
 

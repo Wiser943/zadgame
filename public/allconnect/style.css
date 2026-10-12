@@ -1231,3 +1231,25 @@ html[data-theme="dark"] .vnpip.on{background:#22b573}
 :where(html[data-theme="dark"]) .seg{background:#232842}
 :where(html[data-theme="dark"]) .seg button.on{background:#1b2034}
 /* <<< END AUTO-GENERATED DARK MODE OVERRIDES <<< */
+
+/* ===== Transport app (transport.js) ===== */
+.trfx b{font-weight:800}.lgwarn.good{background:#e0f6ea;color:#127a4a}
+.trv{background:#f3f4f9;border-radius:20px;padding:13px 14px;margin-bottom:10px}.trh{display:flex;align-items:center;gap:11px}.trh>div:nth-child(2){flex:1;min-width:0}.trh b{display:block;font-size:14.5px}.trh small{color:var(--mut);font-size:12px}
+.trdot{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:22px;flex:none;border:2px solid rgba(0,0,0,.08)}.trdot.big{width:54px;height:54px;font-size:26px}
+.trbr{margin-top:9px}.trbr small{color:var(--mut);font-size:11.5px}.trbtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.trhero{font-size:56px;text-align:center;margin:18px 0 4px}.trc{display:flex;justify-content:center;margin:12px 0}
+.trgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.trgrid .lgbtn{border-radius:16px;padding:10px 4px;line-height:1.25}.trgrid small{font-weight:600;opacity:.85}
+.trsw{display:flex;flex-wrap:wrap;gap:10px}.trsw button{width:36px;height:36px;border-radius:50%;border:2px solid rgba(0,0,0,.12);cursor:pointer}.trsw button.on{outline:3px solid #22b573;outline-offset:2px}
+.trchips{display:flex;gap:8px;margin:6px 0 10px}.trchips.wrap{flex-wrap:wrap}.trchips button{border:0;border-radius:99px;background:#eef0f7;color:var(--ink);font:700 13px inherit;padding:8px 13px;cursor:pointer}.trchips button.on{background:#1b1f33;color:#fff}
+.lgi.trem{background:#eef0f7;color:var(--ink);font-size:17px;width:38px;height:38px;border-radius:50%;display:inline-grid;place-items:center;flex:none}
+.trown{color:var(--mut);font-weight:600}.trme{background:rgba(34,181,115,.1);border-radius:12px}
+.trvote{display:flex;gap:6px}.trvote button{border:0;border-radius:99px;background:#eef0f7;color:var(--ink);font:700 12px inherit;padding:7px 10px;cursor:pointer}.trvote button.on{background:#22b573;color:#fff}.trvote button:disabled{opacity:.7;cursor:default}
+.trg{padding-bottom:8px}.trprog small{color:var(--mut);font-size:12px;font-weight:700}.trsign{font-size:84px;text-align:center;margin:8px 0}.trq{margin:8px 0 12px;font:800 18px Outfit,system-ui,sans-serif;text-align:center}
+.tropt{display:block;width:100%;text-align:left;border:0;border-radius:16px;background:#f3f4f9;color:var(--ink);font:600 14.5px inherit;padding:14px;margin-bottom:8px;cursor:pointer}.tropt:active{background:#dfe3f1}
+.trlight{display:grid;place-items:center;width:200px;height:200px;margin:22px auto 8px;border-radius:50%;border:0;color:#fff;font:800 24px Outfit,system-ui,sans-serif;touch-action:manipulation;transition:background .08s}.trlight.red{background:#e5484d;box-shadow:0 0 40px rgba(229,72,77,.5)}.trlight.green{background:#22b573;box-shadow:0 0 50px rgba(34,181,115,.7)}.trlight:not(.red):not(.green){background:#64748b}
+.trroad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#3a3f55;border-radius:18px;padding:4px;margin:10px 0 8px}.trlane{position:relative;height:250px;border:0;background:repeating-linear-gradient(#4a5068 0 26px,#434860 26px 52px);border-radius:12px;overflow:hidden;cursor:pointer}
+.trob{position:absolute;top:-40px;left:0;right:0;font-size:38px;animation:trdrop linear forwards}.trbike{position:absolute;bottom:8px;left:0;right:0;font-size:34px}
+@keyframes trdrop{to{top:78%}}.trtime{height:6px;border-radius:9px;background:#dde1ec;overflow:hidden}.trtime i{display:block;height:100%;background:#f97316;animation:trtime linear forwards}@keyframes trtime{from{width:100%}to{width:0}}
+html[data-theme="dark"] .trv,html[data-theme="dark"] .tropt{background:#20243a}html[data-theme="dark"] .tropt:active{background:#2b3050}
+html[data-theme="dark"] .trchips button,html[data-theme="dark"] .trvote button,html[data-theme="dark"] .lgi.trem{background:#242940}html[data-theme="dark"] .trchips button.on{background:#3b4164}
+html[data-theme="dark"] .trtime{background:#2b3050}html[data-theme="dark"] .lgwarn.good{background:rgba(34,181,115,.18);color:#6ee7a8}

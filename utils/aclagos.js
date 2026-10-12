@@ -82,7 +82,10 @@ const QUESTS = [
   { id: 'friend', title: 'Make your first friend', hint: 'Phone → Contacts or Messages', reward: 30000, fa: 'user-group' },
   { id: 'message', title: 'Send a message', hint: 'Phone → Messages', reward: 10000, fa: 'comment' },
   { id: 'gist', title: 'Post your first gist', hint: 'Phone → P-Gist → write something', reward: 20000, fa: 'microphone-lines' },
-  { id: 'bill', title: 'Pay a bill', hint: 'Phone → Bank → Bills', reward: 15000, fa: 'receipt' }
+  { id: 'bill', title: 'Pay a bill', hint: 'Phone → Bank → Bills', reward: 15000, fa: 'receipt' },
+  { id: 'licence', title: 'Get your driving licence', hint: 'Phone → Transport → Licence', reward: 25000, fa: 'id-card' },
+  { id: 'ride', title: 'Buy your first vehicle', hint: 'Phone → Transport → Buy', reward: 15000, fa: 'bicycle' },
+  { id: 'insure', title: 'Insure a vehicle', hint: 'Phone → Transport → My vehicles', reward: 25000, fa: 'shield-halved' }
 ];
 const QBYID = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 

@@ -120,7 +120,9 @@ const UNI_PRICE = 30000;
 [
   ['oil', 'Refinery coverall', R('coverall', '#f08a3c', '#f2d03b', { deco: 'hivis' })], ['tech', 'Tech hoodie & lanyard', R('long', '#1f2a44', '#3a7bd5', { deco: 'lanyard' })],
   ['banking', 'Bank shirt & tie', R('suit', '#f4f4f0', '#7a1f3a', { deco: 'tie' })], ['transport', 'Conductor vest', R('vest', '#f2d03b', '#262833', { deco: 'vest' })],
-  ['fashion', 'Tailor apron', R('apron', '#f4efe6', '#d6455a', { deco: 'tape' })], ['health', 'Scrubs', R('scrubs', '#14a3a3', '#f4f4f0', { deco: 'badge' })]
+  ['fashion', 'Tailor apron', R('apron', '#f4efe6', '#d6455a', { deco: 'tape' })], ['health', 'Scrubs', R('scrubs', '#14a3a3', '#f4f4f0', { deco: 'badge' })],
+  ['taxi', 'Cab driver shirt & tie', R('suit', '#2b2f3a', '#f7b500', { deco: 'tie' })], ['delivery', 'Rider hi-vis vest', R('vest', '#e5484d', '#262833', { deco: 'vest' })],
+  ['boat', 'Captain coverall', R('coverall', '#1f3a5f', '#f4f4f0', { deco: 'hivis' })]
 ].forEach((a) => add('uni_' + a[0], 'outfit', 'uniform', a[1], UNI_PRICE, { dye: 0, wear: .9, r: a[2], job: a[0], note: 'Free to wear while you work in ' + jobs.JOBS[a[0]].name + '.' }));
 
 /* 145 seasonal fashion: buy it only while the season is on, wear it forever */

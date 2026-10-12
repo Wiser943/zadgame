@@ -11,6 +11,7 @@ const { ensureAC } = require('./allconnect');
 const { makeRef } = require('../utils/acbank');
 const { notify, emitUser } = require('../utils/acnotify');
 const L = require('../utils/aclagos');
+const TRN = require('../utils/actransport');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -83,7 +84,7 @@ async function questState(me) {
     GistPost.exists({ author: me })
   ]);
   const shifts = a.jobShifts ? [...(a.jobShifts.values ? a.jobShifts.values() : Object.values(a.jobShifts))].reduce((s, n) => s + (n || 0), 0) : 0;
-  const done = { job: !!a.jobId, shift: shifts > 0, pin: !!(w && w.pinHash), furniture: (a.items || []).length > STARTER_ITEMS, friend: !!fr, message: !!msg, gist: !!gist, bill: (a.bills || []).some((b) => b.paidAt) };
+  const done = { job: !!a.jobId, shift: shifts > 0, pin: !!(w && w.pinHash), furniture: (a.items || []).length > STARTER_ITEMS, friend: !!fr, message: !!msg, gist: !!gist, bill: (a.bills || []).some((b) => b.paidAt), ...TRN.questDone(u.toObject().ac.tr) };
   return { u, list: L.QUESTS.map((q) => ({ id: q.id, title: q.title, hint: q.hint, reward: q.reward, fa: q.fa, done: !!done[q.id], claimed: claimed.has(q.id) })) };
 }
 router.get('/quests', async (req, res, next) => { try { const { list } = await questState(uid(req)); res.json({ quests: list }); } catch (e) { next(e); } });
