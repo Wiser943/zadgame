@@ -41,6 +41,8 @@ New file `public/allconnect/maptools.js` plus layer/routing hooks in `map3d.js`.
 - 74 Accessible routes: wide, step-free paths; buses and rides only.
 - 75 Night safety, 76 crowd density, 77 weather (rain and flood zones from the city event), 78 festival overlay, 79 treasure hunt (6 daily spots, each pickup uses the existing gem socket so the server still rate-limits payouts), 80 photo spots with best-light hours (opens the camera).
 
+**Tapping a map circle (landmark, bus stop, pier, pickup point, bookmark, photo spot)** opens one popup. Within about 1.2 km (`WALK_MAX` in `maptools.js`) it offers 🚶 Walk there now. Further than that, walking is disabled and the popup lists the ways to travel (bike, tricycle, BRT bus, ride, ferry) with time and fare, the fastest marked Recommended. The route bar also drops the walk option for far trips. Code: `destSheet`, `destBody`, `walkInfo`, `transportOpts`.
+
 Fares shown are estimates and are not charged. Bookmarks, favourites, unlocks and layer choices are stored per account in the browser.
 
 

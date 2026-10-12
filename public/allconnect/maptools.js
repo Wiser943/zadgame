@@ -11,6 +11,7 @@ const MT = (() => {
     walk: { e: '🚶', n: 'Walk', sp: 48 }, bike: { e: '🚲', n: 'Bike', sp: 100 }, keke: { e: '🛺', n: 'Tricycle', sp: 82 },
     bus: { e: '🚌', n: 'BRT bus', sp: 105 }, ride: { e: '🚕', n: 'Ride', sp: 135 }, boat: { e: '⛵', n: 'Ferry', sp: 72 }
   };
+  const WALK_MAX = 300;   // longest trip (in map units, about 1.2 km) the game lets you walk; anything further needs a vehicle
   const COL = { walk: '#2f7fd8', bike: '#22b573', keke: '#f59e0b', bus: '#e5484d', ride: '#8e5bd1', boat: '#0ea5e9' };
   /* bus lines: name, colour, stops [name, x, y] */
   const LINE_DEF = [
@@ -201,12 +202,9 @@ const MT = (() => {
       else wp = MAP3D.route(me[0], me[1], d.x, d.y, acc);
       if (!wp && !acc) wp = null;
       if (wp) opts.push(this.mkOpt('walk', [{ m: 'walk', path: wp, label: 'Walk to ' + d.name }], via ? { via } : {}));
-      if (!via) {
-        if (!acc) { const bk = this.vehOpt('bike', me, d, 0), kk = this.vehOpt('keke', me, d, 0); if (bk) opts.push(bk); if (kk) opts.push(kk) }
-        const bo = this.busOpt(me, d, acc); if (bo) opts.push(bo);
-        const ro = this.vehOpt('ride', me, d, acc); if (ro) opts.push(ro);
-        if (!acc) { const bt = this.boatOpt(me, d); if (bt) opts.push(bt) }
-      }
+      if (!via) opts.push(...this.transportOpts(d, me, acc));
+      // too far to trek: take walking off the list whenever something else can get the player there
+      if (!via && opts.length > 1 && opts[0].k === 'walk' && opts[0].len > WALK_MAX) { opts.shift(); if (pref === 'walk') toast('🚶 Too far to walk. Pick a way to travel'); }
       if (!opts.length) { toast('No route found to ' + d.name); return false }
       this.opts = opts; const fast = opts.reduce((a, b) => b.min < a.min ? b : a); fast.fast = true;
       this.sel = (pref && opts.find(o => o.k === pref)) || fast; SHEET.close(true); this.showBar();
@@ -225,7 +223,7 @@ const MT = (() => {
       if (this.night()) notes.push(`<span style="color:${sf > .6 ? '#22b573' : sf > .35 ? '#f5a623' : '#e5484d'}">🌙 ${sf > .6 ? 'Well lit' : sf > .35 ? 'Patchy lighting' : 'Poorly lit, avoid alone'}</span>`);
       if (acc) notes.push('♿ Step-free, wide paths'); if (o.line) notes.push(esc(o.line)); if (o.wait != null && o.k === 'bus') notes.push('Next in ' + this.waitText(o.wait));
       if (this.via) notes.push(this.via.map((v, i) => `${i + 1} ${esc(v.name)}`).join(' ➜ ') + ' ➜ ' + esc(d.name));
-      el.innerHTML = `<div class="mth"><div><b>${esc(d.emoji || '📍')} ${esc(d.name)}</b><small>${this.km(o.len)} · arrive ${arrive}</small></div><button class="mtx" aria-label="Close" onclick="MT.clear()">✕</button></div>
+      el.innerHTML = `<div class="mth"><div><b>${esc(d.emoji || '📍')} ${esc(d.name)}</b><small>${this.km(o.len)} · arrive ${arrive}</small></div><button class="mtclose" aria-label="Close" onclick="MT.clear()">✕</button></div>
        <div class="mtm">${this.opts.map(x => `<button class="${x.k === o.k ? 'on' : ''}" onclick="MT.choose('${x.k}')"><span>${MODES[x.k].e}</span><b>${this.etaText(x.min)}</b><small>${x.fast ? 'Fastest' : x.fare ? this.fm(x.fare) : 'Free'}</small></button>`).join('')}</div>
        <div class="mtn">${notes.join(' · ')}${o.fare ? `<br><small>Estimated fare ${this.fm(o.fare)} (not charged yet)</small>` : ''}</div>
        <div class="mta"><button class="rbigbtn" onclick="MT.start()">Start ${MODES[o.k].e}</button><button class="mtf ${fav ? 'on' : ''}" onclick="MT.favToggle()" aria-label="Favourite route">${fav ? '★' : '☆'}</button></div>`;
@@ -238,7 +236,25 @@ const MT = (() => {
         if (s.wait && s.wait > .4) { this.ride = null; toast(`${md.e} ${s.waitLabel}: about ${Math.max(1, Math.round(s.wait))} min`); setTimeout(go, Math.min(9000, s.wait * 1800)) } else go();
       }; step(0);
     },
-    walkNow(d) { const me = this.me(), p = MAP3D.route(me[0], me[1], d.x, d.y, !!this.st.acc); if (p) { this.clear(); this.ride = null; MAP3D.walkPath(p, {}) } else toast('No walking route') },
+    transportOpts(d, me, acc) {
+      const o = [];
+      if (!acc) { const bk = this.vehOpt('bike', me, d, 0), kk = this.vehOpt('keke', me, d, 0); if (bk) o.push(bk); if (kk) o.push(kk) }
+      const bo = this.busOpt(me, d, acc); if (bo) o.push(bo);
+      const ro = this.vehOpt('ride', me, d, acc); if (ro) o.push(ro);
+      if (!acc) { const bt = this.boatOpt(me, d); if (bt) o.push(bt) }
+      return o;
+    },
+    /* can the player walk to d? ok is false when the walk is longer than WALK_MAX */
+    walkInfo(d) {
+      const me = this.me(), straight = this.dist(me, [d.x, d.y]), path = MAP3D.route(me[0], me[1], d.x, d.y, !!this.st.acc), len = path ? this.len(path) : straight * 1.3;
+      return { path, len, straight, min: len / MODES.walk.sp / 3 * this.tm('walk', path || []), ok: len <= WALK_MAX && (!!path || straight < 40) };
+    },
+    walkNow(d) {
+      const w = this.walkInfo(d);
+      if (!w.path) return toast(w.straight < 40 ? '📍 You are already here' : 'No walking route');
+      if (!w.ok) { toast('🚶 Too far to walk. Pick a ride, bike, bus or ferry'); this.plan(d); return }
+      this.clear(); this.ride = null; MAP3D.walkPath(w.path, {});
+    },
 
     /* ---------- fast travel (61) ---------- */
     unlocked(p) { return !!this.st.seen[p[0]] },
@@ -335,24 +351,64 @@ const MT = (() => {
     setPickup(i) { this.pp = this.points[i].name; toast('🚕 Pickup set: ' + this.pp); this.repaint() },
     airGo(i) { const a = this.air[i]; this.plan({ name: a.name, emoji: '✈️', x: a.x, y: a.y }) },
     airTrip(kind) { const names = kind === 'dep' ? ['Check-in', 'Security', 'Gate 1'] : ['Arrivals hall', 'Baggage claim', 'Taxi rank'], p = names.map(n => this.air.find(a => a.name === n)), d = p.pop(); this.plan({ name: d.name, emoji: '✈️', x: d.x, y: d.y }, 'walk', p) },
+    /* The popup behind every circle on the map. Close enough: walk there. Too far: no walking, the best ways to travel are listed instead. */
+    destState(d) {
+      const me = this.me(), acc = this.st.acc ? 1 : 0, key = Math.round(me[0] / 20) + ',' + Math.round(me[1] / 20) + '|' + Math.round(d.x) + ',' + Math.round(d.y) + '|' + acc + '|' + this.pp + '|' + this.inService() + '|' + Math.floor(S.min / 5);
+      if (this.dc && this.dc.key === key) return this.dc;
+      const w = this.walkInfo(d), opts = w.ok ? [] : this.transportOpts(d, me, !!acc).sort((x, y) => x.min - y.min);
+      return (this.dc = { key, w, opts });
+    },
+    destSheet(d, o) {
+      this.prep(); o = o || {}; this.cur = { d, pin: o.pin || null, o }; this.dc = null;
+      SHEET.open({ id: 'mtpin', title: o.title || esc(d.name), body: () => this.destBody() }); this.liveSheet = true;
+    },
+    destBody() {
+      const c = this.cur; if (!c) return ''; const { d, pin: p, o } = c, st = this.destState(d), w = st.w, me = this.me(), away = w.path ? w.len : this.dist(me, [d.x, d.y]);
+      let h = o.sub ? `<p class="hsub">${esc(o.sub)}</p>` : ''; if (o.extra) h += o.extra();
+      let info = this.km(away) + ' away';
+      if (p) { const cr = this.crowd(p), un = this.unlocked(p); info += ` · crowd <b style="color:${cr > .66 ? '#e5484d' : cr > .33 ? '#f5a623' : '#22b573'}">${this.clabel(cr)}</b>${un ? ' · unlocked' : ' · walk here once to unlock fast travel'}` }
+      h += `<div class="mtc2">${info}</div>`;
+      if (w.ok) {
+        h += `<div class="mtc2 mtok">🚶 Close enough to walk · about ${this.etaText(w.min)}</div><button class="rbigbtn" onclick="MT.sheetAct('walk')">🚶 Walk there now</button><button class="rbigbtn ghost" onclick="MT.sheetAct('plan','walk')">🧭 Preview route</button>`;
+      } else {
+        h += `<div class="mtc2 mtfar">🚫 Too far to walk (${this.km(away)}). Take one of these instead:</div>`;
+        if (st.opts.length) {
+          const fast = st.opts[0], paid = st.opts.filter(x => x.fare), cheap = paid.length ? paid.reduce((a, b) => b.fare < a.fare ? b : a) : null;
+          h += st.opts.map(x => `<div class="mtr"><span class="e">${MODES[x.k].e}</span><div><b>${MODES[x.k].n}${x.line ? ' · ' + esc(x.line) : ''}${x === fast ? '<span class="mtag">Recommended</span>' : ''}${x === cheap && x !== fast ? '<span class="mtag alt">Cheapest</span>' : ''}</b><small>${this.etaText(x.min)} · ${this.fm(x.fare)}${x.from ? ' · pickup ' + esc(x.from) : ''}${x.k === 'bus' && x.wait != null ? ' · next in ' + this.waitText(x.wait) : ''}</small></div><button onclick="MT.sheetAct('plan','${x.k}')">Go</button></div>`).join('');
+        } else h += '<p class="empty">No transport can reach this spot right now.</p>';
+        h += '<button class="rbigbtn ghost" disabled>🚶 Too far to walk</button>';
+      }
+      if (p) {
+        const i = MAP3D.pins.indexOf(p), un = this.unlocked(p), nm = p[0].replace(' · Coming soon', '');
+        if (un && this.dist(me, [p[2], p[3]]) > 150) h += `<button class="rbigbtn ghost" onclick="MT.sheetAct('fast')">🚀 Fast travel</button>`;
+        h += `<div class="mtacts"><button onclick="MT.sheetAct('bm')">${this.bmHas(nm) ? '★ Bookmarked' : '☆ Bookmark'}</button><button onclick="MT.sheetAct('visit')">🏠 Visit</button><button onclick="MT.sheetAct('info')">ℹ️ Details and nearby</button></div>`;
+      }
+      return h;
+    },
+    sheetAct(a, k) {
+      const c = this.cur; if (!c) return; const d = c.d, p = c.pin;
+      if (a === 'walk') { SHEET.close(true); this.walkNow(d) }
+      else if (a === 'plan') this.plan(d, k);
+      else if (a === 'fast' && p) this.fast(p);
+      else if (a === 'bm') { this.bmAdd(d); SHEET.close() }
+      else if (a === 'visit' && p) MAP3D.visit(p[1], p[0].replace(' · Coming soon', ''));
+      else if (a === 'info' && p) MAP3D.openByName(p[0]);
+    },
     pinSheet(p) {
-      this.prep(); const nm = p[0].replace(' · Coming soon', ''), un = this.unlocked(p), d = this.dist(this.me(), [p[2], p[3]]), c = this.crowd(p), i = MAP3D.pins.indexOf(p), dest = `{name:'${esc(nm).replace(/'/g, '')}',emoji:'${p[1]}',x:${p[2]},y:${p[3]}}`;
-      SHEET.open({ id: 'mtpin', title: `${p[1]} ${esc(nm)}`, body: () => `<p class="hsub">${esc(p[6] || (KW[p[4]] || '').split(' ').slice(0, 3).join(', ') || 'A Lagos landmark')}</p>
-        <div class="mtc2">${this.km(d)} away · crowd <b style="color:${c > .66 ? '#e5484d' : c > .33 ? '#f5a623' : '#22b573'}">${this.clabel(c)}</b>${un ? ' · unlocked' : ' · walk here once to unlock fast travel'}</div>
-        <button class="rbigbtn" onclick="MT.plan(${dest})">Preview route</button>
-        <button class="rbigbtn ghost" onclick="SHEET.close();MT.walkNow(${dest})">🚶 Walk there now</button>
-        ${un && d > 150 ? `<button class="rbigbtn ghost" onclick="MT.fast(MAP3D.pins[${i}])">🚀 Fast travel</button>` : ''}
-        <button class="rbigbtn ghost" onclick="MT.bmAdd(${dest});SHEET.close()">${this.bmHas(nm) ? '★ Bookmarked' : '☆ Bookmark'}</button>` });
+      const nm = p[0].replace(' · Coming soon', '');
+      this.destSheet({ name: nm, emoji: p[1], x: p[2], y: p[3] }, { title: `${p[1]} ${esc(nm)}`, sub: p[6] || (KW[p[4]] || '').split(' ').slice(0, 3).join(', ') || 'A Lagos landmark', pin: p });
     },
     vSheet(v) {
-      if (v.type === 'stop') { const L = this.lines[v.l], s = L.stops[v.i]; SHEET.open({ id: 'mtpin', title: `🚏 ${esc(s.name)}`, body: () => { const a = this.arrivals(L, v.i); return `<div class="mtc2" style="color:${L.c}">${L.id} · ${esc(L.name)}</div>${a ? a.slice(0, 4).map(x => `<div class="mts"><span>${x.dir === 'f' ? '→ towards ' + esc(L.stops[L.stops.length - 1].name) : '← towards ' + esc(L.stops[0].name)}</span><small>${this.waitText(x.min)}</small></div>`).join('') : '<p class="empty">No service until 5:00 am.</p>'}<button class="rbigbtn" onclick="MT.plan({name:'${esc(s.name)} stop',emoji:'🚏',x:${Math.round(s.x)},y:${Math.round(s.y)}},'walk')">Walk to this stop</button>` } }); this.liveSheet = true }
-      else if (v.type === 'pier') this.pinSheetPlain('⚓ ' + v.name, v.name, v.x, v.y, 'Ferry pier');
-      else if (v.type === 'point') this.pinSheetPlain('🚕 ' + v.name, v.name, v.x, v.y, 'Pickup point for ' + v.t.map(t => MODES[t].n).join(', '));
-      else if (v.type === 'bm') this.pinSheetPlain('⭐ ' + v.name, v.name, v.x, v.y, 'Your bookmark');
-      else if (v.type === 'photo') { const ph = v.ph; this.pinSheetPlain('📸 ' + ph.name, ph.name, ph.x, ph.y, `Best light ${this.clock(ph.h0 * 60)} to ${this.clock(ph.h1 * 60)}${this.inLight(ph) ? ' (now!)' : ''}`) }
+      if (v.type === 'stop') {
+        const L = this.lines[v.l], s = L.stops[v.i];
+        this.destSheet({ name: s.name + ' stop', emoji: '🚏', x: s.x, y: s.y }, { title: `🚏 ${esc(s.name)}`, extra: () => { const a = this.arrivals(L, v.i); return `<div class="mtc2" style="color:${L.c}">${L.id} · ${esc(L.name)}</div>${a ? a.slice(0, 4).map(x => `<div class="mts"><span>${x.dir === 'f' ? '→ towards ' + esc(L.stops[L.stops.length - 1].name) : '← towards ' + esc(L.stops[0].name)}</span><small>${this.waitText(x.min)}</small></div>`).join('') : '<p class="empty">No service until 5:00 am.</p>'}` } });
+      }
+      else if (v.type === 'pier') this.destSheet({ name: v.name, emoji: '⚓', x: v.x, y: v.y }, { title: '⚓ ' + esc(v.name), sub: 'Ferry pier' });
+      else if (v.type === 'point') this.destSheet({ name: v.name, emoji: '🚕', x: v.x, y: v.y }, { title: '🚕 ' + esc(v.name), sub: 'Pickup point for ' + v.t.map(t => MODES[t].n).join(', ') });
+      else if (v.type === 'bm') this.destSheet({ name: v.name, emoji: '⭐', x: v.x, y: v.y }, { title: '⭐ ' + esc(v.name), sub: 'Your bookmark' });
+      else if (v.type === 'photo') { const ph = v.ph; this.destSheet({ name: ph.name, emoji: '📸', x: ph.x, y: ph.y }, { title: '📸 ' + esc(ph.name), sub: `Best light ${this.clock(ph.h0 * 60)} to ${this.clock(ph.h1 * 60)}${this.inLight(ph) ? ' (now!)' : ''}` }) }
     },
-    pinSheetPlain(title, name, x, y, sub) { SHEET.open({ id: 'mtpin', title: esc(title), body: () => `<p class="hsub">${esc(sub)}</p><button class="rbigbtn" onclick="MT.plan({name:'${esc(name).replace(/'/g, '')}',emoji:'📍',x:${Math.round(x)},y:${Math.round(y)}})">Preview route</button>` }) },
-    onPin(p) { if (p.v) { this.prep(); this.vSheet(p.v); return true } if (p[5] === 'mt') return true; if (p[5] === 'district') { this.pinSheet(p); return true } return false },
+    onPin(p) { if (p.v) { this.prep(); this.vSheet(p.v); return true } if (p[5] === 'mt') return true; if (p[5] === 'home') return false; this.pinSheet(p); return true },
     /* buttons added to the place sheet that opens when a landmark is tapped */
     placeActions(p) {
       const i = MAP3D.pins.indexOf(p); if (i < 0) return ''; const un = this.unlocked(p);

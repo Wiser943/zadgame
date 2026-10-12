@@ -886,7 +886,7 @@ html[data-theme="dark"] .nav button.on { background:#2a3050; }
 #mtnote{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(84px + var(--sab));z-index:6;padding:8px 14px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;white-space:nowrap}#mtnote button{border:0;background:none;font:inherit;color:#2f7fd8}
 #mtbar{position:absolute;left:10px;right:10px;bottom:calc(84px + var(--sab));z-index:7;background:#fff;border-radius:22px;padding:12px 12px 10px;box-shadow:0 10px 30px rgba(10,20,50,.28);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);max-width:520px;margin:0 auto}
 .mth{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.mth b{font:800 16px Outfit,system-ui,sans-serif;display:block}.mth small{color:var(--mut);font-size:12px}
-.mtx{border:0;width:30px;height:30px;border-radius:50%;background:#eef0f7;color:var(--ink);flex:none}
+.mtclose{border:0;width:30px;height:30px;border-radius:50%;background:#eef0f7;color:var(--ink);flex:none}
 .mtm{display:flex;gap:6px;margin:10px 0 6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .mtm button{flex:none;min-width:62px;border:2px solid #e3e6ef;background:#f6f8fc;border-radius:14px;padding:6px 8px;display:flex;flex-direction:column;align-items:center;gap:1px;font:600 11px inherit;color:var(--ink)}.mtm button span{font-size:18px}.mtm button b{font-size:13px}.mtm button small{color:var(--mut);font-size:10.5px}
 .mtm button.on{border-color:var(--grn);background:#e9f8f1}
@@ -1215,7 +1215,7 @@ html[data-theme="dark"] .vnpip.on{background:#22b573}
 :where(html[data-theme="dark"]) .vnall{color:#e3e6f1}
 :where(html[data-theme="dark"]) .vnpip{background:#2b3150}
 :where(html[data-theme="dark"]) #mtbar{background:#1b2034}
-:where(html[data-theme="dark"]) .mtx{background:#1b2034}
+:where(html[data-theme="dark"]) .mtclose{background:#1b2034}
 :where(html[data-theme="dark"]) .mtm button{border:2px solid rgba(255,255,255,.12);background:#1b2034}
 :where(html[data-theme="dark"]) .mtm button.on{background:#1b2034}
 :where(html[data-theme="dark"]) .mtn{color:#a9afc6}
@@ -1253,3 +1253,11 @@ html[data-theme="dark"] .vnpip.on{background:#22b573}
 html[data-theme="dark"] .trv,html[data-theme="dark"] .tropt{background:#20243a}html[data-theme="dark"] .tropt:active{background:#2b3050}
 html[data-theme="dark"] .trchips button,html[data-theme="dark"] .trvote button,html[data-theme="dark"] .lgi.trem{background:#242940}html[data-theme="dark"] .trchips button.on{background:#3b4164}
 html[data-theme="dark"] .trtime{background:#2b3050}html[data-theme="dark"] .lgwarn.good{background:rgba(34,181,115,.18);color:#6ee7a8}
+/* map popup: walk when close, transport list when far */
+.mtok{background:#e3f6ec;color:#17794f;font-weight:700}.mtfar{background:#fdecec;color:#b42328;font-weight:700}
+.mtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:#22b573;color:#fff;font:800 10px inherit;vertical-align:1px}.mtag.alt{background:#f59e0b}
+:where(html[data-theme="dark"]) .mtok{background:#12352a;color:#6fe0ab}
+:where(html[data-theme="dark"]) .mtfar{background:#3a1c20;color:#ff8d92}
+/* dark mode: a switched-on toggle stays green with a white knob (the dark .sw2 rule above is more specific than .sw2.on) */
+html[data-theme="dark"] .sw2.on{background:var(--grn,#22b573)}
+html[data-theme="dark"] .sw2.on i{background:#fff}
