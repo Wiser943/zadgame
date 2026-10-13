@@ -25,7 +25,7 @@ const rxEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const io = (req) => req.app.get('io');
 const label = (u) => (u.acUsername ? '@' + u.acUsername : u.displayName);
 const pub = (u) => ({ id: String(u._id), username: u.acUsername || '', displayName: u.displayName, avatar: u.avatar || '', online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id) });
-const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, propertyId: m.propertyId || '', amount: m.amount || 0, read: !!m.read, at: m.at,
+const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, amount: m.amount || 0, read: !!m.read, at: m.at,
   reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
   image: CH.imageView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
 const between = (a, b) => ({ $or: [{ requester: a, recipient: b }, { requester: b, recipient: a }] });
@@ -54,8 +54,8 @@ async function peerOr(req, res) {
   if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
   return { me, other, target, friend: !!(await areFriends(me, other)) };
 }
-async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, fwd, propertyId = '' }) {
-  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(fwd ? { fwd: true } : {}) });
+async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, fwd }) {
+  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(fwd ? { fwd: true } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
   if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
@@ -273,15 +273,8 @@ router.post('/invite/:id', async (req, res, next) => {
   try {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
     const f = await friendOr(req, res); if (!f) return;
-    const propertyId = String(req.body?.propertyId || '').slice(0, 32);
-    let propertyName = 'your starter room';
-    if (propertyId) {
-      const owner = await ensureAC(f.me), p = (owner.ac.properties || []).find(x => x.id === propertyId);
-      if (!p || (p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date())) return bad(res, 404, 'That home is not available to invite friends into.');
-      propertyName = require('../utils/acproperties').HOMES[p.type]?.name || 'your home';
-    }
     notify(io(req), f.other, { icon: '🏠', text: `${label(req.user)} invited you over`, kind: 'friend' }).catch(() => {});
-    res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} invited you to ${propertyName} 🏠`, kind: 'invite', propertyId }) });
+    res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} invited you over 🏠`, kind: 'invite' }) });
   } catch (e) { next(e); }
 });
 router.get('/visit/:id', async (req, res, next) => {
@@ -289,16 +282,8 @@ router.get('/visit/:id', async (req, res, next) => {
     const f = await friendOr(req, res); if (!f) return;
     await ensureAC(f.other);
     const host = await User.findById(f.other).select('displayName acUsername ac');
-    const propertyId = String(req.query.propertyId || '').slice(0, 32);
-    let paint = host.ac.paint, items = host.ac.items || [], propertyName = 'Starter Room';
-    if (propertyId) {
-      const property = (host.ac.properties || []).find(x => x.id === propertyId);
-      if (!property || (property.tenure === 'rent' && property.leaseExpiresAt && new Date(property.leaseExpiresAt) <= new Date())) return bad(res, 404, 'That home is no longer available.');
-      paint = property.paint || paint; items = property.items || [];
-      propertyName = require('../utils/acproperties').HOMES[property.type]?.name || 'Home';
-    }
     notify(io(req), f.other, { icon: '👋', text: `${label(req.user)} visited your place`, kind: 'friend' }).catch(() => {});
-    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName } });
+    res.json({ host: { id: f.other, name: label(host), paint: host.ac.paint, items: (host.ac.owned || []).length } });
   } catch (e) { next(e); }
 });
 router.post('/buy-food/:id', async (req, res, next) => {

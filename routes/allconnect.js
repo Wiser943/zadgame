@@ -73,7 +73,7 @@ router.post('/buy', ensureAuth, async (req, res, next) => {
 // "New life": resets the life-sim, the shared ₦ balance (so also the GameHub balance) and Invest holdings. Stats and friends are untouched.
 router.post('/new', ensureAuth, async (req, res, next) => {
   try {
-    const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0, 'ac.items': F.starterItems(), 'ac.properties': [], 'ac.v2': true, 'ac.wish': [] } }, { new: true });
+    const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0, 'ac.items': F.starterItems(), 'ac.v2': true, 'ac.wish': [] } }, { new: true });
     await require('../models/ACInvest').deleteOne({ user: String(req.user.id) });   // Invest holdings reset with the balance, so a reset can't be used to keep assets AND get fresh cash
     await require('./acstyle').resetWardrobe(String(req.user.id));          // same for the wardrobe: bought clothes go with the old balance. Body, skin, hair, pronouns and privacy stay.
     res.json({ ac: publicAC(u.ac) });
