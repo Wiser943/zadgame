@@ -2,6 +2,12 @@
 :root{--ink:#1b1f33;--mut:#6b7186;--grn:#22b573;--pill:rgba(244,244,248,.95);--wall:#d9a93a;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:#0d1b4a;font:14px/1.3 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);overflow:hidden;-webkit-text-size-adjust:100%}
+/* Safety net: on a slow/dropped connection the Font Awesome webfont can fail to load or fall back to an
+   oversized system glyph, which used to blow out list/row layouts and smear icons across several lines of
+   text (e.g. the State House "Run for President" checklist). Every fa-* glyph is now boxed to exactly 1em
+   square with its overflow clipped, so a bad fallback glyph can never grow past the space the icon was
+   meant to occupy, whether or not the webfont actually loaded. */
+.fa-solid,.fa-regular,.fa-brands{display:inline-block;width:1em;height:1em;overflow:hidden;line-height:1;vertical-align:-.125em;flex:none}
 button{font-family:inherit;cursor:pointer}
 #app{position:fixed;inset:0;max-width:480px;margin:0 auto;overflow:hidden;background:#17306e}
 .scene{position:absolute;inset:0;background:radial-gradient(130% 55% at 50% 100%,#53622d 0,#2d3d23 42%,#13234f 43%)}
@@ -1279,7 +1285,7 @@ html[data-theme="dark"] .sw2.on i{background:#fff}
 .gvhint{display:block;color:var(--mut);font-size:12px;line-height:1.45;margin:6px 2px}.gvhold .gvhint{color:rgba(255,255,255,.85)}
 .gvph{display:flex;align-items:baseline;justify-content:space-between;margin:16px 2px 6px}.gvph h4{margin:0;font:800 15px Outfit,system-ui,sans-serif}.gvph span{font-size:12px;color:var(--mut);font-weight:700}
 .gvfile{background:#f3f4f9;border-radius:18px;padding:14px;margin:6px 0 10px}.gvfile>b{display:block;font-size:14px;margin-bottom:6px}.gvfile .sinput{width:100%;box-sizing:border-box;margin:8px 0}.gvfile .lgbtn.big{width:100%}
-.gvchk{list-style:none;margin:0;padding:0}.gvchk li{display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0}.gvchk li.ok{color:#15803d}.gvchk li.no{color:#b42318}.gvchk i{font-style:normal;opacity:.75}
+.gvchk{list-style:none;margin:0;padding:0}.gvchk li{display:flex;gap:8px;align-items:center;font-size:13px;padding:3px 0}.gvchk li.gvcok{color:#15803d}.gvchk li.gvcno{color:#b42318}.gvchk i{font-style:normal;opacity:.75}
 .gvok{background:color-mix(in srgb,#22b573 12%,#fff);border:1px solid color-mix(in srgb,#22b573 30%,#fff);border-radius:14px;padding:10px 12px;font-size:13px;margin:6px 0 10px;line-height:1.4}
 .gvq{width:100%;box-sizing:border-box;margin:4px 0 8px}
 .gvc{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #eef0f5}.gvc>div:nth-child(2){flex:1;min-width:0}.gvc b{display:block;font-size:14px}.gvc small{display:block;color:var(--mut);font-size:12px;margin-top:1px}.gvc.me b{color:#2563eb}

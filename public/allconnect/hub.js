@@ -393,8 +393,8 @@ const HUB = {
     this.sheet('City status', async () => {
       const r = await fetch('/api/ac/public/status', { cache: 'no-store' }).then(x => x.json());
       const up = s => { const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return (d ? d + 'd ' : '') + h + 'h ' + m + 'm' };
-      return `<div class="hstat ${r.ok ? 'ok' : 'bad'}"><span class="fa-solid fa-${r.ok ? 'circle-check' : 'triangle-exclamation'}"></span><div><b>${r.ok ? 'All systems normal' : 'Some things are not working'}</b><small>Up for ${up(r.uptimeSec)} · ${r.online} online · v${this.esc(r.version)}</small></div></div>` +
-        r.services.map(s => UI.row({ ic: `<i class="sdot ${s.ok ? 'ok' : 'bad'}"></i>`, title: this.esc(s.name), sub: s.ok ? (s.ms != null ? s.ms + ' ms' : 'Working') : 'Not available right now' })).join('') + `<p class="lgnote">Full page: <a href="/status" target="_blank" rel="noopener">${location.origin}/status</a></p>`;
+      return `<div class="hstat ${r.ok ? 'hgood' : 'bad'}"><span class="fa-solid fa-${r.ok ? 'circle-check' : 'triangle-exclamation'}"></span><div><b>${r.ok ? 'All systems normal' : 'Some things are not working'}</b><small>Up for ${up(r.uptimeSec)} · ${r.online} online · v${this.esc(r.version)}</small></div></div>` +
+        r.services.map(s => UI.row({ ic: `<i class="sdot ${s.ok ? 'hgood' : 'bad'}"></i>`, title: this.esc(s.name), sub: s.ok ? (s.ms != null ? s.ms + ' ms' : 'Working') : 'Not available right now' })).join('') + `<p class="lgnote">Full page: <a href="/status" target="_blank" rel="noopener">${location.origin}/status</a></p>`;
     }, { id: 'status' });
   },
 

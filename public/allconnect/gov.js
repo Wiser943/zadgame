@@ -77,7 +77,7 @@ const GOV = {
   },
   fileBox(o) {
     const e = o.election, el = e.eligibility, sl = this.draft.slogan[o.id] || '';
-    const chk = el.checks.map((x) => `<li class="${x.ok ? 'ok' : 'no'}"><span class="fa-solid fa-${x.ok ? 'circle-check' : 'circle-xmark'}"></span>${this.esc(x.label)}${!x.ok && x.have != null && x.id !== 'fee' ? ` <i>(you have ${x.have})</i>` : ''}</li>`).join('');
+    const chk = el.checks.map((x) => `<li class="${x.ok ? 'gvcok' : 'gvcno'}"><span class="fa-solid fa-${x.ok ? 'circle-check' : 'circle-xmark'}"></span>${this.esc(x.label)}${!x.ok && x.have != null && x.id !== 'fee' ? ` <i>(you have ${x.have})</i>` : ''}</li>`).join('');
     return `<div class="gvfile"><b>Run for ${this.esc(o.title)}</b><ul class="gvchk">${chk}</ul>
       ${el.ok ? `<input class="sinput" id="gvsl" maxlength="80" placeholder="Your campaign slogan" value="${this.esc(sl)}" oninput="GOV.draft.slogan['${o.id}']=this.value" autocomplete="off"><button class="lgbtn big" onclick="GOV.file('${o.id}',this)">File and pay ${this.money(o.fee)}</button><small class="gvhint">If you do not make the ballot your fee comes back. If you reach the ballot and lose, the fee is gone. If you win, you get it back plus ${this.money(o.salary)}.</small>` : `<small class="gvhint">${e.filedElsewhere ? 'You are already running in another race this round.' : 'Meet every requirement above to file.'}</small>`}</div>`;
   },

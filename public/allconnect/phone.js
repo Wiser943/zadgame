@@ -23,8 +23,8 @@ const PH={
       const w=a.querySelector('.ahw');if(!w)return;const y=b.scrollTop,dy=y-(b._l||0);if(Math.abs(dy)<8)return;b._l=y;
       const h=w.offsetHeight,room=b.scrollHeight-b.clientHeight;
       if(dy>0&&y>60&&room>h+80){w.style.marginTop=-h+'px';w.classList.add('hide')}else if(dy<0||y<=0){w.style.marginTop='';w.classList.remove('hide')}},true)},
-  sheet(html){const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
-  closeSheet(){const s=this.$a().querySelector('.asheet');if(s)s.remove()},
+  sheet(html){this.closeSheet();const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
+  closeSheet(){this.$a().querySelectorAll('.asheet').forEach(s=>s.remove())},
   av(u,big){const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.charCodeAt(0)||0)%6];
     return /^(https?:|data:image\/)/.test(u.avatar||'')?`<img class="avi ${big?'big':''}" src="${esc(u.avatar)}" alt="" data-n="${esc(n)}" data-c="${c}" onerror="PH.imgFail(this)">`:`<span class="avi ${big?'big':''}" style="background:${c}">${esc(n)}</span>`},
   imgFail(img){const s=document.createElement('span');s.className=img.className;s.style.background=img.dataset.c;s.textContent=img.dataset.n;img.replaceWith(s)},
