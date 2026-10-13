@@ -362,6 +362,7 @@ const APPS = [
   ['Lagos Run', '🚌', 'linear-gradient(135deg,#f2b705,#e0301e 60%,#14110f)'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Transport', '🚕', 'linear-gradient(135deg,#fbbf24,#d97706)', 1],
+  ['State House', '🏛️', 'linear-gradient(135deg,#1d4ed8,#0f766e)', 1],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
   ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
@@ -377,7 +378,7 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 /* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
 const PHLAY = {
   key: 'allconnect:applayout',

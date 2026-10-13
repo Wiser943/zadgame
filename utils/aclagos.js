@@ -27,10 +27,14 @@ const BYID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 // One event per 12-hour window (6 AM and 6 PM Lagos). Deterministic, with the quiet "calm" day showing up about 1 in 3 windows.
 function windowOf(now) { const l = lagos(now), h = l.getUTCHours(); const start = Date.UTC(l.getUTCFullYear(), l.getUTCMonth(), l.getUTCDate(), h >= 18 ? 18 : h >= 6 ? 6 : -6, 0, 0) - LAGOS; return { start, end: start + 12 * HOUR, key: Math.floor(start / (12 * HOUR)) }; }
 function hash(n) { let x = (n ^ 0x9e3779b9) >>> 0; x = Math.imul(x ^ (x >>> 16), 0x85ebca6b) >>> 0; x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0; return (x ^ (x >>> 16)) >>> 0; }
+// State House policies (utils/acgov.js) plug in here: the elected Governor / Commissioner / President can nudge the event's multipliers.
+// With no hook set (tests, or nobody in office) the event is returned exactly as before.
+let multHook = null;
+const setMultHook = (fn) => { multHook = typeof fn === 'function' ? fn : null; };
 function currentEvent(now = Date.now()) {
   const w = windowOf(now), r = hash(w.key) % 9, pick = r < 3 ? 'calm' : ['fuel', 'nepa', 'goslow', 'rain', 'owambe', 'market'][r - 3];
   const e = BYID[pick];
-  return { ...e, windowKey: w.key, startsAt: w.start, endsAt: w.end };
+  return { ...e, mult: multHook ? multHook(e.mult, now) : e.mult, windowKey: w.key, startsAt: w.start, endsAt: w.end };
 }
 const jobMult = (ev, field) => { const j = (ev && ev.mult && ev.mult.job) || {}; return j[String(field || '').toLowerCase()] || j.all || 1; };
 const publicEvent = (ev) => ({ id: ev.id, icon: ev.icon, fa: ev.fa, color: ev.color, title: ev.title, pidgin: ev.pidgin, text: ev.text, pidginText: ev.pidginText, endsAt: ev.endsAt, mult: ev.mult, districts: ev.districts, windowKey: ev.windowKey });
@@ -99,4 +103,4 @@ function nextStreak(ac, now = Date.now()) {
   return { claimable: true, streak: n, next: streakReward(n), reset: !!ac.lastDaily && ac.lastDaily !== yest };
 }
 
-module.exports = { HOUR, DAY, dayKey, EVENTS, currentEvent, jobMult, publicEvent, BILLS, FREE_DAYS, LATE_PCT, KEEP, cycleOf, billAmount, newBills, lateFee, owed, powerCut, billView, QUESTS, QBYID, STREAK, streakReward, nextStreak };
+module.exports = { HOUR, DAY, dayKey, EVENTS, currentEvent, setMultHook, jobMult, publicEvent, BILLS, FREE_DAYS, LATE_PCT, KEEP, cycleOf, billAmount, newBills, lateFee, owed, powerCut, billView, QUESTS, QBYID, STREAK, streakReward, nextStreak };

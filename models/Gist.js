@@ -10,6 +10,7 @@ const GistPostSchema = new Schema({
   images: { type: [ImageSchema], default: [] },
   game: { key: String, name: String, code: String },   // game reference / room link
   match: { game: String, name: String, score: String, opponent: String, result: String },  // auto-posted match win card
+  election: { office: String, kind: String, slogan: String, votes: Number },   // State House cards: campaign / result / announce (see services/govService.js)
   poll: { options: { type: [PollOption], default: undefined }, endsAt: Date },
   tags: { type: [String], default: [], index: true },  // lowercase hashtags (no #)
   mentions: { type: [String], default: [] },           // user ids mentioned with @username

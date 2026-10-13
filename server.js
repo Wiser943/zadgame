@@ -37,6 +37,8 @@ const acHubRoutes = require('./routes/achub');
 const acStyleRoutes = require('./routes/acstyle');
 const acPushRoutes = require('./routes/acpush');
 const acTransportRoutes = require('./routes/actransport');
+const acGovRoutes = require('./routes/acgov');
+const govService = require('./services/govService');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
 const initSockets = require('./sockets');
@@ -90,6 +92,7 @@ async function main() {
   app.use('/api/ac/items', acItemRoutes);
   app.use('/api/ac/invest', acInvestRoutes);
   app.use('/api/ac/transport', acTransportRoutes);
+  app.use('/api/ac/gov', acGovRoutes);          // State House: elections, announcements, policies
   app.use('/api/ac/venues', acVenuesRoutes);
   app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats
   app.use('/api/ac', allconnectRoutes);
@@ -165,6 +168,12 @@ async function main() {
     ncity(io, null, { icon: ev.icon, text: `${ev.title}: ${ev.pidgin} ${ev.text}`, kind: 'info' }).catch(() => {});
   };
   setTimeout(() => cityTick().catch(() => {}), 20000).unref(); setInterval(() => cityTick().catch(() => {}), 5 * 60 * 1000).unref();
+  /* State House: policies change prices, so the active ones are loaded before the first request and refreshed every 30 s
+     (this tick also closes the campaign, counts the votes and announces winners; each step is claimed once across instances) */
+  require('./utils/aclagos').setMultHook(require('./utils/acgov').applyPolicies);
+  await govService.refreshOffices().catch((e) => console.error('[gov load]', e.message));
+  setTimeout(() => govService.tick(io).catch((e) => console.error('[gov tick]', e.message)), 15000).unref();
+  setInterval(() => govService.tick(io).catch((e) => console.error('[gov tick]', e.message)), 30 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);

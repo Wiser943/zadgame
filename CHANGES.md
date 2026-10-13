@@ -1,3 +1,26 @@
+## State House: elections every 14 days (Governor, Commissioner, President)
+
+New phone app **State House** (🏛️), built on the shared `SHEET` (tabs), `CARD`, `PH.av` avatars and the Lagos Life rows / buttons. Files: `public/allconnect/gov.js`, `routes/acgov.js` (`/api/ac/gov`), `services/govService.js` (database work + the 30 s tick), `utils/acgov.js` (every rule and number, no database), `models/ACGov.js`, tests in `tests/acgov.test.js`.
+
+| Step | What happens |
+|------|--------------|
+| Round | 14 days, from Monday 00:00 Lagos. The winner of round N holds office for round N+1. |
+| Days 0-10: campaign | Players pay the filing fee and file with a slogan (one race per round). Everyone with a day-old account can back one candidate per race (changeable). |
+| Day 10: ballot | The 5 with the most backers go on the ballot (ties: who filed first). Everyone else gets the fee back. |
+| Days 10-14: voting | One final vote per player per race, only for the 5. Counts show after you vote. |
+| Day 14: result | Most votes wins (ties: more backers, then first to file). Winner gets the fee back plus a term allowance, a P-Gist result card, and a city-wide update. Losers on the ballot are told. |
+
+Requirements (all checked on the server, shown as a tick list): @username, account age, P-Gist followers, filing fee. Governor ₦5M / 5 days / 5 followers, Commissioner ₦1.5M / 2 days / 2 followers, President ₦10M / 7 days / 10 followers.
+
+**Powers.** The sitting officeholder can (1) post up to 2 official announcements a day (to every player's Updates and as a P-Gist post), (2) choose policies, one change per policy every 6 hours, and (3) earn a term allowance. Policies are preset options with a benefit and a price, each within +/-20%, and all offices together stay within -30% / +35%. They plug into the existing city-event multipliers through `setMultHook` in `utils/aclagos.js`, so electricity / water / waste bills, food prices, fares and job pay all follow them with no other code changed. Bills use the policy in place on the Monday they are issued; the rest is immediate.
+
+**P-Gist.** New `election` card on posts (running for office, elected, official announcement). Everything that must happen once (the ballot, the winner, each refund) is claimed with one atomic update, so several server instances are safe.
+
+## Keyboard shortcuts + Visit only at the place
+
+- Desktop only: a ⌨️ Keyboard button (bottom-left) opens the shortcuts list (also the K key). Keys: N map, H home, B buy mode, P phone, S needs, Esc close; in Buy mode also C catalogue, arrows move, R rotate, Enter place, Del sell. Ignored while typing in a field. File: `public/allconnect/keys.js`.
+- Visit only works when the player is at the place (within about 90 map units); from farther away it says to get there first.
+
 ## Extended map (fills the screen when zoomed out or dragged)
 
 The city now continues past its edges: a sea channel, then outer land with decorative streets, buildings and trees on all four sides (scenery only, tapping there does nothing). You can pan about 490 units past the edge, and zoom out further (2100 on wide screens, 1700 on phones, was 1500), so the screen is always full of map, even on desktop. Battery saver uses fewer outer buildings. Code: `extendWorld`, `XLAND`, `XOBJ`, `maxD` in `map3d.js`.

@@ -10,6 +10,7 @@ const { normalizeUsername } = require('../utils/allconnect');
 const { notify } = require('../utils/acnotify');
 const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
+const GOV = require('../utils/acgov');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -77,6 +78,7 @@ async function hydrate(posts, uid) {
       id, author: pubUser(uMap.get(p.author)), mine: p.author === uid, text: p.text || '', images: p.images || [],
       game: p.game && p.game.key ? { key: p.game.key, name: p.game.name, code: p.game.code || '' } : null,
       match: p.match && p.match.game ? { game: p.match.game, name: p.match.name, score: p.match.score || '', opponent: p.match.opponent || '', result: p.match.result || 'win' } : null,
+      election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
       tags: p.tags || [], pinned: !!p.pinned, edited: !!p.editedAt,
       likes: Math.max(0, p.likes || 0), rx: p.rx || {}, comments: Math.max(0, p.comments || 0), shares: Math.max(0, p.shares || 0),
       myRx: liked.get(id) || '', liked: liked.has(id), createdAt: p.createdAt,
