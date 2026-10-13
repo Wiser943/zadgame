@@ -22,26 +22,61 @@ router.get('/', async (req, res, next) => {
 });
 router.post('/acquire', async (req, res, next) => {
   try {
-    const type = String(req.body?.type || ''); if (!isHome(type)) return bad(res, 'Unknown home type.');
-    const home = HOMES[type], existing = await ensureAC(req.user.id);
-    if ((existing.ac.properties || []).some(p => p.type === type && !(p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date()))) return bad(res, 'You already have this home.', 409);
-    if (home.mode === 'buy' && home.price > 10000000) return bad(res, 'Home price is not available.');
+    const type = String(req.body?.type || '');
+    if (!isHome(type)) return bad(res, 'Unknown home type.');
+
+    const home = HOMES[type];
     const price = home.mode === 'rent' ? home.rent : home.price;
-    const property = { id: F.newId(), type, tenure: home.mode === 'rent' ? 'rent' : 'owned', boughtAt: new Date(), leaseExpiresAt: home.mode === 'rent' ? new Date(Date.now() + home.rentDays * 86400000) : null, paint: home.paint, items: [] };
-    // The debit and property creation are a single conditional update on the same User document.
-    const filter = { _id: req.user.id, 'ac.cash': { $gte: price }, 'ac.properties.type': { $ne: type } };
-    // Expired rentals may be reacquired; filter above would block those, so use a guarded fallback after checking the current record.
-    let u = await User.findOneAndUpdate(filter, { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } }, { new: true });
-    if (!u && home.mode === 'rent') {
-      const cur = await User.findById(req.user.id);
-      const stillActive = (cur.ac.properties || []).some(p => p.type === type && !(p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date()));
-      if (stillActive) return bad(res, 'You already have this home.', 409);
-      // Add the renewed lease only if no active lease or permanent ownership appeared concurrently.
-      u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: price }, ac: { $exists: true }, 'ac.properties': { $not: { $elemMatch: { type, $or: [{ tenure: 'owned' }, { tenure: 'rent', leaseExpiresAt: { $gt: new Date() } }] } } } }, { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } }, { new: true });
+    if (!Number.isSafeInteger(price) || price < 1) return bad(res, 'Home price is not available.', 503);
+
+    // Use the existing User document and wallet. This single conditional update
+    // debits cash and creates the property together, while blocking duplicate
+    // active leases/permanent ownership. Expired rentals may be rented again.
+    const now = new Date();
+    const property = {
+      id: F.newId(),
+      type,
+      tenure: home.mode === 'rent' ? 'rent' : 'owned',
+      boughtAt: now,
+      leaseExpiresAt: home.mode === 'rent' ? new Date(now.getTime() + home.rentDays * 86400000) : null,
+      paint: home.paint,
+      items: []
+    };
+    const filter = {
+      _id: req.user.id,
+      'ac.cash': { $gte: price },
+      $nor: [{
+        'ac.properties': {
+          $elemMatch: {
+            type,
+            $or: [
+              { tenure: 'owned' },
+              { tenure: 'rent', leaseExpiresAt: { $gt: now } }
+            ]
+          }
+        }
+      }]
+    };
+    const u = await User.findOneAndUpdate(
+      filter,
+      { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } },
+      { new: true, runValidators: true }
+    );
+
+    if (!u) {
+      const cur = await User.findById(req.user.id).select('ac.cash ac.properties');
+      if (!cur) return bad(res, 'Account not found. Please sign in again.', 401);
+      const hasActive = (cur.ac?.properties || []).some(p => p.type === type &&
+        (p.tenure === 'owned' || (p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) > now)));
+      if (hasActive) return bad(res, 'You already have this home.', 409);
+      if ((cur.ac?.cash || 0) < price) return bad(res, 'Not enough ₦.', 402);
+      return bad(res, 'Could not complete the home purchase. Please refresh and try again.', 409);
     }
-    if (!u) { const cur = await User.findById(req.user.id).select('ac.cash ac.properties'); return bad(res, (cur?.ac?.cash || 0) < price ? 'Not enough ₦.' : 'You already have this home.', (cur?.ac?.cash || 0) < price ? 402 : 409); }
+
     res.json({ ac: publicAC(u.ac), property: publicHome(property) });
-  } catch (e) { next(e); }
+  } catch (e) {
+    next(e);
+  }
 });
 router.get('/:id/furniture', async (req, res, next) => { try { const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404); res.json({ property: publicHome(c.p), ac: publicAC(c.u.ac) }); } catch (e) { next(e); } });
 router.post('/:id/furniture/buy', async (req, res, next) => {
