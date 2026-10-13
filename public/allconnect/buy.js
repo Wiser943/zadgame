@@ -5,7 +5,7 @@ const BUY = {
   TABS: ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light', 'Design', 'Wishlist', 'Stored'],
   is3d() { return !!(window.ROOM3D && ROOM3D.on) },
   items() { return S.items || [] },
-  api(u, b) { return NET.api('/api/ac/items' + u, { method: 'POST', body: b || {} }) },
+  api(u, b) { if (S.activePropertyId && u !== '/wish') { const base = '/api/ac/properties/' + encodeURIComponent(S.activePropertyId) + '/furniture'; const m = u.match(/^\/([^/]+)\/(move|place|store|sell)$/); return NET.api(base + (m ? '/' + encodeURIComponent(m[1]) + '/' + m[2] : u), { method: 'POST', body: b || {} }); } return NET.api('/api/ac/items' + u, { method: 'POST', body: b || {} }) },
   stars(n) { return n ? '★'.repeat(n) : '' },
   thumb(name) { const D = FURN.ITEMS[name]; const u = this.is3d() ? ROOM3D.thumb(name) : ''; return u ? `<img src="${u}" alt="">` : `<span class="cem">${D.emoji || '🛋️'}</span>` },
   enter() {

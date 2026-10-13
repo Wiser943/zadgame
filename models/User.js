@@ -66,6 +66,10 @@ const UserSchema = new mongoose.Schema({
     owned: { type: [String], default: ['Classic Cream'] },
     v2: { type: Boolean, default: false },                 // furniture moved to placeable items
     items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] },
+    // Additional player homes live beside (not instead of) the legacy starter room.
+    properties: { type: [{ _id: false, id: String, type: String, tenure: { type: String, enum: ['owned', 'rent'], default: 'owned' },
+      boughtAt: { type: Date, default: Date.now }, leaseExpiresAt: { type: Date, default: null }, paint: { type: String, default: '#d9a93a' },
+      items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },
     wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },

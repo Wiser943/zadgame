@@ -1,0 +1,67 @@
+// Additional homes reuse the existing AllConnect account, shared wallet and furniture placement rules.
+const express = require('express');
+const User = require('../models/User');
+const ensureAuth = require('../middleware/auth');
+const F = require('../utils/furniture');
+const { publicAC } = require('../utils/allconnect');
+const { ensureAC } = require('./allconnect');
+const { HOMES, isHome, publicHome } = require('../utils/acproperties');
+const router = express.Router();
+router.use(ensureAuth);
+const bad = (res, message, status = 400) => res.status(status).json({ message });
+const activePropertyFilter = (id) => ({ 'ac.properties': { $elemMatch: { id, $or: [{ tenure: 'owned' }, { tenure: 'rent', leaseExpiresAt: { $gt: new Date() } }] } } });
+const getOwned = async (req) => {
+  const u = await ensureAC(req.user.id);
+  const p = (u.ac.properties || []).find(x => x.id === String(req.params.id));
+  if (!p) return { u, p: null };
+  if (p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date()) return { u, p: null, expired: true };
+  return { u, p };
+};
+router.get('/', async (req, res, next) => {
+  try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h })), properties: (u.ac.properties || []).map(publicHome), cash: u.ac.cash }); } catch (e) { next(e); }
+});
+router.post('/acquire', async (req, res, next) => {
+  try {
+    const type = String(req.body?.type || ''); if (!isHome(type)) return bad(res, 'Unknown home type.');
+    const home = HOMES[type], existing = await ensureAC(req.user.id);
+    if ((existing.ac.properties || []).some(p => p.type === type && !(p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date()))) return bad(res, 'You already have this home.', 409);
+    if (home.mode === 'buy' && home.price > 10000000) return bad(res, 'Home price is not available.');
+    const price = home.mode === 'rent' ? home.rent : home.price;
+    const property = { id: F.newId(), type, tenure: home.mode === 'rent' ? 'rent' : 'owned', boughtAt: new Date(), leaseExpiresAt: home.mode === 'rent' ? new Date(Date.now() + home.rentDays * 86400000) : null, paint: home.paint, items: [] };
+    // The debit and property creation are a single conditional update on the same User document.
+    const filter = { _id: req.user.id, 'ac.cash': { $gte: price }, 'ac.properties.type': { $ne: type } };
+    // Expired rentals may be reacquired; filter above would block those, so use a guarded fallback after checking the current record.
+    let u = await User.findOneAndUpdate(filter, { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } }, { new: true });
+    if (!u && home.mode === 'rent') {
+      const cur = await User.findById(req.user.id);
+      const stillActive = (cur.ac.properties || []).some(p => p.type === type && !(p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date()));
+      if (stillActive) return bad(res, 'You already have this home.', 409);
+      // Add the renewed lease only if no active lease or permanent ownership appeared concurrently.
+      u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: price }, ac: { $exists: true }, 'ac.properties': { $not: { $elemMatch: { type, $or: [{ tenure: 'owned' }, { tenure: 'rent', leaseExpiresAt: { $gt: new Date() } }] } } } }, { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } }, { new: true });
+    }
+    if (!u) { const cur = await User.findById(req.user.id).select('ac.cash ac.properties'); return bad(res, (cur?.ac?.cash || 0) < price ? 'Not enough ₦.' : 'You already have this home.', (cur?.ac?.cash || 0) < price ? 402 : 409); }
+    res.json({ ac: publicAC(u.ac), property: publicHome(property) });
+  } catch (e) { next(e); }
+});
+router.get('/:id/furniture', async (req, res, next) => { try { const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404); res.json({ property: publicHome(c.p), ac: publicAC(c.u.ac) }); } catch (e) { next(e); } });
+router.post('/:id/furniture/buy', async (req, res, next) => {
+  try {
+    const name = String(req.body?.name || ''); if (!F.isItem(name)) return bad(res, 'Unknown furniture item.');
+    const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404);
+    const it = F.ITEMS[name], items = c.p.items || []; if (items.length >= 120) return bad(res, 'This home is full of furniture.');
+    if (it.fixed ? items.some(i => i.name === name) : !F.canPlace(items, name, Number(req.body?.x), Number(req.body?.z), Number(req.body?.rot) || 0)) return bad(res, it.fixed ? 'You already have that.' : 'That spot is taken or outside the room.');
+    const inst = { id: F.newId(), name, x: Number(req.body?.x) || 0, z: Number(req.body?.z) || 0, rot: Number(req.body?.rot) || 0, placed: true };
+    const path = 'ac.properties.$[p].items';
+    const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: it.price }, ...activePropertyFilter(req.params.id) }, { $inc: { 'ac.cash': -it.price }, $push: { [path]: inst } }, { new: true, arrayFilters: [{ 'p.id': req.params.id }] });
+    if (!u) return bad(res, 'Not enough ₦ or home no longer available.', 409);
+    res.json({ ac: publicAC(u.ac), property: publicHome((u.ac.properties || []).find(p => p.id === req.params.id)), item: inst });
+  } catch (e) { next(e); }
+});
+async function itemContext(req, res) { const c = await getOwned(req); if (!c.p) { bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404); return null; } const it = (c.p.items || []).find(i => i.id === req.params.itemId); if (!it) { bad(res, 'Item not found.', 404); return null; } return { ...c, it, items: c.p.items }; }
+async function updateItem(req, res, fields) { const set = Object.fromEntries(Object.entries(fields).map(([k,v]) => [`ac.properties.$[p].items.$[i].${k}`, v])); const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.properties.items.id': req.params.itemId, ...activePropertyFilter(req.params.id) }, { $set: set }, { new: true, arrayFilters: [{ 'p.id': req.params.id }, { 'i.id': req.params.itemId }] }); if (!u) return bad(res, 'Item not found.', 404); res.json({ ac: publicAC(u.ac), property: publicHome((u.ac.properties || []).find(p => p.id === req.params.id)) }); }
+async function place(req, res, storedOnly) { const c = await itemContext(req, res); if (!c) return; const def = F.ITEMS[c.it.name]; if (!def || def.fixed) return bad(res, 'That item cannot be moved.'); if (storedOnly && c.it.placed !== false) return bad(res, 'Already in your room.'); const x = Number(req.body?.x), z = Number(req.body?.z), rot = Number(req.body?.rot) || 0; if (!F.canPlace(c.items, c.it.name, x, z, rot, c.it.id)) return bad(res, 'That spot is taken or outside the room.'); return updateItem(req, res, { x, z, rot, placed: true }); }
+router.post('/:id/furniture/:itemId/move', async (req,res,next)=>{ try { return await place(req,res,false); } catch(e){next(e);} });
+router.post('/:id/furniture/:itemId/place', async (req,res,next)=>{ try { return await place(req,res,true); } catch(e){next(e);} });
+router.post('/:id/furniture/:itemId/store', async (req,res,next)=>{ try { const c=await itemContext(req,res); if(!c)return; if(F.ITEMS[c.it.name]?.locked)return bad(res,'You need that one in the room.'); return await updateItem(req,res,{placed:false}); } catch(e){next(e);} });
+router.post('/:id/furniture/:itemId/sell', async (req,res,next)=>{ try { const c=await itemContext(req,res); if(!c)return; if(F.ITEMS[c.it.name]?.locked)return bad(res,'You cannot sell that one.'); const pay=F.sellPrice(c.it.name); const u=await User.findOneAndUpdate({_id:req.user.id,'ac.properties.items.id':req.params.itemId,...activePropertyFilter(req.params.id)},{$pull:{'ac.properties.$[p].items':{id:req.params.itemId}},$inc:{'ac.cash':pay}},{new:true,arrayFilters:[{'p.id':req.params.id}]}); if(!u)return bad(res,'Item not found.',404); res.json({ac:publicAC(u.ac),property:publicHome((u.ac.properties||[]).find(p=>p.id===req.params.id)),paid:pay}); } catch(e){next(e);} });
+module.exports = router;

@@ -69,7 +69,12 @@ function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
 function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
-  S.items = ac.items || [];
+  S.legacyItems = ac.items || []; S.legacyPaint = ac.paint; S.properties = ac.properties || [];
+  S.activeProperty = S.activePropertyId ? S.properties.find(p => p.id === S.activePropertyId) || null : null;
+  if (!S.activeProperty) S.activePropertyId = '';
+  S.items = S.activeProperty ? S.activeProperty.items : S.legacyItems;
+  if (S.activeProperty) S.paint = S.activeProperty.paint || S.legacyPaint;
+  else S.paint = S.legacyPaint;
   S.wish = ac.wish || [];
   setPaint(S.paint);
   if (window.ROOM3D) { ROOM3D.setGender(S.gender || 'male'); ROOM3D.sync() }
@@ -180,7 +185,7 @@ function closeHub() {
   nav('home')
 }
 const $ = id => document.getElementById(id);
-const S = { cash: 2025000, min: 19 * 60 + 53, needs: [.55, .9, .95, .85, .95, .9], paint: '#d9a93a', tab: 'Design', sel: null, owned: { 'Classic Cream': 1 }, clean: false };
+const S = { activePropertyId: '', activeProperty: null, properties: [], legacyItems: [], legacyPaint: '#d9a93a', cash: 2025000, min: 19 * 60 + 53, needs: [.55, .9, .95, .85, .95, .9], paint: '#d9a93a', tab: 'Design', sel: null, owned: { 'Classic Cream': 1 }, clean: false };
 const NEED = ['🥧', '⚡', '🎉', '💬', '🫧', '🚽'];
 const fmt = n => '₦' + n.toLocaleString('en-NG');
 /* Balance shown in the HUD: up to 4 figures stays exact (₦9,999); anything longer is shortened: ₦10K, ₦4.25M, ₦5B, ₦8T... (cut, never rounded up) */
