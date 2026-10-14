@@ -1308,3 +1308,28 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .home-copy small{color:#a9afc6}
 :where(html[data-theme="dark"]) .home-actions button.secondary{background:#1b2034;color:#e3e6f1}
 /* <<< END AUTO-GENERATED DARK MODE OVERRIDES <<< */
+
+
+/* User-adjustable dark appearance. Brand accents remain blue/gold/purple/orange; only neutral surfaces get darker. */
+html[data-theme="dark"] body { background:var(--dark-bg,#000); }
+html[data-theme="dark"] .screen.light,
+html[data-theme="dark"] .appview { background:var(--dark-bg,#000); }
+html[data-theme="dark"] .sgrp,
+html[data-theme="dark"] .lgcard,
+html[data-theme="dark"] .rcard,
+html[data-theme="dark"] .bal { background:var(--dark-card,#000); }
+html[data-theme="dark"] .sw2,
+html[data-theme="dark"] .ssel,
+html[data-theme="dark"] .sinput,
+html[data-theme="dark"] .cin input,
+html[data-theme="dark"] .cin2 input,
+html[data-theme="dark"] .lghd button,
+html[data-theme="dark"] .lgtabs button,
+html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
+.darkness-control{padding:14px 14px 12px;border-top:1px solid rgba(130,140,170,.15)}
+.darkness-control label{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink)}
+.darkness-control label span{display:flex;flex-direction:column;gap:3px}.darkness-control label b{font-size:13.5px}.darkness-control label small{font-size:11.5px;color:var(--mut)}
+.darkness-control label strong{font-size:13px;color:#7c3aed;font-variant-numeric:tabular-nums}
+.darkness-control input[type=range]{width:100%;margin:14px 0 4px;accent-color:#075BFF;cursor:pointer}
+.darkness-ends{display:flex;justify-content:space-between;color:var(--mut);font-size:10.5px}
+.darkness-preview{height:18px;margin-top:10px;border:1px solid rgba(140,145,165,.35);border-radius:8px;background:#000;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}

@@ -2,7 +2,7 @@
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
 const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
-const GP_DEF={theme:'light',night:'off',saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:''};
+const GP_DEF={theme:'light',night:'off',darkness:100,saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:''};
 const GP={
   get(){let st={};try{st=JSON.parse(localStorage.getItem('ghPrefs')||'{}')}catch(e){}
     const o=Object.assign({},GP_DEF,st);if(window.PREFX){o.night=PREFX.night(st);o.saver=PREFX.saver(st)}return o},
@@ -48,6 +48,7 @@ Object.assign(PH,{
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
+        <div class="darkness-control"><label for="darkness-level"><span><b>Darkness level</b><small>Choose charcoal, deep black, or pure black.</small></span><strong id="darkness-value">${Math.max(0,Math.min(100,Number(p.darkness)||0))}%</strong></label><input id="darkness-level" type="range" min="0" max="100" step="5" value="${Math.max(0,Math.min(100,Number(p.darkness)||0))}" oninput="PH.setDarkness(this.value)"><div class="darkness-ends"><span>Charcoal</span><span>Pure black</span></div><div class="darkness-preview" id="darkness-preview" aria-label="Darkness preview" style="background:rgb(${Math.round(22*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))},${Math.round(23*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))},${Math.round(31*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))})"></div></div>
         ${this.seg('camAuto','🎥','Camera turns by itself','The camera stays where you leave it. Drag to turn it.',[['false','Off'],['true','On']],String(!!p.camAuto),p.camAuto?'On: the map camera swings round to follow the way you walk.':'')}
         ${this.seg('saver','🔋','Data & battery saver','Uses less data and keeps your phone cool. Lagos still looks like Lagos.',[['auto','Auto'],['on','On'],['off','Off']],p.saver,this.saverHint(p))}
         ${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}
@@ -61,6 +62,7 @@ Object.assign(PH,{
     const cv=document.querySelector('#swav .avcov');if(cv){const im=new Image();im.onerror=()=>{cv.style.background='#6366f1';cv.textContent=cv.dataset.n};im.src=u.avatar}
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},
+  setDarkness(value){const n=Math.max(0,Math.min(100,Number(value)||0));GP.set('darkness',n);const label=document.getElementById('darkness-value');if(label)label.textContent=n+'%';const input=document.getElementById('darkness-level');if(input)input.value=n;const preview=document.getElementById('darkness-preview');if(preview)preview.style.background=`rgb(${Math.round(22*(1-n/100))},${Math.round(23*(1-n/100))},${Math.round(31*(1-n/100))})`;},
   tglAuto(){const on=!(this.me?this.me.autoPostWins!==false:true);if(this.me)this.me.autoPostWins=on;const el=document.querySelector('.trow[data-k="autoPost"] .sw2');if(el)el.classList.toggle('on',on);
     NET.api('/api/me/profile',{method:'POST',body:{autoPostWins:on}}).catch(e=>{toast(e.message);if(this.me)this.me.autoPostWins=!on;if(el)el.classList.toggle('on',!on)})},
   /* ----- edit profile: ONE screen for photo, cover, name, @username and bio ----- */

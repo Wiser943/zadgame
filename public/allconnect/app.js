@@ -804,8 +804,15 @@ const PREFX = {
 window.PREFX = PREFX;
 function applyTheme() {
   const p = PREFX.prefs(), dark = PREFX.nightNow(p);
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#0a1230' : '#0b4fe0');
+  const level = Math.max(0, Math.min(100, Number(p.darkness ?? 100)));
+  const mix = (base) => Math.round(base * (1 - level / 100));
+  const root = document.documentElement;
+  root.setAttribute('data-theme', dark ? 'dark' : 'light');
+  root.style.setProperty('--darkness-level', String(level));
+  root.style.setProperty('--dark-bg', `rgb(${mix(20)},${mix(21)},${mix(29)})`);
+  root.style.setProperty('--dark-card', `rgb(${mix(31)},${mix(33)},${mix(44)})`);
+  root.style.setProperty('--dark-panel', `rgb(${mix(39)},${mix(41)},${mix(55)})`);
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? (level >= 95 ? '#000000' : `rgb(${mix(20)},${mix(21)},${mix(29)})`) : '#075BFF');
 }
 window.applyTheme = applyTheme;
 applyTheme();
