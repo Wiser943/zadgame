@@ -14,7 +14,8 @@ module.exports = function configurePassport() {
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${process.env.CLIENT_URL}/auth/google/callback`
+      // BACKEND_URL is only set in "direct" mode (no Netlify proxy); otherwise Google returns through the front-end domain
+      callbackURL: `${process.env.BACKEND_URL || process.env.CLIENT_URL}/auth/google/callback`
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

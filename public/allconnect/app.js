@@ -5,7 +5,7 @@ const NET = {
   saveT: 0,
   user: null,
   async api(url, opt = {}) {
-    const r = await fetch(url, { method: opt.method || 'GET', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: opt.body ? JSON.stringify(opt.body) : undefined });
+    const r = await fetch(url, { method: opt.method || 'GET', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: opt.body ? JSON.stringify(opt.body) : undefined });
     let j = {};
     try { j = await r.json() } catch {}
     if (!r.ok) throw Object.assign(new Error(j.message || 'Something went wrong. Try again.'), { status: r.status });
@@ -102,7 +102,7 @@ async function doAuth() {
   catch (e) { $('aerr').textContent = e.message } b.disabled = false
 }
 
-function logout() { location.href = '/auth/logout' }
+function logout() { location.href = (window.API_BASE || '') + '/auth/logout' }
 async function boot() {
   if (window.top !== window.self) { window.top.location.href = '/'; return } // GameHub logout redirects here: never nest the platform
   try {

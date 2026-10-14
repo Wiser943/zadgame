@@ -2,7 +2,8 @@
 // cache game pages or API responses. The service worker's only job is to
 // exist — its presence + the manifest is what makes Chrome/Edge/Android
 // consider the site "installable" and fire beforeinstallprompt.
-const CACHE = 'gamehub-shell-v5';
+try { importScripts('/config.js'); } catch (e) {}   // defines self.API_BASE (empty when the API is on the same host)
+const CACHE = 'gamehub-shell-v6';
 const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
 
 self.addEventListener('install', (e) => {
@@ -46,7 +47,7 @@ async function openApp(url) {
 
 async function sendInlineReply(target, text) {
   try {
-    const r = await fetch('/api/ac/messages/' + encodeURIComponent(target.id), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(text).slice(0, 300), replyTo: target.mid || undefined }) });
+    const r = await fetch((self.API_BASE || '') + '/api/ac/messages/' + encodeURIComponent(target.id), { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(text).slice(0, 300), replyTo: target.mid || undefined }) });
     if (!r.ok) throw new Error('send failed ' + r.status);
     await self.registration.showNotification('Reply sent ✓', { body: String(text).slice(0, 80), icon: '/pwa-192.png', tag: 'chat-' + target.id, silent: true, data: target });
   } catch {

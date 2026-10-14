@@ -56,13 +56,28 @@ async function main() {
 
   const app = express();
   const server = http.createServer(app);
-  const io = new Server(server);
+  // Origins allowed to call this API from a browser (only needed when the front end is on another site, e.g. Netlify).
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || '').split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean);
+  const crossSite = process.env.CROSS_SITE_COOKIES === 'true';   // only for "direct" mode (no Netlify proxy)
+  const io = new Server(server, { cors: { origin: allowedOrigins.length ? allowedOrigins : false, credentials: true } });
   await attachRedis(io);
 
   // Render (and most hosts) terminate HTTPS at a proxy. Without this, Express
   // thinks requests are plain HTTP and refuses to set the Secure session cookie.
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+  app.use((req, res, next) => {   // CORS for the separately-hosted front end
+    const o = req.headers.origin;
+    if (o && allowedOrigins.includes(o)) {
+      res.setHeader('Access-Control-Allow-Origin', o);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+    }
+    next();
+  });
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
   app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
@@ -73,12 +88,19 @@ async function main() {
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' ? 'auto' : false } // 7 days
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, httpOnly: true, sameSite: crossSite ? 'none' : 'lax', secure: crossSite ? true : (process.env.NODE_ENV === 'production' ? 'auto' : false) } // 7 days
   });
   app.use(sessionMiddleware);
 
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Lets the browser's Socket.io connection authenticate without a cookie (see utils/socketToken.js)
+  app.get('/api/socket-token', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (!(req.isAuthenticated && req.isAuthenticated()) || !req.user) return res.status(401).json({ message: 'Not signed in' });
+    res.json({ token: require('./utils/socketToken').sign(req.user.id) });
+  });
 
   app.use('/auth', authRoutes);
   app.use('/api', apiRoutes);

@@ -42,11 +42,11 @@ router.post('/login', (req, res, next) => {
   })(req, res, next);
 });
 
-const googleReady = (req, res, next) => (passport._strategy('google') ? next() : res.redirect('/?auth_error=google_off'));
+const googleReady = (req, res, next) => (passport._strategy('google') ? next() : res.redirect((process.env.CLIENT_URL || '') + '/?auth_error=google_off'));
 router.get('/google', googleReady, passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/google/callback', googleReady,
-  passport.authenticate('google', { failureRedirect: '/' }),
+  passport.authenticate('google', { failureRedirect: (process.env.CLIENT_URL || '') + '/' }),
   (req, res) => res.redirect(process.env.CLIENT_URL || '/')
 );
 

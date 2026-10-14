@@ -93,6 +93,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   io.engine.use(sessionMiddleware);
   io.engine.use(passport.initialize());
   io.engine.use(passport.session());
+  io.use(require('../utils/socketToken').attachUser);   // cross-site deployments: identify by signed token when no cookie
   io.use((socket, next) => {
     const u = socket.request.user;
     if (!u) return next(new Error('unauthorized'));

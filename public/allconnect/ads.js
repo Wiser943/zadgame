@@ -176,10 +176,10 @@ const ADS = {
       <div class="adslot" id="adslot"></div><div class="adreveal" id="adreveal" onpointerdown="ADS.rv(event)"></div></div>`, '', open + tog);
     const av = PH.$a(); av.classList.add('adview'); av.style.setProperty('--adh', hue);
     document.querySelector('.screen').style.setProperty('--hbg', `hsl(${hue} 80% 93%)`); this.showHost(a);
-    fetch(`/api/ac/ads/${a.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {})
+    fetch(`/api/ac/ads/${a.id}/click`, { method: 'POST', credentials: 'include' }).catch(() => {})
   },
   /* ----- what every player sees on the Map ----- */
-  go(ad) { if (!ad || !ad.link) return; window.open(ad.link, '_blank', 'noopener'); fetch(`/api/ac/ads/${ad.id}/click`, { method: 'POST', credentials: 'same-origin' }).catch(() => {}) },
+  go(ad) { if (!ad || !ad.link) return; window.open(ad.link, '_blank', 'noopener'); fetch(`/api/ac/ads/${ad.id}/click`, { method: 'POST', credentials: 'include' }).catch(() => {}) },
   async paintMap() {
     const map = document.getElementById('map'); if (!map) return;
     let layer = document.getElementById('adlayer');

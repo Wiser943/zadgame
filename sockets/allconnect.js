@@ -20,6 +20,7 @@ module.exports = function initAllConnect(io) {
   const roster = () => [...new Map([...online.values()].map((v) => [v.id, { name: v.name, g: v.g, l: v.l || undefined }])).values()].slice(0, 40);
   const push = () => { nsp.emit('stats', snapshot()); nsp.emit('players', roster()); };
 
+  nsp.use(require('../utils/socketToken').attachUser);
   nsp.use((socket, next) => {
     const u = socket.request.user;
     if (!u) return next(new Error('unauthorized'));
