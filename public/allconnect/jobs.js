@@ -14,14 +14,8 @@ const JOBS = {
     if (this.now() >= m.nextShiftAt) this.work(true)
   },
   /* home-screen quest: "Get a job" until the player has one */
-  quest(el) {
-    if (!el || !this.data) return;
-    const has = !!this.data.mine;
-    if (el.dataset.job === String(has)) return;
-    el.dataset.job = String(has);
-    el.innerHTML = has ? '<i>🎯</i><div><b>Eat something</b><span>Tap the cooler or stove</span></div>' : '<i style="background:#22b573">🎯</i><div><b>Get a job</b><span>Open Phone → Jobs</span></div>';
-    el.onclick = has ? null : () => { nav('phone'); setTimeout(() => PH.open('jobs'), 0) }
-  },
+  /* the goal pill is drawn by GOALS (goals.js); it shows the next mission and opens the Goals sheet */
+  quest() { if (window.GOALS) GOALS.paintPill() },
   async work(auto) {
     if (this.busy) return; this.busy = true;
     try {

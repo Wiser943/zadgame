@@ -14,6 +14,7 @@
 
  <link rel="stylesheet" href="/allconnect/style.css">
  <link rel="stylesheet" href="/allconnect/songify.css">
+ <link rel="stylesheet" href="/allconnect/ios.css">
 </head>
 
 <body>
@@ -104,15 +105,15 @@
   <div id="banner" class="banner2" role="status"></div>
   <div class="viewctl" id="viewctl"><button class="vcmain" onclick="CAMV.toggle()" aria-label="View controls" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button><div class="vcmenu"><button onclick="CAMV.zoom(1.3)" aria-label="Zoom in">＋</button><button onclick="CAMV.zoom(1/1.3)" aria-label="Zoom out">－</button><button onclick="CAMV.flip()" aria-label="Rotate view">⟲</button><button onclick="CAMV.reset()" aria-label="Reset view">⌖</button><button class="mapOnly" id="mpCompass" onclick="MAP3D.resetNorth()" aria-label="Face north"><svg class="needle" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m12 4.5 3 7.5h-6z" fill="#e5484d" stroke="#e5484d"/><path d="m12 19.5-3-7.5h6z" fill="currentColor"/></svg></button><button class="mapOnly" onclick="MAP3D.toggleTilt()" aria-label="Flat or 3D view">3D</button></div></div>
   <div class="emotes" id="emotes"><button id="emDance" onclick="doEmote('dance')" aria-label="Dance (tap again for the next move)">🕺</button><button onclick="doEmote('wave')" aria-label="Wave">👋</button><button id="emStop" onclick="doEmote(null)" aria-label="Stop" style="display:none">✋</button></div>
-  <button class="pill menubtn" id="menubtn" onclick="toggleClean()">☰ Menu</button>
+  <div class="cleanbar" id="menubtn"><button class="pill cbshow" onclick="toggleClean()"><i class="fa-solid fa-bars"></i> Show buttons</button><button class="pill cbic" onclick="nav('map')" aria-label="Map"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg></button><button class="pill cbic" onclick="nav('phone')" aria-label="Phone"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg></button></div>
   <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
   <div id="homeUI">
    <button class="pill homes-open" onclick="HOMES.open()">🏠 Homes &amp; Furnishing</button>
-   <div class="pill quest q1" id="q1"><i>🎯</i>
-    <div><b>Eat something</b><span>Tap the cooler or stove</span></div>
+   <div class="pill quest q1" id="q1" onclick="GOALS.open()"><i>🎯</i>
+    <div><b id="q1t">Eat something</b><span id="q1s">Tap the cooler or stove</span></div>
    </div>
-   <div class="pill quest q2" onclick="findGem()"><i style="background:#6366f1">💎</i>
-    <div><b>Daily gem hunt</b><span id="gem">176107 found · next prize ₦3,000</span></div>
+   <div class="pill quest q2" onclick="GEM.open()"><i style="background:#6366f1">💎</i>
+    <div><b>Daily gem hunt</b><span id="gem">Find today's gem · next prize ₦3,000</span></div>
    </div>
    <div class="pill quest q3" id="q3" onclick="LAGOS.open()" style="display:none"></div>
    <div class="pill quest q4" id="q4" onclick="HUB.now()" style="display:none"><i>✨</i><div><b>What can I do now?</b><span id="q4sub">Lagos is waking up…</span></div></div>
@@ -155,21 +156,24 @@
   <div class="pill nav" id="nav"></div>
   
   <!-- PHONE -->
-  <div id="phone"><button class="close" onclick="nav('home')">✕ Close</button>
+  <div id="phone">
    <div class="frame">
     <div class="screen">
      <div class="island"></div>
-     <div class="sb"><span id="pt">8:31PM</span><span>●●● 4G
-     <i class="fa-solid fa-battery-half"></i></span></div>
-     <button class="phmenu" id="phmenu" onclick="PHLAY.toggle(event)" aria-label="Change app layout"><i class="fa-solid fa-ellipsis-vertical"></i></button><div class="phpop" id="phpop"></div>
+     <div class="sb"><span id="pt">8:31</span><span class="sbr">
+       <svg class="sig" viewBox="0 0 18 12" width="18" height="12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+       <svg class="wifi" viewBox="0 0 18 13" width="17" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1.5 4.6a11 11 0 0 1 15 0"/><path d="M4.3 7.6a7 7 0 0 1 9.4 0"/><path d="M7 10.4a3.1 3.1 0 0 1 4 0"/><circle cx="9" cy="12" r=".6" fill="currentColor"/></svg>
+       <svg class="bat" viewBox="0 0 28 13" width="27" height="13"><rect x=".6" y=".6" width="23.8" height="11.8" rx="3.6" fill="none" stroke="currentColor" opacity=".55"/><rect x="2.2" y="2.2" width="20.6" height="8.6" rx="2.4" fill="currentColor"/><path d="M25.8 4.4v4.2c.9-.3 1.5-1.2 1.5-2.1s-.6-1.8-1.5-2.1z" fill="currentColor" opacity=".55"/></svg>
+     </span></div>
      <div class="scroll">
-      <div class="big"><b id="pb">8:31</b><span id="pd">Monday 5 October · Lagos</span></div>
-      <div class="apps" id="apps"></div><div class="pgdots" id="pgdots"></div>
+      <div class="apps h ios" id="apps"></div><div class="pgdots" id="pgdots"></div>
+      <div class="dock" id="dock"></div>
      </div>
      <div class="appview" id="appview"></div>
      <div class="home"></div>
     </div>
    </div>
+   <button class="closephone" onclick="nav('home')"><i class="fa-solid fa-xmark"></i> Close phone</button>
   </div>
   
   <!-- SPLASH -->
@@ -236,6 +240,8 @@
  <script src="/allconnect/venues.js"></script>
  <script src="/allconnect/ads.js"></script>
  <script src="/allconnect/lagos.js"></script>
+ <script src="/allconnect/goals.js"></script>
+ <script src="/allconnect/gem.js"></script>
  <script src="/allconnect/styleapp.js"></script>
  <script src="/allconnect/hub.js"></script>
  <script src="/allconnect/settings.js"></script>

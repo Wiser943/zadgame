@@ -38,18 +38,11 @@ const NET = {
     this.sock.on('stats', m => {
       $('vis').textContent = fmtN(m.visits);
       $('onl').textContent = fmtN(m.online);
-      S.gems = m.gems;
-      gemText()
     });
     this.sock.on('players', drawPlayers);
     ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new', 'gmsg', 'group', 'dmupd', 'gmsgupd'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
     this.sock.on('style:changed', () => { if (window.STYLE && STYLE.me) STYLE.reload() });
     this.sock.on('card', () => window.CARD && CARD.fetch());   // result cards: promotions, investment payouts, invite bonuses
-    this.sock.on('gem', m => {
-      S.cash = m.cash;
-      toast(m.prize ? `💎 Gem found! +₦${m.prize.toLocaleString()}` : '💎 Gem found!');
-      render()
-    })
   },
   save() {
     if (!this.user) return;
@@ -59,9 +52,9 @@ const NET = {
 };
 const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k' : String(n);
 
-function gemText() { const e = $('gem'); if (e) e.textContent = `${(S.gems||0).toLocaleString()} found · next prize ₦3,000` }
+function gemText() { if (window.GEM) GEM.paintPill() }
 
-function findGem() { if (NET.sock) NET.sock.emit('gem') }
+function findGem() { if (window.GEM) GEM.open() }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [c]));
 
 function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
@@ -116,7 +109,6 @@ async function boot() {
     const j = await NET.api('/api/ac/state');
     NET.user = j.user;
     applyAC(j.ac);
-    S.gems = j.stats.gems;
     $('uname').textContent = j.user.displayName;
     $('uname2').textContent = j.user.displayName;
     $('auth').style.display = 'none';
@@ -312,8 +304,8 @@ function nav(w, keep) {
   $('room').style.display = (w == 'map') ? 'none' : 'block';
   const cl = S.clean && home;
   $('needsbar').style.display = ((home && !cl) || w == 'map') ? 'flex' : 'none';
-  $('nav').style.display = (w == 'buy' || cl) ? 'none' : 'flex';
-  $('menubtn').style.display = cl ? 'block' : 'none';
+  $('nav').style.display = (w == 'buy' || w == 'phone' || cl) ? 'none' : 'flex';
+  $('menubtn').style.display = cl ? 'flex' : 'none';
   $('viewctl').style.display = (home || w == 'map') ? 'flex' : 'none';
   $('app').classList.toggle('onmap', w == 'map'); try { CAMV.toggle(false) } catch (e) {}
   $('emotes').style.display = (home || w == 'map') ? 'flex' : 'none';
@@ -329,6 +321,8 @@ function nav(w, keep) {
     $('room').style.display = 'block';
     $('hud').style.display = 'flex'
   }
+  if (window.GEM && typeof NET !== 'undefined' && NET.user) GEM.boot();
+  if (window.GOALS && typeof NET !== 'undefined' && NET.user) GOALS.boot();
   if (w == 'buy') {
     $('room').style.top = '44px';
     BUY.enter()
@@ -384,35 +378,28 @@ const APPS = [
 ];
 
 const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
-/* Phone home screen: built-in apps + ad apps, in a vertical grid or horizontal pages (three-dot menu) */
-const PHLAY = {
-  key: 'allconnect:applayout',
-  get() { if (this.desk()) return 'v'; try { return localStorage.getItem(this.key) === 'h' ? 'h' : 'v' } catch (e) { return 'v' } },
-  desk() { return window.matchMedia('(min-width:768px) and (min-height:520px)').matches },
-  set(v) { try { localStorage.setItem(this.key, v) } catch (e) {} this.close(); drawApps() },
-  toggle(e) {
-    if (e) e.stopPropagation(); const p = $('phpop'); if (!p) return;
-    if (p.style.display === 'block') return this.close();
-    const cur = this.get();
-    p.innerHTML = [['v', 'Vertical scroll', 'fa-arrows-up-down'], ['h', 'Horizontal scroll', 'fa-arrows-left-right']]
-      .map(o => `<button class="${cur === o[0] ? 'on' : ''}" onclick="PHLAY.set('${o[0]}')"><i class="fa-solid ${o[2]}"></i><span>${o[1]}</span>${cur === o[0] ? '<i class="fa-solid fa-check"></i>' : ''}</button>`).join('');
-    p.style.display = 'block'
-  },
-  close() { const p = $('phpop'); if (p) p.style.display = 'none' }
-};
-document.addEventListener('click', e => { if (!e.target.closest('#phpop,#phmenu')) PHLAY.close() });
-const appBtn = a => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}"><b class="bdg"></b>${a[3]?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div><em>${a[0]}</em></button>`;
+/* Phone home screen (iPhone style): page 1 = clock, "Happening in Lagos" card and 8 apps; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
+const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
+const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
+const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
 function drawApps() {
-  const el = $('apps'), dots = $('pgdots'); if (!el) return;
-  const list = [...APPS.map(appBtn), ...((window.ADS && ADS.apps) || []).map(adBtn)], h = PHLAY.get() === 'h';
-  el.classList.toggle('h', h); const sc = el.closest('.scroll'); if (sc) sc.classList.toggle('hx', h);
-  if (!h) { el.innerHTML = list.join(''); if (dots) dots.innerHTML = '' }
-  else {
-    const per = 12, pages = []; for (let i = 0; i < list.length; i += per) pages.push(`<div class="pg">${list.slice(i, i + per).join('')}</div>`);
-    el.innerHTML = pages.join(''); el.scrollLeft = 0; paintDots()
-  }
+  const el = $('apps'), dots = $('pgdots'), dk = $('dock'); if (!el) return;
+  const byName = Object.fromEntries(APPS.map(a => [a[0], a]));
+  const rest = APPS.filter(a => !DOCK.includes(a[0]) && !FIRST.includes(a[0]));
+  const items = [...FIRST.map(n => byName[n]).filter(Boolean), ...rest].map(a => appBtn(a)).concat(((window.ADS && ADS.apps) || []).map(adBtn));
+  const keep = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+  const L = window.LAGOS && LAGOS.d, ev = L && L.event, me = (typeof NET !== 'undefined' && NET.user && NET.user.displayName) || 'player';
+  const hap = `<div class="happen"><span class="hi">${ev ? `<span class="fa-solid fa-${ev.fa}" style="color:${ev.color}"></span>` : '🌙'}</span><div><small>Happening in Lagos</small><b>${ev ? esc(ev.title) : 'Loading the city…'}</b></div><button onclick="LAGOS.open('today')">Go ›</button></div>`;
+  const lock = `<div class="lock"><b id="pb">--:--</b><span id="pd"></span><span class="hello">How far, ${esc(me)} <i>👋</i> · <i class="od"></i>${esc(($('onl') || {}).textContent || '')} online</span></div>`;
+  const goal = `<div class="goalcard" onclick="GOALS.open()"><small>🎯 ${window.GOALS ? GOALS.label() : 'GOALS'}</small><b>${window.GOALS ? esc(GOALS.nextTitle()) : 'Start your Lagos life'}</b></div>`;
+  const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, 8).join('')}</div></div>`];
+  for (let i = 8, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
+  el.classList.add('h'); el.innerHTML = pages.join('');
+  if (dk) dk.innerHTML = DOCK.map(n => appBtn(byName[n], true)).join('');
+  el.scrollLeft = keep * el.clientWidth; paintDots();
+  try { CLOCK.tick() } catch (e) {}
   if (window.PH && PH.drawBadges) PH.drawBadges()
 }
 function paintDots() {
@@ -490,9 +477,9 @@ const CLOCK = {
     const a = $('pt'),
       b = $('pb'),
       c = $('pd');
-    if (a) a.textContent = m[1] + m[2];
+    if (a) a.textContent = m[1];
     if (b) b.textContent = m[1];
-    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '') + ' · Lagos';
+    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') + ' · Lagos · ' + (($('hico') || {}).textContent || '');
     const hc = $('clk'),
       hi = $('hico');
     if (hc) hc.textContent = m[1] + ' ' + m[2]; { const hr = parseInt(d.toLocaleString('en-US', { ...o, hour: 'numeric', hour12: false }), 10) % 24,

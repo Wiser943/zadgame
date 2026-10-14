@@ -21,6 +21,7 @@ const LAGOS = {
     const ev = d.event, n = this.todo();
     el.innerHTML = `${this.ic(ev.fa, ev.color, 28)}<div><b>${this.esc(ev.title)}</b><span>${this.esc(ev.pidgin)}</span></div>${n ? `<em class="lgdot">${n}</em>` : ''}`;
     el.style.display = '';
+    if (typeof drawApps === 'function') drawApps();
   },
   effects(ev) {
     const m = ev.mult || {}, out = [], pct = x => (x > 1 ? '+' : '') + Math.round((x - 1) * 100) + '%';
@@ -43,7 +44,7 @@ const LAGOS = {
   },
   close() { if (SHEET.isOpen('lagos')) SHEET.close() },
   setTab(t) { SHEET.setTab(t) },
-  paint() { if (SHEET.isOpen('lagos')) SHEET.paint() },
+  paint() { if (SHEET.isOpen('lagos') || SHEET.isOpen('goals')) SHEET.paint() },
   bodyFor(t) {
     if (t === 'today') return this.todayHtml();
     if (t === 'quests') return this.Q ? this.questsHtml() : this.loadQuests().then(() => this.questsHtml());

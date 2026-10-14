@@ -96,6 +96,19 @@ router.post('/ac/socials', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+
+// Daily gem hunt settings (on/off, clue, hint, place, prize tiers)
+router.get('/ac/gem', async (req, res, next) => {
+  try { const G = require('../utils/acgem'); res.json({ config: await G.getConfig(), places: G.PLACES }); } catch (e) { next(e); }
+});
+router.post('/ac/gem', async (req, res, next) => {
+  try {
+    const G = require('../utils/acgem'), c = G.clean(req.body && req.body.config);
+    if (c.enabled && c.placeOn && !c.clue && c.clueOn) return res.status(400).json({ message: 'Write a clue, or switch the clue off.' });
+    res.json({ config: await G.saveConfig(c) });
+  } catch (e) { next(e); }
+});
+
 // Blue tick: only an admin can grant or remove it.
 router.post('/users/:id/verify', async (req, res, next) => {
   try {

@@ -35,19 +35,7 @@ module.exports = function initAllConnect(io) {
     loadLook(); socket.on('style', loadLook);
     socket.join('u:' + u.id); acPresence.connect(u.id);   // private room for DMs, friend events, notifications
     stats.visits++; bump('visits'); push();
-    let last = 0;
-    socket.on('gem', async () => {            // 1 gem / 2s; every 5th pays ₦3,000
-      const now = Date.now(); if (now - last < 2000) return; last = now;
-      try {
-        await ensureAC(u.id);
-        const a = await User.findByIdAndUpdate(u.id, { $inc: { 'ac.gemsFound': 1 } }, { new: true });
-        const prize = a.ac.gemsFound % 5 === 0 ? 3000 : 0;
-        const cash = prize ? (await User.findByIdAndUpdate(u.id, { $inc: { 'ac.cash': prize } }, { new: true })).ac.cash : a.ac.cash;
-        stats.gems++; bump('gems');
-        socket.emit('gem', { prize, cash, found: a.ac.gemsFound });
-        nsp.emit('stats', snapshot());
-      } catch (e) { console.error('[ac gem]', e.message); }
-    });
+    // The old tap-to-find gem was replaced by the admin-controlled daily gem hunt (routes/acgem.js).
     socket.on('disconnect', () => { online.delete(socket.id); acPresence.disconnect(u.id); push(); });
   });
 

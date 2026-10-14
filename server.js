@@ -39,6 +39,7 @@ const acStyleRoutes = require('./routes/acstyle');
 const acPushRoutes = require('./routes/acpush');
 const acTransportRoutes = require('./routes/actransport');
 const acGovRoutes = require('./routes/acgov');
+const acGemRoutes = require('./routes/acgem');
 const govService = require('./services/govService');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
@@ -94,6 +95,7 @@ async function main() {
   app.use('/api/ac/properties', acPropertyRoutes);
   app.use('/api/ac/invest', acInvestRoutes);
   app.use('/api/ac/transport', acTransportRoutes);
+  app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
   app.use('/api/ac/gov', acGovRoutes);          // State House: elections, announcements, policies
   app.use('/api/ac/venues', acVenuesRoutes);
   app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats

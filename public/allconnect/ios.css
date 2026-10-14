@@ -1,0 +1,116 @@
+/* AllConnect phone, iPhone style: silver bezel, dynamic island, signal / wifi / battery, indigo wallpaper,
+   paged home screen with a dock, "Close phone" pill. Also: clean-screen bottom bar, gem hunt and goals sheets. */
+
+/* ---------- device ---------- */
+#phone{container-type:size;background:rgba(8,10,36,.62)}
+.frame{position:absolute;left:50%;right:auto;bottom:auto;top:calc(30px + var(--sat));transform:translateX(-50%);
+  --ph:min(calc(100cqh - 138px - var(--sat)),calc((100cqw - 28px) / .54),840px);height:var(--ph);width:calc(var(--ph) * .54);aspect-ratio:auto;
+  padding:9px;border-radius:52px;background:#04050a;
+  box-shadow:0 0 0 2.5px #d3d6dd,0 0 0 5px #6f737d,0 30px 70px rgba(0,0,0,.6)}
+.frame::before,.frame::after{content:"";position:absolute;width:4px;background:#b9bcc5;border-radius:3px}
+.frame::before{left:-7px;top:19%;height:7%;box-shadow:0 52px 0 #b9bcc5}
+.frame::after{right:-7px;top:25%;height:12%}
+.screen{border-radius:43px;
+  background:radial-gradient(circle at 78% 6%,rgba(96,112,255,.55),transparent 46%),radial-gradient(circle at 0% 40%,rgba(190,64,190,.4),transparent 42%),linear-gradient(180deg,#26286b 0%,#231c5b 42%,#1b1a52 72%,#2b2b86 100%)}
+.screen::after{display:none}
+.island{top:11px;width:31%;height:29px;border-radius:20px;background:#000}
+.sb{height:44px;padding:15px 26px 0;font-size:15.5px;font-weight:600;letter-spacing:.2px}
+.sbr{display:flex;align-items:center;gap:6px}
+.sbr svg{display:block}
+.home{display:block;width:34%;height:5px;bottom:8px;background:rgba(255,255,255,.9)}
+
+/* ---------- home screen pages ---------- */
+.scroll{display:flex;flex-direction:column;overflow:hidden;padding-bottom:calc(14px + var(--sab));grid-template-columns:none}
+#apps.ios{flex:1;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;padding:0;gap:0;scrollbar-width:none}
+#apps.ios::-webkit-scrollbar{display:none}
+#apps.ios .pg{flex:none;width:100%;box-sizing:border-box;display:block;padding:0 12px 6px;scroll-snap-align:start;overflow-y:auto;scrollbar-width:none;grid-template-columns:none}
+#apps.ios .pg::-webkit-scrollbar{display:none}
+.lock{padding:2px 14px 0;text-align:left}
+.lock b{display:block;font:800 clamp(54px,17.5vw,68px)/1 Outfit,system-ui,sans-serif;letter-spacing:-3px}
+.lock span{display:block;font-size:14px;font-weight:500;margin-top:4px;opacity:.95;white-space:nowrap}
+.lock .hello i{font-style:normal}
+.lock .od{display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:-1px}
+.happen{margin:14px 2px 0;background:#fff;color:#1b2236;border-radius:22px;padding:11px 12px 11px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 22px rgba(0,0,0,.25)}
+.happen .hi{font-size:26px;width:30px;text-align:center;flex:none}
+.happen small{display:block;font-size:12px;color:#6b7390;font-weight:600}
+.happen b{display:block;font:700 16px/1.2 'Plus Jakarta Sans',system-ui,sans-serif}
+.happen>div{min-width:0;text-align:left}.happen>div b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.happen button{margin-left:auto;flex:none;border:0;border-radius:99px;padding:9px 16px;background:linear-gradient(#ffa826,#ff7a00);color:#fff;font:800 14px 'Plus Jakarta Sans',system-ui,sans-serif}
+#apps.ios .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 2px;margin-top:16px;padding:0}
+#apps.ios .pg:not(.pg1) .grid{margin-top:14px}
+#apps.ios .app,.dock .app{font-size:12.5px;font-weight:500}
+#apps.ios .ic,.dock .ic{width:min(100%,56px);max-width:56px;font-size:27px;border-radius:23%;margin:0 auto 5px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -10px 16px rgba(0,0,0,.14),0 7px 14px rgba(0,0,0,.38)}
+#apps.ios .app em{-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;margin-top:1px}
+#apps.ios .adic img{width:100%;height:100%;border-radius:inherit;object-fit:cover}
+.goalcard{margin:16px 2px 0;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:14px 16px;cursor:pointer;backdrop-filter:blur(10px)}
+.goalcard small{display:block;font-weight:800;letter-spacing:.06em;font-size:12.5px;opacity:.85}
+.goalcard b{display:block;font:800 22px/1.2 Outfit,system-ui,sans-serif;margin-top:5px}
+.screen .pgdots{flex:none;display:flex;justify-content:center;gap:9px;padding:6px 0 10px}
+.screen .pgdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4)}
+.screen .pgdots i.on{background:#fff}
+.dock{flex:none;margin:0 14px 18px;padding:12px 10px;display:flex;justify-content:space-around;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.16);border-radius:34px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.dock .app{width:62px}
+.dock .ic{margin:0 auto}
+.phmenu,.phpop{display:none!important}
+.closephone{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--sab));z-index:3;display:flex;align-items:center;gap:9px;background:#fff;color:#111;border:0;border-radius:99px;padding:13px 26px;font:600 18px 'Plus Jakarta Sans',system-ui,sans-serif;box-shadow:0 8px 26px rgba(0,0,0,.35);cursor:pointer;white-space:nowrap}
+.closephone i{font-size:16px}
+
+/* ---------- clean screen: Show buttons + map + phone ---------- */
+.cleanbar{position:absolute;left:10px;right:10px;bottom:calc(10px + var(--sab));z-index:6;display:none;align-items:center;justify-content:center;gap:12px}
+.cleanbar .pill{border:0;cursor:pointer;color:var(--ink,#1b2236)}
+.cleanbar .cbshow{display:flex;align-items:center;gap:10px;padding:0 26px;height:56px;white-space:nowrap;font:700 17px 'Plus Jakarta Sans',system-ui,sans-serif}
+.cleanbar .cbic{width:56px;height:56px;padding:0;display:grid;place-items:center;border-radius:50%}
+.cleanbar svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+
+/* ---------- daily gem hunt ---------- */
+.gmsub{margin:-4px 0 12px;color:var(--mut);font-size:15px}
+.gmclue{background:linear-gradient(135deg,#2f2c75,#241f5a);color:#fff;border-radius:20px;padding:16px 18px;margin-bottom:14px}
+.gmclue small{color:#b9a9ff;font-weight:800;letter-spacing:.06em;font-size:12px}
+.gmclue b{display:block;font:800 21px/1.28 Outfit,system-ui,sans-serif;margin-top:7px}
+.gmtxt{color:var(--mut);font-size:14.5px;line-height:1.5;margin:0 0 12px}
+.gmtiers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.gmtiers div{background:#f1f3fa;border-radius:16px;padding:10px 4px;text-align:center}
+.gmtiers small{display:block;color:var(--mut);font-size:12px;font-weight:600}.gmtiers b{display:block;font-size:15px;margin-top:3px}
+.gmfound{font-size:14px;color:var(--mut);margin:6px 0}.gmfound b{color:var(--ink)}
+.gmwin{background:#e7f8ee;color:#12803f;border-radius:14px;padding:11px 14px;font-weight:700;font-size:14px;margin:8px 0}
+.gmhint{background:#fff6dc;color:#7a5b00;border-radius:14px;padding:11px 14px;font-weight:600;font-size:14px;margin:0 0 10px}
+.gmhb{margin:0 0 10px}
+.gmgo{width:100%;margin-top:10px;padding:14px;font-size:15px}
+html[data-theme="dark"] .gmtiers div{background:#20263a}
+html[data-theme="dark"] .gmwin{background:#12301f;color:#7be0a4}
+html[data-theme="dark"] .gmhint{background:#35290a;color:#f3d484}
+
+/* ---------- goals sheet ---------- */
+.glh{display:flex;align-items:center;gap:12px;margin:0 0 12px}.glh b{display:block;font:800 19px Outfit,system-ui,sans-serif}.glh small{color:var(--mut);font-size:13.5px}
+.glhus{display:flex;align-items:center;gap:12px;border:1.5px solid #f0cf86;background:#fff8e6;border-radius:20px;padding:14px;margin-bottom:12px;cursor:pointer}
+.glhus .gli{font-size:28px;width:44px;height:44px;border-radius:50%;background:#f9e3a8;display:grid;place-items:center;flex:none}
+.glhus>div{flex:1;min-width:0}.glhus b{display:block;font:800 17px Outfit,system-ui,sans-serif;color:#2a2110}.glhus small{display:block;color:#7a6a45;font-size:13px;line-height:1.35}
+.glhus>.fa-solid{color:#a38a4d}
+.gldr{background:linear-gradient(135deg,#5b3fd1,#7c3aed);color:#fff;border-radius:22px;padding:16px;margin-bottom:14px}
+.gldr>small{font-weight:800;letter-spacing:.06em;font-size:12px;opacity:.8}
+.gldt{display:flex;gap:12px;align-items:center;margin:8px 0 12px}.gldt>span{font-size:38px}.gldt b{display:block;font:800 22px Outfit,system-ui,sans-serif}.gldt small{opacity:.85;font-size:13.5px}
+.glpb{height:12px;border-radius:99px;background:rgba(0,0,0,.35);overflow:hidden}.glpb i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+.gldr em{display:block;text-align:right;font-style:normal;font-size:13px;margin-top:8px;opacity:.9}
+.gln>div{margin:0 0 12px}.gln span{display:block;font-weight:700;font-size:14px;margin-bottom:5px}
+html[data-theme="dark"] .glhus{background:#2b2216;border-color:#9b7a2e}
+html[data-theme="dark"] .glhus b{color:#f7e6b8}html[data-theme="dark"] .glhus small{color:#c9b57f}
+
+/* ---------- desktop: keep the wide tablet frame (same as before), with the new look inside ---------- */
+@media (min-width:768px) and (min-height:520px){
+  .frame{--ph:auto;top:50%;transform:translate(-50%,-50%);width:min(1000px,calc(100% - 48px));height:min(680px,calc(100% - 170px));padding:14px;border-radius:38px;box-shadow:0 0 0 2px #d3d6dd,0 0 0 4px #6f737d,0 30px 90px rgba(0,0,0,.55)}
+  .frame::before,.frame::after{display:none}
+  .screen{border-radius:26px}
+  .island{top:11px;width:9px;height:9px;border-radius:50%;background:#1b2030}
+  .home{display:none}
+  .sb{padding:14px 26px 0}
+  .lock{padding:20px 28px 0}.lock b{font-size:84px}
+  .happen{max-width:420px}
+  #apps.ios .pg{padding:0 22px 6px}
+  #apps.ios .grid{grid-template-columns:repeat(6,1fr);gap:20px 6px}
+  #apps.ios .ic,.dock .ic{width:66px;max-width:66px;font-size:31px}
+  .goalcard{max-width:420px}
+  .dock{width:min(520px,calc(100% - 40px));margin:0 auto 14px}
+  .closephone{bottom:24px}
+  .screen .pgdots{width:100%;box-sizing:border-box}
+}
