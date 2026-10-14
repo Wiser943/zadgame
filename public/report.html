@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#11152a">
-  <title>Suggest an idea · ZADGAME</title>
+  <title>Suggest an idea · AllConnect</title>
   <style>
     :root{color-scheme:dark;--bg:#0b0e1b;--panel:#13182b;--panel2:#191f36;--line:#2a3150;--text:#f5f6ff;--muted:#a6aecb;--accent:#8b7cff;--accent2:#5ce1d1;--danger:#ff8585;--ok:#73e5ad}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 0%,#24204d 0,transparent 42%),radial-gradient(ellipse at 100% 100%,#12383b 0,transparent 34%),var(--bg);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);padding:26px 16px 48px}
@@ -14,8 +14,8 @@
 </head>
 <body>
   <main class="wrap">
-    <header class="top"><a class="brand" href="/">ZADGAME</a><a class="back" href="/">← Back to game</a></header>
-    <section class="hero"><div class="eyebrow">Help shape the game</div><h1>Your idea could be<br>the next big thing.</h1><p>Suggest a feature, report a bug, or tell us what would make ZADGAME more fun. The team can review submissions and use them to plan future updates.</p></section>
+    <header class="top"><a class="brand" href="/">AllConnect</a><a class="back" href="/">← Back to game</a></header>
+    <section class="hero"><div class="eyebrow">Help shape the game</div><h1>Your idea could be<br>the next big thing.</h1><p>Suggest a feature, report a bug, or tell us what would make AllConnect more fun. The team can review submissions and use them to plan future updates.</p></section>
     <section class="card">
       <div id="notice" class="notice" role="status" aria-live="polite"></div>
       <form id="reportForm">
@@ -59,7 +59,7 @@
     submit.disabled = true; submit.textContent = 'Sending…';
     try {
       const data = await request('/api/reports/features', { method: 'POST', body: JSON.stringify({ category: form.category.value, title: form.title.value, details: form.details.value }) });
-      show(data.message || 'Thanks for helping shape ZADGAME!', 'success'); form.reset(); document.getElementById('count').textContent = '0'; await loadMine();
+      show(data.message || 'Thanks for helping shape AllConnect!', 'success'); form.reset(); document.getElementById('count').textContent = '0'; await loadMine();
     } catch (err) { show(err.message, 'error'); }
     finally { submit.disabled = false; submit.textContent = 'Send suggestion ↗'; }
   });

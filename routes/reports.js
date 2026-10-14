@@ -29,7 +29,7 @@ router.post('/features', async (req, res, next) => {
       title,
       details
     });
-    res.status(201).json({ ok: true, message: 'Thanks! Your report has been sent to the ZADGAME team.', report: { id: String(report._id), category: report.category, title: report.title, status: report.status, createdAt: report.createdAt } });
+    res.status(201).json({ ok: true, message: 'Thanks! Your report has been sent to the AllConnect team.', report: { id: String(report._id), category: report.category, title: report.title, status: report.status, createdAt: report.createdAt } });
   } catch (err) { next(err); }
 });
 

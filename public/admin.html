@@ -3,6 +3,32 @@
 .admin-notice{position:fixed;right:18px;bottom:18px;z-index:20;max-width:min(360px,calc(100vw - 36px));padding:13px 16px;border-radius:13px;background:#20232a;color:#fff;box-shadow:0 12px 30px #20232a33;font-size:13px;font-weight:700;animation:noticeIn .2s ease both}.admin-notice.bad{background:#8c1821}@keyframes noticeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(min-width:1400px){.shell{grid-template-columns:270px 1fr}.main{padding-top:36px}}
 @media(max-width:760px){.side{position:static;height:auto}.nav{grid-auto-flow:column;overflow-x:auto}}
+
+/* Responsive, brand-aligned admin refresh */
+:root{--admin-blue:#075BFF;--admin-blue-dark:#0649CC;--admin-gold:#FFC400;--admin-purple:#9C27F5;--admin-orange:#FF9D00;--admin-ink:#111B46;--line:#e2e7f1;--muted:#64708a;background:#f4f6fb;color:#17213a;accent-color:var(--admin-blue)}
+body{background:#f4f6fb;color:#17213a;line-height:1.5;-webkit-font-smoothing:antialiased}
+.shell{grid-template-columns:258px minmax(0,1fr);gap:0}
+.side{background:linear-gradient(180deg,#111b46 0%,#0c1433 100%);border-right:1px solid #27335e;padding:22px 14px;display:flex;flex-direction:column;gap:14px;z-index:10}
+.brand{display:flex;align-items:center;font-size:18px;letter-spacing:-.35px;padding:4px 10px 22px;white-space:nowrap}
+.brand img{flex:0 0 auto}
+.nav{gap:5px;align-content:start}
+.nav button{min-height:42px;color:#c7d1ee;border:1px solid transparent;transition:background .16s,border-color .16s,color .16s}
+.nav button:hover{background:#1b2a5b;border-color:#30427d;color:#fff}
+.nav button.active{background:linear-gradient(100deg,#075bff38,#9c27f51a);border-color:#467dff;color:#fff;box-shadow:inset 3px 0 0 var(--admin-gold)}
+.logout{margin:auto 8px 0;width:calc(100% - 16px);background:#25345e;color:#fff;border:1px solid #465783}
+.main{max-width:1500px;padding:clamp(18px,3vw,42px);min-width:0}
+.top{align-items:flex-start;margin-bottom:24px}.top h1{font-size:clamp(25px,3vw,34px);letter-spacing:-.8px;line-height:1.15}.muted{line-height:1.5;color:#66728b}
+.card,.stat{border-color:#e1e7f2;box-shadow:0 8px 26px rgba(17,27,70,.055);min-width:0}.card{padding:clamp(16px,2vw,24px);margin:16px 0;border-radius:18px}.stat{border-radius:16px;transition:transform .15s,box-shadow .15s}.stat:hover{transform:translateY(-2px);box-shadow:0 12px 28px #111b4612}.stat b{color:var(--admin-ink);font-size:clamp(24px,3vw,32px);letter-spacing:-.7px}
+.btn{background:var(--admin-blue);box-shadow:0 2px 5px #075bff22;transition:filter .15s,transform .15s,box-shadow .15s;min-height:40px}.btn:hover:not(:disabled){filter:brightness(1.06);box-shadow:0 5px 14px #075bff2b;transform:translateY(-1px)}.btn.secondary{background:#eef2ff;color:#1c3474;box-shadow:none;border:1px solid #dce4ff}.btn.danger{background:#b42335;box-shadow:none}.btn:focus-visible,.input:focus-visible,textarea:focus-visible,.nav button:focus-visible{outline:3px solid #ffc400;outline-offset:2px}
+.input,textarea{border-color:#d8e0ef;border-radius:11px;min-height:42px;transition:border-color .15s,box-shadow .15s}.input:focus,textarea:focus{outline:none;border-color:var(--admin-blue);box-shadow:0 0 0 3px #075bff18}textarea{min-height:150px}
+.grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:14px}.game{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px}.game h2{font-size:clamp(18px,2vw,22px)}.counts label{background:#f8faff;border-color:#dfe6f3}.counts input{accent-color:var(--admin-blue)}
+.user{grid-template-columns:minmax(0,1fr) minmax(260px,auto);gap:18px}.user-actions{align-items:center}.user-actions .input{min-width:0}.pill{background:#fff5cc;color:#765300;font-weight:750}.admin-notice{background:#111b46;border:1px solid #354578;box-shadow:0 14px 40px #111b4633}.admin-notice.bad{background:#9f1d2d}
+/* Long content should never force the page wider than the viewport. */
+#content,section,.user>div,.game>div{min-width:0;overflow-wrap:anywhere}.inline{align-items:center}.inline .input{min-width:0}.user-actions .reason{max-width:100%}
+@media(max-width:1050px){.shell{grid-template-columns:220px minmax(0,1fr)}.side{padding:18px 10px}.main{padding:22px 18px}.game{grid-template-columns:1fr}.user{grid-template-columns:1fr}.user-actions{display:flex}.user-actions .input{flex:1 1 120px}}
+@media(max-width:760px){.shell{display:flex;flex-direction:column}.side{position:sticky;top:0;height:auto;max-height:none;padding:10px 12px;gap:7px;border-right:0;border-bottom:1px solid #27335e;box-shadow:0 6px 18px #0c143322}.brand{padding:2px 4px 7px;font-size:16px}.brand img{width:27px!important;height:27px!important}.nav{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;padding:1px 1px 7px;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}.nav button{flex:0 0 auto;min-height:38px;padding:8px 11px;font-size:13px}.nav button.active{box-shadow:inset 0 -3px 0 var(--admin-gold)}.logout{position:static;width:auto;margin:0 0 2px;align-self:flex-end;min-height:34px;padding:6px 12px;font-size:12px}.main{padding:18px 12px 32px}.top{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}.top h1{font-size:27px}.card{padding:15px;margin:12px 0;border-radius:15px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.stat{padding:14px}.stat b{font-size:25px}.game{grid-template-columns:minmax(0,1fr);gap:16px}.gamehead,.sectionhead{align-items:flex-start;flex-wrap:wrap}.inline{width:100%}.inline .input{flex:1 1 100%;width:100%}.user{grid-template-columns:minmax(0,1fr);gap:12px;padding:14px 0}.user-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.user-actions .input,.user-actions .reason{width:100%;max-width:none;min-width:0}.user-actions .btn{min-width:0;padding:9px 10px}.user-actions .penalize{grid-column:1/-1}.counts{gap:6px}.counts label{padding:8px}.admin-notice{right:12px;bottom:12px;max-width:calc(100vw - 24px)}}
+@media(max-width:390px){.main{padding-inline:9px}.grid{grid-template-columns:1fr}.user-actions{grid-template-columns:1fr}.user-actions .penalize{grid-column:auto}.top h1{font-size:24px}.card{padding:13px}.btn{padding:9px 11px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>  <link rel="stylesheet" href="/brand-palette.css">
 </head><body><div id="root"></div><script>
 const root=document.getElementById('root'),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

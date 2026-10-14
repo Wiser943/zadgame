@@ -1,6 +1,6 @@
 ---
 name: connected
-description: Unified project docs for AllConnect + GameHub (zadgame): setup/run/deploy, architecture, full feature reference, and changelog. Supersedes README.md, ALLCONNECT.md, CHANGES.md, PUSH_NOTIFICATIONS.md (kept as one file so nothing drifts out of sync).
+description: Unified project docs for AllConnect + GameHub (allconnect): setup/run/deploy, architecture, full feature reference, and changelog. Supersedes README.md, ALLCONNECT.md, CHANGES.md, PUSH_NOTIFICATIONS.md (kept as one file so nothing drifts out of sync).
 ---
 
 # AllConnect + GameHub
@@ -129,7 +129,7 @@ Purchases are atomic and priced by the server; the client can't save cash or own
 - API: GET /api/ac/bank/summary | history | lookup?q=  ·  POST /api/ac/bank/pin | transfer. Money moves only through these (the old chat "Send money" was removed).
 
 ## Updated GameHub merged + Settings moved to the phone
-- Game files from `zadgame-updated.zip` are merged: 2–4 player Connect Four / RPS / Snakes / Word Clash, DOM-only renderers (Snakes uses Phaser), improved room listing, new tests. Beach Blitz and the old Pixi/Three renderers are not in the updated game, so they were removed.
+- Game files from `allconnect-updated.zip` are merged: 2–4 player Connect Four / RPS / Snakes / Word Clash, DOM-only renderers (Snakes uses Phaser), improved room listing, new tests. Beach Blitz and the old Pixi/Three renderers are not in the updated game, so they were removed.
 - GameHub no longer has a profile button, Accessibility tile or Settings screen. Tapping other players still shows their stats/friend actions (own profile is read-only there).
 - Phone -> Settings now has: profile edit (photo + name), username, Chat Support, Socials, Game Tutorial, About, Legal, Shop, all sound/theme/accessibility toggles, language, tour replay, voice settings, notifications, log out.
 - Preferences use the same `ghPrefs` localStorage key; the game applies changes live through `window.GHBridge` (public/index.html) and the `storage` event.

@@ -3,12 +3,12 @@
 //   public/_redirects -> Netlify routing (+ API proxy in "proxy" mode)
 //
 // Netlify environment variables:
-//   BACKEND_URL  (required) e.g. https://zadgame.onrender.com
+//   BACKEND_URL  (required) e.g. https://allconnect.onrender.com
 //   API_MODE     "proxy" (default, recommended) or "direct"
 const fs = require('fs'), path = require('path');
 const backend = String(process.env.BACKEND_URL || '').trim().replace(/\/+$/, '');
 const mode = (process.env.API_MODE || 'proxy').toLowerCase();
-if (!/^https:\/\/[^/\s]+$/.test(backend)) { console.error('BACKEND_URL must be set to your Render URL, e.g. https://zadgame.onrender.com'); process.exit(1); }
+if (!/^https:\/\/[^/\s]+$/.test(backend)) { console.error('BACKEND_URL must be set to your Render URL, e.g. https://allconnect.onrender.com'); process.exit(1); }
 if (!['proxy', 'direct'].includes(mode)) { console.error('API_MODE must be "proxy" or "direct"'); process.exit(1); }
 
 const pub = path.join(__dirname, '..', 'public');

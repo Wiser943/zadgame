@@ -1,4 +1,4 @@
-/* ZADGAME multicolour brand accents — Developers remains intentionally pure black. */
+/* AllConnect multicolour brand accents — Developers remains intentionally pure black. */
 :root { --zg-blue:#075BFF; --zg-blue-highlight:#3B82FF; --zg-gold:#FFC400; --zg-purple:#9C27F5; --zg-orange:#FF9D00; --zg-navy:#111B46; --zg-blue-soft:#EAF0FF; }
 :where(button,.btn,[role="button"],input[type="submit"],.primary,.primary-btn,.active,.is-active,.selected):focus-visible { outline:2px solid var(--zg-gold); outline-offset:2px; }
 :where(.brand-gold,.accent-gold,.premium-badge) { color:var(--zg-gold); }
