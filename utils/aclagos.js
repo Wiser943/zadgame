@@ -17,7 +17,7 @@ const EVENTS = [
   { id: 'fuel', icon: '⛽', fa: 'gas-pump', color: '#e5484d', title: 'Fuel scarcity', pidgin: 'Fuel don scarce o!', text: 'Queues at every station. Fares go up and generators cost more to run.', pidginText: 'Queue dey every filling station. Transport cost don jump, gen dey drink money.', mult: { fare: 1.5, power: 1.25, food: 1.05, job: { road: 1.35, all: 0.95 } }, districts: { Ikeja: 'Long queues at the airport road stations', Lekki: 'Gen sets humming all night', Yaba: 'Okada riders charging double' } },
   { id: 'nepa', icon: '💡', fa: 'bolt', color: '#f59e0b', title: 'Power outage', pidgin: 'NEPA don take light!', text: 'The grid is down in most areas. Everyone is on generators until it comes back.', pidginText: 'NEPA don carry light. Na gen we dey use until dem bring am back.', mult: { power: 1.4, food: 1.08, job: { all: 0.95 } }, districts: { Surulere: 'Whole street quiet, only gens', Ajah: 'Neighbours sharing phone charging', 'Victoria Island': 'Offices running on diesel' } },
   { id: 'goslow', icon: '🚗', fa: 'car-side', color: '#6366f1', title: 'Third Mainland go-slow', pidgin: 'Go-slow don block Third Mainland!', text: 'Traffic is crawling across the bridge. Drivers earn more; everyone else is late.', pidginText: 'Traffic don lock bridge. Driver dey make money, everybody else don late.', mult: { fare: 1.3, job: { road: 1.4, all: 0.9 } }, districts: { Yaba: 'Hawkers selling plantain chips between cars', Lekki: 'Lekki-Epe expressway at a standstill', Ikeja: 'Conductors shouting "Oshodi! Oshodi!"' } },
-  { id: 'rain', icon: '🌧️', fa: 'cloud-showers-heavy', color: '#0ea5e9', title: 'Heavy rain and flooding', pidgin: 'Rain dey fall, flood don show!', text: 'Roads are flooded in low areas. Water supply is dirty so water bills spike.', pidginText: 'Flood dey road. Water no clean, water bill don climb.', mult: { fare: 1.25, water: 1.35, food: 1.1, job: { all: 0.95 } }, districts: { Ajah: 'Streets turned into rivers', Surulere: 'Gutters overflowing', Ikorodu: 'Boat riders on the main road' } },
+  { id: 'rain', icon: '🌧️', fa: 'cloud-showers-heavy', color: '#0ea5e9', title: 'Rain and flood watch', pidgin: 'Rain dey fall, flood fit show!', text: 'Citywide weather is shared by all players. Intensity ranges from drizzle to thunderstorms; low-lying areas may flood.', pidginText: 'Rain dey fall for everybody. Some areas fit flood, especially low ground.', mult: { fare: 1.25, water: 1.35, food: 1.1, job: { all: 0.95 } }, districts: { Ajah: 'Low-lying streets at flood risk', Surulere: 'Gutters overflowing', Ikorodu: 'Floodwater disrupting roads' } },
   { id: 'owambe', icon: '🎉', fa: 'champagne-glasses', color: '#d946ef', title: 'Owambe weekend', pidgin: 'Owambe dey this weekend!', text: 'Aso-ebi everywhere. Food sellers and service jobs are busy and pay a little more.', pidginText: 'Owambe everywhere, aso-ebi dey shine. Food sellers and service workers dey chop.', mult: { food: 0.92, job: { all: 1.1 } }, districts: { Lekki: 'Live band outside every event hall', Ikeja: 'Jollof pots as big as a car', 'Victoria Island': 'Spraying naira, valets overwhelmed' } },
   { id: 'market', icon: '🛍️', fa: 'store', color: '#10b981', title: 'Balogun market day', pidgin: 'Market don open for Balogun!', text: 'Traders are cutting prices. Food and goods are cheaper today.', pidginText: 'Traders dey drop price. Chop and market things cheap today.', mult: { food: 0.88, job: { all: 1.03 } }, districts: { Yaba: 'Thrift stalls packed', Surulere: 'Bargain shouts everywhere', Ikeja: 'Computer Village rush' } },
   { id: 'calm', icon: '☀️', fa: 'sun', color: '#22b573', title: 'A normal Lagos day', pidgin: 'Today dey calm.', text: 'No big news today. Prices are normal.', pidginText: 'Nothing special today, everything dey normal.', mult: { job: { all: 1 } }, districts: { Lekki: 'Joggers on the beachfront', Yaba: 'Students and startups', Ikeja: 'Planes overhead, as usual' } }
@@ -34,10 +34,13 @@ const setMultHook = (fn) => { multHook = typeof fn === 'function' ? fn : null; }
 function currentEvent(now = Date.now()) {
   const w = windowOf(now), r = hash(w.key) % 9, pick = r < 3 ? 'calm' : ['fuel', 'nepa', 'goslow', 'rain', 'owambe', 'market'][r - 3];
   const e = BYID[pick];
-  return { ...e, mult: multHook ? multHook(e.mult, now) : e.mult, windowKey: w.key, startsAt: w.start, endsAt: w.end };
+  const weatherRoll = hash(w.key ^ 0x51f15e) % 100;
+  const rainType = pick !== 'rain' ? 'clear' : weatherRoll < 28 ? 'drizzle' : weatherRoll < 66 ? 'steady' : weatherRoll < 88 ? 'heavy' : 'thunderstorm';
+  const intensity = ({ clear: 0, drizzle: 1, steady: 2, heavy: 3, thunderstorm: 4 })[rainType];
+  return { ...e, rainType, intensity, floodRisk: intensity >= 3 ? 'high' : intensity === 2 ? 'moderate' : 'low', mult: multHook ? multHook(e.mult, now) : e.mult, windowKey: w.key, startsAt: w.start, endsAt: w.end };
 }
 const jobMult = (ev, field) => { const j = (ev && ev.mult && ev.mult.job) || {}; return j[String(field || '').toLowerCase()] || j.all || 1; };
-const publicEvent = (ev) => ({ id: ev.id, icon: ev.icon, fa: ev.fa, color: ev.color, title: ev.title, pidgin: ev.pidgin, text: ev.text, pidginText: ev.pidginText, endsAt: ev.endsAt, mult: ev.mult, districts: ev.districts, windowKey: ev.windowKey });
+const publicEvent = (ev) => ({ id: ev.id, icon: ev.icon, fa: ev.fa, color: ev.color, title: ev.title, pidgin: ev.pidgin, text: ev.text, pidginText: ev.pidginText, endsAt: ev.endsAt, mult: ev.mult, districts: ev.districts, windowKey: ev.windowKey, rainType: ev.rainType || 'clear', intensity: ev.intensity || 0, floodRisk: ev.floodRisk || 'low' });
 
 /* ----- utility bills (a sink for the economy) -----
    A new bill cycle starts every Monday (Lagos time) and is due the following Sunday night. New players get 3 free days.
@@ -54,20 +57,21 @@ function cycleOf(now) {
   return { key: new Date(mon + LAGOS).toISOString().slice(0, 10), start: mon, due: mon + 7 * DAY - 1 };
 }
 // The amount of one bill, depending on what is placed in the room and on the city event running when it was issued.
-function billAmount(key, items, ev) {
+function billAmount(key, items, ev, wealth = 0) {
   const d = BILLS[key], placed = (items || []).filter((i) => i.placed !== false);
   let a = d.base + d.perItem * placed.length;
   for (const i of placed) a += d.appliance[i.name] || 0;
   a = Math.min(a, d.cap);
   const m = (ev && ev.mult && ev.mult[key]) || 1;
-  return Math.round(a * m / 100) * 100;
+  const tier = wealth >= 25000000 ? 2.4 : wealth >= 10000000 ? 1.85 : wealth >= 5000000 ? 1.4 : wealth >= 2000000 ? 1.12 : 1;
+  return Math.round(a * m * tier / 100) * 100;
 }
 // Bills that should exist for this cycle but do not yet. Returns the full list to push.
 function newBills(user, now = Date.now()) {
   const ac = user.ac || {}, c = cycleOf(now);
   if (now - new Date(user.createdAt || now).getTime() < FREE_DAYS * DAY) return [];
   const have = new Set((ac.bills || []).filter((b) => b.cycle === c.key).map((b) => b.key));
-  return Object.keys(BILLS).filter((k) => !have.has(k)).map((k) => ({ key: k, cycle: c.key, amount: billAmount(k, ac.items, currentEvent(now)), due: new Date(c.due), paidAt: null, fee: 0 }));
+  return Object.keys(BILLS).filter((k) => !have.has(k)).map((k) => ({ key: k, cycle: c.key, amount: billAmount(k, ac.items, currentEvent(now), Number(ac.cash || 0) + (ac.properties || []).reduce((sum, p) => sum + ({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[p.type] || 0), 0)), due: new Date(c.due), paidAt: null, fee: 0 }));
 }
 const lateFee = (b, now = Date.now()) => (!b.paidAt && now > new Date(b.due).getTime() ? Math.round(b.amount * LATE_PCT / 100) * 100 : 0);
 const owed = (b, now) => b.paidAt ? 0 : b.amount + lateFee(b, now);

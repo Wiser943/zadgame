@@ -73,8 +73,9 @@ const MT = (() => {
     night() { const h = this.hrs(); return h >= 19.5 || h < 5.5 },
     weekend() { const d = new Date().getDay(); return d === 0 || d === 6 },
     weather() {
-      const h = this.hrs(), rain = this.evId() === 'rain', day = h >= 6 && h < 18.5, base = 24 + 8 * Math.max(0, Math.sin((h - 6) / 12 * Math.PI)) - (rain ? 3 : 0);
-      return { rain, t: Math.round(base), e: rain ? '🌧️' : day ? (this.evId() === 'goslow' ? '⛅' : '☀️') : '🌙', c: rain ? 'Heavy rain' : day ? 'Warm and sunny' : 'Clear night' };
+      const h = this.hrs(), ev = this.ev(), rain = this.evId() === 'rain', type = ev?.rainType || (rain ? 'heavy' : 'clear'), intensity = ({ clear: 0, drizzle: 1, steady: 2, heavy: 3, thunderstorm: 4 })[type] || 0, day = h >= 6 && h < 18.5, base = 24 + 8 * Math.max(0, Math.sin((h - 6) / 12 * Math.PI)) - (rain ? 2 + intensity : 0);
+      const labels = { drizzle: 'Drizzling', steady: 'Steady rain', heavy: 'Heavy rain', thunderstorm: 'Thunderstorm · flood risk', clear: day ? 'Warm and sunny' : 'Clear night' };
+      return { rain, type, intensity, t: Math.round(base), e: intensity >= 3 ? '⛈️' : rain ? '🌧️' : day ? (this.evId() === 'goslow' ? '⛅' : '☀️') : '🌙', c: labels[type] || 'Clear night' };
     },
     traffic() { const h = this.hrs(), e = this.evId(); let f = (h >= 7 && h < 10) || (h >= 16 && h < 20) ? 1.45 : (h >= 22 || h < 5) ? .85 : 1; if (e === 'goslow') f *= 1.3; if (e === 'rain') f *= 1.25; if (e === 'fuel') f *= 1.1; return f },
     tlabel(f) { return f < 1.1 ? 'Light' : f < 1.45 ? 'Moderate' : 'Heavy' },
@@ -494,7 +495,7 @@ const MT = (() => {
     drawScreen(ctx, t, H) {
       if (!this.ready) return; const w = this.weather(), M = H.M;
       if (this.st.lay.weather) {
-        if (w.rain) { ctx.fillStyle = 'rgba(50,70,100,.14)'; ctx.fillRect(0, 0, M.w, M.h); ctx.strokeStyle = 'rgba(210,225,255,.55)'; ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = 0; i < 90; i++) { const x = (i * 137.5 + t * 60) % (M.w + 20), y = (i * 71.3 + t * 560) % M.h; ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 15) } ctx.stroke() }
+        if (w.rain) { const heavy = w.intensity >= 3, count = w.intensity === 1 ? 28 : w.intensity === 2 ? 58 : w.intensity === 3 ? 105 : 135; ctx.fillStyle = `rgba(20,35,60,${heavy ? .22 : .09})`; ctx.fillRect(0, 0, M.w, M.h); ctx.strokeStyle = `rgba(210,230,255,${heavy ? .68 : .42})`; ctx.lineWidth = heavy ? 1.35 : .85; ctx.beginPath(); for (let i = 0; i < count; i++) { const x = (i * 137.5 + t * (heavy ? 150 : 55)) % (M.w + 30), y = (i * 71.3 + t * (heavy ? 900 : 420)) % (M.h + 20), len = w.intensity === 1 ? 5 : w.intensity === 2 ? 9 : 14 + w.intensity * 2; ctx.moveTo(x, y); ctx.lineTo(x - len * .45, y + len) } ctx.stroke(); if (w.type === 'thunderstorm' && Math.sin(t * 2.7) > .985) { ctx.fillStyle = 'rgba(230,240,255,.34)'; ctx.fillRect(0, 0, M.w, M.h); } }
         else if (!this.night()) { ctx.fillStyle = 'rgba(255,255,255,.07)'; for (let i = 0; i < 4; i++) { const x = ((i * 310 + t * 8) % (M.w + 300)) - 150, y = (i * 190 + 80) % M.h; ctx.beginPath(); ctx.ellipse(x, y, 130, 46, 0, 0, TAU); ctx.fill() } }
       }
       if (this.fade) {

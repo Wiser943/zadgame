@@ -282,6 +282,15 @@ function toggleClean() {
   S.clean = !S.clean;
   nav('home', true)
 }
+/* Phone power behavior: the physical side button and Phone navigation toggle the same device. */
+const PHONEUI = {
+  busy:false,
+  close(){ if(this.busy || S.page!=='phone') return; this.busy=true; const host=document.getElementById('phone'); host?.classList.add('powering-off'); setTimeout(()=>{ host?.classList.remove('powering-off','powering-on'); this.busy=false; nav('home'); },280); },
+  open(){ if(this.busy) return; if(S.page==='phone'){ this.close(); return; } nav('phone'); const host=document.getElementById('phone'); host?.classList.remove('powering-off'); host?.classList.add('powering-on'); setTimeout(()=>host?.classList.remove('powering-on'),360); },
+  toggle(){ this.open(); }
+};
+window.PHONEUI=PHONEUI;
+
 const NAV = [
   ['home', 'Home', '<path d="M4 11l8-7 8 7v9H4z"/>'],
   ['buy', 'Buy', '<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M6 9V7a2 2 0 012-2h8a2 2 0 012 2v2M7 17v2M17 17v2"/>'],
@@ -290,13 +299,14 @@ const NAV = [
 ];
 
 function nav(w, keep) {
+  if (w === 'phone' && S.page === 'phone') { if (window.PHONEUI) PHONEUI.close(); else nav('home'); return; }
   if (S.page === 'buy' && w !== 'buy' && window.BUY) BUY.leave();
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
   if (w === 'home' && window.WORKCARD) setTimeout(() => WORKCARD.flush(), 400);
   toggleNeeds(false);
-  $('nav').innerHTML = NAV.map(n => `<button class="${n[0]==w?'on':''}" onclick="nav('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
+  $('nav').innerHTML = NAV.map(n => `<button class="${n[0]==w?'on':''}" onclick="${n[0]==='phone'?'PHONEUI.open()':`nav('${n[0]}')`}"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</button>`).join('');
   const home = w == 'home';
   $('map').style.display = w == 'map' ? 'block' : 'none';
   $('buy').style.display = w == 'buy' ? 'block' : 'none';

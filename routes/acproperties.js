@@ -78,6 +78,18 @@ router.post('/acquire', async (req, res, next) => {
     next(e);
   }
 });
+// Optional weekly home cover. It protects against simulated severe-weather damage.
+router.post('/:id/insurance', async (req, res, next) => {
+  try {
+    const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404);
+    if (c.p.insured) return res.json({ message: 'This property is already insured.', property: publicHome(c.p) });
+    const premium = Math.max(5000, Math.round((({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[c.p.type] || 250000) * 0.025) / 100) * 100);
+    const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: premium }, 'ac.properties': { $elemMatch: { id: req.params.id, insured: { $ne: true } } } }, { $inc: { 'ac.cash': -premium }, $set: { 'ac.properties.$[p].insured': true } }, { new: true, arrayFilters: [{ 'p.id': req.params.id }] });
+    if (!u) return bad(res, 'Not enough money for the insurance premium, or the property status changed.', 409);
+    res.json({ message: 'Property insurance activated for the current weather cycle.', premium, property: publicHome((u.ac.properties || []).find(p => p.id === req.params.id)), cash: u.ac.cash });
+  } catch (e) { next(e); }
+});
+
 router.get('/:id/furniture', async (req, res, next) => { try { const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404); res.json({ property: publicHome(c.p), ac: publicAC(c.u.ac) }); } catch (e) { next(e); } });
 router.post('/:id/furniture/buy', async (req, res, next) => {
   try {

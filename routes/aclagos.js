@@ -20,6 +20,30 @@ const bad = (res, code, message) => res.status(code).json({ message });
 const naira = (n) => '₦' + Math.round(n).toLocaleString('en-NG');
 const STARTER_ITEMS = 8;
 
+// Severe storms are citywide and idempotent per weather window. Only higher-value
+// owned properties are exposed to storm losses; insurance waives the repair debit.
+async function applyWeatherLosses(userId, now) {
+  const ev = L.currentEvent(now);
+  if (ev.id !== 'rain' || !['heavy', 'thunderstorm'].includes(ev.rainType)) return [];
+  const u = await User.findById(userId).select('ac.cash ac.properties'); if (!u) return [];
+  const assetValue = (p) => ({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[p.type] || 0);
+  const wealth = Number(u.ac?.cash || 0) + (u.ac?.properties || []).reduce((sum, p) => sum + assetValue(p), 0);
+  if (wealth < 5000000) return [];
+  const losses = [];
+  for (const p of (u.ac.properties || [])) {
+    if (p.tenure !== 'owned' || p.lastWeatherEvent === String(ev.windowKey)) continue;
+    const base = assetValue(p); if (base < 350000) continue;
+    const loss = Math.min(150000, Math.max(10000, Math.round(base * (ev.rainType === 'thunderstorm' ? .055 : .025) / 1000) * 1000));
+    const freshWallet = await User.findById(userId).select('ac.cash').lean();
+    const affordableLoss = Math.min(loss, Math.max(0, Number(freshWallet?.ac?.cash || 0)));
+    const update = p.insured
+      ? await User.updateOne({ _id: userId, ac: { $exists: true }, 'ac.properties': { $elemMatch: { id: p.id, lastWeatherEvent: { $ne: String(ev.windowKey) } } } }, { $set: { 'ac.properties.$[p].lastWeatherEvent': String(ev.windowKey) } }, { arrayFilters: [{ 'p.id': p.id }] })
+      : await User.updateOne({ _id: userId, 'ac.properties': { $elemMatch: { id: p.id, lastWeatherEvent: { $ne: String(ev.windowKey) } } } }, { $inc: { 'ac.cash': -affordableLoss }, $set: { 'ac.properties.$[p].lastWeatherEvent': String(ev.windowKey), 'ac.properties.$[p].condition': Math.max(20, Number(p.condition ?? 100) - (ev.rainType === 'thunderstorm' ? 22 : 10)) } }, { arrayFilters: [{ 'p.id': p.id }] });
+    if (update.modifiedCount) losses.push({ propertyId: p.id, name: require('../utils/acproperties').HOMES[p.type]?.name || 'Property', insured: !!p.insured, loss: p.insured ? 0 : affordableLoss, weather: ev.rainType });
+  }
+  return losses;
+}
+
 /* issue this cycle's bills if they do not exist yet (safe to call from several requests at once) */
 async function issueBills(id, now = Date.now()) {
   const u = await ensureAC(id); if (!u) return null;
@@ -122,9 +146,10 @@ router.post('/daily', async (req, res, next) => {
 router.get('/city', async (req, res, next) => {
   try {
     const me = uid(req), now = Date.now(), u = await issueBills(me, now), ev = L.currentEvent(now);
+    const weatherLosses = await applyWeatherLosses(me, now);
     const q = await questState(me);
     res.json({
-      now, event: L.publicEvent(ev), next: L.publicEvent(L.currentEvent(ev.endsAt + 1)),
+      now, event: L.publicEvent(ev), next: L.publicEvent(L.currentEvent(ev.endsAt + 1)), weatherLosses,
       bills: unpaidSummary(u, now), daily: L.nextStreak(u.ac, now),
       quests: { done: q.list.filter((x) => x.done).length, total: q.list.length, claimable: q.list.filter((x) => x.done && !x.claimed).length, claimed: q.list.filter((x) => x.claimed).length }
     });

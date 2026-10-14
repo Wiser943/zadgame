@@ -1,5 +1,4 @@
-/* AllConnect phone, iPhone style: silver bezel, dynamic island, signal / wifi / battery, indigo wallpaper,
-   paged home screen with a dock, "Close phone" pill. Also: clean-screen bottom bar, gem hunt and goals sheets. */
+/* AllConnect phone, iPhone style: silver bezel, dynamic island, status icons, dim-to-close power behavior. */
 
 /* ---------- device ---------- */
 #phone{container-type:size;background:rgba(8,10,36,.62)}
@@ -13,8 +12,8 @@
 .screen{border-radius:43px;
   background:radial-gradient(circle at 78% 6%,rgba(96,112,255,.55),transparent 46%),radial-gradient(circle at 0% 40%,rgba(190,64,190,.4),transparent 42%),linear-gradient(180deg,#26286b 0%,#231c5b 42%,#1b1a52 72%,#2b2b86 100%)}
 .screen::after{display:none}
-.island{top:11px;width:31%;height:29px;border-radius:20px;background:#000}
-.sb{height:44px;padding:15px 26px 0;font-size:15.5px;font-weight:600;letter-spacing:.2px}
+.island{top:calc(10px + env(safe-area-inset-top, 0px));width:31%;height:29px;border-radius:20px;background:#000;z-index:5}
+.sb{height:56px;padding:calc(15px + env(safe-area-inset-top, 0px)) 26px 0;font-size:15.5px;font-weight:600;letter-spacing:.2px;position:relative;z-index:4}
 .sbr{display:flex;align-items:center;gap:6px}
 .sbr svg{display:block}
 .home{display:block;width:34%;height:5px;bottom:8px;background:rgba(255,255,255,.9)}
@@ -53,8 +52,14 @@
 .dock .app{width:62px}
 .dock .ic{margin:0 auto}
 .phmenu,.phpop{display:none!important}
-.closephone{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--sab));z-index:3;display:flex;align-items:center;gap:9px;background:#fff;color:#111;border:0;border-radius:99px;padding:13px 26px;font:600 18px 'Plus Jakarta Sans',system-ui,sans-serif;box-shadow:0 8px 26px rgba(0,0,0,.35);cursor:pointer;white-space:nowrap}
-.closephone i{font-size:16px}
+.closephone{display:none!important}
+.frame-power{position:absolute;right:-8px;top:25%;width:7px;height:12%;min-height:44px;padding:0;border:0;border-radius:0 4px 4px 0;background:linear-gradient(90deg,#858994,#e4e6ed,#7c8089);box-shadow:1px 0 2px #0008;z-index:8;cursor:pointer}
+.frame-power:focus-visible{outline:2px solid #7c3aed;outline-offset:3px}
+.screen{transition:opacity .28s ease,filter .28s ease,transform .28s ease;transform-origin:center}
+#phone.powering-off .screen{opacity:0;filter:brightness(0);transform:scale(.985);pointer-events:none}
+#phone.powering-on .screen{animation:phoneWake .34s ease both}
+@keyframes phoneWake{from{opacity:0;filter:brightness(0);transform:scale(.985)}to{opacity:1;filter:brightness(1);transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.screen,#phone.powering-on .screen{transition:none;animation:none}}
 
 /* ---------- clean screen: Show buttons + map + phone ---------- */
 .cleanbar{position:absolute;left:10px;right:10px;bottom:calc(10px + var(--sab));z-index:6;display:none;align-items:center;justify-content:center;gap:12px}
@@ -111,6 +116,10 @@ html[data-theme="dark"] .glhus b{color:#f7e6b8}html[data-theme="dark"] .glhus sm
   #apps.ios .ic,.dock .ic{width:66px;max-width:66px;font-size:31px}
   .goalcard{max-width:420px}
   .dock{width:min(520px,calc(100% - 40px));margin:0 auto 14px}
-  .closephone{bottom:24px}
+  .closephone{display:none!important}
   .screen .pgdots{width:100%;box-sizing:border-box}
 }
+
+/* Keep app headers below the dynamic island/status row on notched phones. */
+.screen.light .appview{top:58px;padding-bottom:18px}
+@media (min-width:768px) and (min-height:520px){.screen.light .appview{top:54px}}
