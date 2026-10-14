@@ -51,7 +51,18 @@ async function collectOne(id, key) {
     const net = Math.max(0, acc.net);
     const won = await ACVenue.updateOne({ user: id, venues: { $elemMatch: { key, last: o.last } } }, { $set: { 'venues.$.last': now }, $inc: { earned: net, ['tot.' + key]: net } });
     if (!won.modifiedCount) continue;                         // another screen collected first: look again
-    if (net) await econ.credit(id, net);
+    if (net) {
+      try {
+        const credited = await econ.credit(id, net);
+        if (credited == null) throw new Error('Could not credit venue income.');
+      } catch (e) {
+        // Restore the claim only if no newer collection has replaced our timestamp.
+        // This allows the player to retry instead of losing income after a transient wallet error.
+        const rollback = { $set: { 'venues.$.last': last }, $inc: { earned: -net, ['tot.' + key]: -net } };
+        await ACVenue.updateOne({ user: id, venues: { $elemMatch: { key, last: now } } }, rollback).catch((rollbackError) => console.error('[venues collect rollback]', rollbackError));
+        throw e;
+      }
+    }
     return net;
   }
   return 0;
@@ -68,7 +79,15 @@ router.post('/open', async (req, res, next) => {
     if ((doc.venues || []).some((x) => x.key === c.key)) return bad(res, 409, `You already run a ${c.name}.`);
     if ((await econ.debit(id, c.price)) == null) return bad(res, 402, 'Not enough ₦.');
     const now = Date.now();
-    const ok = await ACVenue.updateOne({ user: id, 'venues.key': { $ne: c.key } }, { $push: { venues: { key: c.key, level: 1, paid: c.price, at: now, last: now } } });
+    let ok;
+    try {
+      ok = await ACVenue.updateOne({ user: id, 'venues.key': { $ne: c.key } }, { $push: { venues: { key: c.key, level: 1, paid: c.price, at: now, last: now } } });
+    } catch (e) {
+      // If the business write fails after the wallet debit, reverse the debit.
+      // This prevents a transient MongoDB error from taking the player's money.
+      await econ.credit(id, c.price).catch((refundError) => console.error('[venues open refund]', refundError));
+      throw e;
+    }
     if (!ok.modifiedCount) { await econ.credit(id, c.price); return bad(res, 409, `You already run a ${c.name}.`); }
     await send(req, res, { message: `${c.name} is open`, flash: `${c.emoji} Your ${c.name} in ${c.area} is open for business. Come back to collect your income.` });
   } catch (e) { next(e); }
@@ -85,8 +104,15 @@ router.post('/upgrade', async (req, res, next) => {
     if (protectedBuy(req, cost)) return bad(res, 403, protectMsg());
     await collectOne(id, c.key);                                // bank what the old level earned first
     if ((await econ.debit(id, cost)) == null) return bad(res, 402, 'Not enough ₦.');
-    const ok = await ACVenue.updateOne({ user: id, venues: { $elemMatch: { key: c.key, level: o.level } } }, { $set: { 'venues.$.level': to }, $inc: { 'venues.$.paid': cost } });
-    if (!ok.modifiedCount) { await econ.credit(id, cost); return bad(res, 409, 'Something changed, try again.'); }
+    let ok;
+    try {
+      ok = await ACVenue.updateOne({ user: id, venues: { $elemMatch: { key: c.key, level: o.level } } }, { $set: { 'venues.$.level': to }, $inc: { 'venues.$.paid': cost } });
+    } catch (e) {
+      // Same wallet protection as opening a venue: failed upgrades are refunded.
+      await econ.credit(id, cost).catch((refundError) => console.error('[venues upgrade refund]', refundError));
+      throw e;
+    }
+    if (!ok.modifiedCount) { await econ.credit(id, cost); return bad(res, 409, 'Your venue changed before the upgrade completed. Refresh and try again.'); }
     await send(req, res, { message: `${c.name} upgraded`, flash: `${c.emoji} ${c.name} is now level ${to}. It earns more every day.` });
   } catch (e) { next(e); }
 });

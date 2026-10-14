@@ -19,7 +19,7 @@ function sanitizeSave(b = {}) {
   if (Number.isFinite(b.min)) out.min = Math.max(0, Math.floor(b.min)) % 100000;
   return out;
 }
-const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, gender: ac.gender || '', owned: [...(ac.owned || [])], items: (ac.items || []).map((i) => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })), wish: [...(ac.wish || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
+const publicAC = (ac) => ({ cash: ac.cash, paint: ac.paint, gender: ac.gender || '', owned: [...(ac.owned || [])], items: (ac.items || []).map((i) => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })), properties: (ac.properties || []).map((p) => ({ id: p.id, type: p.type, tenure: p.tenure, boughtAt: p.boughtAt, leaseExpiresAt: p.leaseExpiresAt, paint: p.paint, items: (p.items || []).map((i) => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })) })), wish: [...(ac.wish || [])], needs: [...(ac.needs || [])], min: ac.min, gemsFound: ac.gemsFound || 0 });
 const FOOD = {
   jollof: { name: 'Jollof rice & chicken', emoji: '🍛', price: 2500, fill: .35 },
   suya: { name: 'Suya', emoji: '🍢', price: 1500, fill: .22 },

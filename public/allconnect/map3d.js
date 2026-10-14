@@ -771,7 +771,7 @@
         if (tab === 'nearby') {
           if (!near.length) return '<p class="empty">Nothing else close by.</p>';
           return near.map(({ p, d }) => UI.row({
-            ic: `<span class="lgi" style="background:#eef0f7;font-size:20px;width:34px;height:34px">${p[1]}</span>`, title: UI.esc(clean(p[0])),
+            ic: `<span class="lgi" style="background:var(--sf);font-size:20px;width:34px;height:34px">${p[1]}</span>`, title: UI.esc(clean(p[0])),
             sub: UI.esc((p[5] === 'district' ? (p[6] || '') : (KIND_BLURB[p[4]] || '')) + (p[5] === 'soon-y' ? ' Coming soon.' : '')) + ` <b style="color:var(--mut);font-weight:600">· ${walk(d)}</b>`,
             go: `MAP3D.openByName('${q(p[0])}')`
           })).join('');
@@ -788,14 +788,15 @@
       const [nm, em, px, py, , act] = hit.pin;
       if (act === 'home') return g.nav('home');
       if (API.onPin && API.onPin(hit.pin)) return;
-      if (act === 'district') { for (const [dx, dy] of [[0, 40], [0, -40], [48, 0], [-48, 0], [0, 72], [0, -72], [80, 0], [-80, 0]]) if (walkTo(px + dx, py + dy)) break; openPlace(hit.pin); return; }
-      walkTo(px, py + 40); openPlace(hit.pin); return;
+      openPlace(hit.pin); return;                       /* a landmark only opens its popup; the popup checks first whether it is walkable */
     }
     if (hit && hit.kind === 'plot') { const ad = ads.plots.get(hit.slot); if (ad && g.ADS) g.ADS.goPlot(hit.slot); else g.toast('🌊 Free sea plot · book it in Phone → Ads'); return; }
     if (hit && hit.kind === 'board') { const n = ads.billboards.length, ad = n ? ads.billboards[hit.idx % n] : null; if (ad && g.ADS) g.ADS.go(ad); else { g.nav('phone'); setTimeout(() => g.PH && g.PH.open('ads'), 0); } return; }
     if (hit && hit.kind === 'player') { g.toast('👤 ' + hit.name); return; }
     const q = cam.pick(x, y, 0); if (!q) return;
     if (!isLand(q.x, q.y)) return g.toast('🌊 Can’t walk on water — use a bridge');
+    const mp = M.me && findPath(M.me.x, M.me.y, q.x, q.y);        // check first that it is trekkable; a long trek opens the transport options instead
+    if (mp && g.MT && g.MT.WALK_MAX && mp.reduce((s, c, i) => i ? s + Math.hypot(c[0] - mp[i - 1][0], c[1] - mp[i - 1][1]) : 0, 0) > g.MT.WALK_MAX) { g.MT.destSheet({ name: 'That spot', emoji: '📍', x: q.x, y: q.y }, { title: '📍 That spot', sub: 'Too far to walk from here' }); return; }
     if (!walkTo(q.x, q.y)) g.toast('Can’t get there');
   }
   function onWheel(e) {
@@ -835,7 +836,11 @@
     setExt(e) { M.ext = e || {}; if (M.me) M.me.setExt(M.ext); },
     setPlayers, setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
-    visit(em, title) { SHEET.close(); g.toast(`${em} ${title} is coming soon`); },
+    visit(em, title) {      /* Visit only works when you are at the place; from farther away you travel there first */
+      const p = PINS.find(q => q[0].replace(' · Coming soon', '') === title);
+      if (p && M.me && Math.hypot(M.me.x - p[2], M.me.y - p[3]) > 90) { g.toast('🚫 You are too far away. Get there first, then visit ' + title); return; }
+      SHEET.close(); g.toast(`${em} ${title} is coming soon`);
+    },
     get me() { return M.me; }, get state() { return M },
     pins: PINS, zones: ZONES, bridges: BRIDGES, isLand, onBridge, route, free, walkPath, walkTo, teleport, focus, helpers: HELP, onPin: null,
     addLayer(kind, fn) { LAYERS[kind].push(fn); }

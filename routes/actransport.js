@@ -69,7 +69,19 @@ function catalogue() {
     quiz: T.QUIZ, light: { rounds: T.LIGHT.rounds, payPerPoint: T.LIGHT.payPerPoint, perDay: T.LIGHT.perDay, pass: T.LIGHT.licencePass }, okada: { rounds: T.OKADA.rounds, lanes: T.OKADA.lanes, perDay: T.OKADA.perDay, cap: T.OKADA.cap, base: T.OKADA.base, perSafe: T.OKADA.perSafe }
   };
 }
-const reply = async (res, id, now, extra) => res.json(await state(await User.findById(id), now, extra));
+/* A write can succeed before the follow-up state refresh fails. Never turn that committed
+   action into a 500: the client might retry and accidentally repeat a purchase/collection.
+   Return the action result, and let the client refresh the state separately. */
+async function reply(res, id, now, extra = {}) {
+  try {
+    const u = await User.findById(id);
+    if (!u) return res.status(404).json({ message: 'Your player account could not be refreshed. Reopen Transport and try again.' });
+    return res.json(await state(u, now, extra));
+  } catch (err) {
+    console.error('[transport:post-action-state]', err);
+    return res.json({ ...extra, stateRefreshFailed: true, message: 'Your action was processed, but the latest transport status could not be loaded. Refresh Transport before repeating it.' });
+  }
+}
 
 /* ----- reputation (100): small daily gains, bigger penalties ----- */
 async function addRep(id, n, now = Date.now()) {

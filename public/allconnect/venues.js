@@ -11,7 +11,11 @@ const VEN = {
     PH.shell('Venues', 'PH.close()', '<div class="abody iv vn" id="ab"><p class="empty">Loading…</p></div>');
     if (this.D) this.draw();
     try { this.D = await NET.api('/api/ac/venues/state'); S.cash = this.D.cash; render(); if (PH.view === 'venues') this.draw() }
-    catch (e) { toast(e.message) }
+    catch (e) {
+      const ab = document.getElementById('ab');
+      if (ab) ab.innerHTML = `<div class="ivempty"><p class="empty">Could not load your businesses.</p><p class="ivnote">${esc(e.message || 'Check your connection and try again.')}</p><button class="ivbtn grn" onclick="VEN.open()">Try again</button></div>`;
+      else toast(e.message || 'Could not load your businesses. Try again.');
+    }
     clearInterval(this.t); this.t = setInterval(() => { if (PH.view !== 'venues') return clearInterval(this.t); this.refresh() }, 60000);   // the "ready to collect" numbers grow while you watch
   },
   async refresh() { try { this.D = await NET.api('/api/ac/venues/state'); if (PH.view === 'venues') this.draw() } catch (e) { /* keep what is on screen */ } },
@@ -41,7 +45,12 @@ const VEN = {
     try {
       const r = await NET.api('/api/ac/venues/' + path, { method: 'POST', body }); this.D = r; S.cash = r.cash; render(); PH.closeSheet();
       if (PH.view === 'venues') this.draw(); if (r.flash) this.flash(r.flash)
-    } catch (e) { toast(e.message) } finally { this.busy = false }
+    } catch (e) {
+      toast(e.message || 'That business action did not complete. Refresh and try again.');
+      // The server may have completed a write before a connection failed. Refresh authoritative
+      // state before the player tries the same action again, avoiding stale balances and buttons.
+      try { this.D = await NET.api('/api/ac/venues/state'); S.cash = this.D.cash; render(); if (PH.view === 'venues') this.draw() } catch (_) {}
+    } finally { this.busy = false }
   },
   flash(t) {
     const a = PH.$a(); if (!a) return; const old = a.querySelector('.ivflash'); if (old) old.remove(); clearTimeout(this.ft);

@@ -3,7 +3,7 @@
    Built on the shared SHEET (tabs + scrolling body) and CARD (result popup) from ui.js, and on the same row / bar / button styles
    as Lagos Life, Jobs and Invest. All prices and results come from the server (routes/actransport.js, utils/actransport.js). */
 const TR = {
-  D: null, cat: null, tab: 'garage', vid: null, vtab: 'care', busy: false, ph: 2, timer: null, tops: null, reps: null, rep: { road: '', kind: 'slow', note: '' }, g: null,
+  D: null, cat: null, tab: 'garage', vid: null, vtab: 'care', busy: false, ph: 2, timer: null, tops: null, reps: null, rep: { road: '', kind: 'slow', note: '' }, g: null, loadError: '',
   esc: (s) => UI.esc(s),
   money: (n) => '₦' + Math.round(n || 0).toLocaleString('en-NG'),
   api: (path, body) => NET.api('/api/ac/transport/' + path, body === undefined ? undefined : { method: 'POST', body }),
@@ -16,20 +16,33 @@ const TR = {
 
   /* ---------- load + open ---------- */
   async load() {
-    const r = await this.api('state'); if (r.cat) this.cat = r.cat; delete r.cat; this.take(r);
+    try {
+      const r = await this.api('state');
+      if (r.cat) this.cat = r.cat;
+      delete r.cat; this.take(r); this.loadError = '';
+      return r;
+    } catch (e) { this.loadError = e.message || 'Transport could not load. Check your connection and try again.'; throw e }
+  },
+  async retryLoad() {
+    if (this.busy) return;
+    this.busy = true; this.loadError = '';
+    if (SHEET.isOpen('transport') || SHEET.isOpen('trveh')) SHEET.paint();
+    try { await this.load(); SHEET.paint(); this.enter(this.tab) }
+    catch (e) { this.loadError = e.message || 'Transport could not load. Try again.'; SHEET.paint() }
+    finally { this.busy = false }
   },
   take(r) {
-    const { card, flash, result, vid, ...st } = r; this.D = { ...(this.D || {}), ...st }; this.cash(st.cash);
+    const { card, flash, result, vid, stateRefreshFailed, message, ...st } = r; this.D = { ...(this.D || {}), ...st }; this.cash(st.cash);
     if (flash) toast(flash);
-    return { card, result, vid };
+    return { card, result, vid, stateRefreshFailed, message };
   },
   async open(tab) {
     this.tab = tab || this.tab; this.stop();
     SHEET.open({ id: 'transport', title: 'Transport', wide: true, tab: this.tab, onTab: (t) => { this.tab = t; this.enter(t) }, onClose: () => this.stop(),
       tabs: () => [{ id: 'garage', label: 'Garage' }, { id: 'shop', label: 'Shop' }, { id: 'drive', label: 'Drive', badge: this.D && !this.D.licence.ok ? 1 : 0 }, { id: 'routes', label: 'Routes' }, { id: 'traffic', label: 'Traffic' }],
       body: (t) => this.body(t) });
-    try { await this.load() } catch (e) { toast(e.message); SHEET.close(); return }
-    if (SHEET.isOpen('transport')) { SHEET.paint(); this.enter(this.tab); this.timer = setInterval(() => this.tick(), 20000) }
+    try { await this.load() } catch (e) { this.loadError = e.message || 'Transport could not load.' }
+    if (SHEET.isOpen('transport')) { SHEET.paint(); if (!this.loadError) this.enter(this.tab); this.timer = setInterval(() => this.tick(), 20000) }
   },
   stop() { clearInterval(this.timer); this.timer = null; if (this.g) { clearTimeout(this.g.t); clearInterval(this.g.i); this.g = null } },
   /* keeps live numbers (route earnings, parking, rental) fresh while the sheet is open */
@@ -50,8 +63,14 @@ const TR = {
       const r = this.take(await this.api(path, body)); SHEET.paint();
       if (after) after(r);
       if (r.card) CARD.show(r.card);
-    } catch (e) { toast(e.message) }
-    this.busy = false;
+      if (r.stateRefreshFailed) toast(r.message || 'Action processed. Refresh Transport before repeating it.');
+    } catch (e) {
+      toast(e.message || 'Transport action failed. Checking the latest state…');
+      /* A lost response does not prove that the server rolled back its write. Refresh first
+         so players do not blindly repeat purchases, fuel fills or route collections. */
+      try { await this.load(); SHEET.paint() }
+      catch (_) { this.loadError = 'Could not confirm the last action. Reopen Transport when your connection is back; check your balance and vehicle before retrying.'; SHEET.paint() }
+    } finally { this.busy = false }
   },
 
   /* ---------- small pieces ---------- */
@@ -66,6 +85,7 @@ const TR = {
   need(t) { return `<div class="lgwarn">${t}</div>` },
 
   body(t) {
+    if (this.loadError) return `<div class="lgwarn">${this.esc(this.loadError)}</div><div class="trc">${this.btn(this.busy ? 'Checking…' : 'Try again', 'TR.retryLoad()', { cls: 'big', off: this.busy })}</div>`;
     if (!this.D || !this.cat) return this.empty('Loading…');
     return { garage: () => this.garage(), shop: () => this.shop(), drive: () => this.drive(), routes: () => this.routes(), traffic: () => this.traffic() }[t]();
   },

@@ -55,6 +55,7 @@ const MT = (() => {
 
   const S0 = () => ({ bm: [], fav: [], seen: { Home: 1 }, lay: { bm: 1, weather: 1 }, acc: 0, tre: {}, ph: {} });
   const T = {
+    WALK_MAX,
     st: null, ready: false, shown: false, dest: null, opts: [], sel: null, via: null, tab: 'go', qk: 'biz', q: '', res: [], pp: null, ride: null, fade: null, ftAt: 0,
     lines: [], ferries: [], points: [], air: [], photos: [], safe: [], tspots: [], lt: 0, sm: -1, st0: 0, ptick: 0,
 

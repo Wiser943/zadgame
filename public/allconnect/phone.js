@@ -38,7 +38,7 @@ const PH={
   prof(id,back){return `onclick="GIST.openProfile('${id}',()=>${back})"`},
   drawContacts(){const f=this.friends,keep=(document.getElementById('psearch')||{}).value||'';
     const row=(u,right,sub)=>`<div class="row"><div class="rowp" ${this.prof(u.id,'PH.contacts()')}>${this.av(u)}<div class="rt"><b>${this.name(u)}</b><span>${sub}</span></div></div>${right}</div>`;
-    let h=`<div class="row"><span class="avi" style="background:#ffe9d6;font-size:22px">👵🏾</span><div class="rt"><b>Mummy</b><span>Always picks up</span></div><button class="rbtn grn" onclick="PH.mummy()">📞</button></div>
+    let h=`<div class="row"><span class="avi" style="background:var(--sfo);font-size:22px">👵🏾</span><div class="rt"><b>Mummy</b><span>Always picks up</span></div><button class="rbtn grn" onclick="PH.mummy()">📞</button></div>
       <div class="lab2">FIND A PLAYER</div><input class="sinput" id="psearch" value="${esc(keep)}" placeholder="Search by username, e.g. @tobi" oninput="PH.search(this.value)" autocomplete="off"><div id="sres"></div>`;
     if(f.incoming.length)h+=`<div class="lab2">FRIEND REQUESTS</div>`+f.incoming.map(u=>row(u,`<button class="rbtn grn" onclick="PH.respond('${u.id}',1)">✓</button><button class="rbtn gry" onclick="PH.respond('${u.id}',0)">✕</button>`,'wants to be friends')).join('');
     if(f.outgoing.length)h+=`<div class="lab2">PENDING</div>`+f.outgoing.map(u=>row(u,`<button class="pbtn" onclick="PH.unfriend('${u.id}')">Cancel</button>`,'Waiting for them to accept')).join('');
@@ -127,7 +127,7 @@ const PH={
     const el=document.querySelector(`.msg[data-id="${m.id}"]`);if(el){el.classList.add('hl');if(!this.newId)el.scrollIntoView({block:'center'})}},
   bubble(m,last){const mine=m.from===NET.user.id;
     if(m.kind==='money'||m.kind==='food'||m.kind==='system')return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
-    if(m.kind==='invite')return `<div class="sys inv">${esc(m.text)} · ${this.time(m.at)}${mine?'':`<br><button onclick="PH.visit()">Go over 🏠</button>`}</div>`;
+    if(m.kind==='invite')return `<div class="sys inv">${esc(m.text)} · ${this.time(m.at)}${mine?'':`<br><button onclick="PH.visit('${esc(m.propertyId||'')}')">Go over 🏠</button>`}</div>`;
     return `<div class="msg ${mine?'me':'th'}" data-id="${m.id}"><div class="mb">${m.reply?`<div class="mrep"><b>${m.reply.from===NET.user.id?'You':esc(this.name(this.peer))}</b><span>${esc(m.reply.text)}</span></div>`:''}${esc(m.text)}</div><small>${this.time(m.at)}${mine&&last&&m.read?' · Seen':''}</small></div>`},
   drawMsgs(keep){const el=document.getElementById('cm');if(!el)return;const st0=document.getElementById('ab').scrollTop;const lastMine=[...this.msgs].reverse().find(m=>m.from===NET.user.id&&m.kind==='text');
     el.innerHTML=this.msgs.length?this.msgs.map(m=>(this.newId&&m.id===this.newId?`<div class="newdiv"><span>${this.newCount>1?this.newCount+' new messages':'New message'}</span></div>`:'')+this.bubble(m,lastMine&&m.id===lastMine.id)).join(''):`<p class="empty">Say hi to ${this.name(this.peer)} 👋</p>`;const b=document.getElementById('ab'),dv=el.querySelector('.newdiv');
@@ -144,14 +144,14 @@ const PH={
     if(r)r.innerHTML=`<div class="crepl"><div><b>Replying to ${esc(who)}</b><span>${esc(this.replyTo.text)}</span></div><button onclick="PH.cancelReply()" aria-label="Cancel reply">✕</button></div>`;
     if(focus!==false){if(navigator.vibrate)navigator.vibrate(15);const i=document.getElementById('cinput');if(i)i.focus()}},
   cancelReply(){this.replyTo=null;const r=document.getElementById('crep');if(r)r.innerHTML=''},
-  async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST'})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
+  async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST',body:{propertyId:S.activePropertyId||''}})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
   foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${Math.round(f[3]*(window.LAGOS?LAGOS.foodMult():1)).toLocaleString('en-NG')}</b></button>`).join('')}`)},
   async buyFood(k){try{const r=await NET.api('/api/ac/buy-food/'+this.chatId,{method:'POST',body:{item:k}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Food delivered 🍛')}catch(e){toast(e.message)}},
   blockSheet(){this.sheet(`<h3>Block ${this.name(this.peer)}?</h3><p class="hint2">They won't be able to find you, message you or send you money. You can unblock later.</p><button class="fopt red" onclick="PH.block()"><span>🚫 Block</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
   async block(){try{await NET.api('/api/ac/block/'+this.chatId,{method:'POST'});toast('Blocked');this.tab='chats';this.messages()}catch(e){toast(e.message)}},
   reportSheet(){this.sheet(`<h3>Report ${this.name(this.peer)}</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam','Harassment','Scam','Inappropriate'].map(r=>`<button class="fopt" onclick="PH.report('${r}')"><span>${r}</span></button>`).join('')}`)},
   async report(r){try{await NET.api('/api/ac/report/'+this.chatId,{method:'POST',body:{reason:r}});this.closeSheet();toast('Report sent. Thank you 🙏🏾')}catch(e){toast(e.message)}},
-  async visit(){try{const r=await NET.api('/api/ac/visit/'+this.chatId);openVisit(r.host)}catch(e){toast(e.message)}},
+  async visit(propertyId=''){try{const q=propertyId?'?propertyId='+encodeURIComponent(propertyId):'';const r=await NET.api('/api/ac/visit/'+this.chatId+q);openVisit(r.host)}catch(e){toast(e.message)}},
   notify(title,body,target){if(window.PUSH&&PUSH.ok===false)return;if(!document.hidden||!('Notification' in window)||Notification.permission!=='granted')return;try{const n=new Notification(title,{body,icon:'/pwa-192.png',tag:target?.type||'allconnect'});n.onclick=()=>{window.focus();location.href='/?open='+encodeURIComponent(target?.type||'updates')+(target?.id?'&id='+encodeURIComponent(target.id):'')+(target?.mid?'&mid='+encodeURIComponent(target.mid):'')+(target?.ref?'&ref='+encodeURIComponent(target.ref):'')};}catch(e){}},
   openDeepLink(){const q=new URLSearchParams(location.search),kind=q.get('open');if(!kind)return;history.replaceState(null,'','/');if(kind==='chat'&&q.get('id')){this.pendingReply=q.get('mid')||null;this.pendingFocus=q.get('reply')==='1';this.open('messages');setTimeout(()=>this.chat(q.get('id')),80)}else if(kind==='gist'&&q.get('ref')){GIST.openPost(q.get('ref'))}else if(kind==='updates'){this.messages('updates') }},
   /* ----- live events ----- */
@@ -172,7 +172,7 @@ const fmtCash=n=>'₦'+Number(n).toLocaleString('en-NG');
 /* ----- visiting a friend's place ----- */
 function openVisit(h){const v=document.getElementById('visit');
   let s=document.getElementById('room').outerHTML.replace(/ id="room"/,'').replace(/ onclick="walk\(event\)"/,'').replace(/ id="[a-z]+"/g,'').replace('class="room"','class="room vroom"');
-  v.style.setProperty('--wall',h.paint);v.innerHTML=`${s}<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div><div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} item${h.items===1?'':'s'} bought</div>`;v.style.display='block'}
+  v.style.setProperty('--wall',h.paint);v.innerHTML=`${s}<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div><div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items===1?'':'s'} · ${esc(h.propertyName||'Home')}</div>`;v.style.display='block'}
 function closeVisit(){document.getElementById('visit').style.display='none'}
 
 /* Desktop: Esc steps back (visit -> GameHub -> phone app) */

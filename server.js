@@ -26,6 +26,7 @@ const acGroupRoutes = require('./routes/acgroups');
 const acJobRoutes = require('./routes/acjobs');
 const acAdRoutes = require('./routes/acads');
 const acItemRoutes = require('./routes/acitems');
+const acPropertyRoutes = require('./routes/acproperties');
 const acInvestRoutes = require('./routes/acinvest');
 const acVenuesRoutes = require('./routes/acvenues');
 const publicAdsRoutes = require('./routes/publicads');
@@ -90,6 +91,7 @@ async function main() {
   app.use('/api/ac/jobs', acJobRoutes);
   app.use('/api/ac/ads', acAdRoutes);
   app.use('/api/ac/items', acItemRoutes);
+  app.use('/api/ac/properties', acPropertyRoutes);
   app.use('/api/ac/invest', acInvestRoutes);
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gov', acGovRoutes);          // State House: elections, announcements, policies

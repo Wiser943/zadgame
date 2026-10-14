@@ -4,7 +4,9 @@ p=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','public','allconn
 s=open(p,encoding='utf8').read()
 M1='/* >>> AUTO-GENERATED DARK MODE OVERRIDES (do not edit by hand; regenerate with: python3 scripts/gen-dark.py). :where() keeps each rule at the same specificity as the light rule it mirrors, so .on / .sel states still win >>> */'
 M2='/* <<< END AUTO-GENERATED DARK MODE OVERRIDES <<< */'
-if M1 in s: s=s[:s.index(M1)].rstrip()+'\n'
+if M1 in s:                       # keep any CSS written after the generated block, and scan it too (it is not lost on a re-run)
+    head=s[:s.index(M1)].rstrip(); tail=s[s.index(M2)+len(M2):] if M2 in s else ''
+    s=head+'\n'+tail.strip('\n')+'\n'
 src=re.sub(r'/\*.*?\*/','',s,flags=re.S)
 def rgb(h):
     h=h.lstrip('#')
@@ -29,11 +31,18 @@ def bdmap(h):
     c=rgb(h); l=lum(c)
     return 'rgba(255,255,255,.12)' if l>=0.80 and sat(c)<45 else None
 out=[]; seen=set()
+manual=set()          # selectors that already have a hand-written dark rule: leave those alone
+for m in re.finditer(r'([^{}]+)\{',src):
+    if 'data-theme' in m.group(1):
+        for part in m.group(1).split(','):
+            t=re.sub(r':where\(html\[data-theme="dark"\]\)|html\[data-theme="dark"\]','',part).strip()
+            if t: manual.add(t)
 for m in re.finditer(r'([^{}]+)\{([^{}]*)\}',src):
     sel=m.group(1).strip(); body=m.group(2)
     if not sel or '@' in sel or 'data-theme' in sel or 'camdark' in sel or 'keyframes' in sel: continue
     sels=[x.strip() for x in sel.split(',') if x.strip()]
     sels=[x for x in sels if re.match(r'^[.#\[*a-zA-Z:]',x) and not re.match(r'^(from|to)$',x)]
+    sels=[x for x in sels if x not in manual]
     if not sels: continue
     decls=[]
     for d in body.split(';'):
@@ -42,6 +51,8 @@ for m in re.finditer(r'([^{}]+)\{([^{}]*)\}',src):
         if k in('background','background-color') and HEX.match(v):
             r=bgmap(v)
             if r: decls.append(f'background:{r}')
+        elif k in('background','background-color') and v.startswith('color-mix(') and re.search(r'#fff(?:fff)?\b',v):
+            decls.append('background:'+re.sub(r'#fff(?:fff)?\b','#1b2034',v))      # tinted card: mix the colour into the dark surface instead of white
         elif k=='color' and HEX.match(v):
             r=txmap(v)
             if r: decls.append(f'color:{r}')
