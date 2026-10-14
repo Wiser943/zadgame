@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#e8f0ff">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#161a2e;--mut:#5d6378;--line:#e3e7f2;--blue:#2f7fd8;--grn:#0b8f4d;--bg:#e8f0ff}
+:root{--ink:#161a2e;--mut:#5d6378;--line:#e3e7f2;--blue:#2f7fd8;--grn:#075BFF;--bg:#e8f0ff}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
 body{font:400 14.5px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);background:linear-gradient(#e8f0ff,#f4f7ff 380px,#f4f7ff);min-height:100vh}
@@ -40,13 +40,13 @@ h1{font:800 clamp(24px,6.4vw,34px)/1.15 Outfit,system-ui,sans-serif;letter-spaci
 .step{display:flex;align-items:center;gap:12px;flex:none}
 .step button{width:38px;height:38px;border-radius:50%;border:0;background:#eef0f7;font-size:20px;color:var(--ink);cursor:pointer}
 .step button:disabled{color:#b5bacb;cursor:default}.step b{font:600 17px Outfit,system-ui,sans-serif;min-width:18px;text-align:center}
-.book{border:0;border-radius:99px;background:#0b8f4d;color:#fff;padding:10px 18px;font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
+.book{border:0;border-radius:99px;background:#075BFF;color:#fff;padding:10px 18px;font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;white-space:nowrap}
 .hr{border:0;border-top:1px solid var(--line);margin:6px 0 14px}
 h2.ap{font:600 18px Outfit,system-ui,sans-serif;margin:0 0 6px}.ap-s{color:var(--mut);font-size:13px;margin:0 0 10px;line-height:1.5}
 .where{font:700 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.5px;color:var(--mut);text-transform:uppercase;margin:12px 0 6px}
 .opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:18px;padding:10px 14px;margin-bottom:8px;cursor:pointer;font-family:inherit;color:var(--ink)}
 .opt .dot{width:24px;height:24px;border-radius:50%;border:2px solid #c7ccdc;flex:none;display:grid;place-items:center;font-size:13px}
-.opt.on{border-color:var(--grn);background:#f0faf4}.opt.on .dot{background:var(--grn);border-color:var(--grn)}.opt.on .dot:after{content:'✓';color:#fff;font-weight:800}
+.opt.on{border-color:var(--grn);background:#eff4ff}.opt.on .dot{background:var(--grn);border-color:var(--grn)}.opt.on .dot:after{content:'✓';color:#fff;font-weight:800}
 .opt b{display:block;font:600 15px Outfit,system-ui,sans-serif}.opt small{color:var(--mut);font-size:12.5px}
 .drop{display:block;border:2px dashed #cfd5e6;border-radius:18px;padding:20px 14px;text-align:center;cursor:pointer}
 .drop b{display:block;font:600 16px Outfit,system-ui,sans-serif}.drop small{display:block;color:var(--mut);font-size:12.5px;margin-top:4px;line-height:1.45}
@@ -65,7 +65,7 @@ input.t:focus{border-color:#9db9ee;background:#fff}
 /* stats page ad mock */
 .mock{background:#f2f4fa;border-radius:20px;padding:12px;display:grid;grid-template-columns:1fr 2.2fr 1fr;gap:10px}
 .mock .sq{border:2px dashed #dde2ef;border-radius:14px;background:#fafbff;aspect-ratio:1}
-.mock .me{border:3px solid var(--grn);background:#e8f5ee;color:var(--grn);display:grid;place-items:center;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:16px;aspect-ratio:1}
+.mock .me{border:3px solid var(--grn);background:#e8efff;color:var(--grn);display:grid;place-items:center;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:16px;aspect-ratio:1}
 .mock .mid{display:grid;gap:8px;align-content:start}
 .mock .bar{height:18px;border-radius:10px;background:#5a6070}.mock .bar.s{width:46%;display:inline-block}.mock .bar.r{width:18%;background:#dc2626;display:inline-block;margin-left:8px}
 .mock .boxes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.mock .boxes i{aspect-ratio:1.2;background:#fff;border:1px solid var(--line);border-radius:10px}
@@ -90,6 +90,7 @@ input.t:focus{border-color:#9db9ee;background:#fff}
   .foot{margin-top:34px}
 }
 </style>
+  <link rel="stylesheet" href="/brand-palette.css">
 </head>
 <body>
 <div class="wrap">

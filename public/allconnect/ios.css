@@ -29,7 +29,7 @@
 .lock b{display:block;font:800 clamp(54px,17.5vw,68px)/1 Outfit,system-ui,sans-serif;letter-spacing:-3px}
 .lock span{display:block;font-size:14px;font-weight:500;margin-top:4px;opacity:.95;white-space:nowrap}
 .lock .hello i{font-style:normal}
-.lock .od{display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:-1px}
+.lock .od{display:inline-block;width:11px;height:11px;border-radius:50%;background:#176BFF;margin-right:5px;vertical-align:-1px}
 .happen{margin:14px 2px 0;background:#fff;color:#1b2236;border-radius:22px;padding:11px 12px 11px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 22px rgba(0,0,0,.25)}
 .happen .hi{font-size:26px;width:30px;text-align:center;flex:none}
 .happen small{display:block;font-size:12px;color:#6b7390;font-weight:600}

@@ -130,6 +130,7 @@ router.post('/friends/:id/request', async (req, res, next) => {
 router.post('/friends/:id/accept', async (req, res, next) => {
   try {
     const me = uid(req), other = String(req.params.id);
+    if (!isId(other) || other === me) return bad(res, 400, 'Invalid friend request.');
     const row = await Friendship.findOneAndUpdate({ requester: other, recipient: me, status: 'pending' }, { $set: { status: 'accepted' } }, { new: true });
     if (!row) return bad(res, 404, 'Request not found.');
     notify(io(req), other, { icon: '🤝', text: `${label(req.user)} accepted your friend request`, kind: 'friend' }).catch(() => {});
@@ -138,7 +139,14 @@ router.post('/friends/:id/accept', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 router.post('/friends/:id/decline', async (req, res, next) => {
-  try { await Friendship.deleteOne({ requester: String(req.params.id), recipient: uid(req), status: 'pending' }); res.json({ ok: true }); } catch (e) { next(e); }
+  try {
+    const other = String(req.params.id), me = uid(req);
+    if (!isId(other) || other === me) return bad(res, 400, 'Invalid friend request.');
+    const result = await Friendship.deleteOne({ requester: other, recipient: me, status: 'pending' });
+    if (!result.deletedCount) return bad(res, 404, 'Friend request not found. It may already have been handled.');
+    emitUser(io(req), other, 'friends', {});
+    res.json({ ok: true });
+  } catch (e) { next(e); }
 });
 router.delete('/friends/:id', async (req, res, next) => {
   try {
@@ -158,7 +166,14 @@ router.post('/block/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 router.post('/unblock/:id', async (req, res, next) => {
-  try { await Friendship.deleteOne({ requester: uid(req), recipient: String(req.params.id), status: 'blocked' }); res.json({ ok: true }); } catch (e) { next(e); }
+  try {
+    const me = uid(req), other = String(req.params.id);
+    if (!isId(other) || other === me) return bad(res, 400, 'Invalid player.');
+    const result = await Friendship.deleteOne({ requester: me, recipient: other, status: 'blocked' });
+    if (!result.deletedCount) return bad(res, 404, 'This player is not in your blocked list.');
+    emitUser(io(req), other, 'friends', {});
+    res.json({ ok: true });
+  } catch (e) { next(e); }
 });
 router.post('/report/:id', async (req, res, next) => {   // lands in the same admin reports queue as GameHub reports
   try {

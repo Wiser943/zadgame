@@ -3,7 +3,8 @@
 .admin-notice{position:fixed;right:18px;bottom:18px;z-index:20;max-width:min(360px,calc(100vw - 36px));padding:13px 16px;border-radius:13px;background:#20232a;color:#fff;box-shadow:0 12px 30px #20232a33;font-size:13px;font-weight:700;animation:noticeIn .2s ease both}.admin-notice.bad{background:#8c1821}@keyframes noticeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @media(min-width:1400px){.shell{grid-template-columns:270px 1fr}.main{padding-top:36px}}
 @media(max-width:760px){.side{position:static;height:auto}.nav{grid-auto-flow:column;overflow-x:auto}}
-</style></head><body><div id="root"></div><script>
+</style>  <link rel="stylesheet" href="/brand-palette.css">
+</head><body><div id="root"></div><script>
 const root=document.getElementById('root'),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path,opt={}){const r=await fetch(path,{credentials:'include',headers:{'Content-Type':'application/json'},...opt}),d=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(Error(d.message||('Request failed ('+r.status+')')),{status:r.status});return d}
 function adminNotice(message,bad=false){const old=document.querySelector('.admin-notice');old?.remove();const n=document.createElement('div');n.className='admin-notice'+(bad?' bad':'');n.textContent=message;document.body.appendChild(n);setTimeout(()=>n.remove(),3000)}

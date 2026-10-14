@@ -40,6 +40,8 @@ const acPushRoutes = require('./routes/acpush');
 const acTransportRoutes = require('./routes/actransport');
 const acGovRoutes = require('./routes/acgov');
 const acGemRoutes = require('./routes/acgem');
+const reportRoutes = require('./routes/reports');
+const developerRoutes = require('./routes/developers');
 const govService = require('./services/govService');
 const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
@@ -104,6 +106,8 @@ async function main() {
 
   app.use('/auth', authRoutes);
   app.use('/api', apiRoutes);
+  app.use('/api/reports', reportRoutes);
+  app.use('/api/developers', developerRoutes);
   app.use('/admin-api', adminRoutes);
   app.use('/api/social', socialRoutes);
   app.use('/api/tournaments', tournamentRoutes);
@@ -160,6 +164,8 @@ async function main() {
   app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
   app.get('/status', (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
   app.get('/stats', (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));
+  app.get('/report', (req, res) => res.sendFile(path.join(__dirname, 'public', 'report.html')));
+  app.get('/developers', (req, res) => res.sendFile(path.join(__dirname, 'public', 'developers.html')));
 
   // GameHub's own client-side routes (/lobby, /shop, /friends ...) fall through to GameHub
   app.get('*', (req, res) => res.sendFile(GAMEHUB));
@@ -170,14 +176,30 @@ async function main() {
   // with no useful info. This logs the real error server-side and gives the
   // client something sane back.
   app.use((err, req, res, next) => {
+    // Keep the full diagnostic on the server, but return safe, actionable errors
+    // for common database/model failures instead of masking every failure as the
+    // same generic 500. Never expose raw database messages to players.
     console.error('[error]', req.method, req.originalUrl, err);
     if (res.headersSent) return next(err);
     if (req.path.startsWith('/auth/google')) {
-      // Send the user back to the landing page with a flag instead of a raw 500,
-      // so the front end can show a real message.
       return res.redirect((process.env.CLIENT_URL || '/') + '?auth_error=1');
     }
-    res.status(500).json({ message: 'Something went wrong on our end. Please try again.' });
+
+    const name = String(err && err.name || '');
+    const code = err && err.code;
+    if (code === 11000) {
+      return res.status(409).json({ message: 'That record already exists. Refresh and try again.' });
+    }
+    if (name === 'ValidationError') {
+      return res.status(400).json({ message: 'Some information is missing or invalid. Check your entries and try again.' });
+    }
+    if (name === 'CastError') {
+      return res.status(400).json({ message: 'That item or player could not be found. Refresh and try again.' });
+    }
+    if (name === 'MongooseServerSelectionError' || name === 'MongoNetworkError' || name === 'MongoServerSelectionError') {
+      return res.status(503).json({ message: 'The game database is temporarily unavailable. Please wait a moment and try again.' });
+    }
+    res.status(500).json({ message: 'This action could not be completed. Please try again. If it keeps happening, contact support.' });
   });
 
   initSockets(io, sessionMiddleware);
