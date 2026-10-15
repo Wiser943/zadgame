@@ -819,7 +819,6 @@ function applyTheme() {
   root.style.setProperty('--dark-card', `rgb(${mix(31)},${mix(33)},${mix(44)})`);
   root.style.setProperty('--dark-panel', `rgb(${mix(39)},${mix(41)},${mix(55)})`);
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? (level >= 95 ? '#000000' : `rgb(${mix(20)},${mix(21)},${mix(29)})`) : '#075BFF');
-  try { if (window.ROOM3D && ROOM3D.env) ROOM3D.env(dark ? 0.12 : (window.ENV && ENV.dl >= 0 ? ENV.dl : 1.0)); } catch (e) {}
 }
 window.applyTheme = applyTheme;
 applyTheme();

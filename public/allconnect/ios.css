@@ -85,8 +85,6 @@
 html[data-theme="dark"] .gmtiers div{background:#20263a}
 html[data-theme="dark"] .gmwin{background:#12301f;color:#7be0a4}
 html[data-theme="dark"] .gmhint{background:#35290a;color:#f3d484}
-html[data-theme="dark"] .happen{background:#1c2238;color:#f1f5f9;box-shadow:0 8px 22px rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.08)}
-html[data-theme="dark"] .happen small{color:#9aa1bc}
 
 /* ---------- goals sheet ---------- */
 .glh{display:flex;align-items:center;gap:12px;margin:0 0 12px}.glh b{display:block;font:800 19px Outfit,system-ui,sans-serif}.glh small{color:var(--mut);font-size:13.5px}

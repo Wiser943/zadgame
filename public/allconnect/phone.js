@@ -169,26 +169,11 @@ const PH={
     if(ev==='cash'&&this.view==='bank')this.bankLoad();if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}
 };
 const fmtCash=n=>'₦'+Number(n).toLocaleString('en-NG');
-/* ----- visiting a friend's place (dynamic 3D & multiplayer) ----- */
-function openVisit(h) {
-  const v = document.getElementById('visit'); if (!v) return;
-  const itemsCount = h.itemsCount != null ? h.itemsCount : (Array.isArray(h.items) ? h.items.length : 0);
-  v.innerHTML = `<div class="vtop"><div class="vtop-left"><span class="pill vtitle">🏠 ${esc(h.name)}'s place · ${esc(h.propertyName || 'Home')}</span><span class="pill vbadge" id="vplayers">● 1 in room</span></div><button class="pill vbtn vleave" onclick="closeVisit()">✕ Leave</button></div><div class="vactionbar"><button class="pill vbtn" id="vAreaBtn" onclick="ROOM3D.toggleArea()">🌿 Step Outside</button><button class="pill vbtn" onclick="ROOM3D.emote('wave')">👋 Wave</button><button class="pill vbtn" onclick="ROOM3D.emote('dance')">🕺 Dance</button></div><div class="vchatbar"><input id="vchatIn" type="text" placeholder="Say something..." maxlength="100" onkeydown="if(event.key==='Enter')sendRoomChat()"><button class="pill vbtn vchatsend" onclick="sendRoomChat()">Send</button></div><div class="pill vnote" id="vstatus">Visiting ${esc(h.name)} · ${itemsCount} items · Tap floor or yard to walk around 🌿</div>`;
-  v.style.display = 'block';
-  if (window.ROOM3D) ROOM3D.startVisit(h);
-}
-function closeVisit() {
-  const v = document.getElementById('visit');
-  if (v) v.style.display = 'none';
-  if (window.ROOM3D) ROOM3D.endVisit();
-}
-window.sendRoomChat = function () {
-  const i = document.getElementById('vchatIn'); if (!i) return;
-  const t = (i.value || '').trim(); if (!t) return;
-  i.value = '';
-  if (window.ROOM3D && ROOM3D.activeRoomId && window.NET && NET.sock) NET.sock.emit('room:chat', { roomId: ROOM3D.activeRoomId, text: t });
-  if (window.ROOM3D) ROOM3D.showBubble('me', t);
-};
+/* ----- visiting a friend's place ----- */
+function openVisit(h){const v=document.getElementById('visit');
+  let s=document.getElementById('room').outerHTML.replace(/ id="room"/,'').replace(/ onclick="walk\(event\)"/,'').replace(/ id="[a-z]+"/g,'').replace('class="room"','class="room vroom"');
+  v.style.setProperty('--wall',h.paint);v.innerHTML=`${s}<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div><div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items===1?'':'s'} · ${esc(h.propertyName||'Home')}</div>`;v.style.display='block'}
+function closeVisit(){document.getElementById('visit').style.display='none'}
 
 /* Desktop: Esc steps back (visit -> GameHub -> phone app) */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const vis=document.getElementById('visit'),hub=document.getElementById('hub');
