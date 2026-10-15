@@ -105,6 +105,7 @@ const UserSchema = new mongoose.Schema({
     },
     hub: {                                                 // onboarding, missions, result cards, life timeline (see routes/achub.js)
       hood: { type: String, default: '' }, hobby: { type: String, default: '' },
+      homeSlot: { type: Number, default: -1 },             // which numbered house in `hood`'s residential cluster is this player's (-1 = not assigned yet)
       done: { type: Boolean, default: false }, tourDone: { type: Boolean, default: false }, controlsDone: { type: Boolean, default: false },
       recoveryHash: { type: String, default: '' }, recoverySalt: { type: String, default: '' },
       missionsClaimed: { type: [String], default: [] },

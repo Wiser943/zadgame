@@ -14,13 +14,18 @@ const PROTECT_DAYS = 7;
 const PROTECT = { transferMax: 20000, investMax: 1500000, noAds: true };   // first 7 days: small transfers, no big investments, no ad buying
 
 /* ---------- onboarding choices ---------- */
+/* cap = how many player houses fit in that area's residential cluster on the map, for spacing: a prominent,
+   spacious area (bigger plots, lower density) gets a LOWER cap than an affordable, tightly-packed one. Once an
+   area's cap is reached, new movers there share the last house slot with its current occupants until someone
+   relocates and frees one up — see routes/achub.js assignHomeSlot(). */
 const NEIGHBOURHOODS = [
-  { id: 'yaba', name: 'Yaba', emoji: '💻', vibe: 'Tech hub. Students, startups, suya at night.', perk: 'Tech jobs feel closer to home.' },
-  { id: 'surulere', name: 'Surulere', emoji: '⚽', vibe: 'Football, family and good food on every street.', perk: 'Friendly neighbours, lots of games.' },
-  { id: 'lekki', name: 'Lekki', emoji: '🌴', vibe: 'Beaches, estates and expensive coffee.', perk: 'Great for investors.' },
-  { id: 'ikeja', name: 'Ikeja', emoji: '✈️', vibe: 'The airport, Computer Village and the mainland buzz.', perk: 'Busy and well connected.' },
-  { id: 'ajah', name: 'Ajah', emoji: '🚌', vibe: 'Long commute, cheap rent, big dreams.', perk: 'Low rent, tough mornings.' },
-  { id: 'ikorodu', name: 'Ikorodu', emoji: '⛴️', vibe: 'Boat rides, big markets, strong community.', perk: 'Everybody knows everybody.' }
+  { id: 'yaba', name: 'Yaba', emoji: '💻', vibe: 'Tech hub. Students, startups, suya at night.', perk: 'Tech jobs feel closer to home.', cap: 36 },
+  { id: 'surulere', name: 'Surulere', emoji: '⚽', vibe: 'Football, family and good food on every street.', perk: 'Friendly neighbours, lots of games.', cap: 42 },
+  { id: 'lekki', name: 'Lekki', emoji: '🌴', vibe: 'Beaches, estates and expensive coffee.', perk: 'Great for investors.', cap: 18 },
+  { id: 'ikeja', name: 'Ikeja', emoji: '✈️', vibe: 'The airport, Computer Village and the mainland buzz.', perk: 'Busy and well connected.', cap: 36 },
+  { id: 'ajah', name: 'Ajah', emoji: '🚌', vibe: 'Long commute, cheap rent, big dreams.', perk: 'Low rent, tough mornings.', cap: 60 },
+  { id: 'ikorodu', name: 'Ikorodu', emoji: '⛴️', vibe: 'Boat rides, big markets, strong community.', perk: 'Everybody knows everybody.', cap: 60 },
+  { id: 'epe', name: 'Epe', emoji: '🌾', vibe: 'Quiet, lagoon-side and a long way from the noise.', perk: 'Cheapest rent in the city.', cap: 54 }
 ];
 const HOBBIES = [
   { id: 'gaming', name: 'Gaming', emoji: '🎮', words: ['Gamer', 'Pro', 'Clutch'] },

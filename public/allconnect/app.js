@@ -60,7 +60,13 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 
 function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
 function mapChip(btn) { const k = btn.getAttribute('data-f'); if (!window.MAP3D || !k) return; const on = !MAP3D.hud[k]; MAP3D.setFilter(k, on); btn.classList.toggle('on', !!on) }
-function mapCity(btn) { if (!window.MAP3D) return; document.querySelectorAll('#mapcities button').forEach(b => b.classList.toggle('on', b === btn)); MAP3D.setCity(btn.getAttribute('data-city')) }
+function mapCity(btn) {
+  if (!window.MAP3D) return;
+  const city = btn.getAttribute('data-city');
+  if (city !== 'lagos') { MAP3D.setCity(city); return } // not built yet: toast only, keep Lagos selected and walkable
+  document.querySelectorAll('#mapcities button').forEach(b => b.classList.toggle('on', b === btn));
+  MAP3D.setCity(city);
+}
 
 function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });

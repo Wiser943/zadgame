@@ -31,6 +31,7 @@ const HUB = {
     const before = this.me && this.me.missions.claimable;
     this.me = await this.api('/me');
     if (typeof S !== 'undefined' && Number.isFinite(this.me.cash)) S.cash = this.me.cash;
+    if (this.me.hub.hood && window.MAP3D) MAP3D.setHome(this.me.hub.hood, this.me.hub.homeSlot);
     this.paintNow();
     if (quiet && before != null && this.me.missions.claimable > before && !this.busy()) toast('🎯 Mission done! Open "What can I do now?" to claim.');
     return this.me;

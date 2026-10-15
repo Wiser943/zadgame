@@ -36,6 +36,15 @@ const hits = new Map();
 const limited = (key, max, ms) => { const n = Date.now(), a = (hits.get(key) || []).filter((t) => n - t < ms); if (a.length >= max) { hits.set(key, a); return true; } a.push(n); hits.set(key, a); return false; };
 setInterval(() => { const n = Date.now(); for (const [k, a] of hits) if (!a.some((t) => n - t < 3600e3)) hits.delete(k); }, 600e3).unref();
 
+/* ---------- give a mover the first free numbered house in their new area, or, once the area is full, the last one (shared) ---------- */
+async function assignHomeSlot(hood, me) {
+  const def = H.NEIGHBOURHOODS.find((x) => x.id === hood), cap = (def && def.cap) || 40;
+  const used = await User.find({ 'ac.hub.hood': hood, 'ac.hub.homeSlot': { $gte: 0 }, _id: { $ne: me } }).select('ac.hub.homeSlot').lean();
+  const taken = new Set(used.map((u) => u.ac.hub.homeSlot));
+  let slot = 0; while (taken.has(slot) && slot < cap - 1) slot++;
+  return slot;
+}
+
 /* ---------- pay a reward once, with a ledger line ---------- */
 async function pay(req, me, amount, note) {
   await ACTxn.create({ user: me, type: 'credit', amount, cpName: 'AllConnect', cpNum: '', note, ref: makeRef(), kind: 'reward' });
@@ -161,7 +170,7 @@ router.get('/me', async (req, res, next) => {
     const claimable = st.list.filter((m) => m.done && !m.claimed).length;
     res.json({
       now, cash: u.ac.cash, joinedAt: u.createdAt,
-      hub: { hood: h.hood || '', hobby: h.hobby || '', done: !!h.done, tourDone: !!h.tourDone, controlsDone: !!h.controlsDone, hasRecovery: !!h.recoveryHash, username: u.acUsername || '', invites: h.invites || 0, invitedBy: !!h.invitedBy },
+      hub: { hood: h.hood || '', homeSlot: Number.isInteger(h.homeSlot) ? h.homeSlot : -1, hobby: h.hobby || '', done: !!h.done, tourDone: !!h.tourDone, controlsDone: !!h.controlsDone, hasRecovery: !!h.recoveryHash, username: u.acUsername || '', invites: h.invites || 0, invitedBy: !!h.invitedBy },
       protection: { active: prot, daysLeft: H.protectionLeftDays(u.createdAt, now), transferMax: H.PROTECT.transferMax, investMax: H.PROTECT.investMax },
       missions: { list: st.list, done: st.list.filter((m) => m.done).length, total: st.list.length, claimable },
       tasks: H.personalTasks({ hobby: h.hobby }, st.list), parcel: parcelState(u, now), timeline: (h.timeline || []).slice(-30).reverse(), map: H.progressMap(h, st.list), recap: recapData,
@@ -192,6 +201,8 @@ router.post('/onboard', async (req, res, next) => {
     if (!hood || !hobby) return bad(res, 400, 'Pick an area and a hobby.');
     const u0 = await ensureAC(me), first = !(u0.ac.hub && u0.ac.hub.done);
     const set = { 'ac.hub.hood': hood, 'ac.hub.hobby': hobby, 'ac.hub.done': true };
+    const movedIn = hood !== ((u0.ac.hub && u0.ac.hub.hood) || ''), prevSlot = u0.ac.hub && u0.ac.hub.homeSlot;
+    if (movedIn || !Number.isInteger(prevSlot) || prevSlot < 0) set['ac.hub.homeSlot'] = await assignHomeSlot(hood, me);  // new address: pick a free house in the new area. Same area as before: keep the one they already have.
     if (job && !u0.ac.jobId) set['ac.jobId'] = job;
     if ((b.gender === 'male' || b.gender === 'female') && !u0.ac.gender) set['ac.gender'] = b.gender;   // chosen once; later changes go through Style
     if (!(u0.ac.hub && u0.ac.hub.lastSeen)) set['ac.hub.lastSeen'] = new Date(now);

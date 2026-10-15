@@ -52,3 +52,23 @@
 .island.open .isl-t b{font-size:13px}.island.open .isl-pp{display:none}.island.open .eq{height:16px}
 .island.open .isl-ctl{display:flex;justify-content:space-around;align-items:center}
 .island .isl-ctl button{border:0;background:none;color:#fff;font-size:17px;width:42px;height:36px}
+
+/* ---- dark mode ---- */
+html[data-theme="dark"] .songify-search .sinput{background:#1e2238;border-color:#2b3150;color:#eef0f7}
+html[data-theme="dark"] .songify-status{color:#9aa0b8}
+html[data-theme="dark"] .songify-player{background:#20243a;border-color:#2e2a4a}
+html[data-theme="dark"] .songify-player img{background:#2a3450}
+html[data-theme="dark"] .songify-track>b{color:#eef0f7}
+html[data-theme="dark"] .songify-track>span{color:#9aa0b8}
+html[data-theme="dark"] .songify-times{color:#7d84a0}
+html[data-theme="dark"] .songify-empty-player{border-color:#343c55;color:#9aa0b8}
+html[data-theme="dark"] .songify-result{background:#14182a;border-bottom-color:rgba(255,255,255,.08);color:#eef0f7}
+html[data-theme="dark"] .songify-result img{background:#2a3450}
+html[data-theme="dark"] .songify-result small{color:#9aa0b8}
+html[data-theme="dark"] .songify-recent-item{background:#1c2036;border-color:#2b3150}
+html[data-theme="dark"] .songify-recent-item small{color:#9aa0b8}
+html[data-theme="dark"] .sg-nav{background:#14182a;border-top-color:rgba(255,255,255,.08)}
+html[data-theme="dark"] .sg-nav button{color:#9aa0b8}
+html[data-theme="dark"] .sg-title{color:#eef0f7}
+html[data-theme="dark"] .sp-ic{color:#9aa0b8}
+html[data-theme="dark"] .sp-ctl button{color:#c7cce0}
