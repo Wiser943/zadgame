@@ -313,7 +313,20 @@ router.get('/visit/:id', async (req, res, next) => {
       propertyName = require('../utils/acproperties').HOMES[property.type]?.name || 'Home';
     }
     notify(io(req), f.other, { icon: '👋', text: `${label(req.user)} visited your place`, kind: 'friend' }).catch(() => {});
-    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName } });
+    res.json({
+      host: {
+        id: f.other,
+        name: label(host),
+        username: host.acUsername || host.displayName,
+        paint,
+        items,
+        itemsCount: items.length,
+        propertyId,
+        propertyName,
+        gender: (host.ac && host.ac.gender) || 'male',
+        look: (host.ac && host.ac.render) || null
+      }
+    });
   } catch (e) { next(e); }
 });
 router.post('/buy-food/:id', async (req, res, next) => {

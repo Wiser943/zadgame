@@ -137,8 +137,25 @@ svg.room{position:absolute;left:-4%;width:108%;height:auto;top:clamp(96px,17%,17
 .cin2{display:flex;gap:8px;align-items:center}.at{color:var(--mut);font-weight:700}.fopt{display:flex;justify-content:space-between;align-items:center;width:100%;border:0;background:#f3f4f9;border-radius:16px;padding:13px 15px;margin-top:8px;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);text-align:left}.fopt.red{background:#fdecec;color:#c0262b}.fopt.out{margin-top:20px;justify-content:center}
 .card2{background:#f6f7fb;border-radius:16px;padding:12px 14px}.kv{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13.5px}.kv span{color:var(--mut)}.okc{color:var(--grn)}
 .app .bdg{position:absolute;top:-5px;left:calc(50% + 14px);min-width:18px;height:18px;border-radius:99px;background:#ef4a5f;color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;padding:0 4px;z-index:3;border:1.5px solid #fff}.bdg:empty{display:none}
-/* visiting */
-#visit{position:absolute;inset:0;z-index:45;display:none;background:#17306e}.vroom{position:absolute;left:-4%;width:108%;top:20%;height:auto}.vtop{position:absolute;top:calc(10px + var(--sat));left:10px;right:10px;display:flex;justify-content:space-between;gap:8px}.vtop .pill{padding:9px 16px;font-weight:700;font-size:13px;border:0}.vnote{position:absolute;left:14px;right:14px;bottom:calc(24px + var(--sab));padding:12px 16px;text-align:center;font-weight:600;font-size:13px}
+/* visiting 3D overlay */
+#visit{position:absolute;inset:0;z-index:45;display:none;background:transparent;pointer-events:none}
+.vtop{position:absolute;top:calc(10px + var(--sat));left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;pointer-events:auto}
+.vtop-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;overflow:hidden}
+.vtitle{max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vtop .pill,.vactionbar .pill,.vchatbar .pill{padding:8px 14px;font-weight:700;font-size:13px;border:0;background:rgba(16,24,40,0.8);color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,0.25);cursor:pointer}
+.vleave{background:rgba(229,72,77,0.88) !important;color:#fff !important;flex-shrink:0}
+.vbadge{color:#3ddc84 !important;font-size:12px !important;flex-shrink:0}
+.vactionbar{position:absolute;top:calc(56px + var(--sat));left:10px;display:flex;gap:6px;flex-wrap:wrap;pointer-events:auto}
+.vchatbar{position:absolute;bottom:calc(64px + var(--sab));left:12px;right:12px;display:flex;gap:6px;pointer-events:auto}
+.vchatbar input{flex:1;background:rgba(16,24,40,0.85);border:1px solid rgba(255,255,255,0.2);border-radius:99px;padding:8px 14px;color:#fff;font-size:13px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);outline:none;min-width:0}
+.vchatsend{flex-shrink:0}
+.vnote{position:absolute;left:14px;right:14px;bottom:calc(18px + var(--sab));padding:9px 14px;text-align:center;font-weight:600;font-size:12px;background:rgba(16,24,40,0.75);color:#e2e8f0;border-radius:99px;pointer-events:auto}
+#r3d-tags{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:20}
+.r3d-tag{position:absolute;top:0;left:0;display:flex;flex-direction:column;align-items:center;transform:translate(-50%, -100%);pointer-events:none;will-change:transform}
+.r3d-nametag{background:rgba(12,17,30,0.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.18);box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.r3d-dot{color:#3ddc84;font-size:9px}
+.r3d-bubble{background:#fff;color:#121826;font-size:12px;font-weight:600;padding:6px 12px;border-radius:14px;box-shadow:0 4px 15px rgba(0,0,0,0.3);margin-bottom:6px;position:relative;max-width:180px;word-break:break-word;text-align:center}
+.r3d-bubble::after{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff}
 
 /* ---- desktop / tablet: centred phone-sized stage, brand panel, full-width GameHub ---- */
 .deskside{display:none}
@@ -1032,7 +1049,7 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .avi{background:#2b3150}
 :where(html[data-theme="dark"]) .rbtn.gry{background:#232842;color:#a9afc6}
 :where(html[data-theme="dark"]) .seg2{background:#1b2034}
-:where(html[data-theme="dark"]) .seg2 .on{background:#1b2034}
+:where(html[data-theme="dark"]) .seg2 .on{background:#33465e;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 :where(html[data-theme="dark"]) .banner{background:#1b2034;color:#a9afc6}
 :where(html[data-theme="dark"]) .banner button{color:#a9afc6}
 :where(html[data-theme="dark"]) .uic{background:#1b2034}
@@ -1105,7 +1122,7 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .gtrend a{background:#1b2034}
 :where(html[data-theme="dark"]) .grx{background:#1b2034}
 :where(html[data-theme="dark"]) .gcs .gim{background:#232842}
-:where(html[data-theme="dark"]) .gdots i.on{background:#1b2034}
+:where(html[data-theme="dark"]) .gdots i.on{background:#fff}
 :where(html[data-theme="dark"]) .gpo{border:1.5px solid rgba(255,255,255,.12);background:#1b2034}
 :where(html[data-theme="dark"]) .gpo.res{border-color:rgba(255,255,255,.12);background:#1b2034}
 :where(html[data-theme="dark"]) .gpo.res u{background:#232842}
@@ -1122,7 +1139,7 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .sfoot a, :where(html[data-theme="dark"]) .sfoot .official{color:#e3e6f1}
 :where(html[data-theme="dark"]) .sfoot .official{color:#a9afc6}
 :where(html[data-theme="dark"]) .banner2{background:#1b2034}
-:where(html[data-theme="dark"]) .viewctl button{color:#e3e6f1}
+:where(html[data-theme="dark"]) .viewctl button{background:rgba(28,34,54,0.92);color:#e3e6f1;border:1px solid rgba(255,255,255,.12);box-shadow:0 2px 8px rgba(0,0,0,.4)}
 :where(html[data-theme="dark"]) .newg{background:#1b2034;color:#a9afc6}
 :where(html[data-theme="dark"]) .gdel{background:#1b2034}
 :where(html[data-theme="dark"]) .glock{background:#1b2034}
@@ -1168,7 +1185,7 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .phpop{background:#1b2034}
 :where(html[data-theme="dark"]) .phpop button.on{background:#1b2034;color:#a9afc6}
 :where(html[data-theme="dark"]) .phpop button i:first-child{color:#a9afc6}
-:where(html[data-theme="dark"]) .pgdots i.on{background:#1b2034}
+:where(html[data-theme="dark"]) .pgdots i.on{background:#fff}
 :where(html[data-theme="dark"]) .ic.adic{color:#e3e6f1}
 :where(html[data-theme="dark"]) .adif{background:#1b2034}
 :where(html[data-theme="dark"]) .mutebtn{color:#e3e6f1}
@@ -1227,7 +1244,7 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .hdots i{background:#232842}
 :where(html[data-theme="dark"]) .hhero p{color:#a9afc6}
 :where(html[data-theme="dark"]) .hopt{background:#1b2034}
-:where(html[data-theme="dark"]) .hopt.on{background:#1b2034}
+:where(html[data-theme="dark"]) .hopt.on{border-color:#075BFF;background:#1e2d52}
 :where(html[data-theme="dark"]) .rbigbtn:disabled{background:#2b3150}
 :where(html[data-theme="dark"]) .rbigbtn.ghost{background:#1b2034}
 :where(html[data-theme="dark"]) .hnames button{background:#1b2034}
@@ -1267,7 +1284,7 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) .stinfo{background:#1b2034}
 :where(html[data-theme="dark"]) .stwarn{background:#1b2034}
 :where(html[data-theme="dark"]) .stseason{background:#1b2034}
-:where(html[data-theme="dark"]) .stseason.on{background:#1b2034}
+:where(html[data-theme="dark"]) .stseason.on{background:#143825}
 :where(html[data-theme="dark"]) .stcol-set{background:#1b2034}
 :where(html[data-theme="dark"]) .stmile span{background:#232842;color:#a9afc6}
 :where(html[data-theme="dark"]) .stmile span.got{background:#232842}
@@ -1290,10 +1307,10 @@ html[data-theme="dark"] .home-card{background:#20263a;border-color:#343c55;color
 :where(html[data-theme="dark"]) #mtbar{background:#1b2034}
 :where(html[data-theme="dark"]) .mtclose{background:#1b2034}
 :where(html[data-theme="dark"]) .mtm button{border:2px solid rgba(255,255,255,.12);background:#1b2034}
-:where(html[data-theme="dark"]) .mtm button.on{background:#1b2034}
+:where(html[data-theme="dark"]) .mtm button.on{border-color:var(--grn);background:#1e2d52}
 :where(html[data-theme="dark"]) .mtn{color:#a9afc6}
 :where(html[data-theme="dark"]) .mtf{border:2px solid rgba(255,255,255,.12);background:#1b2034}
-:where(html[data-theme="dark"]) .mtf.on{background:#1b2034}
+:where(html[data-theme="dark"]) .mtf.on{background:#3d3210;border-color:#f5b301}
 :where(html[data-theme="dark"]) .mtr{border-bottom:1px solid rgba(255,255,255,.12)}
 :where(html[data-theme="dark"]) .mtr>button, :where(html[data-theme="dark"]) .mts button{background:#1b2034}
 :where(html[data-theme="dark"]) .mtc{background:#1b2034}
@@ -1333,6 +1350,22 @@ html[data-theme="dark"] .cin2 input,
 html[data-theme="dark"] .lghd button,
 html[data-theme="dark"] .lgtabs button,
 html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
+html[data-theme="dark"] #app { background: var(--dark-bg, #0a1230); }
+html[data-theme="dark"] #splash { background: linear-gradient(180deg, #0b1228 0%, #131b3b 55%, #182218 100%); color: var(--ink); }
+html[data-theme="dark"] .scene { background: radial-gradient(130% 55% at 50% 100%, #1e2815 0, #131d14 42%, #080d1f 43%); }
+html[data-theme="dark"] .pill { border: 1px solid rgba(255,255,255,0.08); }
+html[data-theme="dark"] .av { box-shadow: 0 0 0 3px rgba(255,255,255,0.15); }
+html[data-theme="dark"] .toast { background: var(--dark-panel, #1f253d); color: #fff; border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+html[data-theme="dark"] .clean { background: var(--pill); color: var(--ink); border: 1px solid rgba(255,255,255,0.08); }
+html[data-theme="dark"] .cleanbar .pill { background: var(--pill); color: var(--ink); border: 1px solid rgba(255,255,255,0.08); }
+html[data-theme="dark"] .menubtn { background: var(--pill); color: var(--ink); border: 1px solid rgba(255,255,255,0.08); }
+html[data-theme="dark"] .emotes button { background: rgba(28,34,54,0.92); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+html[data-theme="dark"] .emotes button.on { background: #075BFF; border-color: #075BFF; box-shadow: 0 0 0 3px rgba(7,91,255,.35); }
+html[data-theme="dark"] .tabs .on { background: #3b4266; color: #fff; }
+html[data-theme="dark"] .maphud button.on { background: #3b4266; color: #fff; }
+html[data-theme="dark"] .r3d-nametag { background: rgba(10, 14, 26, 0.92); border: 1px solid rgba(255,255,255,0.22); color: #fff; }
+html[data-theme="dark"] .r3d-bubble { background: #1c2235; color: #f1f5f9; border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+html[data-theme="dark"] .r3d-bubble::after { border-top-color: #1c2235; }
 .darkness-control{padding:14px 14px 12px;border-top:1px solid rgba(130,140,170,.15)}
 .darkness-control label{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink)}
 .darkness-control label span{display:flex;flex-direction:column;gap:3px}.darkness-control label b{font-size:13.5px}.darkness-control label small{font-size:11.5px;color:var(--mut)}

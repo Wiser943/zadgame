@@ -11,6 +11,7 @@ const { notify } = require('../utils/acnotify');
 module.exports = function initAllConnect(io) {
   const nsp = io.of('/ac');
   const online = new Map();                 // socket.id -> { id, name }
+  const roomMap = new Map();                // roomId -> Map(socket.id -> playerState)
   const stats = { visits: 0, gems: 0 };
   ACStat.findById('global').lean().then((d) => { if (d) { stats.visits = d.visits; stats.gems = d.gems; } }).catch(() => {});
   const bump = (f) => {
@@ -49,8 +50,109 @@ module.exports = function initAllConnect(io) {
         User.updateOne({ _id: u.id }, { $set: { 'ac.mapPos': { x: p.x, y: p.y, h: p.h } } }).catch(() => {});
       }
     });
+    // Room Visit multiplayer presence & live movement tracking
+    let activeRoomId = null;
+    const leaveActiveRoom = () => {
+      if (!activeRoomId) return;
+      const rm = roomMap.get(activeRoomId);
+      if (rm) {
+        rm.delete(socket.id);
+        socket.to('room:' + activeRoomId).emit('room:user_left', { id: u.id });
+        if (rm.size === 0) roomMap.delete(activeRoomId);
+      }
+      socket.leave('room:' + activeRoomId);
+      activeRoomId = null;
+    };
+
+    socket.on('room:join', async (data) => {
+      const rid = data && data.roomId;
+      if (!rid) return;
+      if (activeRoomId && activeRoomId !== rid) leaveActiveRoom();
+      activeRoomId = rid;
+      socket.join('room:' + rid);
+      if (!roomMap.has(rid)) roomMap.set(rid, new Map());
+      const rm = roomMap.get(rid);
+
+      let g = (u.ac && (u.ac.gender === 'male' || u.ac.gender === 'female')) ? u.ac.gender : 'male';
+      let l = (u.ac && u.ac.render) || null;
+      try {
+        const entry = await rosterEntry(u.id);
+        if (entry) { g = entry.g || g; l = entry.l || l; }
+      } catch (e) {}
+
+      const playerState = {
+        id: u.id,
+        name: u.displayName,
+        g,
+        l,
+        x: Number.isFinite(data.x) ? data.x : -1.0,
+        y: 0,
+        z: Number.isFinite(data.z) ? data.z : 1.2,
+        rot: Number.isFinite(data.rot) ? data.rot : 0,
+        moving: !!data.moving,
+        anim: data.anim || 'idle',
+        area: data.area || 'room'
+      };
+      rm.set(socket.id, playerState);
+
+      const occupants = [...rm.values()].filter(p => p.id !== u.id);
+      socket.emit('room:roster', { roomId: rid, players: occupants });
+      socket.to('room:' + rid).emit('room:user_joined', playerState);
+    });
+
+    socket.on('room:move', (data) => {
+      if (!activeRoomId || !data) return;
+      const rm = roomMap.get(activeRoomId);
+      if (!rm) return;
+      const p = rm.get(socket.id);
+      if (!p) return;
+      if (Number.isFinite(data.x)) p.x = data.x;
+      if (Number.isFinite(data.y)) p.y = data.y;
+      if (Number.isFinite(data.z)) p.z = data.z;
+      if (Number.isFinite(data.rot)) p.rot = data.rot;
+      p.moving = !!data.moving;
+      if (data.anim) p.anim = data.anim;
+      if (data.area) p.area = data.area;
+
+      socket.to('room:' + activeRoomId).emit('room:user_moved', {
+        id: u.id,
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        rot: p.rot,
+        moving: p.moving,
+        anim: p.anim,
+        area: p.area
+      });
+    });
+
+    socket.on('room:emote', (data) => {
+      if (!activeRoomId || !data) return;
+      socket.to('room:' + activeRoomId).emit('room:user_emote', {
+        id: u.id,
+        emote: data.emote
+      });
+    });
+
+    socket.on('room:chat', (data) => {
+      if (!activeRoomId || !data || !data.text) return;
+      const text = String(data.text).slice(0, 120);
+      nsp.to('room:' + activeRoomId).emit('room:user_chat', {
+        id: u.id,
+        name: u.displayName,
+        text
+      });
+    });
+
+    socket.on('room:leave', leaveActiveRoom);
+
     // The old tap-to-find gem was replaced by the admin-controlled daily gem hunt (routes/acgem.js).
-    socket.on('disconnect', () => { online.delete(socket.id); acPresence.disconnect(u.id); push(); });
+    socket.on('disconnect', () => {
+      leaveActiveRoom();
+      online.delete(socket.id);
+      acPresence.disconnect(u.id);
+      push();
+    });
   });
 
   setInterval(() => { if (online.size) nsp.emit('players', roster()); }, 3500).unref();
