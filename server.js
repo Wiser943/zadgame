@@ -152,14 +152,17 @@ async function main() {
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
   app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
-  // AllConnect is the platform (home page). GameHub is an app inside it, served at /gamehub.
+  // Marketing landing at /. The life-sim is /play. GameHub stays at /gamehub.
   // Old GameHub invite/share links (/?code=..., ?spectate=..., ?h=..., ?by=...) still open GameHub directly.
   const GAMEHUB = path.join(__dirname, 'public', 'index.html');
+  const LANDING = path.join(__dirname, 'public', 'landing.html');
+  const ALLCONNECT = path.join(__dirname, 'public', 'allconnect', 'index.html');
   app.get('/', (req, res) => {
     const q = req.query || {};
     if (q.code || q.spectate || q.h || q.by) return res.sendFile(GAMEHUB);
-    res.sendFile(path.join(__dirname, 'public', 'allconnect', 'index.html'));
+    res.sendFile(LANDING);
   });
+  app.get('/play', (req, res) => res.sendFile(ALLCONNECT));
   app.get('/gamehub', (req, res) => res.sendFile(GAMEHUB));
   app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
   app.get('/status', (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));

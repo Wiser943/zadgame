@@ -40,6 +40,7 @@ const NET = {
       $('onl').textContent = fmtN(m.online);
     });
     this.sock.on('players', drawPlayers);
+    this.sock.on('pos', p => { if (window.MAP3D) MAP3D.applyPos(p) });
     ['dm', 'update', 'friends', 'seen', 'cash', 'gist:new', 'gmsg', 'group', 'dmupd', 'gmsgupd'].forEach(ev => this.sock.on(ev, p => window.PH && PH.on(ev, p)));
     this.sock.on('style:changed', () => { if (window.STYLE && STYLE.me) STYLE.reload() });
     this.sock.on('card', () => window.CARD && CARD.fetch());   // result cards: promotions, investment payouts, invite bonuses
@@ -58,6 +59,8 @@ function findGem() { if (window.GEM) GEM.open() }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } [c]));
 
 function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
+function mapChip(btn) { const k = btn.getAttribute('data-f'); if (!window.MAP3D || !k) return; const on = !MAP3D.hud[k]; MAP3D.setFilter(k, on); btn.classList.toggle('on', !!on) }
+function mapCity(btn) { if (!window.MAP3D) return; document.querySelectorAll('#mapcities button').forEach(b => b.classList.toggle('on', b === btn)); MAP3D.setCity(btn.getAttribute('data-city')) }
 
 function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
@@ -69,6 +72,8 @@ function applyAC(ac) {
   if (S.activeProperty) S.paint = S.activeProperty.paint || S.legacyPaint;
   else S.paint = S.legacyPaint;
   S.wish = ac.wish || [];
+  S.mapPos = ac.mapPos || null;
+  if (S.mapPos && window.MAP3D && !S._mapRestored) { S._mapRestored = true; MAP3D.restorePos(S.mapPos); }
   setPaint(S.paint);
   if (window.ROOM3D) { ROOM3D.setGender(S.gender || 'male'); ROOM3D.sync() }
   if (window.BUY && BUY.active) BUY.draw();
@@ -85,6 +90,7 @@ function authMode(m) {
   $('fpw').autocomplete = m == 'login' ? 'current-password' : 'new-password';
   $('aerr').textContent = ''
 }
+if (location.hash === '#register' || location.hash === '#sign-up') authMode('register');
 async function doAuth() {
   const id = $('fid').value.trim(),
     pw = $('fpw').value,

@@ -74,6 +74,7 @@ const UserSchema = new mongoose.Schema({
     wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },
+    mapPos: { x: { type: Number }, y: { type: Number }, h: { type: Number } },
     gemsFound: { type: Number, default: 0 },
     sentDay: { type: String, default: '' },
     sentAmt: { type: Number, default: 0 },

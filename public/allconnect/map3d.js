@@ -27,7 +27,7 @@
   const PINS = [
     ['Naija Radio', '📻', 200, 150, 'radio'], ['Viewing Centre', '⚽', 280, 235, 'hall'], ['Amala Shitta', '🍲', 175, 300, 'shop'],
     ['Home', '🏠', 470, 255, 'home', 'home'], ['CcHub', '💡', 740, 190, 'glass'], ['UNILAG', '🎓', 800, 300, 'dome'],
-    ['Airport · Coming soon', '✈️', 110, 100, 'airport', 'soon-y'], ['Boat Cruise', '⛵', 600, 470, 'boat'],
+    ['Airport', '✈️', 110, 100, 'airport'], ['Refinery · Coming soon', '🛢️', 88, 330, 'refinery', 'soon-y'], ['Boat Cruise', '⛵', 600, 470, 'boat'],
     ['i-Fitness', '🏋️', 440, 650, 'gym'], ['High Court', '⚖️', 220, 690, 'court'], ['The Library', '📚', 690, 665, 'hall'],
     ['Eko Hotels', '🏨', 400, 790, 'hotel'], ['Freedom Park', '🎭', 240, 810, 'park'], ['Quilox', '🌐', 640, 800, 'club'],
     ['Ivory Rooftop', '🕯', 770, 865, 'tower'], ['Eko Casino', '🎰', 360, 910, 'club'],
@@ -185,7 +185,8 @@
     // landmarks
     const LM = { radio: [30, 30, 70, '#e9e4d6', '#c0392b', 'flat', 0, 1], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18], shop: [40, 32, 24, '#f2d58a', '#d94f2b', 'hip', 12],
       home: [48, 40, 30, '#f1e6cf', '#b3392b', 'hip', 20], glass: [52, 52, 80, '#7fb7e0', '#9fd0f2', 'flat'], dome: [74, 50, 40, '#efe9dc', '#2f6fd8', 'dome'],
-      airport: [120, 50, 28, '#dfe3e6', '#9aa3ab', 'flat'], gym: [58, 44, 34, '#e8505b', '#8e2530', 'flat'], court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22],
+      airport: [132, 58, 22, '#e8edf2', '#b8c2cc', 'flat'], gym: [58, 44, 34, '#e8505b', '#8e2530', 'flat'], court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22],
+      refinery: [48, 36, 22, '#c9ced4', '#8c8f94', 'flat'],
       hotel: [46, 46, 110, '#d9e8f2', '#8fb4cf', 'flat'], club: [60, 46, 40, '#3a2a55', '#d640a8', 'flat'], tower: [40, 40, 100, '#e9dcc0', '#d9a93a', 'flat'], boat: null, park: null };
     PINS.forEach(p => {
       if (p[5] === 'district') return;
@@ -196,11 +197,31 @@
       box(x, y, L[0], L[1], L[2], L[3], L[4], { style: L[5], rh: L[6] || 0, pin: 1, tag: k });
       if (k === 'radio') objs.push({ t: 'mast', x: x + 12, y, h: 150, r: 6 });
     });
-    // airport runway decal
-    flats.push({ c: '#6d7075', r: [30, 130, 220, 18] }); flats.push({ c: '#6d7075', r: [160, 40, 14, 90] });
+    const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    // airport: terminal, apron, taxiway, parked aircraft (isometric city-map layout)
+    flats.push({ c: '#9aa3ab', r: [28, 42, 210, 92] });
+    flats.push({ c: '#6d7075', r: [28, 128, 268, 24] }); flats.push({ c: '#cfd4d8', r: [42, 136, 240, 5] });
+    flats.push({ c: '#6d7075', r: [168, 38, 18, 96] }); flats.push({ c: '#cfd4d8', r: [174, 46, 6, 80] });
+    flats.push({ c: '#d7dde2', r: [38, 48, 118, 72] });
+    box(72, 68, 86, 48, 16, '#eef2f5', '#c5ccd4', { tag: 'airport' });
+    box(48, 58, 22, 16, 10, '#dfe3e6', '#9aa3ab', { walk: 1 });
+    box(96, 58, 22, 16, 10, '#dfe3e6', '#9aa3ab', { walk: 1 });
+    box(188, 78, 42, 18, 8, '#cfd8e0', '#8c8f94', { walk: 1 });
+    box(230, 92, 28, 14, 7, '#c5ccd2', '#8c8f94', { walk: 1 });
+    [[58, 118, 0], [92, 122, .4], [210, 118, 3.2], [248, 140, 0]].forEach(([px, py, hdg]) => objs.push({ t: 'plane', x: px, y: py, hdg, r: 16 }));
+    // refinery tanks, pipes and plant
+    [[58, 312], [82, 312], [70, 334], [104, 328], [46, 336]].forEach(([tx, ty], i) => { objs.push({ t: 'tank', x: tx, y: ty, s: .95 + (i % 3) * .12, r: 14, h: 16 }); blocks.push([tx - 12, ty - 12, tx + 12, ty + 12]); });
+    box(118, 318, 28, 18, 22, '#b8bec6', '#8c8f94');
+    mast(52, 304, 36); mast(110, 348, 28);
+    // poster / billboard wall on the east mainland (dense ad grid)
+    let ps = 211; const pr = () => (ps = (ps * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 12; i++) for (let j = 0; j < 14; j++) {
+      const x = 612 + i * 26 + (pr() - .5) * 3, y = 36 + j * 24 + (pr() - .5) * 3;
+      if (!isLand(x, y) || near(x, y, 42) || inZone(x, y, 6)) continue;
+      objs.push({ t: 'poster', x, y, r: 10, h: 14, hue: Math.floor(pr() * 360), mega: pr() < .1 });
+    }
     // generic city blocks
     const pals = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6', '#ead4c8', '#e3e0d3', '#cfd8e0', '#f2eee2'], roofs = ['#b0b6bb', '#9c3b22', '#c0b9a6', '#a4aeb8', '#8c8f94'];
-    const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
     for (let cx = 150; cx < 970; cx += 100) {
       for (const [y0, y1] of [[40, 120], [130, 240], [250, 350], [585, 640], [650, 750], [760, 860], [870, 940]]) {
         const cy = (y0 + y1) / 2 + 6;
@@ -279,7 +300,8 @@
 
   /* ---------- state ---------- */
   const M = { cv: null, ctx: null, cam: null, on: false, raf: 0, last: 0, w: 0, h: 0, dpr: 1, D: 300, tD: 300, follow: true, me: null, others: new Map(), hits: [], emote: null, path: null, pi: 0, dest: null, vel: [0, 0] };
-  const cam = new Camera({ F: 500, tilt: .95, yaw: 0, D: 300 }); M.cam = cam;
+  const HUD = { goslow: 1, ads: 1, neighbours: 1, sea: 1, gov: 1, city: 'lagos' };
+  const cam = new Camera({ F: 500, tilt: 1.02, yaw: -.28, D: 340 }); M.cam = cam;
   const getS = () => (typeof S !== 'undefined' ? S : null), getNET = () => (typeof NET !== 'undefined' ? NET : null);
   const gx = () => (getS() && getS().gender) || 'male';
 
@@ -437,7 +459,7 @@
   }
   function lrGround(ctx) {
     if (!LRX.on || cam.D > 700) return;
-    if (LRX.asph) for (const t of LRX.tiles) lrTex(ctx, LRX.asph, t.x, t.y, t.w, t.h, .5, 0, .62, [t.sx, t.sy, 128, 128]);
+    if (LRX.asph) for (const t of LRX.tiles) lrTex(ctx, LRX.asph, t.x, t.y, t.w, t.h, .5, 0, .82, [t.sx, t.sy, 128, 128]);
     for (const d of LRX.decals) { const im = LRX.img[d.k]; if (im) lrTex(ctx, im, d.x, d.y, d.w, d.h, .7, d.a, d.k === 'zebra' ? .8 : .95); }
   }
   /* small flat roofs get a Lagos roof: zinc patchwork, red metal, blue tarp, clothesline, satellite dish, water tank */
@@ -464,8 +486,9 @@
       const cx = (f[0][0] + f[1][0]) / 2, cy = (f[0][1] + f[1][1]) / 2;
       if ((cam.px - cx) * f[2] + (cam.py - cy) * f[3] <= 0) continue;
       poly(ctx, [[f[0][0], f[0][1], 0], [f[1][0], f[1][1], 0], [f[1][0], f[1][1], h], [f[0][0], f[0][1], h]], mix(o.wall, f[4] - .04), 'rgba(0,0,0,.18)');
-      if (o.o.tag === 'glass' || o.h > 60) {                            // window bands
-        for (let z = 8; z < h - 4; z += 10) poly(ctx, [[f[0][0], f[0][1], z], [f[1][0], f[1][1], z], [f[1][0], f[1][1], z + 3.5], [f[0][0], f[0][1], z + 3.5]], 'rgba(40,70,100,.28)');
+      if (o.o.tag === 'glass' || o.h > 24) {                            // window bands
+        const step = o.h > 60 ? 10 : 8, band = o.h > 60 ? 3.5 : 2.4;
+        for (let z = 6; z < h - 4; z += step) poly(ctx, [[f[0][0], f[0][1], z], [f[1][0], f[1][1], z], [f[1][0], f[1][1], z + band], [f[0][0], f[0][1], z + band]], o.o.tag === 'glass' ? 'rgba(40,70,100,.32)' : 'rgba(30,40,55,.22)');
       }
       if (o.o.pin && o.style !== 'tower') {                                // door
         const t0 = .42, t1 = .58; if (f[2] === 0 && f[3] === 1) poly(ctx, [[f[0][0] + (f[1][0] - f[0][0]) * t0, f[0][1], 0], [f[0][0] + (f[1][0] - f[0][0]) * t1, f[0][1], 0], [f[0][0] + (f[1][0] - f[0][0]) * t1, f[0][1], 12], [f[0][0] + (f[1][0] - f[0][0]) * t0, f[0][1], 12]], '#4a2f1c');
@@ -524,6 +547,100 @@
     ctx.strokeStyle = '#c0392b'; ctx.lineWidth = Math.max(1.2, 2.4 * a.k); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, Math.max(1.5, 3 * a.k), 0, TAU); ctx.fill();
   }
+  function drawTank(ctx, o) {
+    const r = 9 * (o.s || 1), h = 16 * (o.s || 1);
+    poly(ctx, [[o.x - r, o.y - r * .4, 0], [o.x + r, o.y - r * .4, 0], [o.x + r, o.y - r * .4, h], [o.x - r, o.y - r * .4, h]], '#c5ccd2', 'rgba(0,0,0,.25)');
+    poly(ctx, [[o.x + r, o.y - r * .4, 0], [o.x + r, o.y + r * .4, 0], [o.x + r, o.y + r * .4, h], [o.x + r, o.y - r * .4, h]], '#9aa3ab');
+    const cap = cam.project(o.x, o.y, h, {}); ctx.fillStyle = '#dfe3e6'; ctx.beginPath(); ctx.ellipse(cap.x, cap.y, Math.max(3, r * cap.k * .9), Math.max(1.5, r * cap.k * .35), 0, 0, TAU); ctx.fill();
+  }
+  function drawPoster(ctx, o) {
+    const w = o.mega ? 22 : 16, h = o.mega ? 18 : 12, z0 = 4;
+    poly(ctx, [[o.x - w / 2, o.y, z0], [o.x + w / 2, o.y, z0], [o.x + w / 2, o.y, z0 + h], [o.x - w / 2, o.y, z0 + h]], `hsl(${o.hue},62%,46%)`, 'rgba(0,0,0,.28)');
+    poly(ctx, [[o.x - w / 2 + 1.5, o.y, z0 + 1.5], [o.x + w / 2 - 1.5, o.y, z0 + 1.5], [o.x + w / 2 - 1.5, o.y, z0 + h - 1.5], [o.x - w / 2 + 1.5, o.y, z0 + h - 1.5]], `hsl(${(o.hue + 40) % 360},55%,62%)`);
+  }
+  function drawPlane(ctx, o) {
+    const a = o.hdg || 0, c = Math.cos(a), s = Math.sin(a), z = 3;
+    const w = (u, v) => [o.x + u * c - v * s, o.y + u * s + v * c];
+    const fus = [w(-14, -2.4), w(16, -2.4), w(18, 0), w(16, 2.4), w(-14, 2.4)];
+    poly(ctx, fus.map(p => [p[0], p[1], z]), '#eef2f6', 'rgba(0,0,0,.28)');
+    poly(ctx, [w(-2, -10), w(4, -2.2), w(4, 2.2), w(-2, 10)].map(p => [p[0], p[1], z + 1]), '#c5ccd4');
+    poly(ctx, [w(12, -6), w(16, -1), w(16, 1), w(12, 6)].map(p => [p[0], p[1], z + 1.2]), '#9aa3ab');
+    const n = cam.project(o.x + 8 * c, o.y + 8 * s, z + 4, {}); ctx.fillStyle = '#2f6fd8'; ctx.beginPath(); ctx.arc(n.x, n.y, Math.max(1.4, 2.4 * n.k), 0, TAU); ctx.fill();
+  }
+  function onRoad(cx, cy) {
+    return flats.some(f => f.r && f.c === '#b4b8bd' && cx >= f.r[0] - 1 && cx <= f.r[0] + f.r[2] + 1 && cy >= f.r[1] - 1 && cy <= f.r[1] + f.r[3] + 1);
+  }
+  function drawPlotFields(ctx) {
+    if (cam.D > 1400) return;
+    const step = cam.D > 800 ? 22 : cam.D > 450 ? 16 : 12;
+    for (let x = 24; x < 976; x += step) for (let y = 24; y < 976; y += step) {
+      const cx = x + step / 2, cy = y + step / 2; if (!isLand(cx, cy) || inZone(cx, cy, 2) || onRoad(cx, cy) || onBridge(cx, cy)) continue;
+      const alt = ((x / step | 0) + (y / step | 0)) % 2;
+      poly(ctx, rect(x + .4, y + .4, step - 1.1, step - 1.1, .28), alt ? '#b7e07a' : '#8fc85a');
+    }
+  }
+  function drawRoadMarks(ctx) {
+    if (cam.D > 780) return;
+    ctx.save();
+    for (const f of flats) {
+      if (!f.r || f.c !== '#b4b8bd') continue;
+      const [x, y, w, h] = f.r, horiz = w > h, L = horiz ? w : h;
+      for (let d = 10; d < L - 8; d += 16) {
+        const rx = horiz ? x + d : x + w / 2 - .7, ry = horiz ? y + h / 2 - .7 : y + d;
+        if (!isLand(rx, ry) && !onBridge(rx, ry)) continue;
+        poly(ctx, rect(rx, ry, horiz ? 8 : 1.4, horiz ? 1.4 : 8, .85), 'rgba(255,255,255,.55)');
+      }
+    }
+    ctx.restore();
+  }
+  function drawGoSlow(ctx, t) {
+    if (!HUD.goslow || cam.D > 1200) return;
+    const lanes = [[120, 240, 760, 14], [530, 380, 24, 190], [240, 372, 24, 204], [100, 750, 800, 14]];
+    for (const [x, y, w, h] of lanes) {
+      poly(ctx, rect(x, y, w, h, 1.1), `rgba(255,140,40,${.14 + Math.sin(t * 2 + x) * .04})`);
+    }
+  }
+  function drawOceanLabel(ctx) {
+    if (cam.D < 280) return;
+    const p = cam.project(500, 990, 0, tmp); if (tmp.z < NEAR) return;
+    ctx.save(); ctx.globalAlpha = .55; ctx.fillStyle = '#eaf6ff'; ctx.font = '800 13px Outfit,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.letterSpacing = '4px';
+    ctx.fillText('ATLANTIC OCEAN', tmp.x, tmp.y + 28); ctx.restore();
+  }
+  function drawClusters(ctx) {
+    if (!HUD.neighbours || cam.D > 1400) return;
+    const spots = PINS.filter(p => p[5] !== 'soon-y').map(p => ({ x: p[2], y: p[3], n: 0, live: 0, pin: p }));
+    const people = []; if (M.me) people.push({ av: M.me, live: 1 }); if (HUD.neighbours) for (const o of M.others.values()) people.push({ av: o.av, live: o.live ? 1 : 0 });
+    for (const p of people) { let best = null, bd = 80; for (const s of spots) { const d = Math.hypot(p.av.x - s.x, p.av.y - s.y); if (d < bd) { bd = d; best = s } } if (best) { best.n++; best.live += p.live; } }
+    ctx.font = '800 11px Outfit,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const s of spots) {
+      if (s.n < 1) continue;
+      const b = cam.project(s.x + 18, s.y - 8, 28, tmp); if (tmp.z < NEAR || tmp.x < 0 || tmp.x > M.w || tmp.y < 0 || tmp.y > M.h) continue;
+      const label = s.n >= 1000 ? '1000+' : s.n >= 20 ? (Math.floor(s.n / 10) * 10) + '+' : String(s.n);
+      const hue = (hashStr(s.pin[0]) % 5); const col = ['#22b573', '#8e5bd1', '#2f6fd8', '#e5484d', '#f59e0b'][hue];
+      const w = Math.max(36, ctx.measureText(label).width + 22);
+      ctx.fillStyle = '#fff'; rr(ctx, b.x - w / 2, b.y - 11, w, 22, 11); ctx.fill();
+      ctx.fillStyle = s.live ? '#22b573' : col; ctx.beginPath(); ctx.arc(b.x - w / 2 + 11, b.y, 6, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#1b2236'; ctx.fillText(label, b.x + 6, b.y + .5);
+    }
+  }
+  function drawLiveTracks(ctx, t) {
+    if (!HUD.neighbours) return;
+    for (const o of M.others.values()) {
+      if (o.trail && o.trail.length > 1 && cam.D < 900) {
+        ctx.save(); ctx.strokeStyle = 'rgba(34,181,115,.35)'; ctx.lineWidth = 2; ctx.beginPath();
+        o.trail.forEach((p, i) => { const q = cam.project(p[0], p[1], .8, {}); if (q.z < NEAR) return; i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+        ctx.stroke(); ctx.restore();
+      }
+      const a = o.av, gnd = cam.project(a.x, a.y, 0, tmp); if (tmp.z < NEAR || tmp.x < -20 || tmp.x > M.w + 20 || tmp.y < -20 || tmp.y > M.h + 20) continue;
+      const pulse = 1 + Math.sin(t * 4 + hashStr(o.name || '')) * .18;
+      ctx.fillStyle = o.live ? `rgba(34,181,115,${.22 * pulse})` : 'rgba(47,111,216,.16)';
+      ctx.beginPath(); ctx.ellipse(gnd.x, gnd.y, 10 * gnd.k * pulse, 5 * gnd.k * pulse, 0, 0, TAU); ctx.fill();
+      if (cam.D > 520) {
+        ctx.fillStyle = o.live ? '#22b573' : '#2f6fd8'; ctx.beginPath(); ctx.arc(gnd.x, gnd.y - 14 * gnd.k, Math.max(4, 6 * gnd.k), 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+    }
+  }
 
   function drawPlots(ctx) {
     for (let i = 0; i < ads.n; i++) {
@@ -555,6 +672,7 @@
     LAND.forEach(p => { dep(p, -9, '#6b7d4b'); });
     LAND.forEach(p => { poly(ctx, p.map(q => [q[0], q[1], -4.5]), '#8aa05f'); });
     LAND.forEach(p => { poly(ctx, p.map(q => [q[0], q[1], 0]), '#a9c88c'); });
+    drawPlotFields(ctx);
     // lagoon bridges
     BRIDGES.forEach(b => { poly(ctx, rect(b[0] - 2, b[1], b[2] + 4, b[3], -2), '#6f7378'); poly(ctx, rect(b[0], b[1], b[2], b[3], 1.2), '#8a8f95'); });
     // decals
@@ -563,7 +681,10 @@
       else if (f.r) { if (f.dock) poly(ctx, rect(f.r[0], f.r[1], f.r[2], f.r[3], .8), f.c); else poly(ctx, rect(f.r[0], f.r[1], f.r[2], f.r[3], .4), f.c); }
     }
     lrGround(ctx);
-    drawPlots(ctx);
+    drawRoadMarks(ctx);
+    drawGoSlow(ctx, t);
+    if (HUD.sea) drawPlots(ctx);
+    drawOceanLabel(ctx);
     BRIDGES.forEach(b => { ctx.setLineDash([]); for (let y = b[1] + 6; y < b[1] + b[3] - 6; y += 18) poly(ctx, rect(b[0] + b[2] / 2 - .6, y, 1.2, 8, 1.4), 'rgba(255,255,255,.75)'); });
   }
 
@@ -575,25 +696,80 @@
     const gender = gx();
     if (!M.me || M.me.g !== gender) { const old = M.me; M.me = new Avatar(gender, M.look && M.look.g === gender ? { look: M.look } : {}); M.me.setExt(M.ext || {}); M.me.scale = SC; const n = nearestFree(...cellOf(470, 290)) || [23, 14]; M.me.x = old ? old.x : (n[0] + .5) * CELL; M.me.y = old ? old.y : (n[1] + .5) * CELL; M.me.h = old ? old.h : Math.PI / 2; }
   }
+  function playerKey(p) { return String(p.id || p.name || ''); }
+  function applyLive(o, p) {
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return;
+    const now = performance.now(), dt = Math.max(.05, (now - (o.seen || now)) / 1000);
+    if (o.tx != null) { o.vx = (p.x - o.tx) / dt; o.vy = (p.y - o.ty) / dt; }
+    o.live = true; o.tx = p.x; o.ty = p.y; if (Number.isFinite(p.h)) o.th = p.h; o.st = p.st || o.st;
+    o.go = null; o.seen = now;
+    o.trail = o.trail || [];
+    const last = o.trail[o.trail.length - 1];
+    if (!last || Math.hypot(p.x - last[0], p.y - last[1]) > 1.4) o.trail.push([p.x, p.y]);
+    if (o.trail.length > 18) o.trail.shift();
+  }
   function setPlayers(list) {
-    const keep = new Set(), myName = getNET() && getNET().user && getNET().user.displayName;
-    (list || []).filter(p => p.name !== myName).slice(0, 30).forEach(p => {
-      keep.add(p.name); let o = M.others.get(p.name);
+    const keep = new Set(), net = getNET(), myName = net && net.user && net.user.displayName, myId = net && net.user && String(net.user.id || '');
+    (list || []).filter(p => playerKey(p) && String(p.id || '') !== myId && p.name !== myName).slice(0, 40).forEach(p => {
+      const live = Number.isFinite(p.x) && Number.isFinite(p.y);
+      const key = playerKey(p); let o = M.others.get(key) || [...M.others.values()].find(x => x.name === p.name);
+      if (!live && !o) return;                                   // only draw people with a real map point — no parked placeholders
+      if (live || o) keep.add(key);
       const ls = p.l ? JSON.stringify(p.l) : '';
-      if (o && o.ls !== ls) { o.ls = ls; o.av.setLook(p.l || ACAvatar.defaultRender(o.av.g, { top: o.top })); }       // someone changed their look (or their privacy)
-      if (!o) { const h = hashStr(p.name), sp = spawnPoint(h), top = ['#d9b24a', '#2f9e63', '#d6455a', '#3a7bd5', '#8e5bd1', '#f08a3c'][h % 6], av = new Avatar(p.l && p.l.g ? p.l.g : p.g === 'female' || p.g === 'male' ? p.g : (h % 2 ? 'female' : 'male'), p.l ? { look: p.l } : { top });
-        av.x = sp[0]; av.y = sp[1]; av.h = (h % 628) / 100; av.dance = h % 4; o = { av, name: p.name, next: 2 + (h % 7), h, ls, top }; M.others.set(p.name, o); }
+      if (o && o.ls !== ls) { o.ls = ls; o.av.setLook(p.l || ACAvatar.defaultRender(o.av.g, { top: o.top })); }
+      if (!o) { const h = hashStr(p.name || key), sp = [p.x, p.y], top = ['#d9b24a', '#2f9e63', '#d6455a', '#3a7bd5', '#8e5bd1', '#f08a3c'][h % 6], av = new Avatar(p.l && p.l.g ? p.l.g : p.g === 'female' || p.g === 'male' ? p.g : (h % 2 ? 'female' : 'male'), p.l ? { look: p.l } : { top });
+        av.x = sp[0]; av.y = sp[1]; av.h = Number.isFinite(p.h) ? p.h : (h % 628) / 100; av.dance = h % 4; o = { av, name: p.name, id: p.id, next: 2 + (h % 7), h, ls, top, live: true }; M.others.set(key, o); }
+      else { o.id = p.id || o.id; o.name = p.name || o.name; M.others.set(key, o); }
+      if (live) {
+        const far = o.tx == null || Math.hypot(p.x - o.tx, p.y - o.ty) > .8;
+        const stale = !o.seen || (performance.now() - o.seen) > 900;
+        if (far || stale) applyLive(o, p);
+      }
     });
     for (const k of [...M.others.keys()]) if (!keep.has(k)) M.others.delete(k);
   }
+  function applyPos(p) {
+    if (!p) return; const net = getNET(), myId = net && net.user && String(net.user.id || '');
+    if (String(p.id || '') === myId || (p.name && net && net.user && p.name === net.user.displayName)) return;
+    const key = playerKey(p); let o = M.others.get(key) || [...M.others.values()].find(x => x.name === p.name);
+    if (!o) { setPlayers([{ ...p }]); return; }
+    applyLive(o, p);
+  }
   function updateOthers(dt) {
+    const now = performance.now();
     for (const o of M.others.values()) {
-      const a = o.av; o.next -= dt;
-      if (o.next <= 0) { const r = Math.random(); o.next = 3 + Math.random() * 7;
-        if (r < .35) { a.setState('dance'); a.dance = Math.floor(Math.random() * 4); } else if (r < .5) a.setState('wave'); else if (r < .8) { const ang = Math.random() * TAU, d = 30 + Math.random() * 60, tx = a.x + Math.cos(ang) * d, ty = a.y + Math.sin(ang) * d; if (walkable(tx, ty) && los(a.x, a.y, tx, ty)) o.go = [tx, ty]; a.setState('idle'); } else a.setState('idle'); }
-      if (o.go) { const dx = o.go[0] - a.x, dy = o.go[1] - a.y, d = Math.hypot(dx, dy); if (d < 2) { o.go = null; a.setState('idle'); } else { const sp = 32 * dt; a.x += dx / d * Math.min(sp, d); a.y += dy / d * Math.min(sp, d); a.h = turn(a.h, Math.atan2(dy, dx), dt * 8); a.speed = 1.4; a.setState('walk'); } }
+      const a = o.av;
+      if (o.tx != null) {
+        const age = now - (o.seen || now);
+        let gx = o.tx, gy = o.ty;
+        if (o.live && age < 420 && (o.st === 'walk' || o.st === 'run') && o.vx != null) {
+          const pred = Math.min(.35, age / 1000); gx = o.tx + (o.vx || 0) * pred; gy = o.ty + (o.vy || 0) * pred;
+        }
+        const dx = gx - a.x, dy = gy - a.y, d = Math.hypot(dx, dy);
+        if (d > .35) {
+          const k = 1 - Math.exp(-dt * (d > 40 ? 9 : 7));
+          a.x += dx * k; a.y += dy * k;
+          a.h = turn(a.h, (o.th != null ? o.th : Math.atan2(dy, dx)), dt * 12);
+          a.speed = d > 18 ? 2.6 : 1.5;
+          a.setState(o.st === 'run' || d > 22 ? 'run' : (o.st === 'dance' || o.st === 'wave' ? o.st : 'walk'));
+        }
+        else { a.x = gx; a.y = gy; if (o.th != null) a.h = turn(a.h, o.th, dt * 8); a.speed = 0; a.setState(o.st && o.st !== 'walk' && o.st !== 'run' ? o.st : 'idle'); }
+        if (age > 14000) { o.live = false; o.vx = 0; o.vy = 0; }
+      } else {
+        o.next -= dt;
+        if (o.next <= 0) { const r = Math.random(); o.next = 4 + Math.random() * 6;
+          if (r < .3) { a.setState('wave'); } else a.setState('idle'); }
+      }
       a.update(dt);
     }
+  }
+  let lastPosAt = 0, lastSent = [0, 0, 0];
+  function sendPos(force) {
+    const a = M.me, net = getNET(); if (!a || !net || !net.sock) return;
+    const now = performance.now(); if (!force && now - lastPosAt < 70) return;
+    if (!force && Math.hypot(a.x - lastSent[0], a.y - lastSent[1]) < .45 && Math.abs(a.h - lastSent[2]) < .05 && a.state === lastSent[3] && now - lastPosAt < 700) return;
+    lastPosAt = now; lastSent = [a.x, a.y, a.h, a.state];
+    try { net.sock.emit('pos', { x: +a.x.toFixed(1), y: +a.y.toFixed(1), h: +a.h.toFixed(3), st: a.state }); } catch (e) {}
   }
   function turn(a, b, k) { let d = ((b - a + Math.PI * 3) % TAU) - Math.PI; return a + d * Math.min(1, k); }
 
@@ -639,6 +815,7 @@
     else if (a.state === 'walk' || a.state === 'run') a.setState('idle');
     a.update(dt);
     if (M.follow && cam) { const k = 1 - Math.exp(-dt * 3.2); cam.tx += (a.x - cam.tx) * k; cam.ty += (a.y - cam.ty) * k; if (M.path && !M.drag && camAuto()) cam.yaw = turn(cam.yaw, a.h + Math.PI / 2, dt * 1.4); }
+    sendPos();
   }
 
   /* ---------- frame ---------- */
@@ -665,20 +842,25 @@
       if (o.t === 'tree' && cam.D > 800) continue;
       list.push([tmp.z, o]);
     } };
-    scan(objs); scan(XOBJ);
+    scan(objs.filter(o => {
+      if (!HUD.ads && (o.t === 'board' || o.t === 'poster')) return false;
+      if (!HUD.gov && o.o && o.o.tag === 'gov') return false;
+      return true;
+    })); scan(XOBJ);
     if (LRX.on && LRX.img.bus && cam.D < 1000) for (const bu of LRX.buses) {            // danfos drive back and forth along their road
       const span = 940, px = ((bu.x0 + bu.dir * bu.sp * t) % span + span) % span, bx = 30 + px, ob = { t: 'bus', x: bx, y: bu.y, dir: bu.dir, r: 14, h: 16 };
       if (!isLand(bx, bu.y) || onBridge(bx, bu.y)) continue;
       cam.project(bx, bu.y, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
     }
-    const A = [M.me]; for (const o of M.others.values()) A.push(o.av);
+    const A = [M.me]; if (HUD.neighbours) for (const o of M.others.values()) A.push(o.av);
     for (const a of A) { cam.project(a.x, a.y, 0, tmp); if (tmp.z >= NEAR && tmp.x > -60 && tmp.x < M.w + 60 && tmp.y > -80 && tmp.y < M.h + 80) list.push([tmp.z - 4, a]); }
     list.sort((p, q) => q[0] - p[0]);
     const tags = [];
     for (const [, o] of list) {
       if (o instanceof Avatar) { const info = o.draw(ctx, cam, SC); if (info.h > 24) tags.push([o, info]); continue; }
-      if (o.t === 'box') drawBox(ctx, o); else if (o.t === 'tree') drawTree(ctx, o); else if (o.t === 'board') drawBoard(ctx, o); else if (o.t === 'boat') drawBoat(ctx, o, t); else if (o.t === 'mast') drawMast(ctx, o); else if (o.t === 'bus') drawBus(ctx, o);
+      if (o.t === 'box') drawBox(ctx, o); else if (o.t === 'tree') drawTree(ctx, o); else if (o.t === 'board') drawBoard(ctx, o); else if (o.t === 'boat') drawBoat(ctx, o, t); else if (o.t === 'mast') drawMast(ctx, o); else if (o.t === 'bus') drawBus(ctx, o); else if (o.t === 'poster') drawPoster(ctx, o); else if (o.t === 'tank') drawTank(ctx, o); else if (o.t === 'plane') drawPlane(ctx, o);
     }
+    drawLiveTracks(ctx, t);
     // destination marker
     if (M.dest && M.path) { const d = cam.project(M.dest[0], M.dest[1], .5, {}), r = (7 + Math.sin(t * 6) * 1.5) * d.k * 1.4; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(d.x, d.y, r * 1.4, r * .7, 0, 0, TAU); ctx.stroke(); }
     // name tags
@@ -688,11 +870,13 @@
       ctx.fillStyle = a === M.me ? '#22b573' : 'rgba(27,34,54,.82)'; rr(ctx, x - w / 2, y - 9, w, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(nm, x, y + .5);
       if (a !== M.me) M.hits.push({ x: x - w / 2, y: y - 9, w, h: info.h + 20, name: nm, kind: 'player' });
     }
+    drawClusters(ctx);
     for (const f of LAYERS.world) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
     // pin labels
     ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
     for (const p of PINS) {
-      const [nm, em, x, y, kind, act] = p, hh = p[7] || { radio: 72, hall: 36, shop: 26, home: 54, glass: 82, dome: 56, airport: 30, gym: 36, court: 58, hotel: 112, club: 42, tower: 102, boat: 40, park: 20 }[kind] || 30;
+      const [nm, em, x, y, kind, act] = p; if (!HUD.gov && (kind === 'gov' || kind === 'court')) continue; if (!HUD.ads && kind === 'radio') continue;
+      const hh = p[7] || { radio: 72, hall: 36, shop: 26, home: 54, glass: 82, dome: 56, airport: 30, gym: 36, court: 58, hotel: 112, club: 42, tower: 102, boat: 40, park: 20, refinery: 26 }[kind] || 30;
       const b = cam.project(x, y, hh + 10, tmp); if (tmp.z < NEAR || tmp.x < -80 || tmp.x > M.w + 80 || tmp.y < 40 || tmp.y > M.h + 40) continue;
       if ((cam.D > 1100 || (act === 'district' && cam.D > 650)) && kind !== 'home') { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 11, 0, TAU); ctx.fill(); ctx.font = '13px system-ui'; ctx.fillStyle = '#000'; ctx.fillText(em, tmp.x, tmp.y + 1); ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif'; M.hits.push({ x: tmp.x - 12, y: tmp.y - 12, w: 24, h: 24, pin: p, kind: 'pin' }); continue; }
       const label = em + ' ' + nm, w = ctx.measureText(label).width + 18, px = tmp.x, py = tmp.y - 10;
@@ -757,7 +941,8 @@
     shop: 'A local favourite for a quick bite.', glass: 'Tech, startups and ideas under one roof.', dome: 'Lecture halls, labs and campus life.',
     airport: 'Flights in and out of the city.', boat: 'Cruises and rides out on the water.', gym: 'Work out and keep your stats up.',
     court: 'Where the city settles its legal matters.', hotel: 'Stay, dine and relax in comfort.', park: 'Open air, shows and a breather from the noise.',
-    club: 'Music, lights and a late one.', tower: 'Views over the whole city from up here.', home: 'Your place.'
+    club: 'Music, lights and a late one.', tower: 'Views over the whole city from up here.', home: 'Your place.',
+    refinery: 'Storage tanks and plant — opening later.', airport: 'Arrivals, the runway and taxis out of town.'
   };
   function openPlace(pin) {
     const [nm, em, px, py, kind, act] = pin, blurb = pin[6], clean = t => t.replace(' · Coming soon', ''), title = clean(nm), q = t => t.replace(/'/g, "\\'");
@@ -820,9 +1005,9 @@
       if (M.cv) return; build(); M.cv = $('mapCv'); M.ctx = M.cv.getContext('2d');
       M.cv.addEventListener('pointerdown', onDown); M.cv.addEventListener('pointermove', onMove); M.cv.addEventListener('pointerup', onUp); M.cv.addEventListener('pointercancel', onUp);
       M.cv.addEventListener('wheel', onWheel, { passive: false }); M.cv.addEventListener('contextmenu', e => e.preventDefault()); g.addEventListener('keydown', onKey); g.addEventListener('resize', resize);
-      ensureMe(); cam.tx = M.me.x; cam.ty = M.me.y; cam.yaw = 0; cam.tilt = .95; M.D = M.tD = 240; cam.D = 240;
+      ensureMe(); cam.tx = M.me.x; cam.ty = M.me.y; cam.yaw = -.28; cam.tilt = 1.02; M.D = M.tD = 340; cam.D = 340;
     },
-    show() { API.init(); M.on = true; resize(); cancelAnimationFrame(M.raf); M.last = performance.now(); M.raf = requestAnimationFrame(frame); },
+    show() { API.init(); M.on = true; resize(); if (M.saved) { API.restorePos(M.saved); M.saved = null; } sendPos(true); cancelAnimationFrame(M.raf); M.last = performance.now(); M.raf = requestAnimationFrame(frame); },
     hide() { M.on = false; cancelAnimationFrame(M.raf); },
     zoom(f) { zoomBy(f); },
     rotate(a) { cam.yaw += a; cam.update(); },
@@ -834,7 +1019,12 @@
     /* the player's own look and personal styles from the Style app */
     setLook(r) { M.look = r; if (M.me && r) M.me.setLook(r); },
     setExt(e) { M.ext = e || {}; if (M.me) M.me.setExt(M.ext); },
-    setPlayers, setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
+    setPlayers, applyPos, restorePos(p) { if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return; M.saved = p; if (!M.cv) return; ensureMe(); teleport(p.x, p.y); if (Number.isFinite(p.h) && M.me) M.me.h = p.h; sendPos(true); },
+    setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
+    hud: HUD,
+    setFilter(k, on) { if (k in HUD && k !== 'city') HUD[k] = on ? 1 : 0; },
+    setCity(id) { HUD.city = id; if (id !== 'lagos' && g.toast) g.toast(id === 'ph' ? 'Port Harcourt map · coming soon' : 'Abuja map · coming soon'); },
+    walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
     visit(em, title) {      /* Visit only works when you are at the place; from farther away you travel there first */
       const p = PINS.find(q => q[0].replace(' · Coming soon', '') === title);
