@@ -330,10 +330,18 @@ const HUB = {
     }, { id: 'near' });
   },
 
-  /* ---------- map legend ---------- */
+  /* ---------- map legend ----------
+     the old filter-chip row above the map (Go-slow/Billboards/Neighbours/Sea/Gov) duplicated these same five rows,
+     so each toggleable one now carries the map key it controls (5th item) and doubles as that layer's on/off switch;
+     Homes and Events have no map filter so they stay plain info rows, same as before. */
   v_legend() {
-    const L = [['#f59e0b', 'car-side', 'Go-slow', 'Orange roads are jammed. Road jobs pay more.'], ['#e8337a', 'bullhorn', 'Ads', 'Billboards and sponsored places. Tap one to visit.'], ['#22b573', 'house', 'Homes', 'Player homes. Visit friends here.'], ['#0ea5e9', 'water', 'Sea', 'Sea plots, ferries and the lagoon.'], ['#64748b', 'landmark', 'Government', 'Offices, police and city services.'], ['#6366f1', 'user', 'Players', 'Dots are real people on the map right now.'], ['#e5484d', 'cloud-showers-heavy', 'Events', 'Flood, power cuts and fuel queues show up on affected areas.']];
-    this.sheet('Map legend', () => `<p class="hlead">Drag to move, pinch to zoom, twist with two fingers to rotate.</p>` + L.map(l => UI.row({ ic: UI.ic(l[1], l[0], 38), title: l[2], sub: l[3] })).join('') + `<button class="rbigbtn ghost" onclick="SHEET.close();nav('map')">Open the map</button>`, { id: 'legend' });
+    const L = [['#f59e0b', 'car-side', 'Go-slow', 'Orange roads are jammed. Road jobs pay more.', 'goslow'], ['#e8337a', 'bullhorn', 'Ads', 'Billboards and sponsored places. Tap one to visit.', 'ads'], ['#22b573', 'house', 'Homes', 'Player homes. Visit friends here.', null], ['#0ea5e9', 'water', 'Sea', 'Sea plots, ferries and the lagoon.', 'sea'], ['#64748b', 'landmark', 'Government', 'Offices, police and city services.', 'gov'], ['#6366f1', 'user', 'Players', 'Dots are real people on the map right now.', 'neighbours'], ['#e5484d', 'cloud-showers-heavy', 'Events', 'Flood, power cuts and fuel queues show up on affected areas.', null]];
+    this.sheet('Map legend', () => `<p class="hlead">Drag to move, pinch to zoom, twist with two fingers to rotate. Tap a layer to show or hide it on the map.</p>` +
+      L.map(l => {
+        const k = l[4], on = k && window.MAP3D ? MAP3D.hud[k] : null;
+        const right = k ? `<button type="button" class="lgtoggle ${on ? 'on' : ''}" onclick="event.stopPropagation();legendToggle('${k}')">${on ? 'On' : 'Off'}</button>` : '';
+        return UI.row({ ic: UI.ic(l[1], l[0], 38), title: l[2], sub: l[3], right });
+      }).join('') + `<button class="rbigbtn ghost" onclick="SHEET.close();nav('map')">Open the map</button>`, { id: 'legend' });
   },
 
   /* ---------- help desk ---------- */

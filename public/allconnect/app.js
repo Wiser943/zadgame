@@ -60,6 +60,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 
 function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
 function mapChip(btn) { const k = btn.getAttribute('data-f'); if (!window.MAP3D || !k) return; const on = !MAP3D.hud[k]; MAP3D.setFilter(k, on); btn.classList.toggle('on', !!on) }
+// legend rows now double as the map's layer filter toggles (the old separate chip row was removed)
+function legendToggle(k) { if (!window.MAP3D) return; MAP3D.setFilter(k, !MAP3D.hud[k]); if (typeof SHEET !== 'undefined' && SHEET.isOpen('legend')) SHEET.paint() }
 function mapCity(btn) {
   if (!window.MAP3D) return;
   const city = btn.getAttribute('data-city');

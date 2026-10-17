@@ -127,15 +127,10 @@
   <div id="map">
    <canvas id="mapCv" aria-label="Map of Lagos. Drag to move, pinch or scroll to zoom, twist with two fingers to rotate."></canvas>
    <button class="pill maplg" onclick="HUB.view('legend')" aria-label="Map legend"><i class="fa-solid fa-circle-info"></i> Legend</button>
+   <!-- the old filter-chip row (Go-slow/Billboards/Neighbours/Sea/Gov) was dropped: those are the same five layers the
+        Legend sheet already lists, so each legend row now doubles as its on/off toggle instead (see hub.js v_legend). -->
+   <button class="pill walkyaba" onclick="MAP3D.walkYaba()">🚶 Walk Yaba</button>
    <div class="maphud">
-    <div class="pill cats" id="mapcats">
-     <button type="button" class="on" data-f="goslow" onclick="mapChip(this)">🟠 Go-slow</button>
-     <button type="button" class="on" data-f="ads" onclick="mapChip(this)">📢 Billboards</button>
-     <button type="button" class="on" data-f="neighbours" onclick="mapChip(this)">👥 Neighbours</button>
-     <button type="button" class="on" data-f="sea" onclick="mapChip(this)">🌊 Sea</button>
-     <button type="button" class="on" data-f="gov" onclick="mapChip(this)">🏛 Gov</button>
-     <button type="button" onclick="MAP3D.walkYaba()">🚶 Walk Yaba</button>
-    </div>
     <div class="pill cities" id="mapcities">
      <button type="button" class="on" data-city="lagos" onclick="mapCity(this)">Lagos</button>
      <button type="button" data-city="ph" onclick="mapCity(this)">Port Harcourt</button>

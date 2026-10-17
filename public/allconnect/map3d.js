@@ -368,11 +368,14 @@
      rounded-corner 4-way junction stamped at every point two roads actually meet. Same opt-in pattern as LRX: if
      the images never load, the roads simply look the way they did before (flat colour + the Lagos Run layer). */
   const KXA = '/allconnect/assets/';
-  const KX = { img: {}, on: false, started: false, straight: [], cross: [] };
+  const KX = { img: {}, on: false, started: false, straight: [], cross: [], cars: [] };
+  const KX_CAR_COLS = ['red', 'green', 'orange', 'white'];      // kenney_racing-kit: four body colours, each with a front (S) and back (N) sprite
   function kxLoad() {
     if (KX.started || lrSaver()) return; KX.started = true;
-    let left = 2;
-    [['straight', 'road-straight.png'], ['cross', 'road-cross.png']].forEach(([k, file]) => {
+    const files = [['straight', 'road-straight.png'], ['cross', 'road-cross.png']];
+    KX_CAR_COLS.forEach(c => { files.push([`car-${c}-N`, `cars/${c}-N.png`], [`car-${c}-S`, `cars/${c}-S.png`]); });
+    let left = files.length;
+    files.forEach(([k, file]) => {
       const im = new Image(); im.decoding = 'async';
       im.onload = () => { KX.img[k] = im; if (!--left) KX.on = true; };
       im.onerror = () => { left--; };
@@ -473,7 +476,7 @@
   /* called once at the end of build(): lay out asphalt tiles, road decals and danfos (own random stream, so the rest of the city is unchanged) */
   function lrBuild() {
     let sd = 99; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    LRX.tiles = []; LRX.decals = []; LRX.buses = []; KX.straight = []; KX.cross = [];
+    LRX.tiles = []; LRX.decals = []; LRX.buses = []; KX.straight = []; KX.cross = []; KX.cars = [];
     const roads = flats.filter(f => f.r && f.c === '#b4b8bd');
     const KINDS = [['pothole', 6, 6, 3], ['manhole', 5, 5, 3], ['drain', 6, 6, 2], ['mud', 8, 7, 2], ['puddle', 9, 8, 2], ['oil', 8, 7, 1], ['sachet', 6, 5, 2], ['trash', 7, 6, 2], ['skidA', 3, 16, 2], ['skidB', 3.6, 16, 2]];
     const tot = KINDS.reduce((a, k) => a + k[3], 0);
@@ -484,8 +487,12 @@
         const tw = horiz ? Math.min(T, L - d) : w, th = horiz ? h : Math.min(T, L - d), cx = horiz ? x + d + tw / 2 : x + w / 2, cy = horiz ? y + h / 2 : y + d + th / 2;
         if (!isLand(cx, cy)) continue;
         LRX.tiles.push({ x: cx, y: cy, w: tw + .8, h: th + .8, sx: Math.floor(r() * 384), sy: Math.floor(r() * 384) });
-        // same chunk, but as a Kenney straight-road stamp: its lane line has a direction, so swap which way it faces for a horizontal vs a vertical road
-        KX.straight.push({ x: cx, y: cy, ww: (horiz ? th : tw) + 1, wh: (horiz ? tw : th) + 1, ang: horiz ? Math.PI / 2 : 0 });
+        // same chunk, but as a Kenney straight-road stamp: its lane line has a direction, so swap which way it faces for a horizontal vs a vertical road.
+        // each tile is only an approximate (affine, not true-perspective) warp of a flat square, so neighbouring tiles don't line up pixel-for-pixel at
+        // the seam between them under tilt — padding generously along the tiling direction (not across it, or the road would look wider than it is)
+        // makes consecutive tiles overlap enough that the mismatch is hidden under the overlap instead of showing as a gap or a jagged edge.
+        const cross = horiz ? th : tw, along = horiz ? tw : th;
+        KX.straight.push({ x: cx, y: cy, ww: cross + 1, wh: along + 5, ang: horiz ? Math.PI / 2 : 0 });
       }
       const n = Math.floor(L / 70);
       for (let i = 0; i < n; i++) {
@@ -508,6 +515,11 @@
     hr.forEach((f, i) => {
       const n = 1 + (i % 2);
       for (let j = 0; j < n; j++) { const dir = j % 2 ? -1 : 1; LRX.buses.push({ y: f.r[1] + (dir > 0 ? 4 : 10), x0: r() * 940, dir, sp: 12 + r() * 10, clip: f.clipLand }); }
+    });
+    // kenney_racing-kit cars on the vertical roads (buses never ran there, so this road direction was empty before)
+    vr.forEach((f, i) => {
+      const n = 1 + (i % 2);
+      for (let j = 0; j < n; j++) { const dir = j % 2 ? -1 : 1; KX.cars.push({ x: f.r[0] + (dir > 0 ? 4 : 10), y0: r() * f.r[3], dir, sp: 11 + r() * 9, lo: f.r[1], hi: f.r[1] + f.r[3], col: KX_CAR_COLS[Math.floor(r() * KX_CAR_COLS.length)] }); }
     });
     LRX.decals.sort((p, q) => (p.k === 'zebra') - (q.k === 'zebra'));
   }
@@ -535,6 +547,13 @@
     if (wpx < 6) return;
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, wpx * .44, wpx * .1, 0, 0, TAU); ctx.fill();
     ctx.save(); ctx.translate(b.x, b.y); if (o.dir < 0) ctx.scale(-1, 1); ctx.drawImage(im, -wpx / 2, -hpx * .93, wpx, hpx); ctx.restore();
+  }
+  function drawCar(ctx, o) {
+    const im = KX.img[`car-${o.col}-${o.dir > 0 ? 'S' : 'N'}`]; if (!im) return;        // dir>0 = heading south: show the car's front (S); heading north shows its back (N)
+    const b = cam.project(o.x, o.y, 0, {}), W0 = 15, wpx = W0 * b.k, hpx = wpx * im.naturalHeight / im.naturalWidth;
+    if (wpx < 5) return;
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, wpx * .5, wpx * .14, 0, 0, TAU); ctx.fill();
+    ctx.drawImage(im, b.x - wpx / 2, b.y - hpx * .85, wpx, hpx);
   }
 
   function drawBox(ctx, o) {
@@ -927,13 +946,18 @@
       if (!isLand(bx, bu.y) || onBridge(bx, bu.y)) continue;
       cam.project(bx, bu.y, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
     }
+    if (KX.on && cam.D < 1000) for (const ca of KX.cars) {                              // Kenney race cars on the vertical roads, same idea, north-south
+      const span = ca.hi - ca.lo, py = ((ca.y0 + ca.dir * ca.sp * t) % span + span) % span, cy = ca.lo + py, ob = { t: 'car', x: ca.x, y: cy, dir: ca.dir, col: ca.col, r: 14, h: 16 };
+      if (!isLand(ca.x, cy) || onBridge(ca.x, cy)) continue;
+      cam.project(ca.x, cy, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
+    }
     const A = [M.me]; if (HUD.neighbours) for (const o of M.others.values()) A.push(o.av);
     for (const a of A) { cam.project(a.x, a.y, 0, tmp); if (tmp.z >= NEAR && tmp.x > -60 && tmp.x < M.w + 60 && tmp.y > -80 && tmp.y < M.h + 80) list.push([tmp.z - 4, a]); }
     list.sort((p, q) => q[0] - p[0]);
     const tags = [];
     for (const [, o] of list) {
       if (o instanceof Avatar) { const info = o.draw(ctx, cam, SC); if (info.h > 24) tags.push([o, info]); continue; }
-      if (o.t === 'box') drawBox(ctx, o); else if (o.t === 'tree') drawTree(ctx, o); else if (o.t === 'board') drawBoard(ctx, o); else if (o.t === 'boat') drawBoat(ctx, o, t); else if (o.t === 'mast') drawMast(ctx, o); else if (o.t === 'bus') drawBus(ctx, o); else if (o.t === 'poster') drawPoster(ctx, o); else if (o.t === 'tank') drawTank(ctx, o); else if (o.t === 'plane') drawPlane(ctx, o);
+      if (o.t === 'box') drawBox(ctx, o); else if (o.t === 'tree') drawTree(ctx, o); else if (o.t === 'board') drawBoard(ctx, o); else if (o.t === 'boat') drawBoat(ctx, o, t); else if (o.t === 'mast') drawMast(ctx, o); else if (o.t === 'bus') drawBus(ctx, o); else if (o.t === 'car') drawCar(ctx, o); else if (o.t === 'poster') drawPoster(ctx, o); else if (o.t === 'tank') drawTank(ctx, o); else if (o.t === 'plane') drawPlane(ctx, o);
     }
     drawLiveTracks(ctx, t);
     // destination marker
@@ -1054,7 +1078,13 @@
     if (hit && hit.kind === 'board') { const n = ads.billboards.length, ad = n ? ads.billboards[hit.idx % n] : null; if (ad && g.ADS) g.ADS.go(ad); else { g.nav('phone'); setTimeout(() => g.PH && g.PH.open('ads'), 0); } return; }
     if (hit && hit.kind === 'player') { g.toast('👤 ' + hit.name); return; }
     const q = cam.pick(x, y, 0); if (!q) return;
-    if (!isLand(q.x, q.y)) return g.toast('🌊 Can’t walk on water — use a bridge');
+    if (!isLand(q.x, q.y)) {
+      // beyond the real 1000x1000 play area (past the sea belt around it) is just distant scenery, painted so the world
+      // doesn't look like it stops dead at the edge — it was never meant to be reachable, so say that plainly instead
+      // of telling the player it's water right where they can clearly see land and buildings.
+      const far = q.x < -GAP || q.x > W + GAP || q.y < -GAP || q.y > W + GAP;
+      return g.toast(far ? '🏙️ That’s just the skyline in the distance — nothing out there to visit' : '🌊 Can’t walk on water — use a bridge');
+    }
     if (!M.me || !findPath(M.me.x, M.me.y, q.x, q.y)) { g.toast('Can’t get there'); return; }
     // every bare-ground tap opens the same destination sheet a landmark does — no more silently auto-walking;
     // the sheet itself shows the distance and, for a close spot, a "Walk there now" button, or, for a far one, the transport options.
