@@ -6,7 +6,7 @@ const dayKey = (now) => lagos(now).toISOString().slice(0, 10);
 
 /* ---------- the promise ---------- */
 const PROMISE = {
-  tagline: 'Live a whole Lagos life, online.',
+  tagline: 'Live a whole Naija life, online.',
   line: 'Get a job, pay your bills, decorate your flat, make friends, play games and watch the city change around you. AllConnect never resets: your life keeps going, even when you close the app.',
   day1: ['Pick your area, job and hobby in under a minute', 'Collect your welcome parcel and finish your first missions', 'Be protected from big-money risks for your first 7 days']
 };

@@ -64,7 +64,7 @@ const HUB = {
     if (ev && ev.bills && ev.bills.count) h.push(UI.row({ ic: UI.ic('bolt', '#e5484d', 38), title: `${ev.bills.count} bill${ev.bills.count > 1 ? 's' : ''} to pay`, sub: ev.bills.overdue ? 'Some are late. Pay to avoid a power cut.' : 'Pay before Sunday night.', right: '<span class="lgbtn">Pay</span>', go: "SHEET.close();LAGOS.open('bills')" }));
     const tasks = m.tasks.slice(0, 4);
     h.push(`<h4>Your next steps</h4>`);
-    h.push(tasks.length ? tasks.map(t => this.missionRow(t)).join('') : '<p class="empty">All beginner missions done. You are a real Lagosian now!</p>');
+    h.push(tasks.length ? tasks.map(t => this.missionRow(t)).join('') : `<p class="empty">${NG.say('All beginner missions done. You are a real Naija person now!', 'All beginner missions don finish. You don turn correct Naija person!')}</p>`);
     h.push(`<div class="hbanner" style="--c:${th.color}">${UI.ic(th.fa, th.color, 40)}<div><b>${this.esc(th.title)}</b><small>${this.esc(th.text)} <i>Goal: ${this.esc(th.goal)}</i></small></div><button class="lgbtn" onclick="HUB.themeGo('${th.go}')">Go</button></div>`);
     if (m.protection.active) h.push(`<div class="hprot"><span class="fa-solid fa-shield-heart"></span><div><b>New-player protection: ${m.protection.daysLeft} day${m.protection.daysLeft === 1 ? '' : 's'} left</b><small>Transfers up to ${this.fmt(m.protection.transferMax)}, investments up to ${this.fmt(m.protection.investMax)}, no ad booking, and a free Beginner queue in GameHub.</small></div></div>`);
     h.push(`<div class="hmore"><button onclick="HUB.menu()"><span class="fa-solid fa-grid-2"></span> More in the city</button></div>`);
@@ -76,7 +76,7 @@ const HUB = {
   menu() {
     const t = (fa, c, name, v, badge) => `<button class="htile" onclick="HUB.view('${v}')">${UI.ic(fa, c, 44)}<b>${name}</b>${badge ? `<i>${badge}</i>` : ''}</button>`;
     const m = this.me || { missions: {}, hub: {} };
-    this.sheet('Lagos hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
+    this.sheet('Naija hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
       ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('newspaper', '#0ea5e9', 'Newspaper', 'news')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}
       ${t('gamepad', '#e5484d', 'Play path', 'play')}${t('map', '#6366f1', 'Map legend', 'legend')}${t('circle-question', '#64748b', 'Help desk', 'help')}${t('road', '#10b981', 'Roadmap', 'roadmap')}
       ${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
@@ -125,7 +125,7 @@ const HUB = {
   /* ---------- welcome parcel ---------- */
   parcelCard() {
     const p = this.me.parcel;
-    CARD.show({ icon: '🎁', title: 'Welcome parcel', text: `Day ${p.day} of ${p.total}. A little something to settle into Lagos.`, lines: [['Inside', this.fmt(p.amount)]], tone: 'gold', btn: 'Collect ' + this.fmt(p.amount), onClose: () => this.parcel() });
+    CARD.show({ icon: '🎁', title: 'Welcome parcel', text: `Day ${p.day} of ${p.total}. A little something to settle into 9ja.`, lines: [['Inside', this.fmt(p.amount)]], tone: 'gold', btn: 'Collect ' + this.fmt(p.amount), onClose: () => this.parcel() });
   },
   async parcel(btn) {
     if (btn) btn.disabled = true;
@@ -140,7 +140,7 @@ const HUB = {
     if (r.unread) lines.push(['Unread messages', String(r.unread)]); if (r.bills) lines.push(['Bills waiting', String(r.bills)]);
     lines.push(['City right now', r.event.icon + ' ' + r.event.title]);
     CARD.show({ icon: '👋', title: 'Welcome back!', text: r.event.pidgin + (r.gift ? ' We kept a little gift for you.' : ''), lines, tone: 'info', btn: r.gift ? 'Collect ' + this.fmt(r.gift) : 'Continue', force: true, onClose: async () => {
-      try { const a = await this.api('/recap/ack', { method: 'POST' }); if (a.gift) { this.setCash(a.cash); CARD.show({ icon: '🎉', title: 'Welcome back event', text: 'Lagos missed you. Here is your return gift.', lines: [['Gift', this.fmt(a.gift)]], tone: 'gold', btn: 'Thank you' }) } } catch (e) {}
+      try { const a = await this.api('/recap/ack', { method: 'POST' }); if (a.gift) { this.setCash(a.cash); CARD.show({ icon: '🎉', title: 'Welcome back event', text: '9ja missed you. Here is your return gift.', lines: [['Gift', this.fmt(a.gift)]], tone: 'gold', btn: 'Thank you' }) } } catch (e) {}
       this.me.recap = null; if (this.me.parcel.claimable) setTimeout(() => this.parcelCard(), 400);
     } });
   },
@@ -151,7 +151,7 @@ const HUB = {
     if (!this.C) return;
     if (!su.name) su.name = (NET.user && NET.user.displayName) || '';
     if (su.askChar == null) su.askChar = !S.gender;     /* the character is chosen once, on the username step */
-    SHEET.open({ id: 'setup', title: 'Welcome to Lagos', body: () => this.setupHtml(), after: () => { if (this.su.step === 4 && this.su.askChar) initCharPicker(); else stopPreviews() }, onClose: () => { if (!this.me.hub.done && !this._skipped) { this._skipped = true; toast('You can finish setup any time from "What can I do now?"'); this.afterSkip() } } });
+    SHEET.open({ id: 'setup', title: NG.say('Welcome to 9ja', 'Welcome to 9ja o!'), body: () => this.setupHtml(), after: () => { if (this.su.step === 4 && this.su.askChar) initCharPicker(); else stopPreviews() }, onClose: () => { if (!this.me.hub.done && !this._skipped) { this._skipped = true; toast('You can finish setup any time from "What can I do now?"'); this.afterSkip() } } });
   },
   afterSkip() { if (this.me.parcel.claimable) setTimeout(() => this.parcelCard(), 500) },
   setupHtml() {
@@ -159,14 +159,14 @@ const HUB = {
     const nextBtn = (ok, label) => `<button class="rbigbtn" ${ok ? '' : 'disabled'} onclick="HUB.setupNext()">${label || 'Continue'}</button>`;
     const back = st > 0 ? `<button class="hlink" onclick="HUB.setup(${st - 1})">‹ Back</button>` : '';
     const pick = (list, key, fn) => `<div class="hopts">${list.map(o => `<button class="hopt ${su[key] === o.id ? 'on' : ''}" onclick="HUB.pick('${key}','${o.id}')"><span class="hem">${o.emoji || ''}</span><b>${this.esc(o.name)}</b><small>${this.esc(fn(o))}</small></button>`).join('')}</div>`;
-    if (st === 0) return `${dots}<div class="hhero"><div class="hbig">🏙️</div><h3>${this.esc(C.promise.tagline)}</h3><p>${this.esc(C.promise.line)}</p></div><ul class="hprom">${C.promise.day1.map(x => `<li><span class="fa-solid fa-circle-check"></span>${this.esc(x)}</li>`).join('')}</ul>${nextBtn(true, 'Set up my life (1 minute)')}<button class="hlink c" onclick="SHEET.close()">Skip for now</button>`;
-    if (st === 1) return `${dots}<h3 class="hq">Where will you live?</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
-    if (st === 2) return `${dots}<h3 class="hq">Choose a starter job</h3><p class="hsub">You can switch any time in Phone → Jobs.</p>${pick(C.jobs, 'job', o => `${o.startTitle} · ${this.fmt(o.startPay)} per shift`)}${nextBtn(!!su.job)}${back}`;
-    if (st === 3) return `${dots}<h3 class="hq">What do you love?</h3><p class="hsub">We use this to suggest missions and a username.</p>${pick(C.hobbies, 'hobby', () => '')}${nextBtn(!!su.hobby)}${back}`;
+    if (st === 0) return `${dots}<div class="hhero"><div class="hbig">🏙️</div><h3>${this.esc(NG.say(C.promise.tagline, 'Live your full Naija life, online.'))}</h3><p>${this.esc(NG.say(C.promise.line, 'Find work, pay your bills, fix your house, make padi, play games and watch 9ja change around you. AllConnect no dey reset: your life dey continue even when you close the app.'))}</p></div><ul class="hprom">${C.promise.day1.map(x => `<li><span class="fa-solid fa-circle-check"></span>${this.esc(x)}</li>`).join('')}</ul>${nextBtn(true, NG.say('Set up my life (1 minute)', 'Set up my life (1 minute)'))}<button class="hlink c" onclick="SHEET.close()">Skip for now</button>`;
+    if (st === 1) return `${dots}<h3 class="hq">${NG.say('Where will you live?', 'Where you wan live?')}</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
+    if (st === 2) return `${dots}<h3 class="hq">${NG.say('Choose a starter job', 'Pick your starter job')}</h3><p class="hsub">You can switch any time in Phone → Jobs.</p>${pick(C.jobs, 'job', o => `${o.startTitle} · ${this.fmt(o.startPay)} per shift`)}${nextBtn(!!su.job)}${back}`;
+    if (st === 3) return `${dots}<h3 class="hq">${NG.say('What do you love?', 'Wetin you love?')}</h3><p class="hsub">We use this to suggest missions and a username.</p>${pick(C.hobbies, 'hobby', () => '')}${nextBtn(!!su.hobby)}${back}`;
     if (st === 4) {
       if (!su.names) this.loadNames();
       const names = su.names || [];
-      return `${dots}<h3 class="hq">Pick a username</h3><p class="hsub">Friends find you with this. 3 to 16 letters, numbers or _</p><div class="hnames">${names.map(n => `<button class="${su.username === n ? 'on' : ''}" onclick="HUB.pickName('${n}')">@${n}</button>`).join('') || '<small>Finding names…</small>'}<button class="hre" onclick="HUB.loadNames(true)"><span class="fa-solid fa-rotate"></span></button></div><input class="sinput" id="hun" placeholder="or type your own" value="${this.esc(su.username)}" maxlength="16" autocapitalize="off" autocomplete="off" oninput="HUB.su.username=this.value.trim().replace(/^@/,'').toLowerCase();HUB.syncGo()">${su.askChar ? charPickerHtml() : ''}<div id="herr" class="aerr"></div><button class="rbigbtn" id="hgo" ${this.goOk() ? '' : 'disabled'} onclick="HUB.finishSetup(this)">Move into Lagos</button>${back}`;
+      return `${dots}<h3 class="hq">${NG.say('Pick a username', 'Pick your username')}</h3><p class="hsub">Friends find you with this. 3 to 16 letters, numbers or _</p><div class="hnames">${names.map(n => `<button class="${su.username === n ? 'on' : ''}" onclick="HUB.pickName('${n}')">@${n}</button>`).join('') || '<small>Finding names…</small>'}<button class="hre" onclick="HUB.loadNames(true)"><span class="fa-solid fa-rotate"></span></button></div><input class="sinput" id="hun" placeholder="or type your own" value="${this.esc(su.username)}" maxlength="16" autocapitalize="off" autocomplete="off" oninput="HUB.su.username=this.value.trim().replace(/^@/,'').toLowerCase();HUB.syncGo()">${su.askChar ? charPickerHtml() : ''}<div id="herr" class="aerr"></div><button class="rbigbtn" id="hgo" ${this.goOk() ? '' : 'disabled'} onclick="HUB.finishSetup(this)">${NG.say('Start my 9ja life', 'Enter 9ja, make we start')}</button>${back}`;
     }
     return '';
   },
@@ -204,32 +204,32 @@ const HUB = {
   async redeemRef() {
     let c = ''; try { c = localStorage.getItem('ac:ref') || '' } catch (e) {}
     if (!c || !this.me.hub.done || this.me.hub.invitedBy) return;
-    try { const r = await this.api('/invite/redeem', { method: 'POST', body: { code: c } }); this.setCash(r.cash); CARD.show({ icon: '🤝', title: 'Invite bonus', text: `You joined Lagos with an invite from ${r.from}.`, lines: [['Bonus', this.fmt(r.bonus)]], tone: 'gold', btn: 'Thank you' }) } catch (e) { /* bad or used code */ }
+    try { const r = await this.api('/invite/redeem', { method: 'POST', body: { code: c } }); this.setCash(r.cash); CARD.show({ icon: '🤝', title: 'Invite bonus', text: `You joined 9ja with an invite from ${r.from}.`, lines: [['Bonus', this.fmt(r.bonus)]], tone: 'gold', btn: 'Thank you' }) } catch (e) { /* bad or used code */ }
     try { localStorage.removeItem('ac:ref') } catch (e) {}
   },
 
   /* ---------- 60-second tour (signed in) and the guest tour (before sign-up) ---------- */
   TOUR: [
-    { ic: '🏠', t: 'Your flat', x: 'This is home. Your needs (food, light, fun, chat, bath, toilet) drop slowly. Tap things to use them.' },
-    { ic: '💼', t: 'Get paid', x: 'Phone → Jobs. Work shifts to earn ₦ and climb the ladder. Tick Go automatically.' },
-    { ic: '💡', t: 'Pay your bills', x: 'Bills arrive every Monday. Pay on time, or the light goes. The city event changes prices.' },
-    { ic: '🛋️', t: 'Make it yours', x: 'Tap Buy to decorate. Friends can visit your place.' },
-    { ic: '🗺️', t: 'The city', x: 'The Map shows Lagos, other players, ads and homes. Open the legend if you are lost.' },
-    { ic: '🎮', t: 'Play and connect', x: 'GameHub for games, Contacts for friends, P-Gist for the gist. Start with the Beginner queue.' }
+    { ic: '🏠', t: 'Your flat', x: NG.say('This is home. Your needs (food, light, fun, chat, bath, toilet) drop slowly. Tap things to use them.', 'This na your house. Your needs (food, light, fun, chat, bath, toilet) dey drop small small. Tap things to use dem.') },
+    { ic: '💼', t: NG.say('Get paid', 'Collect money'), x: NG.say('Phone → Jobs. Work shifts to earn ₦ and climb the ladder. Tick Go automatically.', 'Phone → Jobs. Do shift collect ₦ and climb the ladder. Tick Go automatically.') },
+    { ic: '💡', t: NG.say('Pay your bills', 'Pay your bills o'), x: NG.say('Bills arrive every Monday. Pay on time, or the light goes. The city event changes prices.', 'Bills dey come every Monday. Pay on time or light go go. The city event dey change prices.') },
+    { ic: '🛋️', t: NG.say('Make it yours', 'Make am yours'), x: NG.say('Tap Buy to decorate. Friends can visit your place.', 'Tap Buy to decorate. Your padi fit visit your place.') },
+    { ic: '🗺️', t: 'The city', x: NG.say('The Map shows the city, other players, ads and homes. Open the legend if you are lost.', 'The Map dey show the city, other players, ads and homes. Open the legend if you lost.') },
+    { ic: '🎮', t: NG.say('Play and connect', 'Play and link up'), x: NG.say('GameHub for games, Contacts for friends, P-Gist for the gist. Start with the Beginner queue.', 'GameHub na for games, Contacts for padi, P-Gist for gist. Start with the Beginner queue.') }
   ],
   GUEST: [
-    { ic: '🏙️', t: 'Welcome to Lagos', x: 'A Lagos life-sim that never resets. Your life continues even when you close the app.' },
-    { ic: '⛈️', t: 'A city that changes', x: 'Every 12 hours: rain, NEPA, fuel queues, owambe. Prices and pay change with it.' },
-    { ic: '💼', t: 'Work, earn, climb', x: 'Danfo conductor to Bus Owner. Intern to CTO. Pick a job and grow.' },
-    { ic: '🛋️', t: 'Your own flat', x: 'Decorate it, pay the bills, invite friends over.' },
-    { ic: '🎮', t: 'Games and friends', x: 'Play Ludo, chess and more with real people. One account for everything.' }
+    { ic: '🏙️', t: NG.say('Welcome to 9ja', 'Welcome to 9ja o!'), x: NG.say('A Naija life-sim that never resets. Your life continues even when you close the app.', 'Naija life-sim wey no dey reset. Your life dey continue even when you close the app.') },
+    { ic: '⛈️', t: NG.say('A city that changes', 'City wey dey change'), x: NG.say('Every 12 hours: rain, NEPA, fuel queues, owambe. Prices and pay change with it.', 'Every 12 hours: rain, NEPA, fuel queue, owambe. Prices and pay dey change with am.') },
+    { ic: '💼', t: NG.say('Work, earn, climb', 'Work, collect, climb'), x: NG.say('Danfo conductor to Bus Owner. Intern to CTO. Pick a job and grow.', 'From danfo conductor reach Bus Owner. Intern reach CTO. Pick job and grow.') },
+    { ic: '🛋️', t: NG.say('Your own flat', 'Your own flat'), x: NG.say('Decorate it, pay the bills, invite friends over.', 'Decorate am, pay bills, invite your padi dem come.') },
+    { ic: '🎮', t: NG.say('Games and friends', 'Games and padi dem'), x: NG.say('Play Ludo, chess and more with real people. One account for everything.', 'Play Ludo, chess and more with real people. One account, everything inside.') }
   ],
   tour(first) { this.tr = { i: 0, list: this.TOUR, guest: false, first: !!first, t: 0 }; this.tourDraw() },
   guestTour() { this.tr = { i: 0, list: this.GUEST, guest: true, t: 0 }; this.tourDraw() },
   tourDraw() {
     const tr = this.tr, s = tr.list[tr.i], last = tr.i === tr.list.length - 1, per = tr.guest ? 7000 : 10000;
     clearTimeout(tr.t); tr.t = setTimeout(() => { if (SHEET.isOpen('tour') && this.tr === tr) this.tourNext() }, per);
-    SHEET.open({ id: 'tour', title: tr.guest ? 'See Lagos first' : '60-second tour', onClose: () => { clearTimeout(tr.t); if (!tr.guest && !tr.done) this.tourEnd(tr) },
+    SHEET.open({ id: 'tour', title: tr.guest ? NG.say('See 9ja first', 'Come see 9ja first') : '60-second tour', onClose: () => { clearTimeout(tr.t); if (!tr.guest && !tr.done) this.tourEnd(tr) },
       body: () => `<div class="hdots">${tr.list.map((_, i) => `<i class="${i < tr.i ? 'done' : i === tr.i ? 'on' : ''}"></i>`).join('')}</div><div class="htour"><div class="hbig">${s.ic}</div><h3>${s.t}</h3><p>${s.x}</p><div class="htimer"><i style="animation-duration:${per}ms"></i></div></div>
         <button class="rbigbtn" onclick="HUB.tourNext()">${last ? (tr.guest ? 'Create my account' : 'Start playing') : 'Next'}</button><button class="hlink c" onclick="SHEET.close()">${tr.guest ? 'Close' : 'Skip tour'}</button>` });
   },
@@ -287,7 +287,7 @@ const HUB = {
   /* ---------- timeline ---------- */
   async v_timeline() {
     const r = await this.api('/timeline');
-    this.sheet('My life in Lagos', () => `<div class="hjoin">${UI.ic('cake-candles', '#e8337a', 38)}<div><b>Joined Lagos</b><small>${new Date(r.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</small></div></div>` +
+    this.sheet('My life in 9ja', () => `<div class="hjoin">${UI.ic('cake-candles', '#e8337a', 38)}<div><b>Joined 9ja</b><small>${new Date(r.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</small></div></div>` +
       (r.items.length ? `<div class="htl">${r.items.map(i => `<div><span>${i.icon || '•'}</span><div><b>${this.esc(i.text)}</b><small>${UI.ago(i.at)}</small></div></div>`).join('')}</div>` : '<p class="empty">Your story starts now. Work a shift, make a friend, finish a mission. It will show up here.</p>'), { id: 'timeline' });
   },
 
@@ -309,7 +309,7 @@ const HUB = {
 
   /* ---------- newspaper ---------- */
   async v_news() {
-    this.sheet('The Lagos Gist', async () => {
+    this.sheet('The Naija Gist', async () => {
       if (!this.news) this.news = await this.api('/news'); const n = this.news, p = n.paper;
       return `<div class="hpaper"><div class="hmast"><b>${this.esc(p.name)}</b><small>${this.esc(p.date)} · ${this.esc(p.issue)}</small></div>
         <h4>Happening now</h4><ul class="hticks">${n.ticker.map(t => `<li>${this.esc(t)}</li>`).join('')}</ul>
@@ -419,7 +419,7 @@ const HUB = {
     }, { id: 'invite' });
   },
   async shareInvite() {
-    const text = 'Come live in Lagos with me on AllConnect: ' + this.link;
+    const text = 'Come live your Naija life with me on AllConnect: ' + this.link;
     try { if (navigator.share) await navigator.share({ title: 'AllConnect', text, url: this.link }); else { await navigator.clipboard.writeText(text); toast('Invite link copied ✓') } } catch (e) {}
   },
   async redeem(btn) {

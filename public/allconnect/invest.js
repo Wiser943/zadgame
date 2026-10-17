@@ -54,7 +54,7 @@ const INV = {
         <button class="ivbtn out full" onclick="INV.askSellBiz('${b.key}')">Sell · ${this.short(b.sell)}</button></div>`
       : `<div class="ivbiz"><div class="ivhead">${this.ico(b.emoji, 1)}<div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span><span class="mk">Makes ${this.money(b.min)}–${this.money(b.max)} a day</span></div></div>
         <button class="ivbtn grn full" onclick="INV.act('biz/buy',{key:'${b.key}'})">Buy · ${this.short(b.price)}</button></div>`).join('');
-    h += `<p class="adfoot">Income is paid every evening at 6:00 PM (Lagos time), minus ${s.taxPct}% tax. Prices and payouts are set by the server.</p>`;
+    h += `<p class="adfoot">Income is paid every evening at 6:00 PM (Naija time), minus ${s.taxPct}% tax. Prices and payouts are set by the server.</p>`;
     ab.innerHTML = h; ab.scrollTop = st
   },
   /* emoji from the server data -> proper icons on coloured tiles */

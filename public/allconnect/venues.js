@@ -36,7 +36,7 @@ const VEN = {
       : `<p class="empty ivempty">You haven't opened a venue yet. Pick one below.</p>`;
     h += `<div class="lab2">OPEN A VENUE</div>` + shop.map(v => `<div class="ivrow">${this.ico(v)}<div class="rt"><b>${esc(v.name)} · ${esc(v.area)}</b><span>${esc(v.blurb)}</span><span class="mk">About ${this.money(v.perDay1)} a day · ${esc(v.peak)}</span></div>
         <button class="ivbtn grn" onclick="VEN.askOpen('${v.key}')">Open · ${this.short(v.price)}</button></div>`).join('');
-    if (!shop.length) h += `<p class="empty ivempty">You run every kind of venue in Lagos. Upgrade them to earn more.</p>`;
+    if (!shop.length) h += `<p class="empty ivempty">You run every kind of venue in the city. Upgrade them to earn more.</p>`;
     h += `<p class="adfoot">Each venue earns most at its busy hours. Prices and income are set by the server. Closing a venue pays back half of what you put in.</p>`;
     ab.innerHTML = h; ab.scrollTop = st
   },

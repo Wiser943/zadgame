@@ -415,9 +415,9 @@ function drawApps() {
   const items = [...FIRST.map(n => byName[n]).filter(Boolean), ...rest].map(a => appBtn(a)).concat(((window.ADS && ADS.apps) || []).map(adBtn));
   const keep = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
   const L = window.LAGOS && LAGOS.d, ev = L && L.event, me = (typeof NET !== 'undefined' && NET.user && NET.user.displayName) || 'player';
-  const hap = `<div class="happen"><span class="hi">${ev ? `<span class="fa-solid fa-${ev.fa}" style="color:${ev.color}"></span>` : '🌙'}</span><div><small>Happening in Lagos</small><b>${ev ? esc(ev.title) : 'Loading the city…'}</b></div><button onclick="LAGOS.open('today')">Go ›</button></div>`;
+  const hap = `<div class="happen"><span class="hi">${ev ? `<span class="fa-solid fa-${ev.fa}" style="color:${ev.color}"></span>` : '🌙'}</span><div><small>${NG.say('Happening in 9ja', 'Wetin dey happen for 9ja')}</small><b>${ev ? esc(NG.pcm() && ev.pidgin ? ev.pidgin : ev.title) : NG.say('Loading the city…', 'City dey load…')}</b></div><button onclick="LAGOS.open('today')">Go ›</button></div>`;
   const lock = `<div class="lock"><b id="pb">--:--</b><span id="pd"></span><span class="hello">How far, ${esc(me)} <i>👋</i> · <i class="od"></i>${esc(($('onl') || {}).textContent || '')} online</span></div>`;
-  const goal = `<div class="goalcard" onclick="GOALS.open()"><small>🎯 ${window.GOALS ? GOALS.label() : 'GOALS'}</small><b>${window.GOALS ? esc(GOALS.nextTitle()) : 'Start your Lagos life'}</b></div>`;
+  const goal = `<div class="goalcard" onclick="GOALS.open()"><small>🎯 ${window.GOALS ? GOALS.label() : 'GOALS'}</small><b>${window.GOALS ? esc(GOALS.nextTitle()) : NG.say('Start your Naija life', 'Start your Naija life o')}</b></div>`;
   const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, 8).join('')}</div></div>`];
   for (let i = 8, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
   el.classList.add('h'); el.innerHTML = pages.join('');
@@ -458,7 +458,7 @@ try { window.matchMedia('(min-width:768px) and (min-height:520px)').addEventList
 try { const rf = new URLSearchParams(location.search).get('ref'); if (rf && /^[A-Za-z0-9_]{2,40}$/.test(rf)) { localStorage.setItem('ac:ref', rf); history.replaceState(null, '', location.pathname) } } catch (e) {}
 /* city-world loading sequence: a few Lagos lines while the room and map get ready */
 function cityLoader() {
-  const L = ['Waking up Lagos…', 'Starting the generators…', 'Sweeping Third Mainland Bridge…', 'Heating the jollof…', 'Tuning the danfo horns…', 'Opening your front door…'], T = ['Tip: pay bills before Sunday night so the light stays on.', 'Tip: tick "Go automatically" in Jobs and your shifts run themselves.', 'Tip: the city event changes every 12 hours.', 'Tip: new players are protected from big-money risks for 7 days.'];
+  const L = [NG.say('Waking up 9ja…', '9ja dey wake…'), NG.say('Starting the generators…', 'We dey start generator…'), NG.say('Sweeping Third Mainland Bridge…', 'We dey sweep Third Mainland Bridge…'), NG.say('Heating the jollof…', 'Jollof dey cook…'), NG.say('Tuning the danfo horns…', 'Danfo horn dey ready…'), NG.say('Opening your front door…', 'We dey open your door…')], T = ['Tip: pay bills before Sunday night so the light stays on.', 'Tip: tick "Go automatically" in Jobs and your shifts run themselves.', 'Tip: the city event changes every 12 hours.', 'Tip: new players are protected from big-money risks for 7 days.'];
   const el = document.createElement('div'); el.id = 'cityload'; el.innerHTML = `<div class="sk">🏙️</div><b>AllConnect</b><p id="clmsg">${L[0]}</p><div class="bar"><i id="clbar"></i></div><small>${T[Math.floor(Math.random() * T.length)]}</small>`;
   $('app').appendChild(el); let i = 0; const t0 = Date.now();
   const tm = setInterval(() => { i = Math.min(L.length - 1, i + 1); const m = $('clmsg'), b = $('clbar'); if (m) m.textContent = L[i]; if (b) b.style.width = Math.round((i + 1) / L.length * 100) + '%' }, 420);
@@ -503,7 +503,7 @@ const CLOCK = {
       c = $('pd');
     if (a) a.textContent = m[1];
     if (b) b.textContent = m[1];
-    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') + ' · Lagos · ' + (($('hico') || {}).textContent || '');
+    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') + ' · Naija · ' + (($('hico') || {}).textContent || '');
     const hc = $('clk'),
       hi = $('hico');
     if (hc) hc.textContent = m[1] + ' ' + m[2]; { const hr = parseInt(d.toLocaleString('en-US', { ...o, hour: 'numeric', hour12: false }), 10) % 24,

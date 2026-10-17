@@ -245,7 +245,7 @@ const STYLE = {
   t_work() {
     const me = this.me, job = me.jobId; const jn = job && this.D.catalog.items.find(i => i.job === job);
     return `<div class="stinfo">${job ? 'Your job uniform is <b>free to wear</b> while you work there.' : 'Get a job in the Jobs app to wear its uniform for free.'}</div>
-      <button class="trow stt" onclick="STYLE.autoUni()"><span class="tl">Wear my uniform at work<small class="nsub">Weekdays 8am to 5pm (Lagos time) while employed</small></span><span class="sw2 ${me.identity.autoUniform ? 'on' : ''}"><i></i></span></button>
+      <button class="trow stt" onclick="STYLE.autoUni()"><span class="tl">Wear my uniform at work<small class="nsub">Weekdays 8am to 5pm (Naija time) while employed</small></span><span class="sw2 ${me.identity.autoUniform ? 'on' : ''}"><i></i></span></button>
       ${this.list(this.of(i => i.cat === 'uniform').sort((a, b) => (b.job === job) - (a.job === job)))}`;
   },
   autoUni() { return this.call('/identity', 'PUT', { autoUniform: !this.me.identity.autoUniform }) },

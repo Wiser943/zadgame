@@ -5120,7 +5120,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     function ghSyncPrefs() {
       let p = {}; try { p = JSON.parse(localStorage.getItem('ghPrefs') || '{}'); } catch {}
       Object.assign(prefs, p);
-      if (p.lang && I18N[p.lang] && p.lang !== LANG) { LANG = p.lang; document.documentElement.lang = LANG; if (document.getElementById('pnLobby')) refreshLobby(); }
+      const nl = p.lang && I18N[p.lang] ? p.lang : 'pcm'; if (nl !== LANG) { LANG = nl; document.documentElement.lang = LANG; if (document.getElementById('pnLobby')) refreshLobby(); }
       applyA11y(); applyTheme(); if (!prefs.music) stopMusic();
     }
     window.addEventListener('storage', e => { if (e.key === 'ghPrefs') ghSyncPrefs(); });
@@ -5211,7 +5211,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       }
     }
     
-    // ---------- localisation (English + French; add another language by adding a dictionary here) ----------
+    // ---------- localisation (Naija Pidgin default + English + French; add another language by adding a dictionary here) ----------
     const I18N = {
       en: { name: 'English', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Brackets', 'tab.utility': 'Utility', 'tabs.label': 'Home sections',
         'daily': 'Daily reward', 'daily.sub': '+₦25,000', 'shop': 'Shop', 'shop.sub': 'Themes, boards & tokens', 'friends': 'Friends', 'friends.sub': 'Add, invite & chat',
@@ -5244,7 +5244,23 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         'tour.s5.t': 'Récompense du jour', 'tour.s5.d': 'Revenez chaque jour pour récupérer des pièces gratuites.',
         'tour.s6.t': 'Amis', 'tour.s6.d': 'Ajoutez des amis, voyez qui est en ligne et invitez-les directement dans une partie.',
         'tour.s7.t': 'Défis quotidiens', 'tour.s7.d': 'Terminez-les chaque jour pour gagner des pièces bonus. Vous êtes prêt, amusez-vous bien !',
-        'lang': 'Langue', 'tut.title': 'Comment jouer', 'tut.next': 'Suivant', 'tut.back': 'Retour', 'tut.practice': 'S’entraîner contre un bot facile', 'tut.close': 'Fermer', 'tut.step': 'Étape' }
+        'lang': 'Langue', 'tut.title': 'Comment jouer', 'tut.next': 'Suivant', 'tut.back': 'Retour', 'tut.practice': 'S’entraîner contre un bot facile', 'tut.close': 'Fermer', 'tut.step': 'Étape' },
+      pcm: { name: 'Naija Pidgin', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Tournament', 'tab.utility': 'Tools', 'tabs.label': 'Home sections',
+        'daily': 'Daily gift', 'daily.sub': '+₦25,000', 'shop': 'Shop', 'shop.sub': 'Themes, boards and tokens', 'friends': 'Padi dem', 'friends.sub': 'Add padi, invite and gist',
+        'history': 'History', 'history.sub': 'Matches and replays', 'a11y': 'Accessibility', 'a11y.sub': 'Text, colour, motion', 'gallery': 'Highlights', 'gallery.sub': 'Correct moments from players',
+        'rewards': 'Rewards and Payouts', 'rewards.sub': 'Confirm your details make you ready when we launch', 'soon': 'E dey come soon', 'leaderboard': 'Leaderboard', 'play': 'Play',
+        'challenges': 'Daily challenges', 'claimed': 'You don collect ✓', 'ch.play-3': 'Play 3 matches', 'ch.win-1': 'Win one match against real player',
+        'sheet.quick': 'Quick match', 'sheet.create': 'Open one room', 'sheet.bot': 'Play against Bot', 'sheet.level': 'Bot level', 'sheet.ranked': 'Ranked match (real players)',
+        'sheet.code': 'ROOM CODE', 'sheet.join': 'Join', 'sheet.rooms': 'Open rooms', 'sheet.howto': 'How to play and practice', 'sheet.rules': 'Rules (rooms and bot games)',
+        'tour.skip': 'Skip tour', 'tour.next': 'Next', 'tour.gotit': 'I get am', 'tour.replay': 'Show me the app tour again', 'tour.of': 'of',
+        'tour.s1.t': 'Welcome to GameHub', 'tour.s1.d': 'These tabs dey move you round the app: Lobby for games, Tournament for cups, and Tools for your things.',
+        'tour.s2.t': 'Pick a game', 'tour.s2.d': 'Tap any game to play quick match, open a room, play Bot, or read how e dey work.',
+        'tour.s3.t': 'Leaderboard', 'tour.s3.d': 'See the top players and where you stand.',
+        'tour.s4.t': 'Your progress', 'tour.s4.d': 'Your level, XP bar, rank and win streak dey here. Win matches make you climb.',
+        'tour.s5.t': 'Daily gift', 'tour.s5.d': 'Come back every day collect free ₦.',
+        'tour.s6.t': 'Padi dem', 'tour.s6.d': 'Add your padi dem, see who dey online and invite dem straight into a game.',
+        'tour.s7.t': 'Daily challenges', 'tour.s7.d': 'Finish these every day to collect bonus ₦. You don ready, enjoy!',
+        'lang': 'Language', 'tut.title': 'How to play', 'tut.next': 'Next', 'tut.back': 'Back', 'tut.practice': 'Practice against Easy bot', 'tut.close': 'Close', 'tut.step': 'Step' }
     };
     Object.assign(I18N.en, {
       'tab.rooms': 'Rooms', 'tour.prev': 'Back',
@@ -5281,7 +5297,26 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       'rooms.fail': 'Impossible de charger les salles.', 'rooms.join': 'Rejoindre', 'rooms.watch': 'Regarder', 'rooms.live': 'Direct', 'rooms.needCode': 'Saisissez d’abord un code de salle.'
     });
 
-    let LANG = (() => { const saved = prefs.lang || ''; if (I18N[saved]) return saved; const nav = String(navigator.language || 'en').slice(0, 2).toLowerCase(); return I18N[nav] ? nav : 'en'; })();
+    Object.assign(I18N.pcm, {
+      'tab.rooms': 'Rooms', 'tour.prev': 'Back',
+      'tour.s1.d': 'These tabs dey move you round the app: Lobby for games, Tournament for cups, Tools for your things and Rooms to join your padi dem.',
+      'tour.s7.d': 'Finish these every day to collect bonus ₦.',
+      'tour.s8.t': 'Rewards', 'tour.s8.d': 'Confirm your details here so you go ready when real payouts start.',
+      'tour.s9.t': 'Rooms tab', 'tour.s9.d': 'Every open room and live match from all the games dey show here.',
+      'tour.s10.t': 'Room code', 'tour.s10.d': 'Your padi give you code? Type am here and tap Join make you enter their game.',
+      'tour.s11.t': 'Open rooms', 'tour.s11.d': 'Rooms wey get free seat dey show Join. Matches wey don start dey show Watch so you fit look.',
+      'tour.s12.t': 'Shop', 'tour.s12.d': 'Spend your ₦ on backgrounds, boards and tokens.',
+      'tour.s13.t': 'Match history', 'tour.s13.d': 'Look your old matches and see how e go.',
+      'tour.s14.t': 'Settings', 'tour.s14.d': 'Tap your name here for sound, dark mode, accessibility and language. You don ready, enjoy!',
+      'sheet.players': 'Players', 'sheet.lvl.random': 'Surprise me',
+      'sheet.lvl.hintRandom': 'The server go pick random bot level for you.', 'sheet.lvl.hint': 'Bots go play for this level.',
+      'rooms.codeTitle': 'Join with code', 'rooms.codeSub': 'Your padi give you room code? Put am below.',
+      'rooms.title': 'Open rooms', 'rooms.empty': 'No open or live room for now. Open one room from the Lobby and share the code.',
+      'rooms.fail': 'E no load the rooms.', 'rooms.join': 'Join', 'rooms.watch': 'Watch', 'rooms.live': 'Live', 'rooms.needCode': 'Enter room code first.'
+    });
+
+    // Default = Naija Pidgin (with a touch of English). Only a language the player picked in Settings overrides it.
+    let LANG = (() => { const saved = prefs.lang || ''; return I18N[saved] ? saved : 'pcm'; })();
 
     const t = (key, fallback) => (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || fallback || key;
     function setLang(code) { if (!I18N[code]) return; LANG = code; prefs.lang = code; savePrefs(); document.documentElement.lang = code; }
