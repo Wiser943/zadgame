@@ -42,7 +42,9 @@
         </div>
         <p class="note">Phone or computer. Same account for the life-sim, GameHub and Lagos Run.</p>
       </div>
-      <figure class="city" aria-label="Stylised Lagos map with airport, grass plots and live player pins">
+      <figure class="city city3d" id="cityDio" aria-label="A 3D tour of the AllConnect map: airport, Agege market, stadium, Third Mainland Bridge, Victoria Island and the beach resort">
+        <div class="dio" id="heroDio"></div>
+        <div class="flat">
         <div class="island"></div>
         <div class="road r1"></div>
         <div class="road r2"></div>
@@ -52,6 +54,7 @@
         <div class="pin" style="left:68%;top:52%"><i></i> 1000+</div>
         <div class="pin" style="left:36%;top:62%"><i></i> Home</div>
         <div class="hud"><span>Home</span><span>Buy</span><span class="on">Map</span><span>Phone</span></div>
+        </div>
       </figure>
     </section>
     <div class="wrap snapshot">
@@ -131,5 +134,13 @@
       <p><a href="/play">Play</a> · <a href="/gamehub">GameHub</a> · <a href="/lagosrun/">Lagos Run</a></p>
     </div>
   </footer>
+  <script src="/allconnect/diorama.js" defer></script>
+  <script>
+    /* 3D map tour: the camera flies between popular places. The flat picture stays if WebGL is unavailable. */
+    addEventListener('load', function () {
+      var f = document.getElementById('cityDio'); if (!f || !window.DIORAMA) return;
+      DIORAMA.mount(document.getElementById('heroDio'), { mode: 'tour' }).then(function (d) { if (d) f.classList.add('on'); });
+    });
+  </script>
 </body>
 </html>

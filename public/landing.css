@@ -99,3 +99,27 @@ footer .foot { display: flex; justify-content: space-between; gap: 12px; flex-wr
   h1 { font-size: 36px; }
   .city { min-height: 280px; }
 }
+
+
+/* ---- 3D map tour in the hero ---- */
+.city3d { min-height: 400px; background: linear-gradient(#7fc1ef, #cfe6f4); }
+.city3d .dio, .city3d .flat { position: absolute; inset: 0; transition: opacity .8s ease; }
+.city3d .dio { opacity: 0; }
+.city3d.on .dio { opacity: 1; }
+.city3d.on .flat { opacity: 0; pointer-events: none; }
+.city3d .flat { background: linear-gradient(#6db4e6, #2b86c9); }
+.dio-cap {
+  position: absolute; left: 14px; bottom: 14px; max-width: min(360px, calc(100% - 28px));
+  display: flex; gap: 12px; align-items: center; padding: 10px 16px 10px 12px;
+  background: rgba(255,255,255,.95); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; pointer-events: none;
+}
+.dio-cap.in { opacity: 1; transform: none; }
+.dio-em { font-size: 26px; line-height: 1; }
+.dio-cap b { display: block; font: 800 15px/1.2 Outfit, "Segoe UI", sans-serif; color: #1b2236; }
+.dio-cap small { display: block; color: var(--mut); font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+.dio-dots { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; background: rgba(255,255,255,.55); border-radius: 999px; padding: 2px 4px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dio-dots button { width: 24px; height: 24px; border: 0; background: none; padding: 0; cursor: pointer; display: grid; place-items: center; }
+.dio-dots button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgba(27,34,54,.35); transition: all .25s; }
+.dio-dots button.on::before { width: 20px; border-radius: 6px; background: #1b2236; }
+@media (max-width: 640px) { .city3d { min-height: 340px; } .dio-cap small { display: none; } }

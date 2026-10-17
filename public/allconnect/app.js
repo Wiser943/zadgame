@@ -544,6 +544,16 @@ boot();
   sp.insertAdjacentHTML('afterbegin', s)
 })();
 
+/* ================= sign-in screen background: orbiting 3D map (falls back to the flat room picture) ================= */
+(function() {
+  const go = () => {
+    let saver = false; try { saver = !!JSON.parse(localStorage.getItem('ghPrefs') || '{}').lowPower } catch (e) {}
+    if (saver || !window.DIORAMA) return;
+    DIORAMA.mount(document.getElementById('dio'), { mode: 'orbit', shiftY: .13, shiftYWide: .09 }).then(d => { if (d) { const r = document.querySelector('#splash .splash-room'); if (r) r.style.display = 'none' } })
+  };
+  if (window.DIORAMA) go(); else window.addEventListener('load', go)
+})();
+
 /* ================= instant feel: preload everything in the background (unless Saver mode is on) ================= */
 const isSaver = () => { try { return !!JSON.parse(localStorage.getItem('ghPrefs') || '{}').lowPower } catch (e) { return false } };
 let warmed = false;

@@ -1345,3 +1345,21 @@ html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
 .darkness-control input[type=range]{width:100%;margin:14px 0 4px;accent-color:#075BFF;cursor:pointer}
 .darkness-ends{display:flex;justify-content:space-between;color:var(--mut);font-size:10.5px}
 .darkness-preview{height:18px;margin-top:10px;border:1px solid rgba(140,145,165,.35);border-radius:8px;background:#000;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
+
+
+/* ---------- sign-in screen: a 3D map the camera circles around, under a sky of soft blended clouds ---------- */
+#splash{background:linear-gradient(#6fb7ee 0,#a6d4f4 20%,#d6ebf7 38%,#cfe6f4 60%,#cfe3c4)}
+#splash>*{position:relative;z-index:2}
+#splash>.dio,#splash>.sky{position:absolute;pointer-events:none}
+#splash>.dio{inset:0;z-index:0;opacity:0;transition:opacity 1.2s ease}#splash>.dio.dio-on{opacity:1}
+#splash>.sky{left:0;right:0;top:0;height:46%;z-index:1;overflow:hidden;
+  -webkit-mask-image:linear-gradient(#000 50%,transparent);mask-image:linear-gradient(#000 50%,transparent)}
+.sky .cloud{position:absolute;left:0;top:var(--t);width:var(--w);height:calc(var(--w) * .36);opacity:.92;filter:blur(7px);
+  background:
+    radial-gradient(closest-side at 22% 64%,#fff 0 58%,transparent 62%),
+    radial-gradient(closest-side at 44% 42%,#fff 0 70%,transparent 74%),
+    radial-gradient(closest-side at 68% 56%,#fff 0 66%,transparent 70%),
+    radial-gradient(closest-side at 86% 70%,#fff 0 52%,transparent 58%);
+  transform:translateX(-120%);animation:cloudDrift var(--d) linear infinite;animation-delay:var(--o);will-change:transform}
+@keyframes cloudDrift{from{transform:translateX(-120%)}to{transform:translateX(calc(100vw + 20%))}}
+@media (prefers-reduced-motion:reduce){.sky .cloud{animation:none;transform:translateX(12vw)}}
