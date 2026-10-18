@@ -271,6 +271,7 @@
       gap: 10px;
       margin: 12px 18px 0;
     }
+    .quickgrid > .qtile:only-child { grid-column: 1 / -1; }
     .btn.qtile {
       display: flex;
       flex-direction: column;
@@ -3155,6 +3156,7 @@
     /* ---- lobby tabs (four now) ---- */
     .lobtabs { gap: 6px; padding-left: 12px; padding-right: 12px }
     .lobtabs [role=tab] { padding: 11px 4px; font-size: 13px; position: relative; min-width: 0; overflow: hidden; text-overflow: ellipsis }
+    @media (max-width: 400px) { .lobtabs { gap: 4px; padding-left: 8px; padding-right: 8px } .lobtabs [role=tab] { font-size: 12px; padding: 10px 2px; letter-spacing: -.2px } }
     .tabbadge { position: absolute; top: 3px; right: 6px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--gold); color: #1a0508; font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; line-height: 1 }
     .tabbadge[hidden] { display: none }
     .lobtabs [role=tab].on .tabbadge { background: #fff; color: var(--red2) }
@@ -4700,7 +4702,6 @@
   <section id="pnUtil" role="tabpanel" aria-labelledby="tabUtil" hidden>
   <div class="dash" id="dashCard"></div>
   <div class="quickgrid">
-    <button class="btn ghost qtile" id="daily"><span class="qico">🎁</span><b>${esc(t('daily'))}</b><small>${esc(t('daily.sub'))}</small></button>
     <button class="btn ghost qtile" id="shopOpen"><span class="qico">${icon('trophy',22)}</span><b>${esc(t('shop'))}</b><small>${esc(t('shop.sub'))}</small></button>
   </div>
   <div class="quickgrid">
@@ -4748,7 +4749,6 @@
       loadChallengesCard();
       loadDashboard();
       $('#shopOpen').onclick = () => shopView();
-      $('#daily').onclick = async () => { try { const d=await apiPost('/api/daily-claim',{}); me.coins=d.coins; toast(`Daily reward claimed: +${naira(d.reward)}`); refreshLobby(); } catch(e) { toast(e.message || 'Reward already claimed'); } };
       host.querySelectorAll('.game').forEach(b => b.onclick = () =>
         b.dataset.a === '1' ? sheet(b.dataset.k, b.dataset.n) : toast(`${b.dataset.n} isn't built yet — coming soon.`));
     }
@@ -5062,7 +5062,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     <div class="shop-top"><button class="back" id="shBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
       <h1>Shop</h1><span class="shop-coins" id="balShop">${naira(data.coins)}</span></div>
     <div class="shop-tabs">${SHOP_TABS.map(([k, n]) => `<button data-tab="${k}" class="${k === shopTab ? 'on' : ''}">${n}</button>`).join('')}</div>
-    <p class="shop-hint">${SHOP_HINT[shopTab]} Win matches and claim your daily reward to earn ₦.</p>
+    <p class="shop-hint">${SHOP_HINT[shopTab]} Win matches to earn ₦.</p>
     <div class="shop-grid">${items.map(it => {
         const eq = data.equipped[it.cat] === it.id;
         const poor = !it.owned && data.coins < it.price;
@@ -5200,7 +5200,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
     // ---------- localisation (Naija Pidgin default + English + French; add another language by adding a dictionary here) ----------
     const I18N = {
       en: { name: 'English', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Brackets', 'tab.utility': 'Utility', 'tabs.label': 'Home sections',
-        'daily': 'Daily reward', 'daily.sub': '+₦25,000', 'shop': 'Shop', 'shop.sub': 'Themes, boards & tokens', 'friends': 'Friends', 'friends.sub': 'Add, invite & chat',
+        'shop': 'Shop', 'shop.sub': 'Themes, boards & tokens', 'friends': 'Friends', 'friends.sub': 'Add, invite & chat',
         'history': 'History', 'history.sub': 'Matches & replays', 'a11y': 'Accessibility', 'a11y.sub': 'Text, contrast, motion', 'gallery': 'Highlights', 'gallery.sub': 'Best moments from players',
         'rewards': 'Rewards & Payouts', 'rewards.sub': 'Verify your details to be ready for launch', 'soon': 'Coming soon', 'leaderboard': 'Leaderboard', 'play': 'Play',
         'challenges': 'Daily challenges', 'claimed': 'Claimed ✓', 'ch.play-3': 'Play 3 matches', 'ch.win-1': 'Win a match against a real player',
@@ -5211,12 +5211,11 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         'tour.s2.t': 'Pick a game', 'tour.s2.d': 'Tap any game to play a quick match, create a room, play a bot, or read how it works.',
         'tour.s3.t': 'Leaderboard', 'tour.s3.d': 'See the top players and where you rank.',
         'tour.s4.t': 'Your progress', 'tour.s4.d': 'Your level, XP bar, rank and win streak live here. Win matches to move up.',
-        'tour.s5.t': 'Daily reward', 'tour.s5.d': 'Come back every day to claim free ₦.',
         'tour.s6.t': 'Friends', 'tour.s6.d': 'Add friends, see who is online and invite them straight into a game.',
         'tour.s7.t': 'Daily challenges', 'tour.s7.d': 'Finish these each day to earn bonus ₦. You are all set, have fun!',
         'lang': 'Language', 'tut.title': 'How to play', 'tut.next': 'Next', 'tut.back': 'Back', 'tut.practice': 'Practice vs Easy bot', 'tut.close': 'Close', 'tut.step': 'Step' },
       fr: { name: 'Français', 'tab.lobby': 'Salon', 'tab.tournaments': 'Tournois', 'tab.utility': 'Outils', 'tabs.label': 'Sections de l’accueil',
-        'daily': 'Récompense du jour', 'daily.sub': '+₦25 000', 'shop': 'Boutique', 'shop.sub': 'Thèmes, plateaux et pions', 'friends': 'Amis', 'friends.sub': 'Ajouter, inviter et discuter',
+        'shop': 'Boutique', 'shop.sub': 'Thèmes, plateaux et pions', 'friends': 'Amis', 'friends.sub': 'Ajouter, inviter et discuter',
         'history': 'Historique', 'history.sub': 'Parties et replays', 'a11y': 'Accessibilité', 'a11y.sub': 'Texte, contraste, animations', 'gallery': 'Temps forts', 'gallery.sub': 'Les meilleurs moments des joueurs',
         'rewards': 'Récompenses et paiements', 'rewards.sub': 'Vérifiez vos informations pour être prêt au lancement', 'soon': 'Bientôt', 'leaderboard': 'Classement', 'play': 'Jouer',
         'challenges': 'Défis quotidiens', 'claimed': 'Récupéré ✓', 'ch.play-3': 'Jouer 3 parties', 'ch.win-1': 'Gagner une partie contre un vrai joueur',
@@ -5227,23 +5226,21 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
         'tour.s2.t': 'Choisissez un jeu', 'tour.s2.d': 'Touchez un jeu pour lancer une partie rapide, créer une salle, jouer contre le bot ou lire les règles.',
         'tour.s3.t': 'Classement', 'tour.s3.d': 'Voyez les meilleurs joueurs et votre position.',
         'tour.s4.t': 'Votre progression', 'tour.s4.d': 'Votre niveau, votre barre d’XP, votre rang et votre série de victoires sont ici. Gagnez pour progresser.',
-        'tour.s5.t': 'Récompense du jour', 'tour.s5.d': 'Revenez chaque jour pour récupérer des pièces gratuites.',
         'tour.s6.t': 'Amis', 'tour.s6.d': 'Ajoutez des amis, voyez qui est en ligne et invitez-les directement dans une partie.',
         'tour.s7.t': 'Défis quotidiens', 'tour.s7.d': 'Terminez-les chaque jour pour gagner des pièces bonus. Vous êtes prêt, amusez-vous bien !',
         'lang': 'Langue', 'tut.title': 'Comment jouer', 'tut.next': 'Suivant', 'tut.back': 'Retour', 'tut.practice': 'S’entraîner contre un bot facile', 'tut.close': 'Fermer', 'tut.step': 'Étape' },
-      pcm: { name: 'Naija Pidgin', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Tournament', 'tab.utility': 'Tools', 'tabs.label': 'Home sections',
-        'daily': 'Daily gift', 'daily.sub': '+₦25,000', 'shop': 'Shop', 'shop.sub': 'Themes, boards and tokens', 'friends': 'Padi dem', 'friends.sub': 'Add padi, invite and gist',
+      pcm: { name: 'Naija Pidgin', 'tab.lobby': 'Lobby', 'tab.tournaments': 'Tournament', 'tab.utility': 'Utility', 'tabs.label': 'Home sections',
+        'shop': 'Shop', 'shop.sub': 'Themes, boards and tokens', 'friends': 'Padi dem', 'friends.sub': 'Add padi, invite and gist',
         'history': 'History', 'history.sub': 'Matches and replays', 'a11y': 'Accessibility', 'a11y.sub': 'Text, colour, motion', 'gallery': 'Highlights', 'gallery.sub': 'Correct moments from players',
         'rewards': 'Rewards and Payouts', 'rewards.sub': 'Confirm your details make you ready when we launch', 'soon': 'E dey come soon', 'leaderboard': 'Leaderboard', 'play': 'Play',
         'challenges': 'Daily challenges', 'claimed': 'You don collect ✓', 'ch.play-3': 'Play 3 matches', 'ch.win-1': 'Win one match against real player',
         'sheet.quick': 'Quick match', 'sheet.create': 'Open one room', 'sheet.bot': 'Play against Bot', 'sheet.level': 'Bot level', 'sheet.ranked': 'Ranked match (real players)',
         'sheet.code': 'ROOM CODE', 'sheet.join': 'Join', 'sheet.rooms': 'Open rooms', 'sheet.howto': 'How to play and practice', 'sheet.rules': 'Rules (rooms and bot games)',
         'tour.skip': 'Skip tour', 'tour.next': 'Next', 'tour.gotit': 'I get am', 'tour.replay': 'Show me the app tour again', 'tour.of': 'of',
-        'tour.s1.t': 'Welcome to GameHub', 'tour.s1.d': 'These tabs dey move you round the app: Lobby for games, Tournament for cups, and Tools for your things.',
+        'tour.s1.t': 'Welcome to GameHub', 'tour.s1.d': 'These tabs dey move you round the app: Lobby for games, Tournament for cups, and Utility for your things.',
         'tour.s2.t': 'Pick a game', 'tour.s2.d': 'Tap any game to play quick match, open a room, play Bot, or read how e dey work.',
         'tour.s3.t': 'Leaderboard', 'tour.s3.d': 'See the top players and where you stand.',
         'tour.s4.t': 'Your progress', 'tour.s4.d': 'Your level, XP bar, rank and win streak dey here. Win matches make you climb.',
-        'tour.s5.t': 'Daily gift', 'tour.s5.d': 'Come back every day collect free ₦.',
         'tour.s6.t': 'Padi dem', 'tour.s6.d': 'Add your padi dem, see who dey online and invite dem straight into a game.',
         'tour.s7.t': 'Daily challenges', 'tour.s7.d': 'Finish these every day to collect bonus ₦. You don ready, enjoy!',
         'lang': 'Language', 'tut.title': 'How to play', 'tut.next': 'Next', 'tut.back': 'Back', 'tut.practice': 'Practice against Easy bot', 'tut.close': 'Close', 'tut.step': 'Step' }
@@ -5285,7 +5282,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
 
     Object.assign(I18N.pcm, {
       'tab.rooms': 'Rooms', 'tour.prev': 'Back',
-      'tour.s1.d': 'These tabs dey move you round the app: Lobby for games, Tournament for cups, Tools for your things and Rooms to join your padi dem.',
+      'tour.s1.d': 'These tabs dey move you round the app: Lobby for games, Tournament for cups, Utility for your things and Rooms to join your padi dem.',
       'tour.s7.d': 'Finish these every day to collect bonus ₦.',
       'tour.s8.t': 'Rewards', 'tour.s8.d': 'Confirm your details here so you go ready when real payouts start.',
       'tour.s9.t': 'Rooms tab', 'tour.s9.d': 'Every open room and live match from all the games dey show here.',
@@ -5318,7 +5315,6 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       { sel: '#roomCodeCard', tab: 'rooms', k: 's10' },
       { sel: '#roomsBox', tab: 'rooms', k: 's11' },
       { sel: '#dashCard', tab: 'util', k: 's4' },
-      { sel: '#daily', tab: 'util', k: 's5' },
       { sel: '#shopOpen', tab: 'util', k: 's12' },
       { sel: '#friendsOpen', tab: 'util', k: 's6' },
       { sel: '#historyOpen', tab: 'util', k: 's13' },

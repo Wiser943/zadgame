@@ -1,4 +1,4 @@
-// Lagos Life rules: city events, utility bills, starter quests, daily streak. No database access in here, so it is easy to test.
+// Lagos Life rules: city events, utility bills, starter quests. No database access in here, so it is easy to test.
 // Everything is derived from the clock, so every server instance and every player sees the same city at the same moment.
 
 const HOUR = 3600e3, DAY = 24 * HOUR;
@@ -97,14 +97,4 @@ const QUESTS = [
 ];
 const QBYID = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 
-/* ----- daily streak: each consecutive day pays a bit more, up to day 7, then it loops ----- */
-const STREAK = [10000, 15000, 20000, 25000, 30000, 40000, 75000];
-const streakReward = (n) => STREAK[(Math.max(1, n) - 1) % STREAK.length];
-function nextStreak(ac, now = Date.now()) {
-  const today = dayKey(now), yest = dayKey(now - DAY);
-  if (ac.lastDaily === today) return { claimable: false, streak: ac.streak || 0, next: streakReward((ac.streak || 0) + 1) };
-  const n = ac.lastDaily === yest ? (ac.streak || 0) + 1 : 1;
-  return { claimable: true, streak: n, next: streakReward(n), reset: !!ac.lastDaily && ac.lastDaily !== yest };
-}
-
-module.exports = { HOUR, DAY, dayKey, EVENTS, currentEvent, setMultHook, jobMult, publicEvent, BILLS, FREE_DAYS, LATE_PCT, KEEP, cycleOf, billAmount, newBills, lateFee, owed, powerCut, billView, QUESTS, QBYID, STREAK, streakReward, nextStreak };
+module.exports = { HOUR, DAY, dayKey, EVENTS, currentEvent, setMultHook, jobMult, publicEvent, BILLS, FREE_DAYS, LATE_PCT, KEEP, cycleOf, billAmount, newBills, lateFee, owed, powerCut, billView, QUESTS, QBYID };

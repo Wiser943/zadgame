@@ -112,7 +112,8 @@ window.ROUTER = ROUTER;
   if (_start) window.start = async function (n) {
     ROUTER.pause();
     const r = await _start.apply(this, arguments);
-    const deep = /[?&]open=/.test(location.search);
+    let want = ''; try { want = sessionStorage.getItem('ac:open') || '' } catch (e) {}
+    const deep = /[?&]open=/.test(location.search) || !!want;
     ROUTER.start(!n && !deep);
     return r;
   };

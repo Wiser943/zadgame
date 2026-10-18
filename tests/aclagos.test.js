@@ -40,14 +40,6 @@ test('late fee and power cut', () => {
   assert.strictEqual(L.powerCut([b], c.due + 3600e3), false);
   assert.strictEqual(L.powerCut([b], c.due + 25 * 3600e3), true);
 });
-test('daily streak grows by day, resets after a miss, pays once a day', () => {
-  const t = Date.UTC(2026, 9, 9, 10);
-  assert.deepStrictEqual([L.nextStreak({}, t).streak, L.nextStreak({}, t).claimable], [1, true]);
-  assert.strictEqual(L.nextStreak({ lastDaily: L.dayKey(t - 86400e3), streak: 3 }, t).streak, 4);
-  const miss = L.nextStreak({ lastDaily: L.dayKey(t - 3 * 86400e3), streak: 6 }, t); assert.strictEqual(miss.streak, 1);
-  assert.strictEqual(L.nextStreak({ lastDaily: L.dayKey(t), streak: 2 }, t).claimable, false);
-  assert.ok(L.streakReward(7) > L.streakReward(1)); assert.strictEqual(L.streakReward(8), L.streakReward(1));
-});
 test('quests are unique and rewards stay small', () => {
   assert.strictEqual(new Set(L.QUESTS.map((q) => q.id)).size, L.QUESTS.length);
   assert.ok(L.QUESTS.reduce((s, q) => s + q.reward, 0) < 250000);

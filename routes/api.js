@@ -6,7 +6,6 @@ const Match = require('../models/Match');
 const shop = require('../config/shop');
 const mongoose = require('mongoose');
 const econ = require('../utils/economy');
-const { DAILY_REWARD } = require('../config/economy');
 const cashOf = econ.cashOf;
 
 const router = express.Router();
@@ -17,7 +16,6 @@ const router = express.Router();
 const AVATAR_RE = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/;
 const MAX_AVATAR_BYTES = 900 * 1024; // ~900KB of base64 (~650KB image) — plenty for a profile photo
 
-router.post('/daily-claim', ensureAuth, async (req,res,next)=>{ try { const u=await User.findById(req.user.id); const now=new Date(); if(u.lastDailyClaim && now-u.lastDailyClaim < 24*60*60*1000) return res.status(409).json({message:'Daily reward already claimed.', nextAt:new Date(u.lastDailyClaim.getTime()+24*60*60*1000)}); u.lastDailyClaim=now; u.xp=(u.xp||0)+10; u.level=Math.floor(u.xp/100)+1; await u.save(); const cash=await econ.credit(u.id,DAILY_REWARD); res.json({coins:cash,xp:u.xp,level:u.level,reward:DAILY_REWARD}); } catch(e){next(e);} });
 router.get('/matches/:id/replay', ensureAuth, async (req,res,next)=>{try{const row=await Match.findOne({_id:req.params.id,'players.userId':String(req.user.id)}).select('game players result winnerIndex moves createdAt');if(!row)return res.status(404).json({message:'Replay not found.'});res.json({replay:row});}catch(e){next(e);}});
 router.get('/matches', ensureAuth, async (req,res,next)=>{ try { const rows=await Match.find({'players.userId':String(req.user.id)}).sort({createdAt:-1}).limit(30).select('game players winnerIndex result reason ranked durationMs createdAt').lean(); res.json({matches:rows}); } catch(e){next(e);} });
 

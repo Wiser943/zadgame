@@ -187,6 +187,8 @@
     },
     /* ---------- voice notes ---------- */
     mic() { if (!window.VN) return; VN.record(v => { isG() ? PH.gSend('', { voice: v }) : PH.send('', { voice: v }) }) },
+    /* the round button next to the box: send when there is text, otherwise hold to record (voice.js) */
+    vn: { send() { isG() ? PH.gSendInput() : PH.sendInput() }, voice(v) { isG() ? PH.gSend('', { voice: v }) : PH.send('', { voice: v }) } },
     /* ---------- photos ---------- */
     pick() {
       const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*';
@@ -287,4 +289,5 @@
     }
     return _on.call(this, ev, p);
   };
+  if (window.VN && window.CHATX) VN.cfg.chat = CHATX.vn;
 })();

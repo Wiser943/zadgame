@@ -1,4 +1,4 @@
-// Lagos Life: city events, weekly utility bills, starter quests and the daily streak. All money moves are atomic and server-side.
+// Lagos Life: city events, weekly utility bills and starter quests. All money moves are atomic and server-side.
 const express = require('express');
 const User = require('../models/User');
 const ACWallet = require('../models/ACWallet');
@@ -128,21 +128,7 @@ router.post('/quests/claim', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-/* ----- daily streak ----- */
-router.post('/daily', async (req, res, next) => {
-  try {
-    const me = uid(req), now = Date.now(), u0 = await ensureAC(me), st = L.nextStreak(u0.ac, now);
-    if (!st.claimable) return bad(res, 409, 'You already collected today. Come back tomorrow!');
-    const amt = L.streakReward(st.streak);
-    const u = await User.findOneAndUpdate({ _id: me, 'ac.lastDaily': { $in: [u0.ac.lastDaily || '', null] } }, { $inc: { 'ac.cash': amt }, $set: { 'ac.lastDaily': L.dayKey(now), 'ac.streak': st.streak } }, { new: true });
-    if (!u) return bad(res, 409, 'Already collected.');
-    await ACTxn.create({ user: me, type: 'credit', amount: amt, cpName: 'AllConnect', cpNum: '', note: `Daily bonus, day ${st.streak}`, ref: makeRef(), kind: 'reward' });
-    emitUser(req.app.get('io'), me, 'cash', { delta: amt });
-    res.json({ amount: amt, streak: st.streak, cash: u.ac.cash, daily: L.nextStreak(u.ac, now) });
-  } catch (e) { next(e); }
-});
-
-/* ----- one call for the home screen: today's city event, bills, quests, streak ----- */
+/* ----- one call for the home screen: today's city event, bills, quests ----- */
 router.get('/city', async (req, res, next) => {
   try {
     const me = uid(req), now = Date.now(), u = await issueBills(me, now), ev = L.currentEvent(now);
@@ -150,7 +136,7 @@ router.get('/city', async (req, res, next) => {
     const q = await questState(me);
     res.json({
       now, event: L.publicEvent(ev), next: L.publicEvent(L.currentEvent(ev.endsAt + 1)), weatherLosses,
-      bills: unpaidSummary(u, now), daily: L.nextStreak(u.ac, now),
+      bills: unpaidSummary(u, now),
       quests: { done: q.list.filter((x) => x.done).length, total: q.list.length, claimable: q.list.filter((x) => x.done && !x.claimed).length, claimed: q.list.filter((x) => x.claimed).length }
     });
   } catch (e) { next(e); }

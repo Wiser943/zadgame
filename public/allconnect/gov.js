@@ -42,7 +42,7 @@ const GOV = {
   /* ---------- tabs + body ---------- */
   tabs() {
     const D = this.D; if (!D) return ['governor', 'commissioner', 'president'].map((id) => ({ id, label: id[0].toUpperCase() + id.slice(1) }));
-    return Object.values(D.offices).map((o) => ({ id: o.id, label: o.icon + ' ' + o.title, badge: D.voterOk && o.election.ballot && !o.election.myVote && o.election.total ? 1 : 0 }));
+    return Object.values(D.offices).map((o) => ({ id: o.id, label: o.title, badge: D.voterOk && o.election.ballot && !o.election.myVote && o.election.total ? 1 : 0 }));
   },
   body(t) {
     const D = this.D; if (!D) return '<p class="empty">Loading…</p>';

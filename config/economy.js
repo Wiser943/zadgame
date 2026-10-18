@@ -13,7 +13,6 @@ module.exports = {
   COIN, STAKE_DEFAULT, STAKES, stakeFor,
   // Tournaments are never free: the admin must set a registration fee of at least this much (₦). Override with TOURNAMENT_MIN_FEE.
   MIN_ENTRY_FEE: Math.max(1, Math.floor(Number(process.env.TOURNAMENT_MIN_FEE)) || 1000),
-  DAILY_REWARD: 25 * COIN,
   CHALLENGE_REWARD: { 'play-3': 30 * COIN, 'win-1': 20 * COIN },
   TOURNAMENT_PRIZES: { champion: { coins: 100 * COIN, xp: 30 }, runnerUp: { coins: 40 * COIN, xp: 10 } }
 };

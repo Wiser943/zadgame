@@ -3,7 +3,7 @@
 // exist — its presence + the manifest is what makes Chrome/Edge/Android
 // consider the site "installable" and fire beforeinstallprompt.
 try { importScripts('/config.js'); } catch (e) {}   // defines self.API_BASE (empty when the API is on the same host)
-const CACHE = 'gamehub-shell-v6';
+const CACHE = 'gamehub-shell-v7';
 const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
 
 self.addEventListener('install', (e) => {
@@ -29,7 +29,7 @@ self.addEventListener('push', (e) => {
 });
 
 function appUrl(target, reply) {
-  const url = new URL('/', self.location.origin);
+  const url = new URL('/play', self.location.origin);
   url.searchParams.set('open', target.type || 'updates');
   if (target.id) url.searchParams.set('id', target.id);
   if (target.mid) url.searchParams.set('mid', target.mid);

@@ -280,7 +280,7 @@ window.ROOM3D = {
   nearestFree(cx, cz, occ) { let best = null, bd = 1e9; for (let x = 0; x < FURN.GRID; x++) for (let z = 0; z < FURN.GRID; z++) { if (occ.has(x + ',' + z)) continue; const d = Math.abs(x - cx) + Math.abs(z - cz); if (d < bd) { bd = d; best = [x, z] } } return best },
   /* rebuild the room's furniture + lamps from S.items (placed ones) */
   sync() {
-    if (!this.on) return; const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
+    if (!this.on) return; this.petLoad(); if (this.petCfg && !this.pet3) this.petBuild(); if (!this.petCfg && this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
     this.lamps = []; this.byId = {}; const items = S.items || [], own = (n) => items.some(i => i.name === n && i.placed !== false);
     const lamp = (x, y, z, big, par) => { const bm = new THREE.MeshBasicMaterial({ color: 0x8a8466 }); const b = new THREE.Mesh(new THREE.SphereGeometry(big ? .2 : .13, 12, 10), bm); b.position.set(x, y, z); ig.add(b); const l = new THREE.PointLight(0xffd68a, 0, big ? 11 : 8); l.position.set(x, y - .1, z); ig.add(l); this.lamps.push({ l, bm, k: big ? 1.15 : .9 }) };
     for (const it of items) {
@@ -292,6 +292,36 @@ window.ROOM3D = {
     if (own('Ceiling Bulb')) { this.cyl(.015, .35, 0x222222, 0, 2.82, 0, ig); lamp(0, 2.6, 0, true) }
     if (own('Wall Lamp')) { this.box(.12, .2, .22, 0x555555, -2.93, 2.2, .2, ig); lamp(-2.8, 2.2, .2); this.box(.22, .2, .12, 0x555555, 1.2, 2.2, -2.93, ig); lamp(1.2, 2.2, -2.8) }
     this.ensureAvatarFree(); if (this.selId) this.select(this.selId); if (this.ghostInfo) this.ghost(this.ghostInfo.name, this.ghostInfo.x, this.ghostInfo.z, this.ghostInfo.rot, this.ghostInfo.valid)
+  },
+  /* ---------- her pet cat (from the Pet app, when "Show in my room" is on): a small cat that wanders the floor ---------- */
+  CATCOL: { jersey: 0x16a34a, hoodie: 0x475569, ankara: 0xf59e0b, asoebi: 0xd946ef, raincoat: 0xfacc15, apron: 0x22c55e },
+  HATCOL: { fila: 0x7c3aed, party: 0xa855f7, gele: 0xe11d48, crown: 0xfbbf24, headlamp: 0xfde68a, danfo: 0xfacc15 },
+  setPet(cfg) { this.petCfg = cfg || null; if (this.on && this.scene) this.petSync() },
+  petLoad() {
+    if (this.petAsked || !window.NET || !NET.user) return; this.petAsked = true;
+    NET.api('/api/ac/pet/room').then(r => { if (r && r.on && !this.petCfg) { this.petCfg = { name: r.name, scale: r.stage.scale, worn: r.worn }; this.petSync() } }).catch(() => { this.petAsked = false });
+  },
+  petSync() { if (this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } if (this.petCfg) this.petBuild() },
+  petBuild() {
+    const c = this.petCfg, g = new THREE.Group(), fur = 0xf4a640, belly = 0xffe6bf, eye = 0x2b2140;
+    const S = (r, col, x, y, z, sx, sy, sz, par) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), this.mat(col)); m.position.set(x, y, z); if (sx) m.scale.set(sx, sy, sz); (par || g).add(m); return m };
+    S(.2, fur, 0, .2, 0, 1, .9, 1.35); S(.14, belly, 0, .17, .08, 1, .9, 1.1);
+    const outfit = this.CATCOL[c.worn && c.worn.body]; if (outfit) S(.215, outfit, 0, .2, -.02, 1, .92, 1.2);
+    const head = new THREE.Group(); head.position.set(0, .38, .2); g.add(head); S(.17, fur, 0, 0, 0, 1, 1, 1, head);
+    for (const sx of [-1, 1]) { const ear = new THREE.Mesh(new THREE.ConeGeometry(.06, .12, 4), this.mat(fur)); ear.position.set(sx * .1, .15, 0); head.add(ear); S(.028, eye, sx * .065, .03, .15, 0, 0, 0, head) }
+    S(.02, 0xe8527f, 0, -.02, .165, 0, 0, 0, head);
+    const hat = this.HATCOL[c.worn && c.worn.hat]; if (hat) { const h = new THREE.Mesh(new THREE.ConeGeometry(.09, .14, 12), this.mat(hat)); h.position.set(0, .22, 0); head.add(h) }
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, .3, 8), this.mat(fur)); tail.position.set(0, .3, -.3); tail.rotation.x = -.8; g.add(tail);
+    [[-.09, .1], [.09, .1], [-.09, -.12], [.09, -.12]].forEach(([x, z]) => S(.05, fur, x, .05, z));
+    g.scale.setScalar(.75 + .5 * (c.scale || 1)); g.position.set(1, 0, 1); g.userData = { head, tail, tx: 1, tz: 1, wait: 1, ph: 0 };
+    this.scene.add(g); this.pet3 = g;
+  },
+  petStep(t, dt) {
+    const g = this.pet3; if (!g) return; const u = g.userData; u.wait -= dt;
+    const dx = u.tx - g.position.x, dz = u.tz - g.position.z, d = Math.hypot(dx, dz);
+    if (d > .06) { const sp = Math.min(d, 1.1 * dt); g.position.x += dx / d * sp; g.position.z += dz / d * sp; g.rotation.y = Math.atan2(dx, dz); u.ph += dt * 9; g.position.y = Math.abs(Math.sin(u.ph)) * .03 }
+    else { g.position.y = 0; if (u.wait <= 0) { u.tx = Math.random() * 4.4 - 2.2; u.tz = Math.random() * 4.4 - 2.2; u.wait = 2 + Math.random() * 4 } }
+    u.tail.rotation.z = Math.sin(t / 300) * .35; u.head.rotation.y = Math.sin(t / 1100) * .3;
   },
   /* ---------- buy mode helpers: ghost preview, selection ring, hide, thumbnails ---------- */
   ghost(name, x, z, rot, valid) {
@@ -370,6 +400,7 @@ window.ROOM3D = {
     this.moon.intensity += (.42 * (1 - dl) - this.moon.intensity) * kk;
     this.ground.color.copy(lerpC(0x24331f, 0x93a05a, dl)); if (this.glass) this.glass.color.copy(lerpC(0x16224a, 0xbfe4ff, dl));
     const on = this.power(); this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
+    this.petStep(t, dt);
     this.R.render(this.scene, cam)
   }
 };

@@ -11,7 +11,7 @@ const HUB = {
   /* ---------- boot (after the player taps Continue) ---------- */
   async boot() {
     if (this.booted) return; this.booted = true;
-    try { await Promise.all([this.loadContent(), this.loadMe()]) } catch (e) { return }
+    try { await Promise.all([this.loadContent(), this.loadMe()]) } catch (e) { this.booted = false; return }
     this.paintNow(); this.startTicker();
     setInterval(() => { if (!document.hidden) this.loadMe(true) }, 120000);
     await CARD.fetch();
@@ -27,6 +27,8 @@ const HUB = {
     if (m.parcel.claimable) return this.parcelCard();
   },
   async loadContent() { if (!this.C) this.C = await this.api('/content') },
+  /* every hub sheet reads this.C, so make sure it is there first (it is missing after a slow start or a failed first load) */
+  async ensure() { if (this.C) return true; try { await this.loadContent(); return !!this.C } catch (e) { toast('Could not load. Check your connection and try again.'); return false } },
   async loadMe(quiet) {
     const before = this.me && this.me.missions.claimable;
     this.me = await this.api('/me');
@@ -52,6 +54,7 @@ const HUB = {
 
   /* ---------- "What can I do now?" ---------- */
   async now() {
+    if (!(await this.ensure())) return;
     await this.loadMe().catch(() => {}); if (!this.me) return toast('Loading…');
     this.sheet('What can I do now?', () => this.nowHtml(), { id: 'now' });
   },
@@ -60,7 +63,6 @@ const HUB = {
     const m = this.me, C = this.C, th = C.theme, ev = LAGOS && LAGOS.d ? LAGOS.d : null, h = [];
     if (!m.hub.done) h.push(UI.row({ ic: UI.ic('user-plus', '#6366f1', 38), title: 'Finish your welcome setup', sub: 'Pick your area, job and hobby. Takes a minute.', right: '<span class="lgbtn">Start</span>', go: 'HUB.setup(0)' }));
     if (m.parcel.claimable) h.push(UI.row({ ic: UI.ic('gift', '#f59e0b', 38), title: `Welcome parcel, day ${m.parcel.day} of ${m.parcel.total}`, sub: 'Free ₦ every day in your first week.', right: `<button class="lgbtn" onclick="event.stopPropagation();HUB.parcel(this)">+${this.fmt(m.parcel.amount)}</button>` }));
-    if (ev && ev.daily && ev.daily.claimable) h.push(UI.row({ ic: UI.ic('calendar-check', '#22b573', 38), title: 'Daily bonus is ready', sub: `Day ${ev.daily.streak}. Keep your streak going.`, right: `<span class="lgbtn">Open</span>`, go: "SHEET.close();LAGOS.open('today')" }));
     if (ev && ev.bills && ev.bills.count) h.push(UI.row({ ic: UI.ic('bolt', '#e5484d', 38), title: `${ev.bills.count} bill${ev.bills.count > 1 ? 's' : ''} to pay`, sub: ev.bills.overdue ? 'Some are late. Pay to avoid a power cut.' : 'Pay before Sunday night.', right: '<span class="lgbtn">Pay</span>', go: "SHEET.close();LAGOS.open('bills')" }));
     const tasks = m.tasks.slice(0, 4);
     h.push(`<h4>Your next steps</h4>`);
@@ -73,7 +75,8 @@ const HUB = {
   themeGo(g) { SHEET.close(); ({ buy: () => nav('buy'), jobs: () => { nav('phone'); setTimeout(() => PH.open('jobs'), 0) }, contacts: () => { nav('phone'); setTimeout(() => PH.open('contacts'), 0) }, gamehub: () => openHub(), gist: () => { nav('phone'); setTimeout(() => PH.open('gist'), 0) }, invest: () => { nav('phone'); setTimeout(() => PH.open('invest'), 0) } }[g] || (() => {}))() },
 
   /* ---------- hub menu: every city screen ---------- */
-  menu() {
+  async menu() {
+    if (!(await this.ensure())) return;
     const t = (fa, c, name, v, badge) => `<button class="htile" onclick="HUB.view('${v}')">${UI.ic(fa, c, 44)}<b>${name}</b>${badge ? `<i>${badge}</i>` : ''}</button>`;
     const m = this.me || { missions: {}, hub: {} };
     this.sheet('Naija hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
@@ -83,9 +86,10 @@ const HUB = {
       ${t('user-group', '#3b82f6', 'Invite', 'invite')}${t('hand-pointer', '#f59e0b', 'Controls', 'controls')}${t('route', '#14b8a6', 'City tour', 'tour')}${t('signal', '#22b573', 'Status', 'status')}
       ${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}</div>`, { id: 'menu', back: false });
   },
-  view(v) {
+  async view(v) {
     const f = this['v_' + v]; if (!f) return;
     if (v === 'controls') { SHEET.close(); return this.controls() }
+    if (!(await this.ensure())) return;
     if (v === 'tour') { SHEET.close(); return this.tour() }
     f.call(this);
   },

@@ -3,7 +3,7 @@
    Her state lives on the server (routes/acpet.js, rules in utils/acpet.js) so it follows you to any device, and EVERYTHING bought for her is
    charged from your main balance (S.cash). Reuses PH.shell / PH.sheet / CARD / UI.bar / LAGOS.setCash / NET.api / STYLE.mood and the room's wall colour. Everything she says is English. */
 const PET = {
-  p: null, cat: null, gm: null, rates: null, tmr: null, rec: null, speaking: false, greeted: false, cry: 0, bt: null, g: null, n: 0, lt: 0, lastGame: 0, lastAct: 0, tab: 'hat', busy: false, mode: 'repeat', ai: null, hist: [], thinking: false, lip: null, mr: null,
+  p: null, cat: null, gm: null, rates: null, tmr: null, rec: null, speaking: false, greeted: false, cry: 0, bt: null, g: null, n: 0, lt: 0, lastGame: 0, lastAct: 0, tab: 'hat', busy: false, mode: 'repeat', ai: null, ach: [], city: null, fr: [], shot_: null, hist: [], thinking: false, lip: null, mr: null,
   NEEDS: [['hunger', '🍛', 'Hunger'], ['energy', '⚡', 'Energy'], ['fun', '🎾', 'Fun'], ['clean', '🛁', 'Clean'], ['health', '❤️‍🩹', 'Health']],
   SLOTS: [['hat', 'Hats'], ['face', 'Face'], ['neck', 'Neck'], ['body', 'Outfits']],
   q(id) { return document.getElementById(id) },
@@ -12,8 +12,9 @@ const PET = {
   setCash(c) { if (!Number.isFinite(c)) return; if (window.LAGOS && LAGOS.setCash) LAGOS.setCash(c); else if (typeof S !== 'undefined') { S.cash = c; if (typeof render === 'function') render() } this.paintChips() },
   /* ----- server sync ----- */
   apply(r) {
-    if (r.pet) { const w = JSON.stringify(this.p && this.p.worn); this.p = Object.assign({}, r.pet); this.lt = Date.now(); if (w !== JSON.stringify(this.p.worn) && this.q('pfig')) { this.q('pfig').innerHTML = this.svg(); this.paintFig() } }
+    if (r.pet) { const w = JSON.stringify(this.p && this.p.worn); this.p = Object.assign({}, r.pet); this.lt = Date.now(); this.syncRoom(); if (w !== JSON.stringify(this.p.worn) && this.q('pfig')) { this.q('pfig').innerHTML = this.svg(); this.paintFig() } }
     if (r.catalog) this.cat = r.catalog; if (r.rates) this.rates = r.rates; if (r.game) this.gm = Object.assign(this.gm || {}, r.game);
+    if (r.ach) this.ach = r.ach; if (r.city) this.city = r.city; if (r.badges && r.badges.length && this.p) setTimeout(() => this.badgeCard(r.badges), 700);
     if (r.ai) this.ai = r.ai; if (typeof r.cash === 'number') this.setCash(r.cash);
     if (r.grew && this.p) setTimeout(() => this.grew(r.grew), 900);
   },
@@ -45,12 +46,12 @@ const PET = {
   },
   draw() {
     const p = this.p;
-    PH.shell(`<span onclick="PET.rename()" style="cursor:pointer">${UI.esc(p.name)} ✎</span>`, 'PH.close()', `<div class="abody chat pet" id="ab">
+    PH.shell(`<span onclick="PET.rename()" style="cursor:pointer">${UI.esc(p.name)} ✎</span>`, 'PH.close()', `<div class="abody chat pet" id="ab"><div class="pbanner" id="pbanner"></div>
       <div class="pstage" id="pst" onclick="PET.poke(event)"><div class="pbub" id="pbub"></div><div id="pfig">${this.svg()}</div><span class="pill pchip" id="pchip"></span><span class="pill pchip pcash" id="pcash"></span></div>
       <div class="gln pneeds" id="pn"></div><div class="pgrow" id="pgrow"></div>
       <div class="pact"><button onclick="PET.foodSheet()"><b>🍛</b>${('Feed')}</button><button onclick="PET.careSheet()"><b>🩺</b>${('Care')}</button><button onclick="PET.playSheet()"><b>🎾</b>${('Play')}</button><button onclick="PET.dress()"><b>👕</b>${('Dress')}</button><button onclick="PET.sleep()" id="pslp"></button></div></div>
       <div class="seg2 pmode" id="pmode"></div><div class="qr" id="pchips"></div>
-      <div class="cin"><button class="ebtn" id="pmic" onclick="PET.listen()" aria-label="Talk">🎤</button><input id="pin" placeholder="" maxlength="120" autocomplete="off" onkeydown="if(event.key==='Enter')PET.sendInput()"><button class="sbtn" onclick="PET.sendInput()" aria-label="Send">➤</button></div>`);
+      <div class="cin"><input id="pin" placeholder="" maxlength="120" autocomplete="off" onkeydown="if(event.key==='Enter')PET.sendInput()"><button class="sbtn vnmic" data-vn="pet" id="pmic" aria-label="Send, or hold to talk"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`, '', '<button class="gbell" id="pmenu" onclick="PET.menu()" aria-label="Menu">☰<em id="pbadge" hidden></em></button>');
     this.paintMode(); this.paintAll(); clearInterval(this.tmr); this.n = 0; this.tmr = setInterval(() => this.step(), 4000);
     if (!this.greeted && !p.asleep) { this.greeted = true; setTimeout(() => this.speak(`Hi! I'm ${p.name}. ` + (this.mode === 'answer' ? 'Ask me anything!' : "Say something and I'll repeat it!")), 500) }
   },
@@ -65,7 +66,7 @@ const PET = {
     if (++this.n % 6 === 0) this.load().then(() => this.paintAll()).catch(() => {});
     const p = this.p; if (!p.asleep && !this.speaking && Date.now() - this.cry > 40000) { const x = this.extra(); if (x && Math.random() < .5) { this.cry = Date.now(); this.speak(x); if (p.sick) this.fx('🤒') } }
   },
-  paintAll() { this.paintNeeds(); this.paintGrow(); this.paintFig() },
+  paintAll() { this.paintNeeds(); this.paintGrow(); this.paintBanner(); this.paintFig() },
   paintNeeds() {
     const p = this.p, n = this.q('pn'); if (!n) return;
     n.innerHTML = this.NEEDS.map(x => `<div class="${p[x[0]] < 25 ? 'low' : ''}"><span>${x[1]} ${x[2]}</span>${UI.bar(p[x[0]])}</div>`).join('');
@@ -153,7 +154,7 @@ const PET = {
     if (on) { clearTimeout(this.bt); b.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>'; b.classList.add('on', 'dots') }
     else if (b.classList.contains('dots')) b.classList.remove('on', 'dots');
   },
-  ear(on) { const m = this.q('pmic'); if (m) m.classList.toggle('rec', on); const f = this.fig(); if (f) f.classList.toggle('listen', on) },
+  ear(on) { const m = this.q('pmic'); if (m) m.classList.toggle('rec', on && !m.classList.contains('recing')); const f = this.fig(); if (f) f.classList.toggle('listen', on) },
   speak(text) {
     text = String(text || '').trim(); if (!text) return;
     this.think(false); const b = this.q('pbub'); if (b) { b.textContent = text; b.classList.add('on') }
@@ -184,7 +185,8 @@ const PET = {
   async answer(payload) {
     if (this.thinking) return; this.think(true);
     try {
-      const r = await this.post('ask', Object.assign({ mode: 'answer', history: this.hist }, payload));
+      const m0 = ((this.p && this.p.memory) || []).length, r = await this.post('ask', Object.assign({ mode: 'answer', history: this.hist }, payload));
+      if (((this.p.memory || []).length) > m0) toast(`🧠 ${this.p.name} will remember that`);
       if (!r.reply) { this.think(false); return toast("I didn't catch that. Try again!") }
       if (payload.audio && r.heard) toast(`You said: “${r.heard}”`);
       this.hist = this.hist.concat([{ r: 'u', t: r.heard || payload.text || '' }, { r: 'p', t: r.reply }]).slice(-6);
@@ -196,9 +198,8 @@ const PET = {
   /* voice: the browser's speech recognition when it has one, otherwise a short voice note that Gemini listens to */
   listen() {
     const p = this.p; if (p.asleep) return toast(`Wake ${p.name} up first`); if (this.thinking) return;
-    if (this.mr) { try { this.mr.stop() } catch (e) {} return }
     if (this.rec) { try { this.rec.stop() } catch (e) {} return }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return this.record();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) { toast('Voice is not supported in this browser. Type instead.'); const i = this.q('pin'); if (i) i.focus(); return }
     try { speechSynthesis.cancel() } catch (e) {}
     const r = this.rec = new SR(); r.lang = /^en/i.test(navigator.language || '') ? navigator.language : 'en-US'; r.interimResults = false; r.maxAlternatives = 1; this.ear(true);
     r.onresult = e => this.hear(e.results[0][0].transcript);
@@ -206,18 +207,8 @@ const PET = {
     r.onend = () => { this.rec = null; this.ear(false) };
     try { r.start() } catch (e) { this.rec = null; this.ear(false) }
   },
-  async record() {
-    const p = this.p;
-    if (!(this.ai && this.ai.on) || !navigator.mediaDevices || !window.MediaRecorder) { toast('Voice is not supported in this browser. Type instead.'); const i = this.q('pin'); if (i) i.focus(); return }
-    let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }) } catch (e) { return toast(`Allow the microphone to talk to ${p.name}`) }
-    const chunks = [], mr = this.mr = new MediaRecorder(stream); this.ear(true);
-    mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) };
-    mr.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop()); this.mr = null; this.ear(false); if (!chunks.length) return;
-      try { this.voiceNote(await this.wav(new Blob(chunks, { type: mr.mimeType }))) } catch (e) { toast('I could not use that recording. Try again.') }
-    };
-    mr.start(); setTimeout(() => { if (this.mr === mr && mr.state === 'recording') mr.stop() }, 8000);
-  },
+  /* hold-to-record (voice.js) hands us the finished recording */
+  async voiceBlob(blob) { try { this.voiceNote(await this.wav(blob)) } catch (e) { toast('I could not use that recording. Try again.') } },
   voiceNote(b64) {
     const audio = { mime: 'audio/wav', data: b64 }; if (this.mode === 'answer') return this.answer({ audio });
     this.think(true); this.post('ask', { mode: 'repeat', audio }).then(r => { this.think(false); if (r.reply) this.repeat(r.reply); else toast("I didn't hear anything. Try again!") }).catch(e => { this.think(false); toast(e.message) });
@@ -266,8 +257,8 @@ const PET = {
     PH.sheet(this.head(`${('Feed')} ${UI.esc(p.name)} 🍛`, ('Pet food costs more than people food')) + this.cat.food.map(it => this.row('food', it, `+${fill[it.id] || 10} hunger`)).join(''));
   },
   careSheet() {
-    const p = this.p, note = { bath: 'Fully clean', groom: 'Clean + happy', vitamins: '+20 health', medicine: '+45 health', vet: 'Full health' };
-    PH.sheet(this.head(`${('Care for')} ${UI.esc(p.name)} 🩺`, `${('Health')} ${Math.round(p.health)}%${p.sick ? ' · ' + ('she is ill') : ''}`) + this.cat.care.map(it => this.row('care', it, note[it.id])).join(''));
+    const p = this.p, note = { bath: 'Fully clean', groom: 'Clean + happy', vitamins: '+20 health', medicine: '+45 health', vet: 'Full health', vaccine: 'No sudden illness for 7 days' };
+    PH.sheet(this.head(`${('Care for')} ${UI.esc(p.name)} 🩺`, `${('Health')} ${Math.round(p.health)}%${p.sick ? ' · she is ill' : ''}${p.protectedUntil ? ' · protected ' + Math.ceil((p.protectedUntil - Date.now()) / 86400e3) + 'd' : ''}`) + this.cat.care.map(it => this.row('care', it, note[it.id])).join(''));
   },
   playSheet() {
     const p = this.p, g = this.gm || {}, note = { ball: '+22 fun', laser: '+40 fun' };
@@ -300,7 +291,8 @@ const PET = {
       items.map(it => {
         const own = (p.owned || []).includes(it.id), on = (p.worn || {})[it.slot] === it.id;
         const right = own ? (on ? `<button class="pbtn" onclick="PET.wear('${it.slot}','')">${('Take off')}</button>` : `<button class="pbtn grn" onclick="PET.wear('${it.slot}','${it.id}')">${('Wear')}</button>`) : `<button class="pbtn blu" ${bal < it.price ? 'disabled' : ''} onclick="PET.buy('cloth','${it.id}')">${UI.fmt(it.price)}</button>`;
-        return `<div class="fopt pdr"><span>${it.emoji} ${UI.esc(it.name)}</span>${right}</div>`;
+        const locked = !own && it.event && !it.available, tag = it.event ? `<small>Limited · ${UI.esc(it.eventTitle || '')}</small>` : '';
+        return `<div class="fopt pdr"><span>${it.emoji} ${UI.esc(it.name)}${tag}</span>${locked ? `<button class="pbtn" disabled>Not now</button>` : right}</div>`;
       }).join(''));
   },
   async wear(slot, id) { try { await this.post('wear', { slot, id }); this.dress() } catch (e) { toast(e.message) } },
@@ -359,8 +351,112 @@ const PET = {
         lines: [[('Score'), String(score)], [('You won'), UI.fmt(r.prize || 0)], [('Today'), `${UI.fmt(r.game.earned)} / ${UI.fmt(r.game.cap)}`]], tone: 'gold', btn: ('Nice one') });
     } catch (e) { toast(e.message) }
   },
+  /* ===== daily check-in, menu, milestones, memory, photos, friends, room and alerts ===== */
+  paintBanner() {
+    const p = this.p, b = this.q('pbanner'), c = p.checkin; if (!b) return;
+    if (p.emergency) b.innerHTML = `<div class="pemg"><span>🤒 ${UI.esc(p.name)} has ${UI.esc(p.emergency.name)}.</span><button onclick="PET.careSheet()">Vet</button></div>`;
+    else if (c && c.claimable) b.innerHTML = `<div class="pdaily"><span>📅 Daily check-in · day ${c.streak}</span><button onclick="PET.checkin(this)">Collect ${UI.fmt(c.amount || c.next)}</button></div>`;
+    else b.innerHTML = '';
+    const n = (p.emergency ? 1 : 0) + (c && c.claimable ? 1 : 0), e = this.q('pbadge'); if (e) { e.hidden = !n; e.textContent = n }
+  },
+  async checkin(btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const r = await this.post('checkin'), c = this.p.checkin;
+      CARD.show({ icon: '📅', title: 'Daily check-in', text: r.week ? 'A full week! Here is your bonus.' : `${this.p.name} is happy to see you. Come back tomorrow for a bit more.`, lines: [['You got', UI.fmt(r.amount)], ['Streak', 'Day ' + c.streak], ['Tomorrow', UI.fmt(c.next)]], tone: 'gold', btn: 'Collect' });
+      this.fx('💗', 3); this.flash('joy', 1500); PH.closeSheet(); this.paintAll();
+    } catch (e) { toast(e.message); if (btn) btn.disabled = false }
+  },
+  menu() {
+    const p = this.p, c = p.checkin, row = (ic, label, sub, fn, end) => `<button class="fopt" onclick="${fn}"><span>${ic} ${label}<small>${sub}</small></span><b>${end || '›'}</b></button>`, v = (p.visits || []).length;
+    PH.sheet(`<h3>${UI.esc(p.name)} 🐱</h3>` +
+      row('📅', 'Daily check-in', c.claimable ? `Day ${c.streak}: collect ${UI.fmt(c.amount || c.next)}` : `Done today. Tomorrow ${UI.fmt(c.next)}`, c.claimable ? 'PET.checkin()' : "toast('Come back tomorrow for the next check-in')", c.claimable ? 'Collect' : '✓') +
+      row('👫', 'Friends & visitors', v ? `${v} recent visit${v > 1 ? 's' : ''}` : "Cuddle a friend's pet or send a gift", 'PET.friendsSheet()') +
+      row('🏅', 'Milestones', `${(p.badges || []).length} of ${(this.ach || []).length} earned`, 'PET.milestones()') +
+      row('🧠', 'What she remembers', `${(p.memory || []).length} thing${(p.memory || []).length === 1 ? '' : 's'}`, 'PET.memorySheet()') +
+      row('📸', 'Pet photo', 'Save it or post it on P-Gist', 'PET.photo()') +
+      row('🏠', 'Show in my room', p.inRoom ? 'She wanders around your 3D room' : 'Let her roam your house', "PET.toggle('inRoom')", p.inRoom ? 'On' : 'Off') +
+      row('🔔', 'Away alerts', 'Tell me when she is hungry or ill', "PET.toggle('alerts')", p.alerts ? 'On' : 'Off'));
+  },
+  async toggle(k) {
+    try { await this.post('settings', { [k]: !this.p[k] }); toast(k === 'inRoom' ? (this.p.inRoom ? 'She is in your room now' : 'She left your room') : (this.p.alerts ? 'Away alerts on' : 'Away alerts off')); this.menu() } catch (e) { toast(e.message) }
+  },
+  badgeCard(list) { (list || []).forEach(b => CARD.show({ icon: b.icon, title: 'Milestone unlocked!', text: b.name, lines: [['Reward', b.reward ? UI.fmt(b.reward) : 'A new badge']], tone: 'gold', btn: 'Nice' })) },
+  milestones() {
+    const have = new Set(this.p.badges || []), L = this.ach || [];
+    PH.sheet(`<h3>🏅 Milestones</h3><p class="hint2">${have.size} of ${L.length} earned. Each one pays once.</p>` + L.map(a => `<div class="fopt pdr${have.has(a.id) ? '' : ' lock'}"><span>${have.has(a.id) ? a.icon : '🔒'} ${UI.esc(a.name)}<small>${UI.esc(a.desc)}</small></span><b>${a.reward ? UI.fmt(a.reward) : 'Badge'}</b></div>`).join(''));
+  },
+  memorySheet() {
+    const m = this.p.memory || [];
+    PH.sheet(`<h3>🧠 What ${UI.esc(this.p.name)} remembers</h3><p class="hint2">Short, harmless facts you share in Answer mode, like your name or favourite food. Only you can see this.</p>` +
+      (m.length ? m.map((x, i) => `<div class="fopt pdr"><span>${UI.esc(x)}</span><button class="pbtn" onclick="PET.forget(${i})">Forget</button></div>`).join('') + `<button class="fopt" onclick="PET.forget(-1)"><span>Forget everything</span></button>` : '<p class="empty">Nothing yet. Switch to Answer mode and tell her about yourself.</p>'));
+  },
+  async forget(i) { try { await this.post('forget', i < 0 ? { all: true } : { i }); this.memorySheet() } catch (e) { toast(e.message) } },
+  /* ----- her photo: drawn on a canvas, saved to the Camera gallery, optionally posted on P-Gist ----- */
+  photoSvg() {
+    const p = this.p, css = '.e-closed,.e-joy,.vis,.m-sad,.brow-sad,.brow-ang,.brow-up,.zz{display:none}.e-open{display:none}' + (p.asleep ? '.e-closed,.zz{display:inline}' : '.e-joy{display:inline}');
+    return this.svg(p).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="550" ').replace('>', `><style>${css}</style>`);
+  },
+  async snap() {
+    const p = this.p, W = 720, H = 720, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+    x.fillStyle = (getComputedStyle(document.documentElement).getPropertyValue('--wall') || '').trim() || '#cfe0ff'; x.fillRect(0, 0, W, H * .64); x.fillStyle = '#d9b98c'; x.fillRect(0, H * .64, W, H * .36);
+    x.fillStyle = '#fff'; x.fillRect(60, 80, 120, 140); const g = x.createLinearGradient(0, 90, 0, 210); g.addColorStop(0, '#bfe6ff'); g.addColorStop(1, '#fff'); x.fillStyle = g; x.fillRect(68, 88, 104, 124);
+    const img = new Image(), url = URL.createObjectURL(new Blob([this.photoSvg()], { type: 'image/svg+xml' }));
+    await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url });
+    const sc = (p.stage && p.stage.scale) || 1, w = 470 * sc, h = w * 1.1; x.drawImage(img, (W - w) / 2, H - h - 30, w, h); URL.revokeObjectURL(url);
+    const cap = p.name + ' · ' + (p.stage ? p.stage.name : 'cat'); x.font = '700 30px system-ui,sans-serif'; const tw = x.measureText(cap).width + 36;
+    x.fillStyle = 'rgba(255,255,255,.88)'; x.beginPath(); if (x.roundRect) x.roundRect(24, 24, tw, 54, 27); else x.rect(24, 24, tw, 54); x.fill(); x.fillStyle = '#1b2236'; x.fillText(cap, 42, 62);
+    return { data: c.toDataURL('image/jpeg', .88), w: W, h: H };
+  },
+  async photo() {
+    try {
+      const s = this.shot_ = await this.snap(), n = this.p.name, st = this.p.stage ? this.p.stage.name.toLowerCase() : 'cat';
+      PH.sheet(`<h3>📸 ${UI.esc(n)}</h3><img class="pshot" src="${s.data}" alt=""><input class="sinput" id="pcap" maxlength="200" value="${UI.esc('Meet ' + n + ', my ' + st + ' 🐱 #pet')}"><button class="fopt grn" onclick="PET.shot('gist')"><span>Post on P-Gist</span><b>›</b></button><button class="fopt" onclick="PET.shot('save')"><span>Save to my gallery</span><b>›</b></button>`);
+    } catch (e) { toast('Could not take the photo.') }
+  },
+  async shot(where) {
+    const s = this.shot_; if (!s || this.busy) return; this.busy = true; const cap = String((this.q('pcap') || {}).value || '');
+    try {
+      const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: s.data, w: s.w, h: s.h } }); await this.post('snap');
+      if (where === 'gist') await NET.api('/api/ac/gist/posts', { method: 'POST', body: { text: cap.slice(0, 500), images: [{ src: 'mine', id: r.photo.id }] } });
+      PH.closeSheet(); toast(where === 'gist' ? 'Posted on P-Gist 🎉' : 'Saved to your gallery'); this.fx('📸', 3);
+    } catch (e) { toast(e.message || 'Could not save the photo.') }
+    this.busy = false;
+  },
+  /* ----- friends: cuddle (free, once a day) or send a gift (paid by the visitor) ----- */
+  async friendsSheet() {
+    PH.sheet('<h3>👫 Friends</h3><p class="empty">Loading…</p>');
+    try {
+      this.fr = (await NET.api('/api/ac/pet/friends')).friends || [];
+      const vis = (this.p.visits || []).slice(0, 4).map(v => `<div class="fopt pdr"><span>${v.act === 'gift' ? '🎁' : '🐾'} ${UI.esc(v.name)}<small>${v.act === 'gift' ? 'gave ' + UI.esc(v.gift) : 'cuddled ' + UI.esc(this.p.name)}</small></span></div>`).join('');
+      PH.sheet(`<h3>👫 Friends</h3><p class="hint2">Cuddle a friend's pet once a day, or send a gift. Gifts are paid from your balance.</p>` + (vis ? `<div class="lab2">RECENT VISITORS</div>${vis}` : '') + `<div class="lab2">FRIENDS WITH PETS</div>` +
+        (this.fr.length ? this.fr.map((f, i) => `<button class="fopt" onclick="PET.visitSheet(${i})"><span>🐱 ${UI.esc(f.pet.name)}<small>${UI.esc(f.who)} · ${UI.esc(f.pet.stage.name)}${f.pet.sick ? ' · ill' : f.pet.hunger < 25 ? ' · hungry' : ''}</small></span><b>›</b></button>`).join('') : '<p class="empty">None of your friends has a pet yet. Add friends from Contacts.</p>'));
+    } catch (e) { PH.closeSheet(); toast(e.message) }
+  },
+  visitSheet(i) {
+    const f = this.fr[i]; if (!f) return; const bal = this.bal();
+    PH.sheet(`<h3>${UI.esc(f.pet.name)} · ${UI.esc(f.who)}</h3><div class="pvis" style="width:${Math.round(140 * ((f.pet.stage && f.pet.stage.scale) || 1))}px">${this.svg(f.pet)}</div>` +
+      `<button class="fopt grn" ${f.cuddled ? 'disabled' : ''} onclick="PET.visit(${i},'cuddle')"><span>🤗 Cuddle<small>${f.cuddled ? 'Already cuddled today' : 'Free, once a day'}</small></span><b>›</b></button>` +
+      `<div class="lab2">SEND A GIFT (${f.giftsLeft} left today)</div>` + this.cat.food.map(it => `<button class="fopt" ${bal < it.price || !f.giftsLeft ? 'disabled' : ''} onclick="PET.visit(${i},'gift','${it.id}')"><span>${it.emoji} ${UI.esc(it.name)}</span><b>${UI.fmt(it.price)}</b></button>`).join(''));
+  },
+  async visit(i, act, gift) {
+    const f = this.fr[i]; if (!f || this.busy) return; this.busy = true;
+    try {
+      const r = await NET.api('/api/ac/pet/visit', { method: 'POST', body: { to: f.id, act, gift } }); this.setCash(r.cash);
+      if (act === 'cuddle') f.cuddled = true; else f.giftsLeft = Math.max(0, f.giftsLeft - 1);
+      toast(r.text); if (r.badges && r.badges.length) setTimeout(() => this.badgeCard(r.badges), 500); this.visitSheet(i);
+    } catch (e) { toast(e.message) }
+    this.busy = false;
+  },
+  /* the 3D room draws her when "Show in my room" is on */
+  syncRoom() { if (window.ROOM3D && ROOM3D.setPet && this.p) ROOM3D.setPet(this.p.inRoom ? { name: this.p.name, scale: (this.p.stage && this.p.stage.scale) || 1, worn: this.p.worn || {} } : null) },
   /* ----- the cat (drawn in SVG, so it needs no image files); clothes are extra layers ----- */
   LAY: {
+    asoebi: '<path d="M58 134Q100 150 142 134L156 196Q100 214 44 196Z" fill="#d946ef"/><path d="M56 150Q100 166 144 150" stroke="#fbbf24" stroke-width="5" fill="none"/><circle cx="76" cy="176" r="6" fill="#fbbf24"/><circle cx="106" cy="188" r="6" fill="#fbbf24"/><circle cx="130" cy="172" r="6" fill="#fbbf24"/><path d="M96 140l8 0 0 14-8 0z" fill="#f0abfc"/>',
+    raincoat: '<path d="M56 132Q100 150 144 132L158 198Q100 216 42 198Z" fill="#facc15"/><path d="M100 144V204" stroke="#ca8a04" stroke-width="3"/><circle cx="100" cy="158" r="3.5" fill="#ca8a04"/><circle cx="100" cy="176" r="3.5" fill="#ca8a04"/><circle cx="100" cy="194" r="3.5" fill="#ca8a04"/>',
+    apron: '<path d="M70 138Q100 148 130 138L138 204Q100 214 62 204Z" fill="#22c55e"/><rect x="80" y="170" width="40" height="22" rx="4" fill="#16a34a"/><path d="M70 140Q100 128 130 140" stroke="#15803d" stroke-width="3" fill="none"/>',
+    headlamp: '<path d="M54 58Q100 40 146 58" stroke="#475569" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="100" cy="46" r="11" fill="#e2e8f0" stroke="#475569" stroke-width="3"/><circle cx="100" cy="46" r="6" fill="#fde047"/>',
+    danfo: '<path d="M58 60Q60 30 100 28Q140 30 142 60Q100 50 58 60Z" fill="#facc15"/><path d="M58 60Q100 50 142 60L146 68Q100 56 54 68Z" fill="#111827"/><rect x="88" y="34" width="24" height="9" rx="3" fill="#111827"/>',
     fila: '<path d="M62 56L70 28Q100 14 130 28L138 56Q100 46 62 56Z" fill="#7c3aed"/><path d="M62 56Q100 46 138 56" stroke="#fbbf24" stroke-width="5" fill="none"/>',
     party: '<path d="M100 6L76 52H124Z" fill="#a855f7"/><circle cx="100" cy="6" r="6" fill="#fbbf24"/><circle cx="92" cy="34" r="3.5" fill="#fde68a"/><circle cx="106" cy="42" r="3.5" fill="#fde68a"/>',
     gele: '<path d="M52 58Q54 18 100 14Q146 18 148 58Q100 42 52 58Z" fill="#e11d48"/><path d="M70 28Q100 2 130 28Q112 20 100 32Q88 20 70 28Z" fill="#fb7185"/><path d="M54 52Q100 36 146 52" stroke="#fbbf24" stroke-width="4" fill="none"/>',
@@ -374,12 +470,13 @@ const PET = {
     hoodie: '<path d="M58 134Q100 150 142 134L154 194Q100 214 46 194Z" fill="#475569"/><path d="M80 176H120L116 200H84Z" fill="#334155"/><path d="M90 142V160M110 142V160" stroke="#e2e8f0" stroke-width="3" stroke-linecap="round"/>',
     ankara: '<path d="M58 134Q100 150 142 134L156 196Q100 214 44 196Z" fill="#f59e0b"/><circle cx="74" cy="164" r="7" fill="#7c2d12"/><circle cx="104" cy="180" r="8" fill="#0ea5e9"/><circle cx="130" cy="160" r="7" fill="#7c2d12"/><circle cx="86" cy="196" r="6" fill="#0ea5e9"/><circle cx="118" cy="150" r="5" fill="#fff"/>'
   },
-  lay(slot) { const id = this.p && this.p.worn && this.p.worn[slot]; return id && this.LAY[id] ? `<g class="wear">${this.LAY[id]}</g>` : '' },
-  svg() {
-    return `<svg viewBox="0 0 200 220" class="pf" role="img" aria-label="${UI.esc(this.p.name)} the cat">
+  lay(slot, p0) { const p = p0 || this.p, id = p && p.worn && p.worn[slot]; return id && this.LAY[id] ? `<g class="wear">${this.LAY[id]}</g>` : '' },
+  svg(pp) {
+    const P = pp || this.p;
+    return `<svg viewBox="0 0 200 220" class="pf" role="img" aria-label="${UI.esc(P.name)} the cat">
 <ellipse cx="100" cy="212" rx="58" ry="7" fill="rgba(0,0,0,.14)"/>
 <g class="tail"><path d="M148 182Q198 176 190 128Q187 112 172 118" fill="none" stroke="#f4a640" stroke-width="17" stroke-linecap="round"/><path d="M190 128Q187 112 172 118" fill="none" stroke="#c96f1c" stroke-width="17" stroke-linecap="round"/></g>
-<g class="body"><ellipse cx="100" cy="162" rx="53" ry="48" fill="#f4a640"/><ellipse cx="100" cy="172" rx="33" ry="33" fill="#ffe6bf"/><ellipse cx="72" cy="206" rx="19" ry="9" fill="#f4a640"/><ellipse cx="128" cy="206" rx="19" ry="9" fill="#f4a640"/><ellipse cx="54" cy="168" rx="11" ry="24" fill="#f4a640" transform="rotate(14 54 168)"/><ellipse cx="146" cy="168" rx="11" ry="24" fill="#f4a640" transform="rotate(-14 146 168)"/>${this.lay('body')}</g>
+<g class="body"><ellipse cx="100" cy="162" rx="53" ry="48" fill="#f4a640"/><ellipse cx="100" cy="172" rx="33" ry="33" fill="#ffe6bf"/><ellipse cx="72" cy="206" rx="19" ry="9" fill="#f4a640"/><ellipse cx="128" cy="206" rx="19" ry="9" fill="#f4a640"/><ellipse cx="54" cy="168" rx="11" ry="24" fill="#f4a640" transform="rotate(14 54 168)"/><ellipse cx="146" cy="168" rx="11" ry="24" fill="#f4a640" transform="rotate(-14 146 168)"/>${this.lay('body', P)}</g>
 <g class="head"><g class="earL"><path d="M46 70L52 20L92 50Z" fill="#f4a640"/><path d="M58 60L60 34L80 49Z" fill="#f58aa0"/></g><g class="earR"><path d="M154 70L148 20L108 50Z" fill="#f4a640"/><path d="M142 60L140 34L120 49Z" fill="#f58aa0"/></g>
 <ellipse cx="100" cy="90" rx="64" ry="54" fill="#f4a640"/><path d="M100 38V54M88 40L90 54M112 40L110 54" stroke="#c96f1c" stroke-width="5" stroke-linecap="round"/>
 <ellipse cx="66" cy="104" rx="10" ry="6" fill="#f58aa0" opacity=".55"/><ellipse cx="134" cy="104" rx="10" ry="6" fill="#f58aa0" opacity=".55"/>
@@ -400,11 +497,23 @@ const PET = {
 <g class="vis vF"><path d="M89 112.5Q100 116.5 111 112.5" fill="none" stroke="#2b2140" stroke-width="3.6" stroke-linecap="round"/><rect x="94" y="110.5" width="12" height="4.6" rx="2" fill="#fff"/></g>
 <g class="vis vC"><ellipse cx="100" cy="114" rx="9" ry="3.8" fill="#7a1f3d"/></g>
 
-<path d="M50 100L20 94M50 108L20 112M150 100L180 94M150 108L180 112" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".9"/>${this.lay('face')}${this.lay('hat')}</g>${this.lay('neck')}
+<path d="M50 100L20 94M50 108L20 112M150 100L180 94M150 108L180 112" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".9"/>${this.lay('face', P)}${this.lay('hat', P)}</g>${this.lay('neck', P)}
 <g class="zz" fill="#fff" font-weight="800" font-family="system-ui"><text x="150" y="40" font-size="24">z</text><text x="166" y="20" font-size="17">z</text></g></svg>`;
   }
 };
 window.PET = PET;
+/* the round button next to her chat box: send when there is text, hold to talk otherwise (WhatsApp style, see voice.js) */
+if (window.VN) VN.cfg.pet = {
+  send() { PET.sendInput() },
+  canStart() {
+    const p = PET.p; if (!p || PET.thinking) return false; if (p.asleep) { toast(`Wake ${p.name} up first`); return false }
+    if (!(PET.ai && PET.ai.on)) { PET.listen(); return false }          // no Gemini key: tap to talk with the browser's speech recognition instead
+    return true;
+  },
+  onStart() { try { speechSynthesis.cancel() } catch (e) {} PET.ear(true) }, onEnd() { PET.ear(false) },
+  max: 15,                                                         // she only listens to short clips
+  blob(b) { PET.voiceBlob(b) }
+};
 (function () {
   const st = document.createElement('style');
   st.textContent = `.pet{display:flex;flex-direction:column;gap:4px}
@@ -436,8 +545,12 @@ window.PET = PET;
 .pball{position:absolute;left:6%;bottom:8%;font-size:28px;z-index:4;pointer-events:none;animation:pball 1.6s ease-in-out forwards}@keyframes pball{25%{transform:translate(70px,-80px)}50%{transform:translate(140px,0)}75%{transform:translate(210px,-50px)}to{transform:translate(260px,0);opacity:0}}
 .pet .pneeds{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;padding-top:8px}.pet .pneeds>div{margin:0 0 6px}.pet .pneeds>div:last-child{grid-column:1/-1}.pet .pneeds span{font-size:12.5px;margin-bottom:3px}.pet .pneeds .low i{background:#e5484d}
 .pet .pneeds+.pgrow{margin:0 0 8px}.pgl{display:flex;justify-content:space-between;align-items:baseline;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-bottom:3px}.pgl small{color:var(--mut);font-weight:600;font-size:11.5px}.pmode.seg2{margin:2px 12px 0}.pmode.seg2 button{padding:6px}
+.pbanner:empty{display:none}.pdaily,.pemg{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 14px;border-radius:16px;margin-bottom:6px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;background:#fff6dc;color:#7a5b00}.pemg{background:#ffe9e9;color:#a11d1d}
+.pdaily button,.pemg button{border:0;border-radius:99px;padding:8px 13px;background:#22b573;color:#fff;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;flex:none}.pemg button{background:#e5484d}.pdaily button:disabled{opacity:.5}
+.fopt.lock{opacity:.55}.pshot{width:100%;border-radius:16px;margin-bottom:10px;display:block}.pvis{margin:0 auto 10px}.ahead .gbell em[hidden]{display:none}
+:where(html[data-theme="dark"]) .pdaily{background:#3a3320;color:#f5d98a}:where(html[data-theme="dark"]) .pemg{background:#3a2024;color:#ffb3b3}
 .pact{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding-bottom:4px}.pact button{border:0;background:#f3f4f9;border-radius:16px;padding:8px 0;font:700 11px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}.pact button:active{transform:scale(.95)}.pact b{font-size:21px;line-height:1.1}
-.ebtn.rec{background:#e5484d;animation:prec 1s infinite}@keyframes prec{50%{opacity:.55}}
+.ebtn.rec,.vnmic.rec{background:#e5484d;color:#fff;animation:prec 1s infinite}@keyframes prec{50%{opacity:.55}}
 .fopt:disabled{opacity:.45}.fopt small{display:block;color:var(--mut);font-weight:600;font-size:11.5px;margin-top:2px}.fopt.pdr{cursor:default}.fopt.pdr .pbtn:disabled{opacity:.45}
 .pgh{display:flex;justify-content:space-between;font:800 15px 'Plus Jakarta Sans',system-ui,sans-serif;margin:2px 2px 10px}.pgh i{font-style:normal}
 .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.pgrid.pg2{grid-template-columns:repeat(2,1fr)}

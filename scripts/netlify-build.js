@@ -37,6 +37,7 @@ const rules = [
   '/   /index.html   200!   h=:h',
   '/   /index.html   200!   by=:by',
   '/play   /allconnect/index.html   200!',
+  '/play/*   /allconnect/index.html   200!',
   '/   /landing.html   200!',
   '/gamehub    /index.html       200',
   '/advertise  /advertise.html   200',

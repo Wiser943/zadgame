@@ -191,7 +191,7 @@ async function main() {
     console.error('[error]', req.method, req.originalUrl, err);
     if (res.headersSent) return next(err);
     if (req.path.startsWith('/auth/google')) {
-      return res.redirect((process.env.CLIENT_URL || '/') + '?auth_error=1');
+      return res.redirect((process.env.CLIENT_URL || '') + '/play?auth_error=1');
     }
 
     const name = String(err && err.name || '');
@@ -231,6 +231,10 @@ async function main() {
   await govService.refreshOffices().catch((e) => console.error('[gov load]', e.message));
   setTimeout(() => govService.tick(io).catch((e) => console.error('[gov tick]', e.message)), 15000).unref();
   setInterval(() => govService.tick(io).catch((e) => console.error('[gov tick]', e.message)), 30 * 1000).unref();
+  /* pets: hungry / ill alerts for owners who are away (every 10 minutes; each pet is claimed once across instances) */
+  const petAlerts = require('./services/petalerts');
+  setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
+  setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);

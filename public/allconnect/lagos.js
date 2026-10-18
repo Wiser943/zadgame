@@ -1,4 +1,4 @@
-/* Lagos Life: today's city event (with Pidgin), utility bills, starter quests and the daily streak.
+/* Lagos Life: today's city event (with Pidgin), utility bills and starter quests.
    All numbers come from the server (/api/ac/lagos/*). This file only draws them. */
 const LAGOS = {
   d: null, tab: 'today',
@@ -7,13 +7,12 @@ const LAGOS = {
   ic(fa, color, size) { return `<span class="lgi" style="background:${color || '#64748b'};${size ? `width:${size}px;height:${size}px` : ''}"><span class="fa-solid fa-${fa}"></span></span>` },
   foodMult() { return (this.d && this.d.event && this.d.event.mult && this.d.event.mult.food) || 1 },
   dueLabel() { const b = this.d && this.d.bills; return b && b.count ? (b.overdue ? 'Late' : 'Due') : '' },
-  todo() { const d = this.d; if (!d) return 0; return (d.quests ? d.quests.claimable : 0) + (d.bills ? d.bills.count : 0) + (d.daily && d.daily.claimable ? 1 : 0) },
+  todo() { const d = this.d; if (!d) return 0; return (d.quests ? d.quests.claimable : 0) + (d.bills ? d.bills.count : 0) },
   async boot() { if (this.t) return; await this.load(true); this.t = setInterval(() => this.load(), 180000) },
   async load(first) {
     try { this.d = await NET.api('/api/ac/lagos/city') } catch (e) { return }
     this.draw();
     document.body.classList.toggle('powercut', !!(this.d.bills && this.d.bills.powerCut));
-    if (first && this.d.daily && this.d.daily.claimable) setTimeout(() => { if (!SHEET.isOpen() && !CARD.cur && !(window.HUB && HUB.busy())) this.open('today') }, 2600);
   },
   /* the pill on the home screen */
   draw() {
@@ -39,7 +38,7 @@ const LAGOS = {
     if (!this.d) return toast('Loading the city…');
     this.tab = tab || 'today';
     SHEET.open({ id: 'lagos', title: NG.say('Naija Life', 'Naija Life'), tab: this.tab, onTab: t => { this.tab = t; if (t === 'quests') this.loadQuests(true) },
-      tabs: () => { const d = this.d; return [{ id: 'today', label: 'Today', badge: d.daily && d.daily.claimable ? 1 : 0 }, { id: 'quests', label: 'Quests', badge: d.quests.claimable }, { id: 'bills', label: 'Bills', badge: d.bills.count }] },
+      tabs: () => { const d = this.d; return [{ id: 'today', label: 'Today', badge: 0 }, { id: 'quests', label: 'Quests', badge: d.quests.claimable }, { id: 'bills', label: 'Bills', badge: d.bills.count }] },
       body: t => this.bodyFor(t) });
   },
   close() { if (SHEET.isOpen('lagos')) SHEET.close() },
@@ -54,21 +53,10 @@ const LAGOS = {
     const d = this.d, ev = d.event, nx = d.next, eff = this.effects(ev);
     const mins = Math.max(1, Math.round((ev.endsAt - Date.now()) / 60000)), left = mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + ' min';
     const dist = Object.entries(ev.districts || {}).map(([k, v]) => `<li><b>${this.esc(k)}</b><span>${this.esc(v)}</span></li>`).join('');
-    const dl = d.daily;
     return `<div class="lgev" style="--c:${ev.color}">${this.ic(ev.fa, ev.color, 46)}<div><h3>${this.esc(NG.pcm() ? ev.pidgin : ev.title)}</h3><p class="pg">${this.esc(ev.pidginText)}</p><p>${this.esc(ev.text)}</p><small>${NG.say('Changes in', 'E go change in')} ${left}</small></div></div>
       ${eff.length ? `<div class="lgfx">${eff.map(e => `<span class="${e[2] ? 'bad' : 'good'}">${this.esc(e[0])} <b>${e[1]}</b></span>`).join('')}</div>` : ''}
       ${dist ? `<h4>Around the city</h4><ul class="lgdist">${dist}</ul>` : ''}
-      <div class="lgnext">Next up: ${this.ic(nx.fa, nx.color, 22)} <b>${this.esc(nx.title)}</b></div>
-      <div class="lgdaily"><div><b>Daily bonus</b><small>${dl.claimable ? `Day ${dl.streak}${dl.reset ? ' (streak restarted)' : ''}. Come back every day, day 7 pays the most.` : `Collected. Day ${dl.streak} streak. Tomorrow pays ${this.fmt(dl.next)}.`}</small></div>
-        <button class="lgbtn" ${dl.claimable ? '' : 'disabled'} onclick="LAGOS.daily(this)">${dl.claimable ? 'Collect ' + this.fmt(dl.next) : 'Collected'}</button></div>`;
-  },
-  async daily(btn) {
-    if (btn) btn.disabled = true;
-    try {
-      const r = await NET.api('/api/ac/lagos/daily', { method: 'POST' });
-      this.setCash(r.cash); this.close(); CARD.show({ icon: '📅', title: 'Daily bonus', text: r.streak >= 7 ? 'Day 7! The biggest one. Come back tomorrow to start again.' : 'Come back tomorrow for more.', lines: [['You got', this.fmt(r.amount)], ['Streak', 'Day ' + r.streak]], tone: 'gold', btn: 'Collect' });
-      this.d.daily = r.daily; this.draw(); this.paint();
-    } catch (e) { toast(e.message); if (btn) btn.disabled = false }
+      <div class="lgnext">Next up: ${this.ic(nx.fa, nx.color, 22)} <b>${this.esc(nx.title)}</b></div>`;
   },
   setCash(c) { if (typeof S !== 'undefined' && Number.isFinite(c)) { S.cash = c; if (typeof render === 'function') render() } },
   /* ----- quests ----- */

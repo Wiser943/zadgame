@@ -84,7 +84,7 @@ function personalTasks(state, missions) {
 }
 
 /* ---------- welcome parcels (first 7 days) ---------- */
-const PARCEL = [20000, 25000, 30000, 35000, 40000, 50000, 80000];
+const PARCEL = [600, 750, 900, 1050, 1200, 1500, 2400];   // ~3% of the old amounts
 const parcelFor = (n) => PARCEL[Math.min(PARCEL.length - 1, Math.max(0, n))];
 
 /* ---------- invites and welcome-back gift (first friend / group / streak rewards are missions) ---------- */

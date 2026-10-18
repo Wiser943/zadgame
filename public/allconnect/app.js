@@ -1,3 +1,5 @@
+/* Landing-page links (/play?open=gamehub, /play?open=lagosrun) go through the normal splash, sign-in and Continue flow; the wish is kept until the game has started. */
+try { const o = new URLSearchParams(location.search).get('open'); if (o === 'gamehub' || o === 'lagosrun') sessionStorage.setItem('ac:open', o) } catch (e) {}
 /* ================= AllConnect client =================
    Login: same accounts as GameHub (POST /auth/login, /auth/register, Google). Realtime: Socket.io namespace /ac. */
 const NET = {
@@ -118,7 +120,7 @@ async function doAuth() {
 
 function logout() { location.href = (window.API_BASE || '') + '/auth/logout' }
 async function boot() {
-  if (window.top !== window.self) { window.top.location.href = '/'; return } // GameHub logout redirects here: never nest the platform
+  if (window.top !== window.self) { window.top.location.href = '/play'; return } // GameHub logout redirects here: never nest the platform
   try {
     const j = await NET.api('/api/ac/state');
     NET.user = j.user;
@@ -143,7 +145,7 @@ async function boot() {
   }
   if (/auth_error/.test(location.search)) {
     $('aerr').textContent = 'Google sign-in is not available right now. Use email or phone.';
-    history.replaceState(null, '', '/')
+    history.replaceState(null, '', '/play')
   }
 }
 
