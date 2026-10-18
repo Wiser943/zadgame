@@ -403,12 +403,13 @@ const APPS = [
 ];
 
 const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
-/* Phone home screen (iPhone style): page 1 = clock, "Happening in Lagos" card and 8 apps; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
+/* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
 const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
+const HOMEFIT = { per: 8 };
 function drawApps() {
   const el = $('apps'), dots = $('pgdots'), dk = $('dock'); if (!el) return;
   const byName = Object.fromEntries(APPS.map(a => [a[0], a]));
@@ -419,9 +420,27 @@ function drawApps() {
   const hap = `<div class="happen"><span class="hi">${ev ? `<span class="fa-solid fa-${ev.fa}" style="color:${ev.color}"></span>` : '🌙'}</span><div><small>${NG.say('Happening in 9ja', 'Wetin dey happen for 9ja')}</small><b>${ev ? esc(NG.pcm() && ev.pidgin ? ev.pidgin : ev.title) : NG.say('Loading the city…', 'City dey load…')}</b></div><button onclick="LAGOS.open('today')">Go ›</button></div>`;
   const lock = `<div class="lock"><b id="pb">--:--</b><span id="pd"></span><span class="hello">How far, ${esc(me)} <i>👋</i> · <i class="od"></i>${esc(($('onl') || {}).textContent || '')} online</span></div>`;
   const goal = `<div class="goalcard" onclick="GOALS.open()"><small>🎯 ${window.GOALS ? GOALS.label() : 'GOALS'}</small><b>${window.GOALS ? esc(GOALS.nextTitle()) : NG.say('Start your Naija life', 'Start your Naija life o')}</b></div>`;
-  const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, 8).join('')}</div></div>`];
-  for (let i = 8, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
-  el.classList.add('h'); el.innerHTML = pages.join('');
+  // page 1 shows as many rows of apps as the free space allows (at least 2); the rest go to the next pages
+  const build = per => {
+    const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, per).join('')}</div></div>`];
+    for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
+    el.classList.add('h'); el.innerHTML = pages.join('')
+  };
+  let cur = HOMEFIT.per; build(cur);
+  if (el.clientHeight > 0) {
+    let grew = false;
+    for (let k = 0; k < 8; k++) {
+      const pg = el.querySelector('.pg1'), grid = pg && pg.querySelector('.grid'), a = grid && grid.querySelector('.app'); if (!a) break;
+      const gs = getComputedStyle(grid), cols = Math.max(1, gs.gridTemplateColumns.split(' ').length), rowH = a.offsetHeight + (parseFloat(gs.rowGap) || 0);
+      const pr = pg.getBoundingClientRect(); let used = 0; [...pg.children].forEach(c => { used = Math.max(used, c.getBoundingClientRect().bottom) });
+      const free = pr.bottom - used - 6, rows = Math.max(2, Math.round(cur / cols)); let next = cur;
+      if (cur % cols || cur < cols * 2) next = rows * cols;                                              // whole rows only
+      else if (pg.scrollHeight > pg.clientHeight + 2 && rows > 2) { next = cur - cols; if (grew) { cur = next; build(cur); break } }
+      else if (free >= rowH + 4 && rows < 5 && cur < items.length) { next = cur + cols; grew = true }
+      if (next === cur) break; cur = next; build(cur)
+    }
+  }
+  HOMEFIT.per = cur;
   if (dk) dk.innerHTML = DOCK.map(n => appBtn(byName[n], true)).join('');
   el.scrollLeft = keep * el.clientWidth; paintDots();
   try { CLOCK.tick() } catch (e) {}
@@ -433,6 +452,8 @@ function paintDots() {
   d.innerHTML = n > 1 ? Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('') : ''
 }
 $('apps').addEventListener('scroll', paintDots, { passive: true });
+/* re-fit the rows of apps when the phone/tablet frame changes size (rotate, resize, opened for the first time) */
+if (window.ResizeObserver) { let rt, lw = 0, lh = 0; new ResizeObserver(() => { const e = $('apps'); if (!e || (e.clientWidth === lw && e.clientHeight === lh)) return; lw = e.clientWidth; lh = e.clientHeight; clearTimeout(rt); rt = setTimeout(() => { if (e.clientHeight > 0) drawApps() }, 120) }).observe($('apps')) }
 /* Search app: find any app on the phone by name */
 const APPSEARCH = {
   res: [],
@@ -550,7 +571,7 @@ boot();
   const go = () => {
     let saver = false; try { saver = !!JSON.parse(localStorage.getItem('ghPrefs') || '{}').lowPower } catch (e) {}
     if (saver || !window.DIORAMA) return;
-    DIORAMA.mount(document.getElementById('dio'), { mode: 'orbit', shiftY: .13, shiftYWide: .09 }).then(d => { if (d) { const r = document.querySelector('#splash .splash-room'); if (r) r.style.display = 'none' } })
+    DIORAMA.mount(document.getElementById('dio'), { mode: 'top', shiftY: .06, shiftYWide: 0 }).then(d => { if (d) { const r = document.querySelector('#splash .splash-room'); if (r) r.style.display = 'none' } })
   };
   if (window.DIORAMA) go(); else window.addEventListener('load', go)
 })();

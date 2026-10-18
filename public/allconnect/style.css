@@ -1363,3 +1363,14 @@ html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
   transform:translateX(-120%);animation:cloudDrift var(--d) linear infinite;animation-delay:var(--o);will-change:transform}
 @keyframes cloudDrift{from{transform:translateX(-120%)}to{transform:translateX(calc(100vw + 20%))}}
 @media (prefers-reduced-motion:reduce){.sky .cloud{animation:none;transform:translateX(12vw)}}
+
+/* sign-in card: see-through at the top so the map shows through the form, solid at the bottom so the buttons stay easy to read */
+#splash .card{background:linear-gradient(rgba(255,253,250,.16) 0,rgba(255,253,250,.28) 36%,rgba(255,253,250,.74) 58%,rgba(255,253,250,.95) 76%);
+  -webkit-backdrop-filter:blur(3px) saturate(1.2);backdrop-filter:blur(3px) saturate(1.2);border:1px solid rgba(255,255,255,.45);box-shadow:0 10px 34px rgba(10,40,90,.28)}
+#splash .card .seg{background:rgba(255,255,255,.34)}
+#splash .card .seg button{color:#26324f}
+#splash .card .seg .on{background:rgba(255,255,255,.92);color:var(--ink)}
+#splash .card input{background:rgba(255,255,255,.52);border-color:rgba(255,255,255,.7)}
+#splash .card input::placeholder{color:#4a5775}
+#splash .card .who{background:rgba(255,255,255,.4)}
+#splash>.sky{background:linear-gradient(rgba(214,236,250,.9),rgba(214,236,250,0))}

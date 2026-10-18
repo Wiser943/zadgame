@@ -1,5 +1,6 @@
 /* AllConnect diorama: a small low-poly 3D model of the 9ja map (Three.js, same r128 build the 3D room uses).
    DIORAMA.mount(el, { mode: 'orbit' | 'tour', shiftY, labels })  ->  Promise<instance | null>
+   - 'top'  : camera hovers above the map looking down, swaying slowly; the map width fills the screen.
    - 'orbit': the camera slowly circles the whole map, like a camera filming it from a drone (sign-in screen).
    - 'tour' : the camera flies from one popular place to the next, with a caption and dots to jump around (landing page).
    Resolves to null (and leaves the page untouched) when WebGL / Three.js is unavailable, so callers keep their fallback. */
@@ -163,9 +164,11 @@
       const w = this.el.clientWidth || 1, h = this.el.clientHeight || 1; this.w = w; this.h = h;
       this.renderer.setSize(w, h, false); this.cam.aspect = w / h;
       const sy = (this.opts.shiftYWide != null && w / h > 1.1) ? this.opts.shiftYWide : this.shiftY;
-      if (sy) this.cam.setViewOffset(w, h, 0, Math.round(h * sy), w, h); else this.cam.clearViewOffset();
+      const sx = (this.opts.shiftXWide && w / h > 1.1) ? this.opts.shiftXWide : 0;   // + moves the scene right
+      if (sy || sx) this.cam.setViewOffset(w, h, -Math.round(w * sx), Math.round(h * sy), w, h); else this.cam.clearViewOffset();
       this.cam.updateProjectionMatrix(); this.render(); this.focusFit = null;
     },
+    topDist() { return Math.max(54, Math.min(230, 82 / Math.min(this.aspect(), 1.55))) },   // the map's full width fills the screen
     orbitDist() { return Math.max(88, Math.min(215, 92 / Math.min(this.aspect(), 1.4))) },
     placeView(p, drift) { const a = this.aspect(), k = a < 1 ? 1 / Math.pow(a, .62) : 1; return { tx: p.t[0], ty: p.t[1], tz: p.t[2], az: p.az + drift, pol: p.pol, dist: p.dist * k * (p.far || 1.16) } },
     buildUI() {
@@ -187,7 +190,12 @@
     },
     step(dt) {
       this.time += dt; const c = this.cur;
-      if (this.mode === 'orbit') {
+      if (this.mode === 'top') {
+        // camera high above the map, looking almost straight down; it sways slowly like a drone hovering over the city
+        const m = this.reduce ? 0 : 1;
+        c.az = Math.PI / 2 + m * .36 * Math.sin(this.time * .15); c.pol = .36 + m * .05 * Math.sin(this.time * .11);
+        c.tx = -2; c.ty = 1; c.tz = 2; c.dist = this.topDist() * (1 + m * .025 * Math.sin(this.time * .09));
+      } else if (this.mode === 'orbit') {
         const sp = this.reduce ? 0 : .085;
         c.az += dt * sp; c.tx = lerp(c.tx, 0, .05); c.ty = 1.5; c.tz = lerp(c.tz, 2, .05);
         c.pol = 1.0 + Math.sin(this.time * .18) * .07; c.dist = this.orbitDist() * (1 + Math.sin(this.time * .13) * .045);

@@ -31,17 +31,7 @@
     </div>
   </header>
   <main id="main">
-    <section class="wrap hero">
-      <div>
-        <p class="eyebrow">Unofficial-feeling city, official AllConnect world</p>
-        <h1>Your 9ja story,<br><span>on a live map.</span></h1>
-        <p class="lead">Create a Sim, walk the city, find work and meet other players as they move — not as statues parked on one tile.</p>
-        <div class="row">
-          <a class="btn btn-primary" href="/play">Enter the city</a>
-          <a class="btn btn-ghost" href="#start">How it works</a>
-        </div>
-        <p class="note">Phone or computer. Same account for the life-sim, GameHub and Lagos Run.</p>
-      </div>
+    <section class="herofull">
       <figure class="city city3d" id="cityDio" aria-label="A 3D tour of the AllConnect map: airport, Agege market, stadium, Third Mainland Bridge, Victoria Island and the beach resort">
         <div class="dio" id="heroDio"></div>
         <div class="flat">
@@ -56,6 +46,18 @@
         <div class="hud"><span>Home</span><span>Buy</span><span class="on">Map</span><span>Phone</span></div>
         </div>
       </figure>
+      <div class="wrap hero">
+        <div class="herotext">
+        <p class="eyebrow">Unofficial-feeling city, official AllConnect world</p>
+        <h1>Your 9ja story,<br><span>on a live map.</span></h1>
+        <p class="lead">Create a Sim, walk the city, find work and meet other players as they move — not as statues parked on one tile.</p>
+        <div class="row">
+          <a class="btn btn-primary" href="/play">Enter the city</a>
+          <a class="btn btn-ghost" href="#start">How it works</a>
+        </div>
+        <p class="note">Phone or computer. Same account for the life-sim, GameHub and Lagos Run.</p>
+        </div>
+      </div>
     </section>
     <div class="wrap snapshot">
       <article><h3>Browser game</h3><p>No store download required</p></article>
@@ -139,7 +141,7 @@
     /* 3D map tour: the camera flies between popular places. The flat picture stays if WebGL is unavailable. */
     addEventListener('load', function () {
       var f = document.getElementById('cityDio'); if (!f || !window.DIORAMA) return;
-      DIORAMA.mount(document.getElementById('heroDio'), { mode: 'tour' }).then(function (d) { if (d) f.classList.add('on'); });
+      DIORAMA.mount(document.getElementById('heroDio'), { mode: 'tour', shiftXWide: .2, shiftYWide: 0, shiftY: -.2 }).then(function (d) { if (d) f.classList.add('on'); });
     });
   </script>
 </body>

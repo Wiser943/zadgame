@@ -123,3 +123,31 @@ footer .foot { display: flex; justify-content: space-between; gap: 12px; flex-wr
 .dio-dots button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgba(27,34,54,.35); transition: all .25s; }
 .dio-dots button.on::before { width: 20px; border-radius: 6px; background: #1b2236; }
 @media (max-width: 640px) { .city3d { min-height: 340px; } .dio-cap small { display: none; } }
+
+
+/* ---- hero fills the screen: the 3D map tour is the background, the intro sits on a frosted card ---- */
+.herofull { position: relative; isolation: isolate; overflow: hidden; display: grid; align-items: center;
+  min-height: calc(100vh - 68px); min-height: calc(100svh - 68px); }
+.herofull > .city { position: absolute; inset: 0; margin: 0; width: auto; z-index: -1; min-height: 0; border-radius: 0; box-shadow: none; }
+.herofull .hero { display: block; padding: 40px 0; }
+.herotext { max-width: min(520px, 100%); padding: 26px 28px 24px; border-radius: 28px;
+  background: rgba(255,255,255,.66); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 18px 50px rgba(20,40,80,.2); }
+.herotext .lead { max-width: none; }
+.herotext .note { margin-bottom: 0; }
+.herofull .dio-cap { left: 18px; bottom: 18px; }
+.herofull .dio-dots { top: auto; bottom: 22px; left: auto; right: 18px; transform: none; }
+@media (max-width: 700px) {
+  .herofull { align-items: start; }
+  .herofull .hero { padding: 14px 0 0; }
+  .herotext { padding: 16px 18px 16px; border-radius: 24px; }
+  .herotext .eyebrow { font-size: 13px; margin-bottom: 6px; }
+  .herotext h1 { font-size: clamp(30px, 9vw, 40px); margin-bottom: 8px; }
+  .herotext .lead { font-size: 15px; margin-bottom: 14px; }
+  .herotext .note { display: none; }
+  .herofull .dio-cap { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  .herofull .dio-dots { right: auto; left: 50%; transform: translateX(-50%); bottom: 84px; }
+}
+.snapshot { margin: 8px auto 40px; }
+
+header .btn { white-space: nowrap; }
