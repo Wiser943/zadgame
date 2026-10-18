@@ -97,4 +97,54 @@ maybe('routes: names are checked', async () => {
   assert.equal((await call('/rename', { name: '<b>x</b>' })).s, 400);
   const r = await call('/rename', { name: 'Mimi' }); assert.equal(r.j.pet.name, 'Mimi');
 });
+test('growth: steady care grows her, with daily caps, and nothing counts while she is ill', () => {
+  const p = P.defaults('u'); assert.equal(P.stageView(p).name, 'Baby kitten');
+  let grew = null; for (let i = 0; i < 12; i++) grew = P.gain(p, 5, false) || grew;             // spam in one day: capped at 40
+  assert.equal(p.xp, P.XP.cap); assert.equal(grew, null);
+  const q = P.defaults('u'); q.xp = 118; assert.deepEqual(P.gain(q, 6, false), { from: 0, to: 1 }); assert.equal(P.stageView(q).name, 'Kitten');
+  const f = P.defaults('u'); for (let i = 0; i < 30; i++) P.gain(f, 1, true); assert.equal(f.xp, P.XP.free);   // cuddles and chat alone barely count
+  const s = P.defaults('u'); s.health = 10; assert.equal(P.gain(s, 8, false), null); assert.equal(s.xp || 0, 0);
+  assert.ok(P.stageView(P.defaults('u')).scale < P.STAGES[P.STAGES.length - 1].scale);
+  const next = new Date(Date.now() + 86400000).getTime(); p.xpToday = P.XP.cap; P.gain(p, 5, false, next); assert.equal(p.xp, P.XP.cap + 5);   // new day, new allowance
+});
+const AI = require('../utils/acpetai');
+test('answer mode helpers: clean input, safe spoken output', () => {
+  assert.equal(AI.cleanText('  hi\n\n there  '), 'hi there'); assert.equal(AI.cleanText('x'.repeat(500)).length, AI.MAX_TEXT);
+  assert.equal(AI.cleanAudio({ mime: 'audio/webm', data: 'AAAA' }), null); assert.equal(AI.cleanAudio({ mime: 'audio/wav', data: 'a b' }), null); assert.ok(AI.cleanAudio({ mime: 'audio/wav', data: 'UklGRg==' }));
+  assert.equal(AI.cleanReply('**Hello** there! 😺 I like fish. Cats are great. Four. Five.'), 'Hello there! I like fish. Cats are great.');
+  const pr = AI.persona({ name: 'Kobo', worn: { hat: 'crown' }, love: 4, hunger: 10, clean: 80, energy: 80, fun: 80, health: 90 }, { stage: 'kitten', clothes: P.CLOTHES });
+  assert.match(pr, /ONLY in English/); assert.match(pr, /very hungry/); assert.match(pr, /Gold crown/); assert.doesNotMatch(pr, /Pidgin/i);
+  assert.equal(AI.cleanHistory([{ r: 'u', t: 'hi' }, { r: 'p', t: 'hello' }, { r: 'x', t: '' }]).length, 2);
+});
+let calls = [];
+const gem = (reply, heard, status) => async (url, o) => { calls.push({ url, o, body: JSON.parse(o.body) }); return { status: status || 200, json: async () => (status && status >= 400 ? { error: { message: 'bad' } } : { candidates: [{ content: { parts: [{ text: JSON.stringify({ heard: heard || '', reply }) }] } }] }) }; };
+maybe('routes: answer mode uses Gemini on the server, limits use and rewards a little growth', async () => {
+  const d = pets.get('u1'); d.asleep = false; d.xp = 0; d.xpToday = 0; d.xpFree = 0; d.aiCount = 0; d.aiDay = '';
+  delete process.env.GEMINI_API_KEY; assert.equal((await call('/ask', { mode: 'answer', text: 'hi' })).s, 503);          // no key: refused politely
+  assert.equal((await call('/')).j.ai.on, false);
+  process.env.GEMINI_API_KEY = 'test-key'; process.env.PET_AI_DAILY = '3'; assert.equal((await call('/')).j.ai.on, true);
+  AI.setFetch(gem('Cats love to nap in the sun. Do you?', '')); calls = [];
+  let r = await call('/ask', { mode: 'answer', text: 'Why do cats sleep so much?', history: [{ r: 'u', t: 'hi' }, { r: 'p', t: 'Meow!' }] });
+  assert.equal(r.s, 200); assert.equal(r.j.reply, 'Cats love to nap in the sun. Do you?'); assert.equal(r.j.heard, 'Why do cats sleep so much?');
+  assert.match(calls[0].url, /generativelanguage\.googleapis\.com\/v1beta\/models\/.+:generateContent$/); assert.equal(calls[0].o.headers['x-goog-api-key'], 'test-key');
+  assert.match(calls[0].body.systemInstruction.parts[0].text, /ONLY in English/); assert.equal(calls[0].body.contents.length, 3); assert.equal(calls[0].body.contents[1].role, 'model');
+  assert.ok(!JSON.stringify(r.j).includes('test-key')); assert.equal(r.j.ai.left, 2); assert.ok(r.j.pet.stage.xp >= 1);
+  AI.setFetch(gem('You said hello to your cat.', 'hello kobo'));               // a voice note: Gemini hears it and answers
+  r = await call('/ask', { mode: 'answer', audio: { mime: 'audio/wav', data: 'UklGRg==' } }); assert.equal(r.s, 200); assert.equal(r.j.heard, 'hello kobo');
+  assert.ok(calls.at(-1).body.contents.at(-1).parts[0].inlineData.data === 'UklGRg==');
+  AI.setFetch(gem('Say this back', 'say this back'));                          // repeat mode: only transcribes
+  r = await call('/ask', { mode: 'repeat', audio: { mime: 'audio/wav', data: 'UklGRg==' } }); assert.equal(r.s, 200); assert.equal(r.j.reply, 'say this back'); assert.equal(calls.at(-1).body.generationConfig.temperature, 0);
+  assert.equal((await call('/ask', { mode: 'repeat', text: 'no audio' })).s, 400);
+  r = await call('/ask', { mode: 'answer', text: 'one more' }); assert.equal(r.s, 429);                       // 3 a day in this test
+  assert.equal((await call('/ask', { mode: 'answer', audio: { mime: 'audio/mp3', data: 'AAAA' } })).s, 400);
+  delete process.env.PET_AI_DAILY;
+});
+maybe('routes: answer mode failures are friendly and never leak the key', async () => {
+  const d = pets.get('u1'); d.aiCount = 0; d.aiDay = ''; AI.setFetch(gem('', '', 403)); const bk = console.error; console.error = () => {};
+  let r = await call('/ask', { mode: 'answer', text: 'hi' }); console.error = bk; assert.equal(r.s, 503); assert.ok(!JSON.stringify(r.j).includes('test-key'));
+  AI.setFetch(gem('', '', 429)); r = await call('/ask', { mode: 'answer', text: 'again' }); assert.equal(r.s, 429);
+  d.asleep = true; AI.setFetch(gem('x', '')); r = await call('/ask', { mode: 'answer', text: 'wake up' }); assert.equal(r.s, 409); d.asleep = false;
+  AI.setFetch(async () => ({ status: 200, json: async () => ({ promptFeedback: { blockReason: 'SAFETY' } }) })); r = await call('/ask', { mode: 'answer', text: 'bad' });
+  assert.equal(r.s, 200); assert.equal(r.j.reply, AI.SAFE_LINE); delete process.env.GEMINI_API_KEY;
+});
 maybe('routes: teardown', () => { server.close(); Module._load = load; });

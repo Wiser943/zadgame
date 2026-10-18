@@ -10,6 +10,7 @@ const { makeRef } = require('../utils/acbank');
 const { emitUser } = require('../utils/acnotify');
 const L = require('../utils/aclagos');
 const P = require('../utils/acpet');
+const AI = require('../utils/acpetai');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -23,6 +24,7 @@ async function loadPet(me) {
   P.advance(d);
   return d;
 }
+const aiInfo = (d, now = Date.now()) => ({ on: !!AI.keyInfo().key, daily: AI.daily(), left: Math.max(0, AI.daily() - (d.aiDay === P.dayKey(now) ? d.aiCount : 0)) });
 const full = async (me, d, extra) => {
   const u = await User.findById(me).select('ac.cash').lean();
   return Object.assign({ pet: P.view(d), cash: (u && u.ac && u.ac.cash) || 0 }, extra || {});
@@ -33,7 +35,7 @@ router.get('/', async (req, res, next) => {
     const me = uid(req); await ensureAC(me);
     const d = await loadPet(me); await d.save();
     const day = P.dayKey(), earned = d.gameDay === day ? d.gameEarned : 0;
-    res.json(await full(me, d, { catalog: P.catalog(event()), slots: P.SLOTS, game: { earned, cap: P.GAME.cap, cooldownMs: P.GAME.cooldownMs, energy: P.GAME.energy }, rates: P.RATE }));
+    res.json(await full(me, d, { catalog: P.catalog(event()), slots: P.SLOTS, ai: aiInfo(d), game: { earned, cap: P.GAME.cap, cooldownMs: P.GAME.cooldownMs, energy: P.GAME.energy }, rates: P.RATE }));
   } catch (e) { next(e); }
 });
 
@@ -52,16 +54,18 @@ router.post('/buy', async (req, res, next) => {
     if (kind === 'toy' && d.energy < 12) return bad(res, 409, `${nm} is too tired to play.`);
     if (kind === 'toy' && P.sick(d)) return bad(res, 409, `${nm} is not well enough to play. Take her to the vet.`);
     const price = P.priceOf(kind, id, event());
+    let grew = null;
     const u = await User.findOneAndUpdate({ _id: me, 'ac.cash': { $gte: price } }, { $inc: { 'ac.cash': -price } }, { new: true });
     if (!u) return bad(res, 402, 'Not enough ₦.');
     try {
       if (kind === 'cloth') { d.owned = [...(d.owned || []), id]; d.worn = Object.assign({}, d.worn, { [it.slot]: id }); d.markModified('worn'); }
       else { P.apply(d, Object.assign({}, it, { love: it.love || 1 })); if (kind === 'food') d.clean = P.cl(d.clean - 3); }
+      if (kind !== 'cloth') grew = P.gain(d, P.xpFor(kind, id), false);
       d.spent = (d.spent || 0) + price; await d.save();
     } catch (e) { await User.updateOne({ _id: me }, { $inc: { 'ac.cash': price } }); throw e; }   // never keep the money if she did not get it
     await ACTxn.create({ user: me, type: 'debit', amount: price, cpName: 'Pet shop', cpNum: '', note: `${it.name} for ${nm}`, ref: makeRef(), kind: 'pet' });
     emitUser(req.app.get('io'), me, 'cash', { delta: -price });
-    res.json(await full(me, d, { price, item: { kind, id, name: it.name, emoji: it.emoji } }));
+    res.json(await full(me, d, { price, grew, item: { kind, id, name: it.name, emoji: it.emoji } }));
   } catch (e) { next(e); }
 });
 
@@ -82,14 +86,15 @@ router.post('/act', async (req, res, next) => {
   try {
     const me = uid(req), a = String((req.body || {}).a || '');
     if (!['sleep', 'wake', 'pet', 'talk'].includes(a)) return bad(res, 400, 'Unknown action.');
-    const d = await loadPet(me), now = Date.now();
+    const d = await loadPet(me), now = Date.now(); let grew = null;
     if (a === 'sleep') d.asleep = true;
     else if (a === 'wake') d.asleep = false;
     else if (!d.asleep && (!d.lastAct || now - new Date(d.lastAct).getTime() > 1200)) {
       d.lastAct = new Date(now); d.love = (d.love || 0) + 1; if (a === 'talk') d.words = (d.words || 0) + 1;
       if (d.fun < 60) d.fun = P.cl(d.fun + (a === 'talk' ? 2 : 1));
+      grew = P.gain(d, P.XP.free1, true);
     }
-    await d.save(); res.json(await full(me, d));
+    await d.save(); res.json(await full(me, d, { grew }));
   } catch (e) { next(e); }
 });
 
@@ -112,13 +117,37 @@ router.post('/game', async (req, res, next) => {
     if (d.lastGame && now - new Date(d.lastGame).getTime() < P.GAME.cooldownMs) return bad(res, 429, 'Let her catch her breath for a minute.');
     if (d.gameDay !== day) { d.gameDay = day; d.gameEarned = 0; }
     const prize = P.reward(game, (req.body || {}).score, d.gameEarned);
-    d.lastGame = new Date(now); d.gameEarned += prize; P.apply(d, { energy: -P.GAME.energy, fun: P.GAME.fun, hunger: -3, love: 1 }); await d.save();
+    d.lastGame = new Date(now); d.gameEarned += prize; P.apply(d, { energy: -P.GAME.energy, fun: P.GAME.fun, hunger: -3, love: 1 }); const grew = P.gain(d, P.XP.game, false); await d.save();
     if (prize) {
       await User.updateOne({ _id: me }, { $inc: { 'ac.cash': prize } });
       await ACTxn.create({ user: me, type: 'credit', amount: prize, cpName: 'Pet games', cpNum: '', note: `${game === 'mouse' ? 'Mouse Tap' : 'Paw Pattern'} with ${d.name}`, ref: makeRef(), kind: 'reward' });
       emitUser(req.app.get('io'), me, 'cash', { delta: prize });
     }
-    res.json(await full(me, d, { prize, game: { earned: d.gameEarned, cap: P.GAME.cap, capped: d.gameEarned >= P.GAME.cap } }));
+    res.json(await full(me, d, { prize, grew, game: { earned: d.gameEarned, cap: P.GAME.cap, capped: d.gameEarned >= P.GAME.cap } }));
+  } catch (e) { next(e); }
+});
+
+/* Answer mode: ask her a question by text or voice note and she answers using Gemini (key stays on the server). Repeat mode only uses this to transcribe a voice note. */
+router.post('/ask', async (req, res, next) => {
+  try {
+    const me = uid(req), b = req.body || {}, mode = b.mode === 'repeat' ? 'repeat' : 'answer';
+    const text = AI.cleanText(b.text), audio = b.audio ? AI.cleanAudio(b.audio) : null;
+    if (b.audio && !audio) return bad(res, 400, 'That voice note could not be used.');
+    if (!text && !audio) return bad(res, 400, 'Say or type something first.');
+    if (mode === 'repeat' && !audio) return bad(res, 400, 'Nothing to look up in repeat mode.');
+    if (!AI.keyInfo().key) return bad(res, 503, 'Answer mode is not set up yet.');
+    if (AI.limited(me)) return bad(res, 429, 'Slow down a little, she is thinking.');
+    const d = await loadPet(me), now = Date.now(), day = P.dayKey(now);
+    if (d.asleep) return bad(res, 409, `${d.name} is asleep.`);
+    if (d.aiDay !== day) { d.aiDay = day; d.aiCount = 0; }
+    if (d.aiCount >= AI.daily()) return bad(res, 429, `${d.name} has talked enough for today. Come back tomorrow!`);
+    let out;
+    try { out = await AI.ask({ mode, text, audio, pet: d, history: b.history, ctx: { stage: P.stageView(d, now).name.toLowerCase(), clothes: P.CLOTHES } }); }
+    catch (e) { if (e && e.user) return bad(res, e.status || 502, e.message); throw e; }
+    d.aiCount += 1; let grew = null;
+    if (out.reply && !out.blocked) { d.love = (d.love || 0) + 1; d.words = (d.words || 0) + 1; if (d.fun < 60) d.fun = P.cl(d.fun + 2); grew = P.gain(d, P.XP.ask, true); }
+    await d.save();
+    res.json(await full(me, d, { heard: out.heard, reply: out.reply, grew, ai: aiInfo(d, now) }));
   } catch (e) { next(e); }
 });
 

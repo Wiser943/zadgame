@@ -574,3 +574,12 @@ Copy these files over your project (same paths), then redeploy.
 - Public status: `/status` page and `GET /api/ac/public/status`.
 - Invite links: `/?ref=<username>`; redeemed after setup.
 - Tests: `tests/achub.test.js`. Service worker cache bumped to v5.
+
+## Pet app (talking cat)
+Phone -> Pet. Files: `public/allconnect/pet.js`, `routes/acpet.js` (mounted at `/api/ac/pet`), `utils/acpet.js` (prices, needs, growth, rewards), `utils/acpetai.js` (Gemini), `models/ACPet.js`, `tests/acpet.test.js`.
+- State is saved on the server per player. Everything bought for the pet (food, care, toys, clothes) is charged from the main balance (`User.ac.cash`) and shows on the bank statement as "Pet shop". Mini-games pay a small capped amount back (daily cap in `GAME.cap`). "New life" resets the pet.
+- **Two talk modes** (switch above the chat box): **Repeat** says back what you say or type; **Answer** sends it to Google Gemini and she answers out loud. Everything she says is English.
+- **Gemini setup:** set **GEMINI_API_KEY** in Render -> Environment (key from https://aistudio.google.com/apikey; also read from GOOGLE_API_KEY / GEMINI_KEY). Optional: `GEMINI_MODEL` (default `gemini-2.5-flash`, falls back to `gemini-2.0-flash`) and `PET_AI_DAILY` (answers per player per day, default 60). The key is only used on the server. Without it, Answer mode shows as "(off)" and Repeat mode still works.
+- Voice: the browser's speech recognition is used where it exists; otherwise a short (8 s) voice note is recorded, converted to WAV in the browser and Gemini listens to it.
+- **Growth:** care earns growth points (max 40 a day, cuddles/chat only 10 of those, nothing while she is ill). Stages: Baby kitten, Kitten (120), Young cat (360), Adult cat (720), Big boss (1200). She gets visibly bigger at each stage.
+- **Lip-sync:** her mouth follows the sentence (seven mouth shapes, re-aligned on every word event the browser sends); she also perks her ears while listening and shows thinking dots while Gemini works.

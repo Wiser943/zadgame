@@ -33,6 +33,13 @@ const KINDS = { food: FOOD, care: CARE, toy: TOYS, cloth: CLOTHES };
 const RATE = { hunger: .3, hungerSleep: .12, fun: .35, funSleep: .06, clean: .2, energy: .25, energyRest: 1.2, health: .06, neglect: .25, heal: .03 };
 const MAX_AWAY_MIN = 480;
 const GAME = { cap: 8000, cooldownMs: 45000, perPoint: { mouse: 150, paws: 400 }, maxScore: { mouse: 40, paws: 15 }, energy: 10, fun: 15 };
+// She grows with steady care: effort earns xp, but only up to XP.cap a day (free cuddles and chat only up to XP.free), and nothing counts while she is ill.
+const STAGES = [
+  { id: 'baby', name: 'Baby kitten', at: 0, scale: .6 }, { id: 'kitten', name: 'Kitten', at: 120, scale: .74 }, { id: 'young', name: 'Young cat', at: 360, scale: .88 },
+  { id: 'adult', name: 'Adult cat', at: 720, scale: 1 }, { id: 'boss', name: 'Big boss', at: 1200, scale: 1.12 }
+];
+const XP = { cap: 40, free: 10, food: 6, toy: 5, game: 5, ask: 1, free1: 1, care: { bath: 5, groom: 6, vitamins: 4, medicine: 5, vet: 8 } };
+const stageIdx = (xp) => { let i = 0; STAGES.forEach((s, k) => { if ((xp || 0) >= s.at) i = k; }); return i; };
 const defaults = (user) => ({ user, name: 'Kobo', hunger: 80, energy: 80, fun: 80, clean: 80, health: 90, love: 0, words: 0, asleep: false, t: new Date(), owned: [], worn: {}, spent: 0 });
 const cl = (v) => Math.max(3, Math.min(100, Number.isFinite(v) ? v : 3));
 const dayKey = (now = Date.now()) => new Date(now + 3600000).toISOString().slice(0, 10);   // Lagos is UTC+1
@@ -53,6 +60,16 @@ function advance(p, now = Date.now()) {
   return p;
 }
 const sick = (p) => p.health < 30;
+/* give xp for care. Returns { from, to } when she just grew into a new stage, else null. */
+function gain(p, n, free, now = Date.now()) {
+  const day = dayKey(now); if (p.xpDay !== day) { p.xpDay = day; p.xpToday = 0; p.xpFree = 0; }
+  if (sick(p) || !(n > 0)) return null;
+  let room = XP.cap - (p.xpToday || 0); if (free) room = Math.min(room, XP.free - (p.xpFree || 0));
+  n = Math.max(0, Math.min(n, room)); if (!n) return null;
+  const before = stageIdx(p.xp); p.xp = (p.xp || 0) + n; p.xpToday = (p.xpToday || 0) + n; if (free) p.xpFree = (p.xpFree || 0) + n;
+  const after = stageIdx(p.xp); return after > before ? { from: before, to: after } : null;
+}
+const xpFor = (kind, id) => kind === 'food' ? XP.food : kind === 'toy' ? XP.toy : kind === 'care' ? (XP.care[id] || 0) : 0;
 function apply(p, fx) {
   for (const k of NEEDS) if (typeof fx[k] === 'number') p[k] = fx[k] === 100 ? 100 : cl(p[k] + fx[k]);
   if (fx.love) p.love = (p.love || 0) + fx.love;
@@ -68,11 +85,15 @@ const reward = (game, score, earnedToday) => {
 };
 function view(p, now = Date.now()) {
   return { name: p.name, hunger: Math.round(p.hunger), energy: Math.round(p.energy), fun: Math.round(p.fun), clean: Math.round(p.clean), health: Math.round(p.health),
-    love: p.love || 0, words: p.words || 0, asleep: !!p.asleep, sick: sick(p), owned: p.owned || [], worn: p.worn || {}, spent: p.spent || 0, at: now };
+    love: p.love || 0, words: p.words || 0, asleep: !!p.asleep, sick: sick(p), owned: p.owned || [], worn: p.worn || {}, spent: p.spent || 0, stage: stageView(p, now), at: now };
+}
+function stageView(p, now = Date.now()) {
+  const i = stageIdx(p.xp), st = STAGES[i], nx = STAGES[i + 1] || null;
+  return { i, id: st.id, name: st.name, scale: st.scale, xp: p.xp || 0, from: st.at, to: nx ? nx.at : null, next: nx ? nx.name : null, today: p.xpDay === dayKey(now) ? (p.xpToday || 0) : 0, cap: XP.cap };
 }
 const catalog = (ev) => {
   const out = {}; for (const [kind, tbl] of Object.entries(KINDS)) out[kind] = Object.entries(tbl).map(([id, it]) => Object.assign({ id, price: priceOf(kind, id, ev) }, it));
   return out;
 };
 const validName = (s) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length >= 1 && s.length <= 14 && /^[\p{L}\p{N} '._-]+$/u.test(s) ? s : '' };
-module.exports = { NEEDS, FOOD, CARE, TOYS, CLOTHES, SLOTS, KINDS, RATE, GAME, defaults, advance, apply, sick, priceOf, reward, view, catalog, validName, dayKey, cl };
+module.exports = { STAGES, XP, stageIdx, stageView, gain, xpFor, NEEDS, FOOD, CARE, TOYS, CLOTHES, SLOTS, KINDS, RATE, GAME, defaults, advance, apply, sick, priceOf, reward, view, catalog, validName, dayKey, cl };

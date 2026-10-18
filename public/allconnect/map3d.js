@@ -13,18 +13,23 @@
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const pick = a => a[Math.floor(rnd() * a.length)];
 
-  /* ---------- the world ---------- */
-  const MAINLAND = [[30, 30], [970, 30], [970, 372], [900, 384], [760, 372], [610, 392], [470, 376], [330, 392], [180, 378], [30, 386]];
-  const ISLAND = [[30, 566], [190, 556], [340, 574], [500, 560], [660, 578], [820, 560], [970, 572], [970, 970], [30, 970]];
-  const OFFSHORE = [[868, 452], [900, 428], [946, 424], [972, 446], [972, 492], [944, 512], [896, 510], [872, 484]];   // 60 offshore island zone
-  const BRIDGES = [[240, 372, 24, 204], [530, 380, 24, 190], [815, 372, 24, 200], [918, 506, 24, 66]];   // x, y, w, h (the last one is the jetty to the offshore island)
-  const LAND = [MAINLAND, ISLAND, OFFSHORE];
+  /* ---------- the world ----------
+     Lagos's geometry below (coastline, bridges, pins, ground tints) is kept exactly as it was, just renamed with a
+     _LAGOS suffix; MAINLAND/ISLAND/OFFSHORE/BRIDGES/PINS/ZONES/LAND are now `let`s pointing at whichever city is
+     active, reassigned (and the world rebuilt) by loadCity() near the CITIES registry below. Nothing that reads
+     these names elsewhere in the file had to change — they still resolve to "the current city" either way. */
+  const MAINLAND_LAGOS = [[30, 30], [970, 30], [970, 372], [900, 384], [760, 372], [610, 392], [470, 376], [330, 392], [180, 378], [30, 386]];
+  const ISLAND_LAGOS = [[30, 566], [190, 556], [340, 574], [500, 560], [660, 578], [820, 560], [970, 572], [970, 970], [30, 970]];
+  const OFFSHORE_LAGOS = [[868, 452], [900, 428], [946, 424], [972, 446], [972, 492], [944, 512], [896, 510], [872, 484]];   // 60 offshore island zone
+  const BRIDGES_LAGOS = [[240, 372, 24, 204], [530, 380, 24, 190], [815, 372, 24, 200], [918, 506, 24, 66]];   // x, y, w, h (the last one is the jetty to the offshore island)
+  let MAINLAND = MAINLAND_LAGOS, ISLAND = ISLAND_LAGOS, OFFSHORE = OFFSHORE_LAGOS, BRIDGES = BRIDGES_LAGOS;
+  let LAND = [MAINLAND, ISLAND, OFFSHORE];
   const inPoly = (x, y, p) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) if ((p[i][1] > y) !== (p[j][1] > y) && x < (p[j][0] - p[i][0]) * (y - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) c = !c; return c; };
   const onBridge = (x, y) => BRIDGES.some(b => x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3]);
   const isLand = (x, y) => onBridge(x, y) || LAND.some(p => inPoly(x, y, p));
 
   /* name, emoji, x, y, kind, action ('home' | 'soon' | 'soon-y') */
-  const PINS = [
+  const PINS_LAGOS = [
     ['Naija Radio', '📻', 200, 150, 'radio'], ['Viewing Centre', '⚽', 280, 235, 'hall'], ['Amala Shitta', '🍲', 175, 300, 'shop'],
     ['Home', '🏠', 470, 255, 'home', 'home'], ['CcHub', '💡', 740, 190, 'glass'], ['UNILAG', '🎓', 800, 300, 'dome'],
     ['Airport', '✈️', 110, 100, 'airport'], ['Refinery · Coming soon', '🛢️', 88, 330, 'refinery', 'soon-y'], ['Boat Cruise', '⛵', 600, 470, 'boat'],
@@ -53,6 +58,7 @@
     ['Rural Outskirts', '🌾', 935, 188, 'rural', 'district', 'farms, a barn and open fields', 30],
     ['Offshore Island', '🏝', 924, 466, 'offshore', 'district', 'reached by the jetty: lighthouse, villas and a marina', 70]
   ];
+  let PINS = PINS_LAGOS;
   /* ---------- player homes, placed by chosen neighbourhood ----------
      Each onboarding "hood" (utils/achub.js on the server) gets a cluster of numbered house spots here, centred on
      the district that matches its vibe — Ikorodu and Epe aren't separate districts on this map, so Ikorodu's houses
@@ -84,7 +90,7 @@
   }
 
   /* ground tint for each district (own = generic city blocks are not built inside it) */
-  const ZONES = [
+  const ZONES_LAGOS = [
     { x: 40, y: 582, w: 170, h: 98, c: '#e6d3b0', own: 1 }, { x: 490, y: 668, w: 150, h: 92, c: '#c9d6e6', own: 1 }, { x: 545, y: 150, w: 125, h: 80, c: '#ead7f2', own: 1 },
     { x: 345, y: 42, w: 140, h: 76, c: '#cfd6de', own: 1 }, { x: 40, y: 720, w: 125, h: 100, c: '#bfe3b0', own: 1 }, { x: 520, y: 845, w: 150, h: 72, c: '#7a6aa6', own: 1 },
     { x: 790, y: 888, w: 172, h: 66, c: '#d8ead2', own: 0 }, { x: 305, y: 262, w: 118, h: 84, c: '#f0d9a8', own: 1 }, { x: 40, y: 158, w: 115, h: 72, c: '#c8ccd2', own: 1 },
@@ -93,7 +99,46 @@
     { x: 497, y: 42, w: 115, h: 76, c: '#e9d0c0', own: 1 }, { x: 620, y: 268, w: 115, h: 90, c: '#e8dcc8', own: 1 }, { x: 232, y: 42, w: 105, h: 76, c: '#dfe3d4', own: 1 },
     { x: 905, y: 128, w: 60, h: 122, c: '#cfe39a', own: 1 }
   ];
+  let ZONES = ZONES_LAGOS;
   const inZone = (x, y, pad) => ZONES.some(z => z.own && x > z.x - (pad || 0) && x < z.x + z.w + (pad || 0) && y > z.y - (pad || 0) && y < z.y + z.h + (pad || 0));
+  let PLOT_ANCHOR = { x: 282, y: 410 };               // where this city's buyable-land grid sits (drawPlots below) — Lagos's sits out in the lagoon
+
+  /* ================= Abuja: a second, deliberately simpler city — inland, one landmass, no bridges =================
+     Real Abuja has no lagoon splitting it, so this is a single rectangle rather than Lagos's mainland + island pair,
+     and the district list leans on its real quadrant layout (Three Arms Zone at the centre; Maitama/Asokoro/Wuse/
+     Garki around it; Gwarinpa and Kubwa as the big satellite estates further out; Jabi for the lake). Buildings are
+     generic clusters (see Object.assign(BUILD,...) above), not Lagos's one-off hand-placed dioramas — broad coverage
+     over fine detail, so the map isn't mostly empty. */
+  const MAINLAND_ABUJA = [[30, 30], [970, 30], [970, 970], [30, 970]];
+  const PINS_ABUJA = [
+    ['Home', '🏠', 500, 500, 'home', 'home'],                                             // no player ever actually lives here; kept only so setHome() has somewhere harmless to no-op into
+    ['Nnamdi Azikiwe Int\'l', '✈️', 500, 905, 'airport'],
+    ['National Stadium', '🏟', 180, 820, 'court'],
+    ['Aso Rock View', '🏔', 760, 300, 'tower'],
+    ['Jabi Lake Mall', '🛍', 250, 555, 'hall'],
+    /* ---- districts ---- */
+    ['Central Area', '🏛', 500, 500, 'centralArea', 'district', 'the Three Arms Zone: National Assembly, the villa and the government plaza', 70],
+    ['Wuse', '🏢', 430, 350, 'wuse', 'district', 'malls, banks and the main commercial strip', 60],
+    ['Garki', '🏦', 560, 650, 'garki', 'district', 'ministries, finance houses and busy roundabouts', 54],
+    ['Maitama', '🌳', 380, 150, 'maitama', 'district', 'embassies, leafy avenues and big walled compounds', 46],
+    ['Asokoro', '🏡', 760, 400, 'asokoro', 'district', 'the hilltop district: mansions and a quiet close', 42],
+    ['Gwarinpa', '🏘', 220, 100, 'gwarinpa', 'district', 'Nigeria\'s largest housing estate: row after row of homes', 50],
+    ['Kubwa', '🚏', 90, 280, 'kubwa', 'district', 'a satellite town of its own, packed and busy', 40],
+    ['Jabi', '🏖', 250, 555, 'jabi', 'district', 'the lake, the mall and the boardwalk', 40],
+    ['Nyanya', '🚌', 880, 700, 'nyanya', 'district', 'the motor-park end of town: loud, cheap, alive', 36]
+  ];
+  const ZONES_ABUJA = [
+    { x: 400, y: 420, w: 220, h: 170, c: '#dfe3e6', own: 1 },                               // Central Area
+    { x: 350, y: 270, w: 170, h: 120, c: '#c9d6e6', own: 1 },                               // Wuse
+    { x: 470, y: 580, w: 190, h: 150, c: '#cfd6de', own: 1 },                               // Garki
+    { x: 290, y: 60, w: 190, h: 140, c: '#bfe3b0', own: 1 },                                // Maitama
+    { x: 670, y: 320, w: 190, h: 160, c: '#ead7f2', own: 1 },                                // Asokoro
+    { x: 100, y: 30, w: 240, h: 150, c: '#f1e2b0', own: 1 },                                // Gwarinpa
+    { x: 30, y: 200, w: 150, h: 180, c: '#e6d3b0', own: 1 },                                // Kubwa
+    { x: 150, y: 480, w: 200, h: 150, c: '#bfe0b0', own: 1 },                                // Jabi
+    { x: 780, y: 600, w: 190, h: 200, c: '#d8ead2', own: 1 }                                // Nyanya
+  ];
+  const PLOT_ANCHOR_ABUJA = { x: 300, y: 820 };       // buyable-land grid sits south of Garki, between it and the airport
 
   const ads = { plots: new Map(), billboards: [], n: 30 };
   const objs = [];            // standing things, depth-sorted every frame
@@ -198,8 +243,43 @@
       pad(902, 500, 40, 6, '#8b6d44'); [[894, 456], [920, 450], [958, 480], [902, 486], [944, 470]].forEach(([tx, ty]) => tree(tx, ty, 1)); objs.push({ t: 'boat', x: 836, y: 468, r: 30 });
     }
   };
+  /* ---------- Abuja's districts: simpler, generic clusters (not hand-fitted the way Lagos's are) — see buildAbuja() ---------- */
+  Object.assign(BUILD, {
+    centralArea(x, y) {                                          // the Three Arms Zone: assembly dome flanked by two wings, plus a plaza
+      D(x, y, 70, 46, 40, '#f4f1e6', '#1f6fd0', 'dome', 26); D(x - 60, y + 6, 34, 30, 30, '#eceef1', '#8397ad'); D(x + 60, y + 6, 34, 30, 30, '#eceef1', '#8397ad');
+      pad(x - 90, y + 34, 180, 14, '#cfd2d6');
+    },
+    wuse(x, y) {                                                 // commercial mid-rises
+      [[-44, -10, 70], [0, -10, 96], [44, -10, 64], [-22, 32, 42], [22, 32, 50]].forEach(([dx, dy, h], i) => D(x + dx, y + dy, 26, 24, h, GLASS[i % 4], '#cfe6f8'));
+    },
+    garki(x, y) {                                                // banks and ministries
+      [[-40, 0, 54], [0, 0, 66], [40, 0, 48]].forEach(([dx, dy, h], i) => D(x + dx, y + dy, 30, 28, h, pick(['#d8dfe6', '#cdd8e3']), '#8397ad'));
+      pad(x - 56, y + 20, 112, 10, '#b4b8bd');
+    },
+    maitama(x, y) {                                              // embassies and big leafy compounds
+      [[-50, -14], [10, -14], [-50, 26], [10, 26]].forEach(([dx, dy]) => D(x + dx, y + dy, 34, 26, 20, pick(['#f1e6cf', '#e8dcc2', '#f4efe3']), pick(['#3f8f6a', '#2f7d3f'])));
+      for (let i = 0; i < 6; i++) tree(x - 70 + rnd() * 140, y - 30 + rnd() * 60, 1);
+    },
+    asokoro(x, y) {                                              // hilltop mansions, bigger plots
+      [[-46, -8], [20, -8], [-13, 30]].forEach(([dx, dy]) => D(x + dx, y + dy, 38, 34, 24, pick(['#f2e9d8', '#e8d3b9']), pick(['#8b2d22', '#a4452c']), 'hip', 10));
+    },
+    gwarinpa(x, y) {                                             // dense estate grid — Africa's largest housing estate
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) D(x - 60 + i * 40, y - 30 + j * 30, 18, 18, 14, pick(['#f2e9d8', '#dbe6ee', '#e8d3b9']), pick(['#2f7d3f', '#3f8f6a']), 'hip', 6);
+    },
+    kubwa(x, y) {                                                // a satellite town: smaller, closer-packed boxes
+      for (let i = 0; i < 5; i++) D(x - 56 + i * 28, y + (i % 2 ? 14 : -10), 20, 18, 16 + rnd() * 20, pick(['#e7e9ea', '#dfe3e6', '#f0e2c9']), pick(['#9c3b22', '#8c8f94']));
+    },
+    jabi(x, y) {                                                 // the lake, a mall and the boardwalk
+      flats.push({ c: '#3d9ad8', p: [[x - 70, y - 20], [x - 10, y - 34], [x + 56, y - 14], [x + 46, y + 30], [x - 30, y + 36]] });
+      D(x + 70, y - 10, 40, 30, 26, '#eceef1', '#8397ad'); pad(x + 40, y + 10, 30, 8, '#8b6d44');
+    },
+    nyanya(x, y) {                                               // the motor-park end of town: market stalls and a bus terminal
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) D(x - 30 + i * 16, y - 18 + j * 13, 10, 8, 8, '#f6f1e6', pick(WARM), 'hip', 3, true);
+      D(x + 56, y, 46, 26, 16, '#cfd4d8', '#6d7075');
+    }
+  });
 
-  function build() {
+  function buildLagos() {
     seed = 7; objs.length = flats.length = blocks.length = boards.length = 0;
     // parks
     flats.push({ c: '#8cc277', p: [[620, 40], [760, 40], [760, 120], [620, 120]] });
@@ -228,6 +308,7 @@
       if (k === 'radio') objs.push({ t: 'mast', x: x + 12, y, h: 150, r: 6 });
     });
     const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    const hitsRoad = (x0, y0, x1, y1) => flats.some(f => f.r && f.c === '#b4b8bd' && x1 > f.r[0] && x0 < f.r[0] + f.r[2] && y1 > f.r[1] && y0 < f.r[1] + f.r[3]);  // true if that footprint would sit on top of a road strip
     // airport: terminal, apron, taxiway, parked aircraft (isometric city-map layout)
     flats.push({ c: '#9aa3ab', r: [28, 42, 210, 92] });
     flats.push({ c: '#6d7075', r: [28, 128, 268, 24] }); flats.push({ c: '#cfd4d8', r: [42, 136, 240, 5] });
@@ -261,14 +342,14 @@
         const n = 1 + Math.floor(rnd() * 3);
         for (let i = 0; i < n; i++) {
           const w = 24 + rnd() * 34, d = 24 + rnd() * 30, x = cx - 40 + (i + .5) * (80 / n) + (rnd() - .5) * 6, y = cy + (rnd() - .5) * ((y1 - y0) - d - 20);
-          if (near(x, y, 62) || inZone(x, y, 10) || !isLand(x, y) || !isLand(x - w / 2, y + d / 2)) continue;
+          if (near(x, y, 62) || inZone(x, y, 10) || !isLand(x, y) || !isLand(x - w / 2, y + d / 2) || hitsRoad(x - w / 2, y - d / 2, x + w / 2, y + d / 2)) continue;
           box(x, y, w, d, 16 + rnd() * rnd() * 70, pick(pals), pick(roofs), { style: rnd() < .22 ? 'hip' : 'flat', rh: 8 });
         }
       }
     }
     // Lekki estate: grid of small houses
     for (let x = 720; x < 960; x += 30) for (let y = 650; y < 950; y += 32) {
-      if (near(x, y, 60) || inZone(x, y, 6) || (y > 625 && Math.abs(((y - 650) % 96) - 0) < 1)) continue;
+      if (near(x, y, 60) || inZone(x, y, 6) || (y > 625 && Math.abs(((y - 650) % 96) - 0) < 1) || hitsRoad(x - 9, y - 9, x + 9, y + 9)) continue;
       if ((Math.floor((y - 650) / 32)) % 3 === 2) continue;      // lanes
       box(x, y, 18, 18, 12, pick(['#f2e9d8', '#e8d3b9', '#dbe6ee']), pick(['#3f8f6a', '#2e8b57', '#36996a']), { style: 'hip', rh: 7 });
     }
@@ -280,6 +361,64 @@
     PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
     buildGrid();
     lrBuild(); lampBuild(); extendWorld();
+  }
+
+  /* Abuja's own build pipeline — same primitives as buildLagos() (box/tree/pad/D), far less hand-placed set-dressing:
+     one broad road grid (no mainland/island split, so no bridges needed), the handful of named landmarks above,
+     each district's generic cluster, then the same generic-block-filler and tree-scatter Lagos uses to cover the
+     rest of the ground so the map doesn't read as mostly empty. */
+  function buildAbuja() {
+    seed = 51; objs.length = flats.length = blocks.length = boards.length = 0;
+    ZONES.forEach(z => flats.push({ c: z.c, r: [z.x, z.y, z.w, z.h] }));
+    const roadsX = []; for (let i = 0; i < 9; i++) roadsX.push(100 + i * 100);
+    const ysA = [140, 320, 500, 680, 860];
+    ysA.forEach(y => flats.push({ c: '#b4b8bd', r: [30, y - 7, 940, 14] }));
+    roadsX.forEach(x => flats.push({ c: '#b4b8bd', r: [x - 7, 30, 14, 940] }));
+    const LM = { airport: [132, 58, 22, '#e8edf2', '#b8c2cc', 'flat'], court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22], tower: [40, 40, 100, '#e9dcc0', '#d9a93a', 'flat'], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18] };
+    PINS.forEach(p => { if (p[5] === 'district' || p[4] === 'home') return; const [, , x, y, k] = p, L = LM[k]; if (L) box(x, y, L[0], L[1], L[2], L[3], L[4], { style: L[5], rh: L[6] || 0, pin: 1, tag: k }); });
+    [[460, 885, 0], [540, 895, .3]].forEach(([px, py, hdg]) => objs.push({ t: 'plane', x: px, y: py, hdg, r: 14 }));
+    [[560, 460, 120], [600, 500, 150]].forEach(([tx, ty, h]) => box(tx, ty, 34, 34, h, '#8fc4e8', '#6fa8d8', { style: 'flat' }));  // a couple of CBD investment towers
+    const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    const hitsRoad = (x0, y0, x1, y1) => flats.some(f => f.r && f.c === '#b4b8bd' && x1 > f.r[0] && x0 < f.r[0] + f.r[2] && y1 > f.r[1] && y0 < f.r[1] + f.r[3]);
+    const pals = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6', '#ead4c8', '#e3e0d3', '#cfd8e0', '#f2eee2'], roofs = ['#b0b6bb', '#9c3b22', '#c0b9a6', '#a4aeb8', '#8c8f94'];
+    for (let cx = 150; cx < 970; cx += 100) {
+      for (let yi = 0; yi < ysA.length - 1; yi++) {
+        const y0 = ysA[yi] + 14, y1 = ysA[yi + 1] - 14, cy = (y0 + y1) / 2;
+        if (!isLand(cx - 50, cy) || !isLand(cx + 40, cy)) continue;
+        const n = 1 + Math.floor(rnd() * 3);
+        for (let i = 0; i < n; i++) {
+          const w = 24 + rnd() * 34, d = 24 + rnd() * 30, x = cx - 40 + (i + .5) * (80 / n) + (rnd() - .5) * 6, y = cy + (rnd() - .5) * ((y1 - y0) - d - 20);
+          if (near(x, y, 60) || inZone(x, y, 10) || !isLand(x, y) || hitsRoad(x - w / 2, y - d / 2, x + w / 2, y + d / 2)) continue;
+          box(x, y, w, d, 16 + rnd() * rnd() * 60, pick(pals), pick(roofs), { style: rnd() < .22 ? 'hip' : 'flat', rh: 8 });
+        }
+      }
+    }
+    for (let i = 0; i < 220; i++) {
+      const x = 40 + rnd() * 920, y = 40 + rnd() * 930;
+      if (!isLand(x, y) || near(x, y, 50) || inZone(x, y, 2) || hitsRoad(x - 6, y - 6, x + 6, y + 6)) continue;
+      if (blocks.some(b => x > b[0] - 6 && x < b[2] + 6 && y > b[1] - 6 && y < b[3] + 6)) continue;
+      tree(x, y, .8 + rnd() * .6);
+    }
+    PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
+    buildGrid();
+    lrBuild(); lampBuild(); extendWorld();
+  }
+
+  /* ---------- switching the active city ----------
+     Lagos is who you live in (homes, hoods, the lagoon, bridges); the other tabs are places you can visit. Each
+     entry reassigns every piece of geometry the rest of the file reads through the `let`s above, then reruns that
+     city's own build pipeline — everything downstream (roads, A* grid, lamps, road textures, traffic) is generated
+     fresh from whatever is currently assigned, so nothing here needs to know which city it's drawing. */
+  const CITIES = {
+    lagos: { land: [MAINLAND_LAGOS, ISLAND_LAGOS, OFFSHORE_LAGOS], bridges: BRIDGES_LAGOS, pins: PINS_LAGOS, zones: ZONES_LAGOS, plotAnchor: { x: 282, y: 410 }, build: () => buildLagos(), spawn: [470, 290] },
+    abuja: { land: [MAINLAND_ABUJA], bridges: [], pins: PINS_ABUJA, zones: ZONES_ABUJA, plotAnchor: PLOT_ANCHOR_ABUJA, build: () => buildAbuja(), spawn: [500, 540] }
+  };
+  function loadCity(id) {
+    const c = CITIES[id]; if (!c) return false;
+    [MAINLAND, ISLAND, OFFSHORE] = [c.land[0], c.land[1] || [], c.land[2] || []];
+    LAND = [MAINLAND, ISLAND, OFFSHORE]; BRIDGES = c.bridges; PINS = c.pins; ZONES = c.zones; PLOT_ANCHOR = c.plotAnchor;
+    c.build();
+    return true;
   }
 
   /* ---------- walking grid + A* ---------- */
@@ -462,14 +601,22 @@
     g.fillStyle = r; g.fillRect(0, 0, 64, 64); return (glowSprite = c);
   }
   function drawLamps(ctx, amt) {
-    const low = lrSaver(), spr = glow(), tmp = {}; ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const low = lrSaver(), spr = glow(), tmp = {}, base = {}; ctx.save();
+    ctx.globalAlpha = amt; ctx.strokeStyle = '#32373c'; ctx.lineCap = 'round';          // the pole itself: drawn first, normal blending, so it reads as a solid post
+    for (const [lx, ly] of LAMPS) {
+      cam.project(lx, ly, 16, tmp); if (tmp.z < NEAR || tmp.x < -40 || tmp.x > M.w + 40 || tmp.y < -40 || tmp.y > M.h + 40) continue;
+      cam.project(lx, ly, 0, base);
+      ctx.lineWidth = clamp(2.4 * tmp.k, .6, 3.4);
+      ctx.beginPath(); ctx.moveTo(base.x, base.y); ctx.lineTo(tmp.x, tmp.y); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'lighter';
     for (const [lx, ly] of LAMPS) {
       cam.project(lx, ly, 16, tmp); if (tmp.z < NEAR || tmp.x < -40 || tmp.x > M.w + 40 || tmp.y < -40 || tmp.y > M.h + 40) continue;
       const r = clamp(34 * tmp.k, 6, 50), bulb = Math.max(1.4, r * .1);
       ctx.globalAlpha = amt * .95;
       if (low) { ctx.fillStyle = 'rgba(255,214,120,.9)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill(); continue }
       ctx.drawImage(spr, tmp.x - r, tmp.y - r, r * 2, r * 2);                         // wide soft halo
-      ctx.fillStyle = 'rgba(255,245,210,.95)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill();   // small hot bulb at the centre
+      ctx.fillStyle = 'rgba(255,245,210,.95)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill();   // small hot bulb at the centre, atop the pole
     }
     ctx.restore();
   }
@@ -737,11 +884,12 @@
 
   function drawPlots(ctx) {
     for (let i = 0; i < ads.n; i++) {
-      const col = i % 10, row = Math.floor(i / 10), x = 282 + col * 23, y = 410 + row * 44, ad = ads.plots.get(i);
+      const col = i % 10, row = Math.floor(i / 10), x = PLOT_ANCHOR.x + col * 23, y = PLOT_ANCHOR.y + row * 44, ad = ads.plots.get(i);
       const q = rect(x, y, 19, 36, 1.5);
       poly(ctx, q, ad ? '#ffffff' : 'rgba(255,255,255,.2)', ad ? '#1f6fd0' : 'rgba(255,255,255,.5)');
       const c = cam.project(x + 9.5, y + 18, 1.6, {}); if (c.z < NEAR || c.x < -30 || c.x > M.w + 30 || c.y < -30 || c.y > M.h + 30) continue;
       if (ad) { let h = 0; for (const ch of String(ad.title || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; poly(ctx, rect(x + 2, y + 2, 15, 32, 1.7), `hsl(${h},65%,52%)`); if (c.k > 1.1) { ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(Math.min(26, 11 * c.k))}px Outfit,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(ad.title || '📢').trim().charAt(0).toUpperCase(), c.x, c.y); } }
+      else if (c.k > 1.1) { ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.font = `700 ${Math.round(Math.min(16, 7 * c.k))}px Outfit,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FOR SALE', c.x, c.y); }   // an empty plot reads as a plain "for sale" sign until someone buys it
       const xs = q.map(p => cam.project(p[0], p[1], 1.5, {})); const x0 = Math.min(...xs.map(p => p.x)), x1 = Math.max(...xs.map(p => p.x)), y0 = Math.min(...xs.map(p => p.y)), y1 = Math.max(...xs.map(p => p.y));
       M.hits.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, kind: 'plot', slot: i });
     }
@@ -1109,7 +1257,7 @@
   }
   const API = {
     init() {
-      if (M.cv) return; build(); M.cv = $('mapCv'); M.ctx = M.cv.getContext('2d');
+      if (M.cv) return; buildLagos(); M.cv = $('mapCv'); M.ctx = M.cv.getContext('2d');
       M.cv.addEventListener('pointerdown', onDown); M.cv.addEventListener('pointermove', onMove); M.cv.addEventListener('pointerup', onUp); M.cv.addEventListener('pointercancel', onUp);
       M.cv.addEventListener('wheel', onWheel, { passive: false }); M.cv.addEventListener('contextmenu', e => e.preventDefault()); g.addEventListener('keydown', onKey); g.addEventListener('resize', resize);
       ensureMe(); cam.tx = M.me.x; cam.ty = M.me.y; cam.yaw = -.28; cam.tilt = 1.02; M.D = M.tD = 340; cam.D = 340;
@@ -1130,7 +1278,13 @@
     setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
     hud: HUD,
     setFilter(k, on) { if (k in HUD && k !== 'city') HUD[k] = on ? 1 : 0; },
-    setCity(id) { if (id !== 'lagos') { if (g.toast) g.toast((id === 'ph' ? 'Port Harcourt' : 'Abuja') + ' isn’t open yet — you’re still in Lagos'); return } HUD.city = id; },
+    setCity(id) {
+      if (id === HUD.city) return;
+      if (!CITIES[id]) { if (g.toast) g.toast('Port Harcourt isn’t open yet — you’re still in ' + (HUD.city === 'lagos' ? 'Lagos' : 'Abuja')); return }
+      loadCity(id); HUD.city = id;
+      const [sx, sy] = CITIES[id].spawn; teleport(sx, sy);
+      if (g.toast) g.toast(id === 'lagos' ? '🏠 Back in Lagos' : '🏛️ Welcome to Abuja — look around, nothing here is buyable as a home yet');
+    },
     /* moves the "Home" pin to the player's actual house: the numbered slot the server gave them in their chosen hood (see HUB.loadMe) */
     setHome(hood, slot) {
       const xy = hoodSlotXY(hood, slot); const home = PINS.find(p => p[5] === 'home'); if (!xy || !home) return;
