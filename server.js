@@ -164,7 +164,8 @@ async function main() {
     if (q.code || q.spectate || q.h || q.by) return res.sendFile(GAMEHUB);
     res.sendFile(LANDING);
   });
-  app.get('/play', (req, res) => res.sendFile(ALLCONNECT));
+  // /play is a single-page app: /play/home, /play/map, /play/buy, /play/phone, /play/phone/bank ... all serve the same shell and the client router picks the screen.
+  app.get(['/play', '/play/', '/play/*'], (req, res) => res.sendFile(ALLCONNECT));
   app.get('/gamehub', (req, res) => res.sendFile(GAMEHUB));
   app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
   app.get('/status', (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));

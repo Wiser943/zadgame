@@ -730,12 +730,23 @@
   function preview(cv, gender, o) {
     o = o || {}; const av = new Avatar(gender, o.render ? { look: o.render } : o.look || {}), c = cv.getContext('2d'); let on = true, last = performance.now(), cam = previewCam(cv, true);
     av.h = PI / 2; av.setExt(o.ext || {}); if (o.pose) av.setPose(o.pose); else av.setState(o.state || 'idle');
+    /* o.drag: drag left/right on the canvas to spin the character; it keeps turning with a little momentum and the idle sway stays off once you have touched it */
+    let ang = 0, vel = 0, dragging = false, lastX = 0, touched = false;
+    if (o.drag) {
+      cv.style.touchAction = 'pan-y';
+      cv.addEventListener('pointerdown', e => { dragging = touched = true; lastX = e.clientX; vel = 0; try { cv.setPointerCapture(e.pointerId) } catch (_) {} if (o.onTouch) o.onTouch() });
+      cv.addEventListener('pointermove', e => { if (!dragging) return; const dx = e.clientX - lastX; lastX = e.clientX; ang += dx * .016; vel = dx * .016 });
+      const end = () => { dragging = false };
+      cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); cv.addEventListener('lostpointercapture', end);
+    }
     const tick = now => {
       if (!on) return;
       if (!cv.isConnected) { on = false; return; }
       if (cv.offsetParent !== null) {
         const dt = (now - last) / 1000; last = now; av.update(dt);
-        if (o.turn && !(av.ext && av.ext.reduce)) av.h = PI / 2 + Math.sin(now / 900) * .5;
+        if (o.drag && !dragging) { ang += vel; vel *= .94; if (Math.abs(vel) < .0005) vel = 0 }
+        if (o.drag) av.h = PI / 2 + ang + (o.turn && !touched && !(av.ext && av.ext.reduce) ? Math.sin(now / 900) * .5 : 0);
+        else if (o.turn && !(av.ext && av.ext.reduce)) av.h = PI / 2 + Math.sin(now / 900) * .5;
         c.clearRect(0, 0, cv.width, cv.height);
         if (o.bg) { c.fillStyle = o.bg; c.fillRect(0, 0, cv.width, cv.height); }
         av.draw(c, cam, 1, { shadow: true, contrast: av.ext && av.ext.contrast });

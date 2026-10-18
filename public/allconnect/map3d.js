@@ -1222,7 +1222,7 @@
       if (API.onPin && API.onPin(hit.pin)) return;
       openPlace(hit.pin); return;                       /* a landmark only opens its popup; the popup checks first whether it is walkable */
     }
-    if (hit && hit.kind === 'plot') { const ad = ads.plots.get(hit.slot); if (ad && g.ADS) g.ADS.goPlot(hit.slot); else g.toast('🌊 Free sea plot · book it in Phone → Ads'); return; }
+    if (hit && hit.kind === 'plot') { const ad = ads.plots.get(hit.slot); if (ad && g.ADS) g.ADS.goPlot(hit.slot); else if (g.ADS && g.ADS.banner) g.ADS.banner('Free sea plot'); else g.toast('🌊 Free sea plot · book it in Phone → Ads'); return; }
     if (hit && hit.kind === 'board') { const n = ads.billboards.length, ad = n ? ads.billboards[hit.idx % n] : null; if (ad && g.ADS) g.ADS.go(ad); else { g.nav('phone'); setTimeout(() => g.PH && g.PH.open('ads'), 0); } return; }
     if (hit && hit.kind === 'player') { g.toast('👤 ' + hit.name); return; }
     const q = cam.pick(x, y, 0); if (!q) return;
@@ -1231,7 +1231,7 @@
       // doesn't look like it stops dead at the edge — it was never meant to be reachable, so say that plainly instead
       // of telling the player it's water right where they can clearly see land and buildings.
       const far = q.x < -GAP || q.x > W + GAP || q.y < -GAP || q.y > W + GAP;
-      return g.toast(far ? '🏙️ That’s just the skyline in the distance — nothing out there to visit' : '🌊 Can’t walk on water — use a bridge');
+      if (g.ADS && g.ADS.banner) return g.ADS.banner(far ? 'Nothing to visit out here' : 'Can’t walk on water. Use a bridge'); return g.toast(far ? '🏙️ That’s just the skyline in the distance — nothing out there to visit' : '🌊 Can’t walk on water — use a bridge');
     }
     if (!M.me || !findPath(M.me.x, M.me.y, q.x, q.y)) { g.toast('Can’t get there'); return; }
     // every bare-ground tap opens the same destination sheet a landmark does — no more silently auto-walking;

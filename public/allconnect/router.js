@@ -1,26 +1,36 @@
-/* AllConnect router: makes the game behave like a single-page app.
+/* AllConnect router: makes the game behave like a single-page app with real URLs:
+   /play/home  /play/map  /play/buy  /play/phone  /play/phone/bank  (any phone app name works the same way).
    - Remembers where you are (Home / Map / Phone + the phone app that is open).
    - The browser Back / Forward buttons and the phone's Back gesture move between those places instead of leaving the game.
    - Closing the phone (or GameHub / Lagos Run) returns to the tab you came from (e.g. Map), not always Home.
    - After a refresh, "Continue" drops you straight back where you were (kept for 2 hours).
    It only wraps nav(), PH.open() and PH.close(), so no other file needs to know about it. */
 const ROUTER = (() => {
-  const KEY = 'ac:route', TTL = 2 * 3600e3, TABS = ['home', 'map', 'phone'];
+  const KEY = 'ac:route', TTL = 2 * 3600e3, TABS = ['home', 'map', 'buy', 'phone'];
   const APPS = ['contacts', 'messages', 'settings', 'bank', 'camera', 'police', 'gist', 'jobs', 'invest', 'venues', 'style', 'ads'];
   let cur = { page: 'home', app: '' }, base = 'home', applying = false, live = false, started = false;
   const snap = () => ({ ac: 1, page: cur.page, app: cur.app, base });
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ ...snap(), t: Date.now() })) } catch (e) {} };
+  const urlOf = st => '/play/' + (st.page === 'phone' && st.app ? 'phone/' + st.app : st.page);
+  const fromPath = () => {
+    const m = location.pathname.replace(/\/+$/, '').split('/').filter(Boolean);   // ['play', 'phone', 'bank']
+    if (m[0] !== 'play' || !m[1]) return null;
+    const page = m[1].toLowerCase(), app = (m[2] || '').toLowerCase();
+    if (!TABS.includes(page)) return null;
+    return { ac: 1, page, app: page === 'phone' && APPS.includes(app) ? app : '', base: 'home' };
+  };
   const same = (a, b) => a && b && a.page === b.page && (a.app || '') === (b.app || '');
   function commit() {
     if (!live || applying) return;
     const st = snap(), h = history.state;
-    if (!started) { history.replaceState(st, ''); started = true }
-    else if (!same(h, st)) history.pushState(st, '');
-    else history.replaceState(st, '');
+    const u = urlOf(st);
+    if (!started) { history.replaceState(st, '', u); started = true }
+    else if (!same(h, st)) history.pushState(st, '', u);
+    else history.replaceState(st, '', u);
     save();
   }
   function onPage(p) {
-    if (!TABS.includes(p) && p !== 'buy') return;
+    if (!TABS.includes(p)) return;
     cur.page = p; if (p !== 'phone') cur.app = '';
     if (p === 'home' || p === 'map') base = p;
     commit();
@@ -43,22 +53,23 @@ const ROUTER = (() => {
         else { if (window.PH && PH.view) PH.close(); cur = { page: 'phone', app: '' } }
       } else {
         if (S.page !== want) nav(want);
-        cur = { page: want, app: '' };
+        cur = { page: want, app: '' }; if (want === 'home' || want === 'map') base = want;
       }
     } finally { applying = false }
     save();
   }
-  window.addEventListener('popstate', e => { if (live && e.state && e.state.ac) go(e.state) });
+  window.addEventListener('popstate', e => { if (!live) return; const s = e.state && e.state.ac ? e.state : fromPath(); if (s) go(s) });
   return {
     /* called once, when the player taps Continue / New life */
     start(restore) {
       live = true; started = false;
-      let s = null;
-      if (restore) { try { s = JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) {} }
-      if (s && Date.now() - (s.t || 0) < TTL && (s.page === 'map' || (s.page === 'phone' && s.app))) {
-        history.replaceState({ ac: 1, page: 'home', app: '', base: 'home' }, ''); started = true;
+      let s = restore ? fromPath() : null, fresh = !!s;
+      if (!s && restore) { try { s = JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) {} }
+      const ok = s && (fresh || Date.now() - (s.t || 0) < TTL) && ((s.page !== 'home' && s.page !== 'phone') || (s.page === 'phone' && (s.app || fresh)));
+      if (ok) {
+        history.replaceState({ ac: 1, page: 'home', app: '', base: 'home' }, '', '/play/home'); started = true;
         applying = true; cur = { page: 'home', app: '' }; applying = false;
-        setTimeout(() => { go(s); history.pushState(snap(), '') }, 60);
+        setTimeout(() => { go(s); history.pushState(snap(), '', urlOf(snap())) }, 60);
       } else commit();
     },
     /* where the phone / overlays should return to */

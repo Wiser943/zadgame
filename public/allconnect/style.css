@@ -1383,3 +1383,20 @@ html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
 .avi[data-avl]>.avp{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 .glh .avi{width:46px;height:46px;font-size:19px}
 .rcv .avi.big{width:64px;height:64px;font-size:26px}
+
+/* sponsored banner (ADS.banner): strip / card / big rectangle */
+.adpop{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(150px + var(--sab));z-index:30;width:min(340px,calc(100% - 24px));animation:adin .22s ease-out}
+@keyframes adin{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+.adpop .apn{font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;background:rgba(15,20,40,.78);border-radius:999px;padding:4px 10px;width:max-content;max-width:100%;margin:0 auto 6px;text-align:center}
+.adpop .apb{display:flex;align-items:center;gap:11px;background:#fff;color:#14182b;border-radius:16px;padding:9px 12px;box-shadow:0 8px 24px rgba(0,0,0,.28);cursor:pointer;overflow:hidden}
+.adpop .apm{flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:#e8efff}
+.adpop .apm img{width:100%;height:100%;object-fit:cover;display:block}
+.adpop .apm.txt{background:linear-gradient(135deg,hsl(var(--h,215) 80% 55%),hsl(calc(var(--h,215) + 50) 80% 45%));color:#fff;font:800 18px Outfit,system-ui,sans-serif}
+.adpop .apt{min-width:0;display:flex;flex-direction:column;gap:2px}.adpop .apt b{font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;line-height:1.2}.adpop .apt small{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#6b7390}.adpop .apt span{font-size:12px;color:#4a5170}
+.adpop.strip .apb{padding:6px 10px}.adpop.strip .apm{width:34px;height:34px;border-radius:9px}.adpop.strip .apt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adpop.card .apm{width:64px;height:64px}
+.adpop.rect .apb{flex-direction:column;align-items:stretch;padding:0;gap:0}.adpop.rect .apm{width:100%;height:150px;border-radius:0;font-size:46px}.adpop.rect .apt{padding:10px 14px 12px}.adpop.rect .apt b{font-size:16px}
+.adpop .apw{position:relative}.adpop .apx{position:absolute;right:-6px;top:-8px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(15,20,40,.8);color:#fff;font-size:12px;cursor:pointer;z-index:2}
+:where(html[data-theme="dark"]) .adpop .apb{background:#1b2034;color:#eef0fa}:where(html[data-theme="dark"]) .adpop .apt span{color:#aab0c8}
+.stpv canvas{touch-action:pan-y;cursor:grab}.stpv canvas:active{cursor:grabbing}
+.stpv .sthint{position:absolute;left:0;right:0;bottom:8px;text-align:center;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;color:rgba(30,40,90,.55);pointer-events:none;transition:opacity .4s}

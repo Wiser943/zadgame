@@ -112,7 +112,8 @@ const STYLE = {
   close() { this.stopPreview(); PH.close() },
   mountPreview() {
     this.stopPreview(); const cv = document.getElementById('stCv'); if (!cv) return;
-    this.pv = ACAvatar.preview(cv, S.render.g, { render: S.render, turn: true, ext: this.ext() }); this.setDesc();
+    this.pv = ACAvatar.preview(cv, S.render.g, { render: S.render, turn: true, drag: true, ext: this.ext(), onTouch: () => { const h = document.getElementById('stHint'); if (h) h.style.opacity = 0 } });
+    if (!document.getElementById('stHint')) { const h = document.createElement('div'); h.id = 'stHint'; h.className = 'sthint'; h.textContent = '↔ Drag to spin'; cv.parentNode.appendChild(h) } this.setDesc();
   },
   stopPreview() { if (this.pv) { this.pv.stop(); this.pv = null } },
   go(t, sub) { this.tab = t; this.sub = sub || ''; this.resetTry(); this.paint(); const ab = document.getElementById('ab'); if (ab) ab.scrollTop = 0 },
