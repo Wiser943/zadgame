@@ -446,7 +446,7 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 #mapCv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}#mapCv:active{cursor:grabbing}
 .viewctl .mapOnly{display:none;font-size:13px;font-weight:800}.viewctl .mapOnly .needle{display:block;font-size:17px;transition:transform .08s linear}
 #app.onmap .viewctl .mapOnly{display:block}
-#app.onmap .viewctl{top:calc(136px + var(--sat))}
+#app.onmap .viewctl{top:calc(192px + var(--sat))}
 /* ---- character picker + emotes ---- */
 .gp{margin:10px 0 2px}.gp p{margin:0 0 6px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--mut);text-align:center}
 .gpr{display:flex;gap:10px}.gpr button{flex:1;border:2px solid #e3e6ef;background:#f6f8fc;border-radius:18px;padding:6px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);transition:transform .12s,border-color .12s,background .12s}
@@ -1374,3 +1374,12 @@ html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
 #splash .card input::placeholder{color:#4a5775}
 #splash .card .who{background:rgba(255,255,255,.4)}
 #splash>.sky{background:linear-gradient(rgba(214,236,250,.9),rgba(214,236,250,0))}
+
+/* Homes & Furnishing now lives in Buy mode (it was removed from the Home screen) */
+#buy .top .homes-open{position:static;bottom:auto;left:auto;margin-right:auto;padding:9px 14px;font-size:13px;color:#fff;border-radius:999px}
+
+/* avatar = initial circle with the photo layered on top (see PH.av) */
+.avi[data-avl]{position:relative;overflow:hidden;line-height:1;user-select:none}
+.avi[data-avl]>.avp{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.glh .avi{width:46px;height:46px;font-size:19px}
+.rcv .avi.big{width:64px;height:64px;font-size:26px}

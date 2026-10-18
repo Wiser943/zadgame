@@ -25,9 +25,13 @@ const PH={
       if(dy>0&&y>60&&room>h+80){w.style.marginTop=-h+'px';w.classList.add('hide')}else if(dy<0||y<=0){w.style.marginTop='';w.classList.remove('hide')}},true)},
   sheet(html){this.closeSheet();const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
   closeSheet(){this.$a().querySelectorAll('.asheet').forEach(s=>s.remove())},
-  av(u,big){const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.charCodeAt(0)||0)%6];
-    return /^(https?:|data:image\/)/.test(u.avatar||'')?`<img class="avi ${big?'big':''}" src="${esc(u.avatar)}" alt="" data-n="${esc(n)}" data-c="${c}" onerror="PH.imgFail(this)">`:`<span class="avi ${big?'big':''}" style="background:${c}">${esc(n)}</span>`},
-  imgFail(img){const s=document.createElement('span');s.className=img.className;s.style.background=img.dataset.c;s.textContent=img.dataset.n;img.replaceWith(s)},
+  /* Avatar: the initial circle is ALWAYS drawn, and the profile photo is layered on top of it.
+     If the photo is missing, blocked, broken or still loading, the first letter of the name shows instead of an empty circle. */
+  avOk(a){return typeof a==='string'&&/^(https?:\/\/|\/\/|\/(?!\/)|data:image\/|blob:)/i.test(a.trim())},
+  av(u,big){u=u||{};const raw=String(u.username||u.displayName||u.name||'?').replace(/^@/,'').trim();const n=(Array.from(raw)[0]||'?').toUpperCase();
+    const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.codePointAt(0)||0)%6];const a=this.avOk(u.avatar)?u.avatar.trim():'';
+    return `<span class="avi ${big?'big':''}" data-avl style="background:${c}">${esc(n)}${a?`<img class="avp" src="${esc(a)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</span>`},
+  imgFail(img){if(img&&img.remove)img.remove()},
   vb(u){return u&&u.verified?'<i class="vbadge" title="Verified">✔</i>':''},
   name(u){return (u.username?'@'+esc(u.username):esc(u.displayName))+this.vb(u)},
   time(t){const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')},

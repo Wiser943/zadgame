@@ -327,7 +327,7 @@ function nav(w, keep) {
   $('phone').style.display = w == 'phone' ? 'block' : 'none';
   $('room').style.display = (w == 'map') ? 'none' : 'block';
   const cl = S.clean && home;
-  $('needsbar').style.display = ((home && !cl) || w == 'map') ? 'flex' : 'none';
+  $('needsbar').style.display = (w == 'map') ? 'flex' : 'none';   /* home no longer shows the avatar + needs strip (needs live in the Goals sheet) */
   $('nav').style.display = (w == 'buy' || w == 'phone' || cl) ? 'none' : 'flex';
   $('menubtn').style.display = cl ? 'flex' : 'none';
   $('viewctl').style.display = (home || w == 'map') ? 'flex' : 'none';

@@ -19,8 +19,7 @@ Object.assign(PH,{
   trow(k,label,ic,on){return `<button class="trow" data-k="${k}" onclick="PH.tgl('${k}')"><span class="ti"><i class="${ic}"></i></span><span class="tl">${label}</span><span class="sw2 ${on?'on':''}"><i></i></span></button>`},
   lrow(label,ic,fn,extra){return `<button class="trow" onclick="${fn}"><span class="ti"><i class="${ic}"></i></span><span class="tl">${label}</span>${extra||'<span class="chv">›</span>'}</button>`},
   /* Profile photo drawn as a cover-fit background so any photo fills the circle; falls back to the initial if it can't load. */
-  avCover(u){const a=u.avatar||'';if(!/^(https?:|data:image\/)/.test(a))return this.av(u,1);const n=(u.username||u.displayName||'?').replace(/^@/,'')[0].toUpperCase();
-    return `<span class="avi big avcov" data-n="${esc(n)}" style="background:#cbd0dc url('${esc(a)}') center/cover no-repeat"></span>`},
+  avCover(u){return this.av(u,1)},
   /* segmented choice row (Off / On / Auto style) */
   seg(k,emo,title,desc,opts,cur,hint){return `<div class="segrow" data-seg="${k}"><div class="segt"><span class="sege">${emo}</span><b>${title}</b></div><p class="segd">${desc}</p>
     <div class="seg" role="radiogroup" aria-label="${title}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o[0]===cur}" class="${o[0]===cur?'on':''}" data-v="${o[0]}" onclick="PH.setSeg('${k}','${o[0]}')">${o[1]}</button>`).join('')}</div>${hint?`<p class="segh" id="segh-${k}">${hint}</p>`:`<p class="segh" id="segh-${k}"></p>`}</div>`},

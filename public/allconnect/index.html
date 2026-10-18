@@ -111,7 +111,6 @@
   <div class="cleanbar" id="menubtn"><button class="pill cbshow" onclick="toggleClean()"><i class="fa-solid fa-bars"></i> Show buttons</button><button class="pill cbic" onclick="nav('map')" aria-label="Map"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg></button><button class="pill cbic" onclick="nav('phone')" aria-label="Phone"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg></button></div>
   <div class="chips" id="chips"><span class="chip">👀 <span id="vis">11.8m</span> visits</span><span class="chip g">● <span id="onl">131k</span> online</span></div>
   <div id="homeUI">
-   <button class="pill homes-open" onclick="HOMES.open()">🏠 Homes &amp; Furnishing</button>
    <div class="pill quest q1" id="q1" onclick="GOALS.open()"><i>🎯</i>
     <div><b id="q1t">Eat something</b><span id="q1s">Tap the cooler or stove</span></div>
    </div>
@@ -155,7 +154,7 @@
   <!-- Homes use the shared SHEET modal from ui.js. -->
   <!-- BUY -->
   <div id="buy">
-   <div class="top"><span class="pill">Buy mode</span><span class="pill" id="bal2">₦0</span><button class="pill x" onclick="BUY.exit()" aria-label="Close">✕</button></div>
+   <div class="top"><span class="pill">Buy mode</span><button class="pill homes-open" onclick="HOMES.open()">🏠 Homes</button><span class="pill" id="bal2">₦0</span><button class="pill x" onclick="BUY.exit()" aria-label="Close">✕</button></div>
    <button class="btn p catbtn" id="catbtn" onclick="BUY.openSheet()">▦ Catalogue</button>
    <div class="sheet" id="sheet">
     <h2>Catalogue <small onclick="BUY.hideSheet()">Hide</small></h2>
@@ -263,6 +262,7 @@
  <script src="/allconnect/songify.js"></script>
  <script src="/allconnect/pet.js"></script>
  <script src="/allconnect/push.js"></script>
+ <script src="/allconnect/router.js"></script>
 </body>
 
 </html>

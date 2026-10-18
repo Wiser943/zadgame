@@ -19,7 +19,7 @@ const GOALS = {
   },
   head() {
     const nm = (typeof NET !== 'undefined' && NET.user && NET.user.displayName) || 'You', mood = ((document.getElementById('mood') || {}).textContent || '').replace(/^\S+\s/, '');
-    return `<div class="glh"><span class="avi" style="background:#6366f1;width:46px;height:46px;font-size:19px">${UI.esc(nm[0] || '?').toUpperCase()}</span><div><b>${UI.esc(nm)}</b><small>${UI.esc(mood || 'Happy')}</small></div></div>`;
+    return `<div class="glh">${window.PH && PH.av ? PH.av({ avatar: (typeof NET !== 'undefined' && NET.user && NET.user.avatar) || '', displayName: nm }) : `<span class="avi" style="background:#6366f1">${UI.esc(nm[0] || '?').toUpperCase()}</span>`}<div><b>${UI.esc(nm)}</b><small>${UI.esc(mood || 'Happy')}</small></div></div>`;
   },
   needsHtml() {
     return this.head() + `<div class="gln">${S.needs.map((v, i) => `<div><span>${NEED[i]} ${['Hunger', 'Energy', 'Fun', 'Friends', 'Hygiene', 'Bladder'][i]}</span>${UI.bar(v * 100)}</div>`).join('')}</div><p class="lgnote">Eat, rest, have fun and see friends to keep these up.</p>`;

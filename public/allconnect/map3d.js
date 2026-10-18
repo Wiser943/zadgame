@@ -612,11 +612,11 @@
     ctx.globalCompositeOperation = 'lighter';
     for (const [lx, ly] of LAMPS) {
       cam.project(lx, ly, 16, tmp); if (tmp.z < NEAR || tmp.x < -40 || tmp.x > M.w + 40 || tmp.y < -40 || tmp.y > M.h + 40) continue;
-      const r = clamp(34 * tmp.k, 6, 50), bulb = Math.max(1.4, r * .1);
-      ctx.globalAlpha = amt * .95;
-      if (low) { ctx.fillStyle = 'rgba(255,214,120,.9)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill(); continue }
+      const r = clamp(24 * tmp.k, 5, 34), bulb = Math.max(1.2, r * .09);   // smaller + softer glow (dimmed)
+      ctx.globalAlpha = amt * .42;
+      if (low) { ctx.fillStyle = 'rgba(255,214,120,.6)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill(); continue }
       ctx.drawImage(spr, tmp.x - r, tmp.y - r, r * 2, r * 2);                         // wide soft halo
-      ctx.fillStyle = 'rgba(255,245,210,.95)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill();   // small hot bulb at the centre, atop the pole
+      ctx.fillStyle = 'rgba(255,245,210,.7)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill();   // small hot bulb at the centre, atop the pole
     }
     ctx.restore();
   }
@@ -697,8 +697,8 @@
   }
   function drawCar(ctx, o) {
     const im = KX.img[`car-${o.col}-${o.dir > 0 ? 'S' : 'N'}`]; if (!im) return;        // dir>0 = heading south: show the car's front (S); heading north shows its back (N)
-    const b = cam.project(o.x, o.y, 0, {}), W0 = 15, wpx = W0 * b.k, hpx = wpx * im.naturalHeight / im.naturalWidth;
-    if (wpx < 5) return;
+    const b = cam.project(o.x, o.y, 0, {}), W0 = 6.4, wpx = W0 * b.k, hpx = wpx * im.naturalHeight / im.naturalWidth;   // a lane is 7 units wide (road 14)
+    if (wpx < 3) return;
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, wpx * .5, wpx * .14, 0, 0, TAU); ctx.fill();
     ctx.drawImage(im, b.x - wpx / 2, b.y - hpx * .85, wpx, hpx);
   }
