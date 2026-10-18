@@ -16,9 +16,8 @@ const INV = {
     const d = new Date(s + 3600000), w = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getUTCDay()], m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()];
     return `${w} ${d.getUTCDate()} ${m}`
   },
-  async open() {
-    PH.view = 'invest';
-    PH.shell('Invest', 'PH.close()', '<div class="abody iv" id="ab"><p class="empty">Loading…</p></div>');
+  open() { VEN.open('invest') },   // Invest now lives inside the Venues app (Venues | Homes | Invest)
+  async load() {
     if (this.D) this.draw();
     try { this.D = await NET.api('/api/ac/invest/state'); S.cash = this.D.cash; render(); if (PH.view === 'invest') this.draw() }
     catch (e) { toast(e.message) }

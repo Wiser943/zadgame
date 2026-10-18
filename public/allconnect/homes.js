@@ -10,13 +10,18 @@ const HOMES = {
     });
     await this.load();
   },
-  close() { if (window.SHEET) SHEET.close(); },
+  /* inside the Venues app (Homes tab): same list, drawn into the page instead of a pop-up */
+  openInline(ab) {
+    ab.innerHTML = '<p class="home-intro">Keep your starter room, or buy or rent another place and make it your own.</p><div id="homesList" class="homes-list"><p class="empty">Loading homes</p></div>';
+    this.load();
+  },
+  close() { if (window.SHEET) SHEET.close(); if (window.PH && PH.view === 'homes') PH.close(); },
   async load() {
     this.errorMessage = '';
     const list = document.getElementById('homesList');
     try {
       this.data = await NET.api('/api/ac/properties');
-      if (SHEET.isOpen('homes')) this.draw();
+      if (SHEET.isOpen('homes') || (window.PH && PH.view === 'homes')) this.draw();
     } catch (e) {
       if (list) list.innerHTML = `<div class="home-error"><b>Could not load homes</b><p>${this.esc(e.message || 'Check your connection and try again.')}</p><button onclick="HOMES.load()">Try again</button></div>`;
       else toast(e.message || 'Could not load homes. Please try again.');

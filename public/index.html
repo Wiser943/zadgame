@@ -811,6 +811,32 @@
       text-align: center
     }
     
+    /* Waiting room: a round table with seats, like the venue tables */
+    .play.is-waiting { background: radial-gradient(ellipse at 50% 28%, #1f4a33 0%, #0e2a1d 52%, #07140e 100%) !important; }
+    .wroom { width:100%; max-width:430px; display:flex; flex-direction:column; align-items:center; gap:10px; padding:4px 6px 18px; text-align:center }
+    .wtitle { align-self:flex-start; display:flex; align-items:center; gap:10px; text-align:left }
+    .wtitle .wico { font-size:26px } .wtitle b { display:block; font-size:18px } .wtitle small { opacity:.7; font-size:13px }
+    .wtable { position:relative; width:min(330px,86vw); aspect-ratio:1; margin:8px 0 22px }
+    .wfelt { position:absolute; inset:19%; border-radius:50%; background:radial-gradient(circle at 50% 40%, #2f7a4f, #1c5a38); border:6px solid #6a4423; box-shadow:0 8px 24px rgba(0,0,0,.45), inset 0 0 22px rgba(0,0,0,.35); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px }
+    .wfelt span { font-size:44px; line-height:1 } .wfelt b { font-size:15px }
+    .wseat { position:absolute; width:92px; margin:-40px 0 0 -46px; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:12px }
+    .wseat img, .wseat .wchair { width:58px; height:58px; border-radius:50%; object-fit:cover; display:grid; place-items:center; background:rgba(255,255,255,.08); border:3px solid rgba(255,255,255,.2); box-sizing:border-box }
+    .wseat.in img { border-color:#37c08a; background:#ddd } .wseat .wchair { font-size:26px }
+    .wseat b { max-width:92px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap } .wseat small { opacity:.6; font-size:11px }
+    .wroom h3 { margin:0; font-size:20px } .wroom p { margin:0; font-size:13.5px; line-height:1.5; opacity:.72 }
+    .wgo { width:100%; max-width:380px; display:flex; align-items:center; justify-content:center; gap:8px; padding:14px; border-radius:16px; border:0; background:#00c07f; color:#fff; font-size:16px; font-weight:800 }
+    .wgo.alt { background:rgba(255,255,255,.12); color:#fff; font-size:14px; font-weight:700; padding:12px }
+    .status.wait {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      max-width: 92%;
+      line-height: 1.3;
+      background: rgba(0, 0, 0, .22);
+      color: rgba(255, 255, 255, .85);
+      border: 1px solid rgba(255, 255, 255, .14)
+    }
+    
     .board {
       background: var(--board-bg, #fff);
       color: var(--ink);
@@ -2972,6 +2998,8 @@
     #chatDock .chatform button { background: #d11f2a; color: #fff; border: 0 }
     .chatform input, .chatform input:focus { outline:none !important; box-shadow:none; }
     .voicebtn { min-width:42px; padding:0 10px !important; }
+    .voicebtn.rec { background:#d11f2a !important; color:#fff !important; animation:vrec 1s infinite }
+    @keyframes vrec { 50% { opacity:.6 } }
     #msgToasts {
       position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 64px); z-index: 25;
       display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none
@@ -3634,7 +3662,7 @@
       const path = routePath();
       if (path === '/settings') return lobbyView(false); // settings now live in the AllConnect phone
       if (path === '/shop') return shopView(false);
-      if (path === '/rewards') return rewardsView(false);
+      if (path === '/rewards') return lobbyView(false); // rewards sign-up now lives in the phone: Settings > Profile > Manage
       if (path === '/friends') return friendsView(false);
       if (path === '/history') return historyView(false);
       if (path === '/achievements') return achievementsView(false);
@@ -4686,10 +4714,6 @@
   </section>
   <section id="pnTour" role="tabpanel" aria-labelledby="tabTour" hidden><div class="soc" id="tourMount" style="padding:0 18px 18px"></div></section>
   <section id="pnLobby" role="tabpanel" aria-labelledby="tabLobby">
-  <button class="rwstrip" id="rewardsOpen" aria-label="Rewards and payouts, coming soon">
-    <span class="rwico">💰</span>
-    <span class="rwtxt"><b>${esc(t('rewards'))}</b><small>${esc(t('rewards.sub'))}</small></span>
-    <span class="rwbadge">${esc(t('soon'))}</span></button>
   <button class="lbstrip" id="lbOpen" aria-label="Open leaderboard">
     <span class="lbtitle">${icon('trophy',20)} ${esc(t('leaderboard'))}</span>
     ${lbTop.length ? `<span class="lbtop3">${lbTop.map(p=>`<img src="${avatar(p)}" alt="">`).join('')}</span>` : ''}
@@ -4718,7 +4742,6 @@
       if (lobbyTab !== 'rooms') roomsTabLoad(false, true);
       maybeStartTour();
       $('#lbOpen').onclick = () => leaderboardView('coins');
-      $('#rewardsOpen').onclick = () => rewardsView();
       $('#friendsOpen').onclick = () => friendsView();
       $('#galleryOpen').onclick = () => galleryView();
       $('#historyOpen').onclick = () => historyView();
@@ -5027,43 +5050,6 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       }).join('');
       $('#hsList').querySelectorAll('[data-replay]').forEach(b => b.onclick = () => replayView(b.dataset.replay));
     }
-    async function rewardsView(navigate = true) {
-      if (navigate) history.pushState({ page: 'rewards' }, '', '/rewards');
-      setLobbyMusic(true);
-      let st = { launch: 'Late December', registered: false };
-      try { st = await api('/api/rewards/status'); } catch {}
-      const COUNTRIES = [['NG','Nigeria'],['GH','Ghana'],['KE','Kenya'],['ZA','South Africa'],['UG','Uganda'],['TZ','Tanzania'],['GB','United Kingdom'],['US','United States'],['CA','Canada'],['IN','India'],['OT','Other']];
-      const METHODS = [['bank','Local bank transfer'],['mobile_money','Mobile money'],['crypto','Crypto wallet']];
-      app.innerHTML = `<div class="rwview">
-    <div style="display:flex;align-items:center;margin-bottom:6px">
-      <button class="back" id="rwBk" aria-label="Back" style="background:var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%">‹</button>
-      <h1>Rewards &amp; Payouts</h1><span style="width:38px"></span></div>
-    <div class="rwhero"><div class="big">🚀</div><b>Coming soon · ${esc(st.launch)}</b>
-      <p>Soon you will be able to turn approved rewards into real payouts. Your ₦ balance stays in-game money and is not cash. Verify your details now so you are ready on launch day.</p></div>
-    ${st.registered ? `<div class="rwdone">✅ You are on the list${st.legalName ? ', ' + esc(st.legalName) : ''}. We will notify you before launch. You can update your details below.</div>` : ''}
-    <form class="rwform" id="rwForm" onsubmit="return false">
-      <label>Full name (as on your ID)<input type="text" id="rwName" maxlength="80" autocomplete="name" value="${esc(st.legalName || '')}"></label>
-      <label>Country<select id="rwCountry"><option value="">Select…</option>${COUNTRIES.map(([c, n]) => `<option value="${c}" ${st.country === c ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-      <label>Preferred payout method<select id="rwMethod"><option value="">Select…</option>${METHODS.map(([c, n]) => `<option value="${c}" ${st.method === c ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-      <label class="chk"><input type="checkbox" id="rwAge"> I am 18 years or older</label>
-      <label class="chk"><input type="checkbox" id="rwTerms"> I understand rewards are not available yet and may only be offered in supported countries after identity verification</label>
-      <label class="chk"><input type="checkbox" id="rwNotify" ${st.notify === false ? '' : 'checked'}> Notify me when rewards go live</label>
-      <button class="btn" id="rwSave" type="button">${st.registered ? 'Update my details' : 'Verify &amp; keep my spot'}</button>
-    </form>
-    <p class="rwnote">Never enter bank numbers, wallet addresses, passwords or seed phrases here. We do not collect them now. Identity and payout details will be verified securely through a licensed provider at launch.</p>
-  </div>`;
-      $('#rwBk').onclick = () => history.length > 1 ? history.back() : lobbyView(false);
-      $('#rwSave').onclick = async () => {
-        const btn = $('#rwSave'); btn.disabled = true;
-        try {
-          const d = await apiPost('/api/rewards/register', {
-            legalName: $('#rwName').value, country: $('#rwCountry').value, method: $('#rwMethod').value,
-            over18: $('#rwAge').checked, termsAccepted: $('#rwTerms').checked, notify: $('#rwNotify').checked });
-          toast('Saved. You are on the list for ' + d.launch);
-          rewardsView(false);
-        } catch (e) { toast(e.message || 'Could not save'); btn.disabled = false; }
-      };
-    }
     async function shopView(navigate = true, tab) {
       if (tab) shopTab = tab;
       if (navigate) history.pushState({ page: 'shop' }, '', '/shop');
@@ -5328,7 +5314,6 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       { sel: '.lobtabs', tab: 'lobby', k: 's1' },
       { sel: '.games .game, .game', tab: 'lobby', k: 's2' },
       { sel: '#lbOpen', tab: 'lobby', k: 's3' },
-      { sel: '#rewardsOpen', tab: 'lobby', k: 's8' },
       { sel: '#tabRooms', tab: 'lobby', k: 's9' },
       { sel: '#roomCodeCard', tab: 'rooms', k: 's10' },
       { sel: '#roomsBox', tab: 'rooms', k: 's11' },
@@ -5549,7 +5534,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
   <div class="chatpanel"><div class="chathead">Match chat</div><div id="chatLog" class="chatlog"></div><div id="chatReplyBar"></div>
     <form id="chatForm" class="chatform" autocomplete="off">
       <input id="chatInput" type="text" maxlength="200" placeholder="Message…" aria-label="Chat message" enterkeyhint="send" autocapitalize="sentences" autocorrect="on" spellcheck="true" inputmode="text">
-      <button class="btn voicebtn" type="button" id="voiceBtn" aria-label="Record voice note">Mic</button><button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
+      <button class="btn voicebtn" type="button" id="voiceBtn" aria-label="Record voice note" title="Voice note">🎤</button><button class="btn" type="submit" aria-label="Send">${icon('send',18)}</button>
     </form><div class="chatkeys">Esc leave · / chat · 1–8 emotes · [ lobby · Alt+1/2 switch match</div></div>`;
         document.body.appendChild(d);
         $('#chatKb').onclick = openChat;
@@ -5581,6 +5566,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       document.body.classList.toggle('inroom', !!$('.play'));
       renderChatLog();
     }
+    let voiceTick = 0;
     async function toggleVoiceNote() {
       const btn = $('#voiceBtn');
       if (!btn || !room) return;
@@ -5598,9 +5584,17 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
           const reader = new FileReader();
           reader.onload = () => { socket.emit('chat:voice', { code: room.code, audio: reader.result, mime: blob.type, duration: Math.round((Date.now() - voiceStartedAt) / 1000) }); };
           reader.readAsDataURL(blob);
-          btn.textContent = 'Mic';
+          clearInterval(voiceTick); btn.classList.remove('rec'); btn.textContent = '🎤';
         };
-        voiceRecorder.start(); btn.textContent = 'Stop'; toast('Recording voice note…');
+        voiceRecorder.start(); btn.textContent = '■ 0s'; btn.classList.add('rec');
+        clearInterval(voiceTick);
+        voiceTick = setInterval(() => {
+          const sec = Math.round((Date.now() - voiceStartedAt) / 1000);
+          if (!voiceRecorder || voiceRecorder.state !== 'recording') return clearInterval(voiceTick);
+          btn.textContent = '■ ' + sec + 's';
+          if (sec >= 29) voiceRecorder.stop();   // the server accepts up to 30 seconds
+        }, 500);
+        toast('Recording voice note. Tap again to send.');
       } catch { toast('Microphone permission was not granted.'); }
     }
     function openChat() {
@@ -5719,7 +5713,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
           } else if (c !== 1) { whotLastCardSeen[i] = false; }
         });
       }
-      let status = waiting ? `Waiting for players… share code ${room.code} (${players.length}/${maxPlayers})${room.stake > 0 ? ` · Stake ${naira(room.stake)} each, winner takes the pot` : room.practice ? ' · Practice, no stake' : ''}` :
+      let status = waiting ? `Waiting for players (${players.length}/${maxPlayers})${room.stake > 0 ? ` · ${naira(room.stake)} stake each · winner takes the pot` : room.practice ? ' · Practice, no stake' : ''}` :
         result ? '' : g === 'rps' ? (gstate?.mine ? (gstate?.opponentPicked ? 'Revealing the round…' : 'Choice locked — waiting for your opponent') : gstate?.opponentPicked ? 'Your opponent is ready — choose now' : 'Choose your move') :
         g === 'whot' && myTurn && gstate?.pendingPick > 0 ? `Play a Pick ${gstate.pendingType === 'two' ? 'Two' : 'Three'} or draw ${gstate.pendingPick}` :
         g === 'whot' && myTurn && gstate?.hand?.length === 1 ? 'Your turn — Last card!' :
@@ -5760,16 +5754,34 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       const msTurn = waiting ? `Waiting for players (${players.length}/${maxPlayers})` : result ? 'Match over' : g === 'rps' ? 'Pick at the same time' : myTurn ? 'Your turn' : `${nameOf(players[turn])}’s turn`;
       const msMs = (!waiting && room.status === 'playing' && room.turnDeadline && !result) ? room.turnDeadline - nowMs() : null;
       const msEmo = (!spectator && !waiting && !result && room.status === 'playing') ? EMOTES.map((e, i) => `<button type="button" class="emo" data-em="${i}" title="${esc(e.label)} (key ${i + 1})" aria-label="${esc(e.label)}">${e.icon ? icon(e.icon, 15) : ''}${(!e.icon || e.showLabel) ? `<span>${esc(e.label)}</span>` : ''}<kbd>${i + 1}</kbd></button>`).join('') : '';
+      // Waiting room: seats around a table with the game's own icon in the middle (dice for Ludo, a card for Whot...)
+      const waitRoom = () => {
+        const GE = { ludo: '\u{1F3B2}', whot: '\u{1F0CF}', joker: '\u{1F0CF}', chess: '\u265F\uFE0F', checkers: '\u26C0', tictactoe: '\u274C', connectfour: '\u{1F534}', rps: '\u270A', mancala: '\u{1F330}', ayo: '\u{1F330}', battleship: '\u{1F6A2}', snakes: '\u{1F40D}', dominoes: '\u{1F063}', words: '\u{1F524}' };
+        const ge = GE[g] || '\u{1F3AE}', n = maxPlayers, me0 = mine >= 0 ? mine : 0, left = n - players.length;
+        const pot = room.stake > 0 ? room.stake * n : 0;
+        const sub = room.stake > 0 ? `Pot ${naira(pot)}` : room.practice ? 'Practice \u00B7 no stake' : 'Friendly \u00B7 no stake';
+        const info = room.stake > 0 ? `Each player puts in ${naira(room.stake)}. The winner takes the pot (${naira(pot)}). It starts when all ${n} seats are full, or you can play against a bot.` : `No money on this one. It starts when all ${n} seats are full, or you can play against a bot.`;
+        const seat = (p, i) => {
+          const a = (90 + (i - me0) * 360 / n) * Math.PI / 180, R = n === 2 ? 40 : 38;
+          const x = 50 + R * Math.cos(a), y = 50 + R * Math.sin(a);
+          return `<div class="wseat ${p ? 'in' : ''}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">${p ? `<img src="${avatar(p)}" alt="">` : `<span class="wchair">\u{1FA91}</span>`}<b>${p ? esc(nameOf(p)) + (i === mine ? ' (you)' : '') : 'Empty'}</b>${p && i === 0 && n > 2 ? '<small>host</small>' : ''}</div>`;
+        };
+        return `<div class="wroom"><div class="wtitle"><span class="wico">${ge}</span><div><b>${esc(gameNameOf(g))}${n > 2 ? ' \u00B7 ' + n + ' players' : ''}</b><small>${esc(sub)}</small></div></div>
+          <div class="wtable"><div class="wfelt"><span>${ge}</span><b>${players.length}/${n} seated</b></div>${seats.map((p, i) => seat(p, i)).join('')}</div>
+          <h3>Waiting for ${left} more\u2026</h3><p>${esc(info)}</p>
+          ${canAddBots ? `<button class="wgo" id="addBots">${icon('controller',17)} Play vs Bot</button>` : ''}
+          <button class="wgo alt" id="wShare">Share room code ${esc(room.code)}</button></div>`;
+      };
       const stripHtml = `<div class="matchstrip" id="matchStrip"><b class="ms-game">${esc(gameNameOf(g))}</b><button type="button" class="ms-code" id="msCode" aria-label="Copy invite link">Room ${esc(room.code)} · copy</button><span class="ms-chip ${room.stake > 0 && !room.practice ? 'gold' : ''}">${esc(msChip)}</span><span class="ms-turn ${myTurn && !result ? 'mine' : ''}" id="msTurn">${esc(msTurn)}</span>${msMs != null ? `<span class="ms-clock ${msMs < 5000 ? 'low' : ''}" id="msClock" aria-label="Time left this turn">${Math.max(0, Math.ceil(msMs / 1000))}s</span>` : ''}${msEmo ? `<div class="ms-emo">${msEmo}</div>` : ''}</div>`;
       app.innerHTML = `<div class="play${waiting ? ' is-waiting' : ''}${goneIdx !== -1 ? ' has-gone' : ''}"><div class="play-layout"><main class="game-main">${stripHtml}
     <div class="bar"><button class="back" id="bk" aria-label="Leave room">‹</button>
       <button class="code" id="roomCode" type="button" aria-label="Copy invite link for room ${esc(room.code)}">Room ${esc(room.code)}</button>
       ${(prefs.voiceCmd && VOICE_SR && !spectator && !waiting && !result) ? `<button class="rules-btn micbtn ${srActive ? 'on' : ''}" id="micBtn" type="button" aria-label="Speak a voice command">${icon('speaker',14)} Say</button>` : ''}
       <button class="rules-btn" id="rulesBtn">${icon('card',14)} Rules</button></div>
-    ${(!isLudo && g !== 'whot') || (isLudo && waiting) ? `<div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>` : ''}
-    ${isLudo ? '' : `<div class="clocks">${matchClock}${turnClock}</div>`}
-    ${showStatus ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
-    ${canAddBots ? `<button class="btn ghost" id="addBots" style="padding:9px 18px;font-size:13px">${icon('controller',15)} Play vs Bot</button>` : ''}
+    ${waiting ? waitRoom() : ''}
+    ${!waiting && ((!isLudo && g !== 'whot')) ? `<div class="players">${seats.map((p,i) => pl(p,i)).join('')}</div>` : ''}
+    ${isLudo || waiting ? '' : `<div class="clocks">${matchClock}${turnClock}</div>`}
+    ${showStatus && !waiting ? `<div class="status" id="statusBar">${esc(status)}</div>` : ''}
     <div id="bd" style="width:100%;display:flex;justify-content:center">${waiting ? '' : board(g, myTurn, players, mine, maxPlayers)}</div>
     ${result ? overCard(mine) : ''}</main><aside class="game-rail"><button class="rail-lobby" id="railLobby">‹ Back to lobby</button><h2>${esc(GAMES.find(x => (x.key || x.id) === g)?.name || g)}</h2><p>${spectator ? 'Spectator view' : waiting ? 'Waiting room' : 'Live match'}${room.spectatorCount ? ` · ${room.spectatorCount} watching` : ''}</p><div class="rail-room">Room <b>${esc(room.code)}</b><br><span>${players.length}/${maxPlayers} players</span></div><div class="rail-players">${railPlayers}</div></aside></div></div>`;
       $('#railLobby').onclick = () => $('#bk').click();
@@ -5782,6 +5794,7 @@ ${(d.ratings && d.ratings.length) ? `<div class="dform">Ranked: ${d.ratings.map(
       $('#rulesBtn').onclick = () => rulesSheet(g);
       $('#micBtn')?.addEventListener('click', voiceCommandToggle);
       $('#roomCode').onclick = copyInviteLink;
+      $('#wShare')?.addEventListener('click', copyInviteLink);
       $('#msCode')?.addEventListener('click', copyInviteLink);
       app.querySelectorAll('.emo').forEach(b => b.onclick = () => sendEmote(+b.dataset.em));
       $('#addBots')?.addEventListener('click', (e) => {

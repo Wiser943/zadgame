@@ -12,7 +12,7 @@
   const isG = () => PH.view === 'group';
   const list = () => (isG() ? (PH.g && PH.g.messages) : PH.msgs) || [];
   const find = id => list().find(x => x.id === id);
-  const label = m => m.text || (m.image ? PHOTO : '');
+  const label = m => m.text || (m.image ? PHOTO : '') || (m.voice ? ' Voice note' : '');
   const nameOf = id => id === ME() ? 'You' : isG() ? PH.gname(id) : PH.name(PH.peer);
   const U = {
     react: id => isG() ? `/api/ac/groups/${PH.gid}/messages/${id}/react` : `/api/ac/message/${id}/react`,
@@ -32,6 +32,7 @@
         const ar = m.image.w && m.image.h ? `style="aspect-ratio:${m.image.w}/${m.image.h}"` : '';
         h += `<img class="mimg" ${ar} src="${esc(m.image.thumb || m.image.url)}" data-u="${esc(m.image.url)}" alt="Photo" loading="lazy" draggable="false"${plain ? '' : ` onclick="event.stopPropagation();CHATX.view(this.dataset.u)"`}>`;
       }
+      if (m.voice) h += window.VN ? VN.bubble(m.voice, plain) : '';
       if (m.text) h += `<div class="mtx">${esc(m.text)}</div>`;
       return h;
     },
@@ -115,7 +116,7 @@
     async saveEdit(t) {
       const e = PH.editing; if (!e) return;
       const m = find(e.id); if (!m) { PH.cancelEdit(); return }
-      if (!t && !m.image) return toast('A message cannot be empty');
+      if (!t && !m.image && !m.voice) return toast('A message cannot be empty');
       if (t === m.text) { PH.cancelEdit(); return }
       try { const r = await NET.api(U.one(e.id), { method: 'PUT', body: { text: t } }); PH.cancelEdit(); CHATX.apply(r.message); NET.drop('/api/ac/chats'); NET.drop('/api/ac/groups') } catch (x) { toast(x.message) }
     },
@@ -184,6 +185,8 @@
       NET.drop('/api/ac/chats'); NET.drop('/api/ac/groups'); PH.closeSheet();
       toast(fail ? (ok ? `Forwarded to ${ok}, ${fail} failed: ${lastErr}` : lastErr || 'Could not forward') : ok > 1 ? `Forwarded to ${ok} chats ✓` : 'Forwarded ✓');
     },
+    /* ---------- voice notes ---------- */
+    mic() { if (!window.VN) return; VN.record(v => { isG() ? PH.gSend('', { voice: v }) : PH.send('', { voice: v }) }) },
     /* ---------- photos ---------- */
     pick() {
       const f = document.createElement('input'); f.type = 'file'; f.accept = 'image/*';
@@ -229,13 +232,13 @@
       if (m.kind === 'money' || m.kind === 'food' || m.kind === 'system') return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
       if (m.kind === 'invite') return `<div class="sys inv">${esc(m.text)} · ${this.time(m.at)}${mine ? '' : '<br><button onclick="PH.visit()">Go over 🏠</button>'}</div>`;
       if (m.deleted) return CHATX.deletedBubble(m, mine);
-      return `<div class="msg ${mine ? 'me' : 'th'}${m.reactions && m.reactions.length ? ' hasrx' : ''}" data-id="${m.id}"><div class="mb${m.image ? ' hasimg' : ''}">${CHATX.inner(m)}</div>${CHATX.rx(m)}<small>${this.time(m.at)}${m.edited ? ' · edited' : ''}${mine && last && m.read ? ' · Seen' : ''}</small></div>`;
+      return `<div class="msg ${mine ? 'me' : 'th'}${m.reactions && m.reactions.length ? ' hasrx' : ''}" data-id="${m.id}"><div class="mb${m.image ? ' hasimg' : ''}${m.voice ? ' hasvn' : ''}">${CHATX.inner(m)}</div>${CHATX.rx(m)}<small>${this.time(m.at)}${m.edited ? ' · edited' : ''}${mine && last && m.read ? ' · Seen' : ''}</small></div>`;
     },
     gbubble(m) {
       const mine = m.from === ME();
       if (m.kind === 'system') return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
       if (m.deleted) return CHATX.deletedBubble(m, mine);
-      return `<div class="msg ${mine ? 'me' : 'th'}${m.reactions && m.reactions.length ? ' hasrx' : ''}" data-id="${m.id}">${mine ? '' : `<span class="gsn" style="color:${this.gcolor(m.from)}">${this.gname(m.from)}</span>`}<div class="mb${m.image ? ' hasimg' : ''}">${CHATX.inner(m)}</div>${CHATX.rx(m)}<small>${this.time(m.at)}${m.edited ? ' · edited' : ''}</small></div>`;
+      return `<div class="msg ${mine ? 'me' : 'th'}${m.reactions && m.reactions.length ? ' hasrx' : ''}" data-id="${m.id}">${mine ? '' : `<span class="gsn" style="color:${this.gcolor(m.from)}">${this.gname(m.from)}</span>`}<div class="mb${m.image ? ' hasimg' : ''}${m.voice ? ' hasvn' : ''}">${CHATX.inner(m)}</div>${CHATX.rx(m)}<small>${this.time(m.at)}${m.edited ? ' · edited' : ''}</small></div>`;
     },
     /* double-tap a message to reply (a long press opens the menu instead) */
     tapMsg(e) {

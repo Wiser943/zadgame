@@ -232,8 +232,40 @@ const GIST = {
       <h4>Milestones</h4>${ms}
       <h4>Your stats</h4><div class="gmgrid">${grid.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span>${x[2] ? `<small>${x[2]}</small>` : ''}</div>`).join('')}</div>
       ${S.top ? `<div class="gmtop"><small>Top gist</small><p>${esc(S.top.text) || 'Photo or poll gist'}</p><span><span class="fa-solid fa-heart"></span> ${n(S.top.likes)} &nbsp; <span class="fa-solid fa-comment"></span> ${n(S.top.comments)}</span></div>` : ''}
+      <h4>Rewards &amp; payouts</h4><div class="gmrw" id="gmrw"><button class="gmrwh" onclick="GIST.rewards()"><span class="gmrwi">💰</span><span class="gmrwt"><b>Rewards and Payouts</b><small>Confirm your details so you are ready when we launch</small></span><span class="gmrwb">E dey come soon</span></button><div id="gmrwf"></div></div>
       <h4>Earnings</h4><div class="gmpay"><span class="fa-solid fa-wallet"></span><div><b>Real-money payouts</b><p>${esc(d.payouts.text)}</p></div></div>
     </div>`;
+  },
+  /* ---------- Rewards & payouts sign-up (moved here from the GameHub lobby) ---------- */
+  async rewards() {
+    const box = $('gmrwf'); if (!box) return;
+    if (box.innerHTML) { box.innerHTML = ''; return }
+    box.innerHTML = '<p class="gmnote">Loading…</p>';
+    let st = { launch: 'Late December', registered: false };
+    try { st = await NET.api('/api/rewards/status') } catch (e) {}
+    const C = [['NG', 'Nigeria'], ['GH', 'Ghana'], ['KE', 'Kenya'], ['ZA', 'South Africa'], ['UG', 'Uganda'], ['TZ', 'Tanzania'], ['GB', 'United Kingdom'], ['US', 'United States'], ['CA', 'Canada'], ['IN', 'India'], ['OT', 'Other']];
+    const M = [['bank', 'Local bank transfer'], ['mobile_money', 'Mobile money'], ['crypto', 'Crypto wallet']];
+    const opt = (L, v) => L.map(([c, n]) => `<option value="${c}" ${v === c ? 'selected' : ''}>${n}</option>`).join('');
+    box.innerHTML = `<div class="gmrwform">
+      <p class="gmrwhero">🚀 <b>Coming soon · ${esc(st.launch)}</b><br>Soon you will be able to turn approved rewards into real payouts. Your ₦ balance stays in-game money and is not cash.</p>
+      ${st.registered ? `<p class="gmrwdone">✅ You are on the list${st.legalName ? ', ' + esc(st.legalName) : ''}. You can update your details below.</p>` : ''}
+      <label>Full name (as on your ID)<input type="text" id="rwName" maxlength="80" autocomplete="name" value="${esc(st.legalName || '')}"></label>
+      <label>Country<select id="rwCountry"><option value="">Select…</option>${opt(C, st.country)}</select></label>
+      <label>Preferred payout method<select id="rwMethod"><option value="">Select…</option>${opt(M, st.method)}</select></label>
+      <label class="chk"><input type="checkbox" id="rwAge"> I am 18 years or older</label>
+      <label class="chk"><input type="checkbox" id="rwTerms"> I understand rewards are not available yet and may only be offered in supported countries after identity verification</label>
+      <label class="chk"><input type="checkbox" id="rwNotify" ${st.notify === false ? '' : 'checked'}> Notify me when rewards go live</label>
+      <button class="btn p" id="rwSave" onclick="GIST.saveRewards(this)">${st.registered ? 'Update my details' : 'Verify &amp; keep my spot'}</button>
+      <p class="gmnote">Never enter bank numbers, wallet addresses, passwords or seed phrases here. Identity and payout details will be verified securely through a licensed provider at launch.</p></div>`;
+  },
+  async saveRewards(btn) {
+    if (btn) btn.disabled = true;
+    const v = i => ($(i) || {}).value, c = i => !!($(i) || {}).checked;
+    try {
+      const d = await NET.api('/api/rewards/register', { method: 'POST', body: { legalName: v('rwName'), country: v('rwCountry'), method: v('rwMethod'), over18: c('rwAge'), termsAccepted: c('rwTerms'), notify: c('rwNotify') } });
+      toast('Saved. You are on the list for ' + d.launch);
+      const box = $('gmrwf'); if (box) box.innerHTML = ''; this.rewards();
+    } catch (e) { toast(e.message || 'Could not save'); if (btn) btn.disabled = false }
   },
   async applyCreator(btn) {
     if (btn) btn.disabled = true;

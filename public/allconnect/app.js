@@ -387,7 +387,6 @@ const APPS = [
   ['Transport', '🚕', 'linear-gradient(135deg,#fbbf24,#d97706)', 1],
   ['State House', '🏛️', 'linear-gradient(135deg,#1d4ed8,#0f766e)', 1],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
-  ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
   ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
@@ -402,7 +401,7 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];

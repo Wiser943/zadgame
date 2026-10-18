@@ -19,6 +19,7 @@ const socialRoutes = require('./routes/social');
 const tournamentRoutes = require('./routes/tournaments');
 const allconnectRoutes = require('./routes/allconnect');
 const acPhotoRoutes = require('./routes/acphotos');
+const acVoiceRoutes = require('./routes/acvoice');
 const acPoliceRoutes = require('./routes/acpolice');
 const acGistRoutes = require('./routes/acgist');
 const acSocialRoutes = require('./routes/acsocial');
@@ -82,6 +83,7 @@ async function main() {
     next();
   });
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
+  app.use('/api/ac/voice', express.json({ limit: '1.4mb' })); // voice notes arrive as base64 JSON
   app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
 
@@ -112,6 +114,7 @@ async function main() {
   app.use('/admin-api', adminRoutes);
   app.use('/api/social', socialRoutes);
   app.use('/api/tournaments', tournamentRoutes);
+  app.use('/api/ac/voice', acVoiceRoutes);
   app.use('/api/ac/photos', acPhotoRoutes);
   app.use('/api/ac/police', acPoliceRoutes);
   app.use('/api/ac/gist', acGistRoutes);

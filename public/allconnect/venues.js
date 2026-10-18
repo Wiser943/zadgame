@@ -6,14 +6,29 @@ const VEN = {
   money: n => '₦' + Math.floor(Math.abs(n) < 1 ? 0 : n).toLocaleString('en-NG'),
   short(n) { n = Math.floor(n); const t = x => String(Math.round(x * 10) / 10); return '₦' + (n >= 1e9 ? t(n / 1e9) + 'b' : n >= 1e6 ? t(n / 1e6) + 'm' : n >= 1e3 ? t(n / 1e3) + 'k' : n) },
   ico(v, big) { return `<span class="ivic${big ? ' big' : ''}" style="background:${esc(v.color)}"><i class="fa-solid fa-${esc(v.fa)}"></i></span>` },
-  async open() {
-    PH.view = 'venues';
-    PH.shell('Venues', 'PH.close()', '<div class="abody iv vn" id="ab"><p class="empty">Loading…</p></div>');
+  async open(tab) {
+    tab = tab === 'homes' || tab === 'invest' ? tab : 'venues';
+    PH.view = tab;
+    const tabs = [['venues', '🏪 Venues'], ['homes', '🏠 Homes'], ['invest', '🔑 Invest']];
+    PH.shell('Venues', 'PH.close()', `<div class="vntabs" id="vntabs">${tabs.map(([k, n]) => `<button class="${k === tab ? 'on' : ''}" data-t="${k}" onclick="VEN.tab('${k}')">${n}</button>`).join('')}</div><div class="abody iv vn" id="ab"><p class="empty">Loading</p></div>`);
+    this.tab(tab, true);
+  },
+  tab(t, first) {
+    const ab = document.getElementById('ab'); if (!ab) return;
+    PH.view = t; clearInterval(this.t);
+    document.querySelectorAll('#vntabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+    ab.className = t === 'venues' ? 'abody iv vn' : t === 'invest' ? 'abody iv' : 'abody';
+    ab.scrollTop = 0;
+    if (t === 'homes') return HOMES.openInline(ab);
+    if (t === 'invest') { ab.innerHTML = '<p class="empty">Loading</p>'; return INV.load() }
+    this.load();
+  },
+  async load() {
     if (this.D) this.draw();
     try { this.D = await NET.api('/api/ac/venues/state'); S.cash = this.D.cash; render(); if (PH.view === 'venues') this.draw() }
     catch (e) {
       const ab = document.getElementById('ab');
-      if (ab) ab.innerHTML = `<div class="ivempty"><p class="empty">Could not load your businesses.</p><p class="ivnote">${esc(e.message || 'Check your connection and try again.')}</p><button class="ivbtn grn" onclick="VEN.open()">Try again</button></div>`;
+      if (ab) ab.innerHTML = `<div class="ivempty"><p class="empty">Could not load your businesses.</p><p class="ivnote">${esc(e.message || 'Check your connection and try again.')}</p><button class="ivbtn grn" onclick="VEN.load()">Try again</button></div>`;
       else toast(e.message || 'Could not load your businesses. Try again.');
     }
     clearInterval(this.t); this.t = setInterval(() => { if (PH.view !== 'venues') return clearInterval(this.t); this.refresh() }, 60000);   // the "ready to collect" numbers grow while you watch

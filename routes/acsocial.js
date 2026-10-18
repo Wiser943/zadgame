@@ -27,7 +27,7 @@ const label = (u) => (u.acUsername ? '@' + u.acUsername : u.displayName);
 const pub = (u) => ({ id: String(u._id), username: u.acUsername || '', displayName: u.displayName, avatar: u.avatar || '', online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id) });
 const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, propertyId: m.propertyId || '', amount: m.amount || 0, read: !!m.read, at: m.at,
   reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
-  image: CH.imageView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
+  image: CH.imageView(m), voice: CH.voiceView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
 const between = (a, b) => ({ $or: [{ requester: a, recipient: b }, { requester: b, recipient: a }] });
 const areFriends = (a, b) => Friendship.exists({ ...between(a, b), status: 'accepted' });
 const isBlocked = (a, b) => Friendship.exists({ ...between(a, b), status: 'blocked' });
@@ -54,10 +54,10 @@ async function peerOr(req, res) {
   if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
   return { me, other, target, friend: !!(await areFriends(me, other)) };
 }
-async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, fwd, propertyId = '' }) {
-  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(fwd ? { fwd: true } : {}) });
+async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, voice, fwd, propertyId = '' }) {
+  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(voice ? { voice } : {}), ...(fwd ? { fwd: true } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
-  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
+  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (voice ? CH.VOICE_LABEL : image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
 }
 
@@ -214,16 +214,19 @@ router.post('/messages/:id', async (req, res, next) => {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
     const f = await peerOr(req, res); if (!f) return;
     const b = req.body || {};
-    let text = profanity.clean(String(b.text || '').trim().slice(0, 300)), image = null, fwd = false;
+    let text = profanity.clean(String(b.text || '').trim().slice(0, 300)), image = null, voice = null, fwd = false;
     if (b.forward) {   // forward: the server copies the original so it cannot be faked
       const src = await CH.resolveForward(b.forward, f.me);
       if (!src) return bad(res, 404, 'That message is no longer available to forward.');
-      text = profanity.clean(src.text.slice(0, 300)); image = src.image; fwd = true;
+      text = profanity.clean(src.text.slice(0, 300)); image = src.image; voice = src.voice; fwd = true;
     } else if (b.image) {
       image = CH.cleanImage(b.image);
       if (!image) return bad(res, 400, 'That photo could not be sent.');
+    } else if (b.voice) {
+      voice = CH.cleanVoice(b.voice);
+      if (!voice) return bad(res, 400, 'That voice note could not be sent.');
     }
-    if (!text && !image) return bad(res, 400, 'Type a message first.');
+    if (!text && !image && !voice) return bad(res, 400, 'Type a message first.');
     // Optional WhatsApp-style reply: the client sends the id of the message it is replying to; we look it up so the quote cannot be faked.
     let reply;
     const rid = String(b.replyTo || '');
@@ -232,7 +235,7 @@ router.post('/messages/:id', async (req, res, next) => {
       const same = o && o.kind === 'text' && !o.deleted && ((o.from === f.me && o.to === f.other) || (o.from === f.other && o.to === f.me));
       if (same) reply = { mid: String(o._id), from: o.from, text: CH.quoteText(o) };
     }
-    res.json({ message: await addMessage(req, { to: f.other, text, reply, image, fwd }) });
+    res.json({ message: await addMessage(req, { to: f.other, text, reply, image, voice, fwd }) });
   } catch (e) { next(e); }
 });
 
@@ -265,7 +268,7 @@ router.put('/message/:mid', async (req, res, next) => {
     if (c.m.from !== c.me) return bad(res, 403, 'You can only edit your own messages.');
     if (!CH.canEdit(c.m, c.me)) return bad(res, 403, 'You can only edit a message within 15 minutes of sending it.');
     const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 300));
-    if (!text && !(c.m.image && c.m.image.url)) return bad(res, 400, 'A message cannot be empty.');
+    if (!text && !(c.m.image && c.m.image.url) && !(c.m.voice && c.m.voice.url)) return bad(res, 400, 'A message cannot be empty.');
     if (text !== c.m.text) { c.m.text = text; c.m.edited = true; await c.m.save(); }
     res.json({ message: pushUpd(req, c) });
   } catch (e) { next(e); }
@@ -280,7 +283,7 @@ router.delete('/message/:mid', async (req, res, next) => {
     if (c.m.from !== c.me) return bad(res, 403, 'You can only delete your own messages for everyone.');
     if (c.m.deleted) return res.json({ ok: true, message: mv(c.m) });
     if (!CH.canDeleteAll(c.m, c.me)) return bad(res, 403, 'You can delete for everyone only within 2 days. You can still delete it for yourself.');
-    c.m.deleted = true; c.m.text = ''; c.m.reactions = []; c.m.set('image', undefined); await c.m.save();
+    c.m.deleted = true; c.m.text = ''; c.m.reactions = []; c.m.set('image', undefined); c.m.set('voice', undefined); await c.m.save();
     res.json({ ok: true, scope: 'all', message: pushUpd(req, c) });
   } catch (e) { next(e); }
 });

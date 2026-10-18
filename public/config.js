@@ -22,6 +22,14 @@
   /* ---- Service worker: only needs the base for its inline-reply fetch ---- */
   if (typeof window === 'undefined') return;
 
+  /* ---- One address only: anything that isn't connectng.online (e.g. the *.netlify.app link) is sent there, keeping the path, query and hash ---- */
+  var CANON = 'connectng.online', h = location.hostname;
+  var local = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || /\.local$/.test(h) || /^(\d{1,3}\.){3}\d{1,3}$/.test(h);
+  if (h && h !== CANON && !local && !/^\d+$/.test(h.replace(/\./g, ''))) {
+    location.replace('https://' + CANON + location.pathname + location.search + location.hash);
+    return;
+  }
+
   /* ---- fetch(): send API calls to the backend, with cookies ---- */
   if (API && g.fetch) {
     var nativeFetch = g.fetch.bind(g);

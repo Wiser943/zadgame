@@ -30,7 +30,7 @@ const isAdmin = (g, id) => g.owner === id || g.admins.includes(id);
 const roleOf = (g, id) => (g.owner === id ? 'owner' : g.admins.includes(id) ? 'admin' : 'member');
 const CH = require('../utils/acchat');
 const mv = (m) => ({ id: String(m._id), group: m.group, from: m.from, text: m.deleted ? '' : m.text, kind: m.kind, deleted: !!m.deleted, at: m.at,
-  image: CH.imageView(m), reply: !m.deleted && m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
+  image: CH.imageView(m), voice: CH.voiceView(m), reply: !m.deleted && m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
   reactions: CH.reactionsView(m), edited: !!m.edited, fwd: !!m.fwd });
 const mapGet = (m, k) => (m && (m.get ? m.get(k) : m[k])) || null;
 
@@ -123,23 +123,26 @@ router.post('/:id/messages', async (req, res, next) => {
     const g = await myGroup(req, res); if (!g) return;
     if (g.onlyAdmins && !isAdmin(g, me)) return bad(res, 403, 'Only admins can send messages in this group.');
     const b = req.body || {};
-    let text = profanity.clean(String(b.text || '').trim().slice(0, 500)), image = null, fwd = false;
+    let text = profanity.clean(String(b.text || '').trim().slice(0, 500)), image = null, voice = null, fwd = false;
     if (b.forward) {
       const src = await CH.resolveForward(b.forward, me);
       if (!src) return bad(res, 404, 'That message is no longer available to forward.');
-      text = profanity.clean(src.text.slice(0, 500)); image = src.image; fwd = true;
+      text = profanity.clean(src.text.slice(0, 500)); image = src.image; voice = src.voice; fwd = true;
     } else if (b.image) {
       image = CH.cleanImage(b.image);
       if (!image) return bad(res, 400, 'That photo could not be sent.');
+    } else if (b.voice) {
+      voice = CH.cleanVoice(b.voice);
+      if (!voice) return bad(res, 400, 'That voice note could not be sent.');
     }
-    if (!text && !image) return bad(res, 400, 'Type a message first.');
+    if (!text && !image && !voice) return bad(res, 400, 'Type a message first.');
     let reply;
     const rid = String(b.replyTo || '');
     if (!fwd && CH.isId(rid)) {
       const o = await ACGroupMsg.findOne({ _id: rid, group: String(g._id), kind: 'text', deleted: { $ne: true } }).lean();
       if (o) reply = { mid: String(o._id), from: o.from, text: CH.quoteText(o) };
     }
-    const m = await say(req, g, text, 'text', me, { ...(image ? { image } : {}), ...(reply ? { reply } : {}), ...(fwd ? { fwd: true } : {}) });
+    const m = await say(req, g, text, 'text', me, { ...(image ? { image } : {}), ...(voice ? { voice } : {}), ...(reply ? { reply } : {}), ...(fwd ? { fwd: true } : {}) });
     g.reads.set(me, new Date()); await g.save();
     res.json({ message: mv(m) });
   } catch (e) { next(e); }
@@ -173,7 +176,7 @@ router.put('/:id/messages/:mid', async (req, res, next) => {
     if (m.from !== me) return bad(res, 403, 'You can only edit your own messages.');
     if (!CH.canEdit(m, me)) return bad(res, 403, 'You can only edit a message within 15 minutes of sending it.');
     const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 500));
-    if (!text && !(m.image && m.image.url)) return bad(res, 400, 'A message cannot be empty.');
+    if (!text && !(m.image && m.image.url) && !(m.voice && m.voice.url)) return bad(res, 400, 'A message cannot be empty.');
     if (text !== m.text) { m.text = text; m.edited = true; await m.save(); }
     res.json({ message: sendUpd(req, g, m) });
   } catch (e) { next(e); }
@@ -189,7 +192,7 @@ router.delete('/:id/messages/:mid', async (req, res, next) => {
     }
     if (m.from !== me && !isAdmin(g, me)) return bad(res, 403, 'Only the sender or an admin can delete this.');
     if (m.from === me && !isAdmin(g, me) && !CH.canDeleteAll(m, me)) return bad(res, 403, 'You can delete for everyone only within 2 days. You can still delete it for yourself.');
-    m.deleted = true; m.text = ''; m.reactions = []; m.set('image', undefined); await m.save();
+    m.deleted = true; m.text = ''; m.reactions = []; m.set('image', undefined); m.set('voice', undefined); await m.save();
     res.json({ ok: true, scope: 'all', message: sendUpd(req, g, m) });
   } catch (e) { next(e); }
 });
