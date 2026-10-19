@@ -22,8 +22,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
     "socket.io": "^4.7.5",
-    "web-push": "^3.6.7",
-    "yt-search": "2.13.1"
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",

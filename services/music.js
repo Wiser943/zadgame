@@ -107,57 +107,13 @@ async function searchItunes(query) {
   return (Array.isArray(data?.results) ? data.results : []).map(normalizeItunes).filter(Boolean);
 }
 
-
-// YouTube: the widest catalogue (full songs, Afrobeats, new releases). We only SEARCH here and hand back a videoId;
-// the browser plays it through YouTube's official embedded player, so nothing is downloaded or re-hosted.
-// With YOUTUBE_API_KEY set it uses the official Data API; otherwise it falls back to the `yt-search` scraper package.
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || '';
-const decodeEntities = (v) => text(v).replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-const cleanChannel = (v) => decodeEntities(v).replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').trim() || 'Unknown artist';
-
-function ytSong(videoId, title, channel, art) {
-  if (!/^[\w-]{11}$/.test(videoId || '') || !title) return null;
-  return {
-    title: decodeEntities(title), artist: cleanChannel(channel),
-    albumArt: firstUrl(art) || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-    streamUrl: `https://www.youtube.com/watch?v=${videoId}`, videoId, provider: 'youtube'
-  };
-}
-
-async function searchYouTubeApi(query) {
-  const url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&videoEmbeddable=true&maxResults=15'
-    + `&q=${encodeURIComponent(query)}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`;
-  const data = await fetchJson(url);
-  return (Array.isArray(data?.items) ? data.items : [])
-    .map((i) => ytSong(i?.id?.videoId, i?.snippet?.title, i?.snippet?.channelTitle, i?.snippet?.thumbnails?.high?.url || i?.snippet?.thumbnails?.medium?.url))
-    .filter(Boolean);
-}
-
-async function searchYouTubeScrape(query) {
-  let yts;
-  try { yts = require('yt-search'); } catch { throw new Error('yt-search is not installed (run npm install)'); }
-  const result = await Promise.race([yts(`${query} audio`), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error('timed out'), { name: 'AbortError' })), REQUEST_TIMEOUT_MS))]);
-  return (result?.videos || [])
-    .filter((v) => v.seconds >= 60 && v.seconds <= 900)          // skip shorts, mixes and 10-hour loops
-    .slice(0, 15)
-    .map((v) => ytSong(v.videoId, v.title, v.author?.name, v.thumbnail || v.image))
-    .filter(Boolean);
-}
-
-async function searchYouTube(query) {
-  if (YOUTUBE_API_KEY) {
-    try { const r = await searchYouTubeApi(query); if (r.length) return r; } catch (e) { console.error('[music] YouTube API failed:', e.message); }
-  }
-  return searchYouTubeScrape(query);
-}
-
 const reason = (error) => (error.name === 'AbortError' ? 'timed out' : error.message);
 
 async function searchMusic(query) {
   const clean = text(query).replace(/^\.?play\s+/i, '').trim(); // "play rema calm down" works too
   if (clean.length < 2) return { provider: null, results: [], errors: ['Enter at least 2 characters to search.'] };
   const errors = [];
-  const chain = [['youtube', 'YouTube', searchYouTube], ['audius', 'Audius', searchAudius], ['jiosaavn', 'JioSaavn', searchJioSaavn], ['itunes', 'iTunes preview', searchItunes]];
+  const chain = [['audius', 'Audius', searchAudius], ['jiosaavn', 'JioSaavn', searchJioSaavn], ['itunes', 'iTunes preview', searchItunes]];
   for (const [id, label, fn] of chain) {
     try {
       const results = await fn(clean);
@@ -171,4 +127,4 @@ async function searchMusic(query) {
   return { provider: null, results: [], errors };
 }
 
-module.exports = { searchMusic, searchYouTube, ytSong, normalizeSong, searchJioSaavn, searchAudius, searchItunes, normalizeAudius, normalizeItunes };
+module.exports = { searchMusic, normalizeSong, searchJioSaavn, searchAudius, searchItunes, normalizeAudius, normalizeItunes };
