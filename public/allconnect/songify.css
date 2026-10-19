@@ -142,3 +142,10 @@ html .sg-dark .songify-retry{background:#1ed760;color:#000}
 .npq-r span{flex:1;min-width:0}.npq-r b,.npq-r small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.npq-r b{font-size:13px}.npq-r small{font-size:11.5px;color:#a7a7a7;margin-top:2px}
 .npq-r.on b,.npq-r.on i{color:#1ed760}
 @media (max-height:700px){.np-disc{width:min(54%,210px)}.np-stage{padding:8px 0}.np-tt b{font-size:19px}.np-ctl .np-pp{width:58px;height:58px}}
+
+/* YouTube player: YouTube's terms require the embedded player to stay visible, so it floats as a small video card
+   while a YouTube song plays. Move it by changing bottom/right here. */
+#sg-yt{position:fixed;right:10px;bottom:calc(132px + env(safe-area-inset-bottom,0px));width:200px;height:113px;z-index:80;display:none;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+#sg-yt.on{display:block}
+#sg-yt .sg-yt-box,#sg-yt iframe{width:100%;height:100%;border:0;display:block}
+#sg-yt .sg-yt-x{position:absolute;top:4px;right:4px;width:24px;height:24px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:12px;display:grid;place-items:center}

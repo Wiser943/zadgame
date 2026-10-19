@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin
+Disallow: /admin-api/
+Disallow: /health
+Disallow: /ready
+
+Sitemap: https://connectng.online/sitemap.xml

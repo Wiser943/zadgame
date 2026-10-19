@@ -1,12 +1,12 @@
 // Pet "Answer mode": the pet answers questions using Google Gemini. The API key stays on the server (set GEMINI_API_KEY on Render, like IMGBB_KEY).
-// Optional: GEMINI_MODEL (default gemini-2.5-flash) and PET_AI_DAILY (answers per player per day, default 60).
+// Optional: GEMINI_MODEL (default gemini-3.5-flash, then gemini-3.1-flash-lite; Google retired the 2.0 models in June 2026 and is shutting down 2.5) and PET_AI_DAILY (answers per player per day, default 60).
 // Everything the player types or says is treated as untrusted text. She always answers in plain English, in a few short spoken sentences.
 const KEY_NAMES = ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_KEY', 'GOOGLE_GENAI_API_KEY'];
 const keyInfo = () => {
   for (const n of KEY_NAMES) { let v = process.env[n]; if (v && String(v).trim()) { v = String(v).trim().replace(/^["']|["']$/g, '').trim(); if (v) return { name: n, key: v }; } }
   return { name: '', key: '' };
 };
-const models = () => [...new Set([String(process.env.GEMINI_MODEL || '').trim(), 'gemini-2.5-flash', 'gemini-2.0-flash'].filter(Boolean))];
+const models = () => [...new Set([String(process.env.GEMINI_MODEL || '').trim(), 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'].filter(Boolean))];
 const daily = () => Math.max(1, Math.floor(Number(process.env.PET_AI_DAILY)) || 60);
 const MAX_TEXT = 200, MAX_AUDIO_B64 = 700000;
 let doFetch = (...a) => fetch(...a);
@@ -95,7 +95,7 @@ async function ask({ mode, text, audio, pet, history, ctx }) {
   const contents = [...(repeat ? [] : cleanHistory(history).map((h) => ({ role: h.r, parts: [{ text: h.t }] }))), { role: 'user', parts }];
   let last = null;
   for (const model of models()) {
-    const gc = { temperature: repeat ? 0 : .8, maxOutputTokens: 400, responseMimeType: 'application/json',
+    const gc = { temperature: repeat ? 0 : .8, maxOutputTokens: /2\.5/.test(model) ? 400 : 1200, responseMimeType: 'application/json',
       responseSchema: { type: 'OBJECT', properties: { heard: { type: 'STRING' }, reply: { type: 'STRING' }, remember: { type: 'STRING' } }, required: ['heard', 'reply'] } };
     if (/2\.5/.test(model)) gc.thinkingConfig = { thinkingBudget: 0 };        // answers should be quick, not "thought through"
     const body = { systemInstruction: { parts: [{ text: repeat ? 'You transcribe short voice notes accurately.' : persona(pet, ctx) }] }, contents, generationConfig: gc };

@@ -20,6 +20,84 @@ const SONGIFY = {
   },
   favAt(name, i) { this.toggleFav(this.lst(name)[i]); },
 
+  /* ----- YouTube backend: official embedded player (full songs, nothing is downloaded or re-hosted).
+     The rest of Songify talks to paused() / time() / dur() / setTime() / resume() / pauseMedia() so the same
+     controls, queue, favourites and progress bar work for both <audio> tracks and YouTube tracks. ----- */
+  yt: { player: null, want: null, playing: false, t: 0, d: 0, timer: null, fails: 0 },
+  isYT(s) { return !!s && s.provider === 'youtube' && /^[\w-]{11}$/.test(s.videoId || ''); },
+  ytActive() { return this.isYT(this.current); },
+  paused() { return this.ytActive() ? !this.yt.playing : (!this.audio || this.audio.paused); },
+  time() { return this.ytActive() ? this.yt.t : ((this.audio && this.audio.currentTime) || 0); },
+  dur() { const d = this.ytActive() ? this.yt.d : (this.audio && this.audio.duration); return Number.isFinite(d) ? d : 0; },
+  setTime(t) {
+    if (this.ytActive()) { try { this.yt.player && this.yt.player.seekTo(t, true); } catch (e) {} this.yt.t = t; this.paintProgress(); }
+    else if (this.audio) this.audio.currentTime = t;
+  },
+  resume() { if (this.ytActive()) { try { this.yt.player && this.yt.player.playVideo(); } catch (e) {} } else if (this.audio) this.audio.play().catch(() => {}); },
+  pauseMedia() { if (this.ytActive()) { try { this.yt.player && this.yt.player.pauseVideo(); } catch (e) {} } else if (this.audio) this.audio.pause(); },
+  ytHost() {
+    let h = document.getElementById('sg-yt'); if (h) return h;
+    h = document.createElement('div'); h.id = 'sg-yt';
+    h.innerHTML = '<div class="sg-yt-box"></div><button class="sg-yt-x" type="button" aria-label="Stop music" onclick="SONGIFY.stop()"><i class="fa-solid fa-xmark"></i></button>';
+    document.body.appendChild(h); return h;
+  },
+  ytApi() {
+    if (this._ytApi) return this._ytApi;
+    this._ytApi = new Promise((resolve, reject) => {
+      if (window.YT && window.YT.Player) return resolve();
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { try { if (prev) prev(); } catch (e) {} resolve(); };
+      const sc = document.createElement('script'); sc.src = 'https://www.youtube.com/iframe_api';
+      sc.onerror = () => { this._ytApi = null; reject(new Error('Could not load the YouTube player. Check your connection.')); };
+      document.head.appendChild(sc);
+    });
+    return this._ytApi;
+  },
+  async ytPlay(song) {
+    this.yt.want = song.videoId; this.yt.t = 0; this.yt.d = 0; this.yt.playing = false;
+    const host = this.ytHost(); host.classList.add('on');
+    try { await this.ytApi(); } catch (e) { this.setStatus(e.message, true); return; }
+    if (this.yt.want !== song.videoId) return;                      // another song was picked while the API loaded
+    if (!this.yt.player) {
+      const frame = document.createElement('iframe');
+      frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');   // the site's own policy is "same-origin", which YouTube rejects
+      frame.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      frame.setAttribute('title', 'Song player');
+      frame.src = `https://www.youtube.com/embed/${song.videoId}?enablejsapi=1&autoplay=1&controls=0&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(location.origin)}`;
+      host.querySelector('.sg-yt-box').appendChild(frame);
+      this.yt.player = new window.YT.Player(frame, { events: { onStateChange: (e) => this.ytState(e.data), onError: (e) => this.ytError(e.data) } });
+    } else {
+      try { this.yt.player.loadVideoById(song.videoId); } catch (e) { this.setStatus('The player is not ready yet. Tap play.', true); }
+    }
+    setTimeout(() => { if (this.yt.want === song.videoId && !this.yt.playing && this.ytActive()) this.setStatus('Tap play to start the song.'); }, 4500);
+  },
+  ytTick(on) {
+    clearInterval(this.yt.timer); this.yt.timer = null;
+    const read = () => { const p = this.yt.player; if (!p || !p.getCurrentTime) return; this.yt.t = p.getCurrentTime() || 0; this.yt.d = p.getDuration() || this.yt.d; this.paintProgress(); };
+    try { read(); } catch (e) {}
+    if (on) this.yt.timer = setInterval(() => { try { read(); } catch (e) {} }, 500);
+  },
+  ytState(code) {                                                   // -1 unstarted · 0 ended · 1 playing · 2 paused · 3 buffering · 5 cued
+    if (!this.ytActive()) return;
+    if (code === 1) { this.yt.playing = true; this.yt.fails = 0; this.ytTick(true); if (/^Tap play/.test(this.status)) this.setStatus(''); }
+    else if (code === 2) { this.yt.playing = false; this.ytTick(false); }
+    else if (code === 0) { this.yt.playing = false; this.ytTick(false); this.onEnded(); }
+    this.repaint();
+  },
+  ytError(code) {
+    if (!this.ytActive()) return;
+    this.yt.playing = false; this.ytTick(false);
+    const blocked = code === 101 || code === 150;
+    this.setStatus(blocked ? 'The owner does not allow this song to play outside YouTube. Skipping…' : code === 153 ? 'YouTube refused to play inside this page.' : 'This song could not be played. Skipping…', true);
+    this.repaint();
+    if (code !== 153 && ++this.yt.fails <= 3 && this.queue.length > 1) setTimeout(() => this.next(), 1200);
+  },
+  ytHalt() {
+    this.yt.want = null; this.yt.playing = false; this.ytTick(false);
+    try { if (this.yt.player && this.yt.player.stopVideo) this.yt.player.stopVideo(); } catch (e) {}
+    const h = document.getElementById('sg-yt'); if (h) h.classList.remove('on');
+  },
+
   /* ----- audio (created once, survives leaving the app) ----- */
   init() {
     if (this.audio) return;
@@ -29,7 +107,7 @@ const SONGIFY = {
     this.audio.addEventListener('play', () => this.repaint());
     this.audio.addEventListener('pause', () => this.repaint());
     this.audio.addEventListener('ended', () => this.onEnded());
-    this.audio.addEventListener('error', () => { if (!this.current) return; this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.repaint(); });
+    this.audio.addEventListener('error', () => { if (!this.current || this.ytActive()) return; this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.repaint(); });
   },
   repaint() { this.paint(); this.paintMini(); this.paintIsland(); },
   /* is the Songify screen the one on show? */
@@ -43,12 +121,16 @@ const SONGIFY = {
   },
   start(song) {
     this.init(); this.current = song; this.remember(song);
-    this.audio.src = song.streamUrl;
-    this.audio.play().catch(() => this.setStatus('Tap play again to start audio on this device.', true));
+    if (this.isYT(song)) { this.audio.pause(); this.ytPlay(song); }
+    else {
+      this.ytHalt();
+      this.audio.src = song.streamUrl;
+      this.audio.play().catch(() => this.setStatus('Tap play again to start audio on this device.', true));
+    }
     this.repaint(); this.paintResults();
   },
-  stop() { if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.np = false; this.repaint(); this.paintResults(); },
-  toggle() { if (!this.current) return; this.audio.paused ? this.audio.play().catch(() => {}) : this.audio.pause(); },
+  stop() { this.ytHalt(); if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.np = false; this.repaint(); this.paintResults(); },
+  toggle() { if (!this.current) return; this.paused() ? this.resume() : this.pauseMedia(); },
   next() {
     const q = this.queue; if (!q.length) return; let i = this.idx();
     if (this.shuffle && q.length > 1) { let n; do { n = Math.floor(Math.random() * q.length); } while (n === i); i = n; } else i = (i + 1) % q.length;
@@ -56,17 +138,17 @@ const SONGIFY = {
   },
   prev() {
     const q = this.queue; if (!q.length) return;
-    if (this.audio.currentTime > 3) { this.audio.currentTime = 0; return; }
+    if (this.time() > 3) { this.setTime(0); return; }
     const i = this.idx(); this.start(q[(i - 1 + q.length) % q.length]);
   },
   onEnded() {
-    if (this.repeat === 'one') { this.audio.currentTime = 0; this.audio.play().catch(() => {}); return; }
+    if (this.repeat === 'one') { this.setTime(0); this.resume(); return; }
     if (!this.shuffle && this.repeat === 'off' && this.idx() >= this.queue.length - 1) { this.repaint(); return; }
     this.next();
   },
   toggleShuffle() { this.shuffle = !this.shuffle; this.paint(); },
   cycleRepeat() { this.repeat = { off: 'all', all: 'one', one: 'off' }[this.repeat]; this.paint(); },
-  seek(value) { if (this.audio?.duration) this.audio.currentTime = (Number(value) / 100) * this.audio.duration; },
+  seek(value) { if (this.dur()) this.setTime((Number(value) / 100) * this.dur()); },
   format(s) { if (!Number.isFinite(s)) return '0:00'; return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`; },
 
   /* ----- screen ----- */
@@ -106,7 +188,7 @@ const SONGIFY = {
   },
   async fetchSongs(query) {
     const data = await NET.api(`/api/ac/music/search?q=${encodeURIComponent(query)}`);
-    const label = { audius: 'Audius', jiosaavn: 'JioSaavn', itunes: '30s previews (iTunes)' }[data.provider] || data.provider;
+    const label = { youtube: 'YouTube', audius: 'Audius', jiosaavn: 'JioSaavn', itunes: '30s previews (iTunes)' }[data.provider] || data.provider;
     return { list: data.results || [], label, errors: data.errors };
   },
   /* songs are loaded as soon as the app opens so the list is never empty */
@@ -140,10 +222,10 @@ const SONGIFY = {
 
   /* ----- painting ----- */
   paintProgress() {
-    const pct = this.audio?.duration ? (this.audio.currentTime / this.audio.duration) * 100 : 0;
+    const pct = this.dur() ? (this.time() / this.dur()) * 100 : 0;
     const range = document.getElementById('songify-progress'); if (range) range.value = pct;
-    const now = document.getElementById('songify-now'); if (now) now.textContent = this.format(this.audio?.currentTime);
-    const total = document.getElementById('songify-total'); if (total) total.textContent = this.format(this.audio?.duration);
+    const now = document.getElementById('songify-now'); if (now) now.textContent = this.format(this.time());
+    const total = document.getElementById('songify-total'); if (total) total.textContent = this.format(this.dur());
     const fill = document.getElementById('mp-fill'); if (fill) fill.style.width = pct + '%';
     const f2 = document.getElementById('sgm-fill'); if (f2) f2.style.width = pct + '%';
     if (range) range.style.setProperty('--p', pct + '%');
@@ -182,7 +264,7 @@ const SONGIFY = {
   paintSgMini() {
     const el = document.getElementById('sg-mini'); if (!el) return;
     if (!this.current || this.np) { el.innerHTML = ''; return; }
-    const s = this.current, paused = !this.audio || this.audio.paused, fav = this.isFav(s);
+    const s = this.current, paused = this.paused(), fav = this.isFav(s);
     this.tone(s);
     el.innerHTML = `<div class="sgm" style="--np:${this.colour(s)}"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><div class="sgm-t" onclick="SONGIFY.openNP()"><b>${esc(s.title)}</b><span>${esc(s.artist)}</span></div>
       <button class="sgm-b ${fav ? 'on' : ''}" onclick="SONGIFY.toggleFav(SONGIFY.current)" aria-label="Favorite"><i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i></button>
@@ -205,7 +287,7 @@ const SONGIFY = {
     const sc = document.querySelector('.screen'); if (!sc) return;
     let el = document.getElementById('sg-np');
     if (!this.np || !this.current || !this.alive()) { if (el) el.remove(); sc.classList.remove('sg-npon'); this.npKey = ''; return; }
-    const s = this.current, paused = !this.audio || this.audio.paused, fav = this.isFav(s);
+    const s = this.current, paused = this.paused(), fav = this.isFav(s);
     if (!el) { el = document.createElement('div'); el.id = 'sg-np'; el.className = 'sg-np'; sc.appendChild(el); this.npKey = ''; requestAnimationFrame(() => el.classList.add('on')); }
     sc.classList.add('sg-npon');
     if (this.npKey !== s.streamUrl) { this.npKey = s.streamUrl; el.innerHTML = this.npHtml(s); this.tone(s); }
@@ -235,7 +317,7 @@ const SONGIFY = {
       const playing = this.current?.streamUrl === s.streamUrl, fav = this.isFav(s);
       return `<div class="songify-result${playing ? ' playing' : ''}" role="button" tabindex="0" onclick="SONGIFY.playAt('${name}',${i})"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
         <button class="sg-heart ${fav ? 'on' : ''}" onclick="event.stopPropagation();SONGIFY.favAt('${name}',${i})" aria-label="Favorite"><i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i></button>
-        <em><i class="fa-solid ${playing ? (this.audio && !this.audio.paused ? 'fa-volume-high' : 'fa-pause') : 'fa-play'}"></i></em></div>`;
+        <em><i class="fa-solid ${playing ? (!this.paused() ? 'fa-volume-high' : 'fa-pause') : 'fa-play'}"></i></em></div>`;
     }).join('');
   },
   retry() { this.defaults = null; this.searched = false; this.results = []; this.loadDefault(); },
@@ -247,7 +329,7 @@ const SONGIFY = {
     const show = !!this.current && (pg === 'home' || pg === 'map') && !(pg === 'home' && clean);
     el.style.display = show ? 'flex' : 'none'; if (app) app.classList.toggle('has-mini', show);
     if (!show) return;
-    const s = this.current, paused = !this.audio || this.audio.paused;
+    const s = this.current, paused = this.paused();
     el.innerHTML = `<img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><div class="mp-t" onclick="SONGIFY.openFromMini()"><b>${esc(s.title)}</b><span>${esc(s.artist)}</span></div>
       <button onclick="SONGIFY.prev()" aria-label="Previous"><i class="fa-solid fa-backward-step"></i></button>
       <button class="pp" onclick="SONGIFY.toggle()" aria-label="${paused ? 'Play' : 'Pause'}"><i class="fa-solid fa-${paused ? 'play' : 'pause'}"></i></button>
@@ -261,7 +343,7 @@ const SONGIFY = {
   paintIsland() {
     const el = document.querySelector('.screen .island'); if (!el) return;
     if (!this.current) { el.className = 'island'; el.innerHTML = ''; this.islandOpen = false; return; }
-    const s = this.current, paused = !this.audio || this.audio.paused;
+    const s = this.current, paused = this.paused();
     el.className = `island music${this.islandOpen ? ' open' : ''}${paused ? ' paused' : ''}`;
     el.innerHTML = `<div class="isl-row" onclick="SONGIFY.islandToggle()"><img class="isl-art" src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span class="eq"><i></i><i></i><i></i></span><div class="isl-t"><b>${esc(s.title)}</b><span>${esc(s.artist)}</span></div>
       <button class="isl-pp" onclick="event.stopPropagation();SONGIFY.toggle()" aria-label="${paused ? 'Play' : 'Pause'}"><i class="fa-solid fa-${paused ? 'play' : 'pause'}"></i></button></div>
