@@ -32,16 +32,22 @@ const SONGIFY = {
     this.audio.addEventListener('error', () => { if (!this.current) return; this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.repaint(); });
   },
   repaint() { this.paint(); this.paintMini(); this.paintIsland(); },
+  /* is the Songify screen the one on show? */
+  alive() { return typeof S !== 'undefined' && S.page === 'phone' && typeof PH !== 'undefined' && PH.view === this.view; },
   idx() { return this.queue.findIndex((s) => s.streamUrl === this.current?.streamUrl); },
   /* play a song from one of the lists; the queue is that list */
-  playAt(name, i) { const song = this.lst(name)[i]; if (!song) return; this.listName = name; this.queue = this.lst(name).slice(); this.start(song); },
+  playAt(name, i, quiet) {
+    const song = this.lst(name)[i]; if (!song) return;
+    if (!quiet && this.current && this.current.streamUrl === song.streamUrl) { this.openNP(); return; }   // same song: just open the player
+    this.listName = name; this.queue = this.lst(name).slice(); this.np = !quiet; this.start(song);
+  },
   start(song) {
     this.init(); this.current = song; this.remember(song);
     this.audio.src = song.streamUrl;
     this.audio.play().catch(() => this.setStatus('Tap play again to start audio on this device.', true));
     this.repaint(); this.paintResults();
   },
-  stop() { if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.repaint(); this.paintResults(); },
+  stop() { if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.np = false; this.repaint(); this.paintResults(); },
   toggle() { if (!this.current) return; this.audio.paused ? this.audio.play().catch(() => {}) : this.audio.pause(); },
   next() {
     const q = this.queue; if (!q.length) return; let i = this.idx();
@@ -68,10 +74,10 @@ const SONGIFY = {
     this.init(); this.favs = this.load('favs'); this.recent = this.load('recent');
     document.querySelector('.screen')?.classList.add('light');
     PH.view = this.view;
-    PH.shell('Songify', 'SONGIFY.close()', '<div class="sg-wrap"><div class="sg-body" id="sg-body"></div><nav class="sg-nav" id="sg-nav"></nav></div>');
+    PH.shell('Songify', 'SONGIFY.close()', '<div class="sg-wrap"><div class="sg-body" id="sg-body"></div><div id="sg-mini"></div><nav class="sg-nav" id="sg-nav"></nav></div>');
     this.draw();
   },
-  close() { PH.close(); },   // music keeps playing
+  close() { this.closeNP(true); document.querySelector('.screen')?.classList.remove('sg-dark'); PH.close(); },   // music keeps playing
   setTab(t) { this.tab = t; this.draw(); },
   navHtml() {
     return [['home', 'fa-house', 'Home'], ['favs', 'fa-heart', 'Favorites'], ['recent', 'fa-clock-rotate-left', 'Recent']]
@@ -127,7 +133,7 @@ const SONGIFY = {
       this.results = r.list;
       this.setStatus(r.list.length ? `${r.list.length} tracks · ${r.label}` : (r.errors || ['No tracks found. Try another search.']).join(' '), !r.list.length);
       this.busy = false; this.paintResults();
-      if (r.list.length) { this.playAt('results', 0); return; }
+      if (r.list.length) { this.playAt('results', 0, true); return; }
     } catch (e) { this.results = []; this.setStatus(e.message || 'Music search failed.', true); }
     this.busy = false; this.paintResults();
   },
@@ -139,20 +145,80 @@ const SONGIFY = {
     const now = document.getElementById('songify-now'); if (now) now.textContent = this.format(this.audio?.currentTime);
     const total = document.getElementById('songify-total'); if (total) total.textContent = this.format(this.audio?.duration);
     const fill = document.getElementById('mp-fill'); if (fill) fill.style.width = pct + '%';
+    const f2 = document.getElementById('sgm-fill'); if (f2) f2.style.width = pct + '%';
+    if (range) range.style.setProperty('--p', pct + '%');
   },
   paint() {
-    const el = document.getElementById('songify-player'); if (!el) return;
-    if (!this.current) { el.innerHTML = '<div class="songify-empty-player"><i class="fa-solid fa-music"></i><div><b>Ready when you are</b><small>Pick a result and press play</small></div></div>'; return; }
+    const el = document.getElementById('songify-player'); if (el) el.innerHTML = '';
+    this.paintSgMini(); this.paintNP(); this.paintProgress();
+  },
+
+  /* ----- Spotify-style: mini bar on the list, full "Now playing" with a spinning record ----- */
+  np: false, npQueue: false, npKey: '', npCol: {},
+  hue(s) { return [...String((s && s.title) || '')].reduce((a, c) => a + c.charCodeAt(0), 0) % 360; },
+  colour(song) { return this.npCol[song.albumArt || ''] || `hsl(${this.hue(song)} 42% 26%)`; },
+  /* backdrop colour = the cover's average colour, darkened (falls back to a colour made from the title) */
+  tone(song) {
+    const url = song.albumArt || ''; if (!url || url in this.npCol) return;
+    this.npCol[url] = null;
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 8, 8);
+        const d = x.getImageData(0, 0, 8, 8).data; let r = 0, g = 0, b = 0; const n = d.length / 4;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+        this.npCol[url] = `rgb(${Math.round(r / n * .55)},${Math.round(g / n * .55)},${Math.round(b / n * .55)})`;
+        if (this.current && (this.current.albumArt || '') === url) { this.setTone(); this.paintSgMini(); }
+      } catch (e) { /* cover has no CORS: keep the fallback colour */ }
+    };
+    im.src = url;
+  },
+  setTone() { const el = document.getElementById('sg-np'); if (el && this.current) el.style.setProperty('--np', this.colour(this.current)); },
+  listLabel() { return this.listName === 'favs' ? 'Favorites' : this.listName === 'recent' ? 'Recently played' : (this.searched ? 'Search results' : 'Trending now'); },
+  openNP() { if (!this.current) return; this.np = true; this.paint(); },
+  closeNP(quiet) { this.np = false; this.npQueue = false; this.npKey = ''; const el = document.getElementById('sg-np'); if (el) el.remove(); document.querySelector('.screen')?.classList.remove('sg-npon'); if (!quiet) this.paint(); },
+  toggleQueue() { this.npQueue = !this.npQueue; this.paintNP(); },
+  playQ(i) { const s = this.queue[i]; if (s) this.start(s); },
+  paintSgMini() {
+    const el = document.getElementById('sg-mini'); if (!el) return;
+    if (!this.current || this.np) { el.innerHTML = ''; return; }
     const s = this.current, paused = !this.audio || this.audio.paused, fav = this.isFav(s);
-    el.innerHTML = `<div class="songify-player"><div class="sp-top"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><div class="songify-track"><b>${esc(s.title)}</b><span>${esc(s.artist)} · ${esc(s.provider)}</span></div>
-      <button class="sp-ic ${fav ? 'on' : ''}" onclick="SONGIFY.toggleFav(SONGIFY.current)" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}"><i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i></button>
-      <button class="sp-ic" onclick="SONGIFY.share()" aria-label="Share to Gist"><i class="fa-solid fa-share-nodes"></i></button></div>
-      <input id="songify-progress" type="range" min="0" max="100" step="0.1" value="0" oninput="SONGIFY.seek(this.value)" aria-label="Track progress"><div class="songify-times"><small id="songify-now">0:00</small><small id="songify-total">0:00</small></div>
-      <div class="sp-ctl"><button class="${this.shuffle ? 'on' : ''}" onclick="SONGIFY.toggleShuffle()" aria-label="Shuffle"><i class="fa-solid fa-shuffle"></i></button>
-        <button onclick="SONGIFY.prev()" aria-label="Previous"><i class="fa-solid fa-backward-step"></i></button>
-        <button class="big" onclick="SONGIFY.toggle()" aria-label="${paused ? 'Play' : 'Pause'}"><i class="fa-solid fa-${paused ? 'play' : 'pause'}"></i></button>
-        <button onclick="SONGIFY.next()" aria-label="Next"><i class="fa-solid fa-forward-step"></i></button>
-        <button class="${this.repeat !== 'off' ? 'on' : ''}" onclick="SONGIFY.cycleRepeat()" aria-label="Repeat ${this.repeat}"><i class="fa-solid fa-repeat"></i>${this.repeat === 'one' ? '<sup>1</sup>' : ''}</button></div></div>`;
+    this.tone(s);
+    el.innerHTML = `<div class="sgm" style="--np:${this.colour(s)}"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><div class="sgm-t" onclick="SONGIFY.openNP()"><b>${esc(s.title)}</b><span>${esc(s.artist)}</span></div>
+      <button class="sgm-b ${fav ? 'on' : ''}" onclick="SONGIFY.toggleFav(SONGIFY.current)" aria-label="Favorite"><i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i></button>
+      <button class="sgm-b" onclick="SONGIFY.toggle()" aria-label="${paused ? 'Play' : 'Pause'}"><i class="fa-solid fa-${paused ? 'play' : 'pause'}"></i></button><i class="sgm-bar"><u id="sgm-fill"></u></i></div>`;
+    this.paintProgress();
+  },
+  npHtml(s) {
+    return `<div class="np-top"><button class="np-ic" onclick="SONGIFY.closeNP()" aria-label="Minimise"><i class="fa-solid fa-chevron-down"></i></button><div class="np-from"><small>PLAYING FROM</small><b>${esc(this.listLabel())}</b></div><button class="np-ic" onclick="SONGIFY.share()" aria-label="Share to Gist"><i class="fa-solid fa-share-nodes"></i></button></div>
+      <div class="np-stage"><div class="np-disc"><img class="np-art" src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"></div></div>
+      <div class="np-meta"><div class="np-tt"><b>${esc(s.title)}</b><span>${esc(s.artist)}</span></div><button class="np-ic np-heart" onclick="SONGIFY.toggleFav(SONGIFY.current)" aria-label="Favorite"><i class="fa-regular fa-heart"></i></button></div>
+      <input id="songify-progress" class="np-range" type="range" min="0" max="100" step="0.1" value="0" oninput="SONGIFY.seek(this.value)" aria-label="Track progress">
+      <div class="np-times"><small id="songify-now">0:00</small><small id="songify-total">0:00</small></div>
+      <div class="np-ctl"><button class="np-sh" onclick="SONGIFY.toggleShuffle()" aria-label="Shuffle"><i class="fa-solid fa-shuffle"></i></button><button onclick="SONGIFY.prev()" aria-label="Previous"><i class="fa-solid fa-backward-step"></i></button>
+        <button class="np-pp" onclick="SONGIFY.toggle()" aria-label="Play or pause"><i class="fa-solid fa-play"></i></button><button onclick="SONGIFY.next()" aria-label="Next"><i class="fa-solid fa-forward-step"></i></button>
+        <button class="np-rp" onclick="SONGIFY.cycleRepeat()" aria-label="Repeat"><i class="fa-solid fa-repeat"></i><sup></sup></button></div>
+      <div class="np-foot"><button onclick="SONGIFY.toggleQueue()"><i class="fa-solid fa-list"></i> Up next</button></div>
+      <div class="np-q" id="np-q"></div>`;
+  },
+  paintNP() {
+    const sc = document.querySelector('.screen'); if (!sc) return;
+    let el = document.getElementById('sg-np');
+    if (!this.np || !this.current || !this.alive()) { if (el) el.remove(); sc.classList.remove('sg-npon'); this.npKey = ''; return; }
+    const s = this.current, paused = !this.audio || this.audio.paused, fav = this.isFav(s);
+    if (!el) { el = document.createElement('div'); el.id = 'sg-np'; el.className = 'sg-np'; sc.appendChild(el); this.npKey = ''; requestAnimationFrame(() => el.classList.add('on')); }
+    sc.classList.add('sg-npon');
+    if (this.npKey !== s.streamUrl) { this.npKey = s.streamUrl; el.innerHTML = this.npHtml(s); this.tone(s); }
+    this.setTone();
+    /* only flip the small bits so the record keeps turning smoothly */
+    el.classList.toggle('paused', paused); el.classList.toggle('qopen', this.npQueue);
+    const q = (c) => el.querySelector(c);
+    q('.np-pp i').className = `fa-solid fa-${paused ? 'play' : 'pause'}`;
+    q('.np-heart').classList.toggle('on', fav); q('.np-heart i').className = `fa-${fav ? 'solid' : 'regular'} fa-heart`;
+    q('.np-sh').classList.toggle('on', this.shuffle); q('.np-rp').classList.toggle('on', this.repeat !== 'off'); q('.np-rp sup').textContent = this.repeat === 'one' ? '1' : '';
+    q('.np-from b').textContent = this.listLabel();
+    const i = Math.max(0, this.idx()), up = this.queue.slice(i, i + 25);
+    q('#np-q').innerHTML = `<div class="npq-h"><b>Up next</b><button onclick="SONGIFY.toggleQueue()" aria-label="Close queue"><i class="fa-solid fa-xmark"></i></button></div>` + (up.map((t, k) => { const on = k === 0; return `<div class="npq-r ${on ? 'on' : ''}" onclick="SONGIFY.playQ(${i + k})"><img src="${esc(t.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span>${on ? '<i class="fa-solid fa-volume-high"></i>' : ''}</div>`; }).join('') || '<p class="empty">Nothing queued.</p>');
     this.paintProgress();
   },
   paintResults() {
@@ -167,7 +233,7 @@ const SONGIFY = {
     }
     el.innerHTML = list.map((s, i) => {
       const playing = this.current?.streamUrl === s.streamUrl, fav = this.isFav(s);
-      return `<div class="songify-result" role="button" tabindex="0" onclick="SONGIFY.playAt('${name}',${i})"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
+      return `<div class="songify-result${playing ? ' playing' : ''}" role="button" tabindex="0" onclick="SONGIFY.playAt('${name}',${i})"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
         <button class="sg-heart ${fav ? 'on' : ''}" onclick="event.stopPropagation();SONGIFY.favAt('${name}',${i})" aria-label="Favorite"><i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i></button>
         <em><i class="fa-solid ${playing ? (this.audio && !this.audio.paused ? 'fa-volume-high' : 'fa-pause') : 'fa-play'}"></i></em></div>`;
     }).join('');
@@ -210,3 +276,17 @@ const SONGIFY = {
 };
 window.SONGIFY = SONGIFY;
 SONGIFY.init();
+
+/* Songify is a dark, Spotify-style app: switch the phone chrome (status bar, header, tint) while it is on screen,
+   and tidy the full-screen player away whenever another app takes over. */
+(function () {
+  if (typeof PH === 'undefined' || PH._sgShell) return;
+  if (PH.TINT) PH.TINT.songify = '#121212';
+  PH._sgShell = PH.shell;
+  PH.shell = function () {
+    const sc = document.querySelector('.screen');
+    if (sc) sc.classList.toggle('sg-dark', this.view === 'songify');
+    if (this.view !== 'songify') SONGIFY.closeNP(true);
+    return PH._sgShell.apply(this, arguments);
+  };
+})();

@@ -64,6 +64,7 @@ const HUB = {
     if (!m.hub.done) h.push(UI.row({ ic: UI.ic('user-plus', '#6366f1', 38), title: 'Finish your welcome setup', sub: 'Pick your area, job and hobby. Takes a minute.', right: '<span class="lgbtn">Start</span>', go: 'HUB.setup(0)' }));
     if (m.parcel.claimable) h.push(UI.row({ ic: UI.ic('gift', '#f59e0b', 38), title: `Welcome parcel, day ${m.parcel.day} of ${m.parcel.total}`, sub: 'Free ₦ every day in your first week.', right: `<button class="lgbtn" onclick="event.stopPropagation();HUB.parcel(this)">+${this.fmt(m.parcel.amount)}</button>` }));
     if (ev && ev.bills && ev.bills.count) h.push(UI.row({ ic: UI.ic('bolt', '#e5484d', 38), title: `${ev.bills.count} bill${ev.bills.count > 1 ? 's' : ''} to pay`, sub: ev.bills.overdue ? 'Some are late. Pay to avoid a power cut.' : 'Pay before Sunday night.', right: '<span class="lgbtn">Pay</span>', go: "SHEET.close();LAGOS.open('bills')" }));
+    if (ev && ev.daily && ev.daily.claimable) h.push(UI.row({ ic: UI.ic('calendar-check', '#22b573', 38), title: 'Daily bonus is ready', sub: `Day ${ev.daily.streak}. Keep your streak going.`, right: `<span class="lgbtn">Open</span>`, go: "SHEET.close();LAGOS.open('today')" }));
     const tasks = m.tasks.slice(0, 4);
     h.push(`<h4>Your next steps</h4>`);
     h.push(tasks.length ? tasks.map(t => this.missionRow(t)).join('') : `<p class="empty">${NG.say('All beginner missions done. You are a real Naija person now!', 'All beginner missions don finish. You don turn correct Naija person!')}</p>`);

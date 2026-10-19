@@ -65,18 +65,23 @@ window.ROOM3D = {
     const old = this.avatar, pos = old ? old.position.clone() : new THREE.Vector3(-1, 0, 1.2), ry = old ? old.rotation.y : 0;
     if (old) this.scene.remove(old);
     const C = c => new THREE.Color(c), SK = C(R.skin), SKD = C(R.skin).multiplyScalar(.82), HAIR = (R.hair && R.hair.color) || '#16100d', M = c => this.mat(c);
+    const MSkin = c => new THREE.MeshPhongMaterial({ color: c, shininess: 22, specular: 0x443322 });   // a soft highlight instead of flat Lambert shading — this alone is most of what reads as "smooth skin" vs. "blocky"
     const cloth = (col, pat, c2) => { if (!pat || pat === 'solid') return M(col); const t = new THREE.CanvasTexture(ACAvatar.patternCanvas(pat, col, c2)); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.5, 1.5); return new THREE.MeshLambertMaterial({ map: t }) };
     const av = this.avatar = new THREE.Group(), body = new THREE.Group(), P = this.parts = { body }; av.add(body);
     const part = (geo, mat, x, y, z, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (par || body).add(m); return m };
     const L1 = .36, L2 = .30, HIP = .74, lw = B.lw, T0 = W.torso, tcol = T0 ? T0.col : '#888', tpat = T0 && T0.pat, tc2 = T0 && T0.c2;
-    const legCol = (lower) => (W.legs >= (lower ? 2 : 1) && W.legCol) ? M(W.legCol) : M(SK);
+    const legCol = (lower) => (W.legs >= (lower ? 2 : 1) && W.legCol) ? M(W.legCol) : MSkin(SK);
     const sh = R.shoes || { k: 'sneaker', c1: '#f4f4f4', c2: '#2b2b2b' }, shc = ACAvatar.worn(sh.c1, sh.tatter), shc2 = ACAvatar.worn(sh.c2 || '#2b2b2b', sh.tatter);
     const leg = sx => {
       const hip = new THREE.Group(); hip.position.set(sx * (fem ? .125 : .15) * B.hp, HIP, 0); body.add(hip);
-      part(new THREE.BoxGeometry((fem ? .2 : .24) * lw, L1, (fem ? .22 : .26) * lw), legCol(false), 0, -L1 / 2, 0, hip);
+      const thighR = (fem ? .11 : .13) * lw;        // cylinders instead of boxes read as a rounded limb instead of a plank
+      part(new THREE.CylinderGeometry(thighR * .92, thighR, L1, 10), legCol(false), 0, -L1 / 2, 0, hip);
       const knee = new THREE.Group(); knee.position.y = -L1; hip.add(knee);
-      part(new THREE.BoxGeometry((fem ? .16 : .2) * lw, L2, (fem ? .18 : .22) * lw), legCol(true), 0, -L2 / 2, 0, knee);
-      const foot = (sh.k === 'sandal' || sh.k === 'heel') ? M(SK) : M(shc);
+      const calfR = (fem ? .09 : .11) * lw;
+      part(new THREE.SphereGeometry(thighR * .85, 10, 8), legCol(false), 0, 0, 0, knee);                 // knee joint, so the thigh doesn't just stop dead into the calf
+      part(new THREE.CylinderGeometry(calfR, calfR * .82, L2, 10), legCol(true), 0, -L2 / 2, 0, knee);
+      part(new THREE.SphereGeometry(calfR * .9, 8, 6), legCol(true), 0, -L2, 0, knee);                     // the ankle itself — a distinct joint, not the calf fading straight into the shoe
+      const foot = (sh.k === 'sandal' || sh.k === 'heel') ? MSkin(SK) : M(shc);
       part(new THREE.BoxGeometry(.25, sh.k === 'chunky' ? .09 : .06, .36), foot, 0, -L2 - .03, .06, knee);
       if (sh.k === 'sandal') part(new THREE.BoxGeometry(.26, .03, .12), M(shc), 0, -L2 - .02, .08, knee);
       if (sh.k === 'boot' || sh.k === 'hightop') part(new THREE.BoxGeometry(.22, .16, .2), M(shc), 0, -L2 + .06, -.02, knee);
@@ -97,11 +102,13 @@ window.ROOM3D = {
     if (W.robe) { const r = W.robe, top = 1.34, hem = Math.max(.05, HIP - r.len * .85), fk = r.fit || 1; P.robe = part(new THREE.CylinderGeometry(r.rt * 1.9 * B.sh * fk, r.rb * 1.5 * B.hp * fk, top - hem, 20), cloth(r.col, r.pat, r.patCol), 0, (top + hem) / 2, 0, body); }
     const arm = sx => {
       const sg = new THREE.Group(); sg.position.set(sx * (fem ? .31 : .4), .6, 0); T.add(sg);
-      const w = W.slv >= 1 ? W.wide : 1;
-      part(new THREE.BoxGeometry((fem ? .13 : .18) * lw * w, .3, (fem ? .15 : .2) * lw * w), W.slv >= 1 && W.slvCol ? M(W.slvCol) : M(SK), 0, -.13, 0, sg);
+      const w = W.slv >= 1 ? W.wide : 1, upR = (fem ? .07 : .09) * lw * w;
+      part(new THREE.CylinderGeometry(upR * .9, upR, .3, 10), W.slv >= 1 && W.slvCol ? M(W.slvCol) : MSkin(SK), 0, -.13, 0, sg);
       const el = new THREE.Group(); el.position.y = -.28; sg.add(el);
-      part(new THREE.BoxGeometry((fem ? .11 : .13) * lw * (W.slv >= 2 ? W.wide : 1), .3, (fem ? .12 : .14) * lw * (W.slv >= 2 ? W.wide : 1)), W.slv >= 2 && W.slvCol ? M(W.slvCol) : M(SK), 0, -.15, 0, el);
-      part(new THREE.SphereGeometry(fem ? .07 : .085, 10, 8), M(SK), 0, -.34, 0, el);
+      const loR = (fem ? .06 : .07) * lw * (W.slv >= 2 ? W.wide : 1);
+      part(new THREE.SphereGeometry(upR * .8, 8, 6), W.slv >= 1 && W.slvCol ? M(W.slvCol) : MSkin(SK), 0, 0, 0, el);          // elbow joint
+      part(new THREE.CylinderGeometry(loR, loR * .85, .3, 10), W.slv >= 2 && W.slvCol ? M(W.slvCol) : MSkin(SK), 0, -.15, 0, el);
+      part(new THREE.SphereGeometry(fem ? .07 : .085, 10, 8), MSkin(SK), 0, -.34, 0, el);
       if (W.slv < 1) part(new THREE.SphereGeometry(.075, 8, 6), M(tcol), 0, .02, 0, sg);
       const J = R.jewel || {};
       if (J.wrist) { if (J.wrist.k === 'watch') { part(new THREE.BoxGeometry(.1, .06, .1), M(J.wrist.c2 || '#222'), 0, -.27, 0, el); part(new THREE.BoxGeometry(.13, .02, .13), M(J.wrist.c1), 0, -.27, 0, el) } else { const t = part(new THREE.TorusGeometry(.085, .015, 6, 14), M(J.wrist.c1), 0, -.27, 0, el); t.rotation.x = Math.PI / 2 } }
@@ -109,10 +116,10 @@ window.ROOM3D = {
       return { sg, el };
     };
     const aL = arm(-1), aR = arm(1); P.armL = { sh: aL.sg, el: aL.el }; P.armR = { sh: aR.sg, el: aR.el };
-    part(new THREE.CylinderGeometry(fem ? .07 : .085, fem ? .08 : .095, .12, 10), M(SKD), 0, .71, 0, T);       // neck
+    part(new THREE.CylinderGeometry(fem ? .07 : .085, fem ? .08 : .095, .12, 10), MSkin(SKD), 0, .71, 0, T);       // neck
     const head = P.head = new THREE.Group(); head.position.y = 1.02; T.add(head);
-    const skull = part(new THREE.SphereGeometry(fem ? .235 : .25, 20, 16), M(SK), 0, 0, 0, head); skull.scale.set(.92, 1.08, .96);
-    part(new THREE.SphereGeometry(.05, 8, 6), M(SK), -.23, -.02, 0, head); part(new THREE.SphereGeometry(.05, 8, 6), M(SK), .23, -.02, 0, head);
+    const skull = part(new THREE.SphereGeometry(fem ? .235 : .25, 26, 20), MSkin(SK), 0, 0, 0, head); skull.scale.set(.92, 1.08, .96);
+    part(new THREE.SphereGeometry(.05, 8, 6), MSkin(SK), -.23, -.02, 0, head); part(new THREE.SphereGeometry(.05, 8, 6), MSkin(SK), .23, -.02, 0, head);
     const MK = R.makeup || {}, brows = [];
     const eye = sx => {
       const w = part(new THREE.SphereGeometry(.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }), sx * .09, .04, .205, head); w.scale.set(1, .85, .5);
@@ -126,7 +133,7 @@ window.ROOM3D = {
       return [w, pu];
     };
     P.eyes = [...eye(-1), ...eye(1)]; P.brows = brows;
-    part(new THREE.SphereGeometry(.045, 8, 6), M(SKD), 0, -.03, .235, head);                                    // nose
+    part(new THREE.SphereGeometry(.045, 8, 6), MSkin(SKD), 0, -.03, .235, head);                                    // nose
     const lipc = MK.lips ? MK.lips.c : (fem ? '#9c2f3f' : '#2a0f0b'), lipM = new THREE.MeshBasicMaterial({ color: lipc });
     P.mouths = {
       flat: part(new THREE.BoxGeometry(fem ? .1 : .11, fem ? .028 : .022, .03), M(lipc), 0, -.125, .215, head),

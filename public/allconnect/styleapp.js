@@ -112,7 +112,20 @@ const STYLE = {
   close() { this.stopPreview(); PH.close() },
   mountPreview() {
     this.stopPreview(); const cv = document.getElementById('stCv'); if (!cv) return;
-    this.pv = ACAvatar.preview(cv, S.render.g, { render: S.render, turn: true, drag: true, ext: this.ext(), onTouch: () => { const h = document.getElementById('stHint'); if (h) h.style.opacity = 0 } });
+    const gen = (this._pvGen = (this._pvGen || 0) + 1), look = () => ({ render: S.render, turn: true, drag: true, ext: this.ext(), onTouch: () => { const h = document.getElementById('stHint'); if (h) h.style.opacity = 0 } });
+    this.pv = ACAvatar.preview(cv, S.render.g, look());   // flat 2D first (drag to spin works here too), so there is never a blank gap
+    if (window.AvatarView && AvatarView.canUpgrade()) {
+      // then quietly upgrade to the smooth, lit 3D model (same renderer as the house) once Three.js is ready
+      AvatarView.ready().then(ok => {
+        if (!ok || gen !== this._pvGen) return;                          // 3D never became available, or the player moved on already
+        const old = document.getElementById('stCv'); if (!old || !old.parentNode) return;
+        // a canvas that already drew in 2D cannot switch to WebGL, so the 3D model gets a fresh canvas in the same spot
+        const cv2 = document.createElement('canvas'); cv2.id = 'stCv'; cv2.width = old.width; cv2.height = old.height; cv2.className = old.className;
+        ['role', 'aria-label', 'style'].forEach(a => { if (old.hasAttribute(a)) cv2.setAttribute(a, old.getAttribute(a)) });
+        if (this.pv) this.pv.stop(); old.parentNode.replaceChild(cv2, old);
+        this.pv = AvatarView.mount(cv2, S.render.g, look()) || ACAvatar.preview(cv2, S.render.g, look());   // if WebGL says no, keep the flat preview
+      });
+    }
     if (!document.getElementById('stHint')) { const h = document.createElement('div'); h.id = 'stHint'; h.className = 'sthint'; h.textContent = '↔ Drag to spin'; cv.parentNode.appendChild(h) } this.setDesc();
   },
   stopPreview() { if (this.pv) { this.pv.stop(); this.pv = null } },

@@ -155,13 +155,13 @@ maybe('routes: answer mode failures are friendly and never leak the key', async 
 });
 
 /* ---------- check-in, milestones, emergencies, costumes, memory, friends ---------- */
-test('check-in pays once a day, streak grows, week bonus, and it is the only daily reward', () => {
+test('check-in pays once a day, streak grows, week bonus (small, about 3% amounts)', () => {
   const p = P.defaults('u'); const t = Date.now();
   assert.equal(P.checkinView(p, t).claimable, true); assert.equal(P.checkinAmount(1), 90); assert.equal(P.checkinAmount(2), 120); assert.equal(P.checkinAmount(7), 420); assert.equal(P.checkinAmount(30), 360);
   p.lastCheckin = P.dayKey(t - 86400e3); p.streak = 3; assert.equal(P.checkinView(p, t).streak, 4);
   p.lastCheckin = P.dayKey(t - 3 * 86400e3); const miss = P.checkinView(p, t); assert.equal(miss.streak, 1); assert.equal(miss.reset, true);
   p.lastCheckin = P.dayKey(t); assert.equal(P.checkinView(p, t).claimable, false);
-  const L = require('../utils/aclagos'); assert.equal(L.nextStreak, undefined); assert.equal(L.streakReward, undefined);   // the old Lagos daily bonus is gone
+  const L = require('../utils/aclagos'); assert.equal(typeof L.nextStreak, 'function'); assert.equal(L.streakReward(2), 450); assert.equal(L.streakReward(7), 2250);   // the Lagos daily bonus is back, at about 3% of the first amounts
 });
 test('sudden illness: grace period, a chance every few days, and a vaccine prevents it', () => {
   const now = Date.now(), p = P.defaults('u'); assert.equal(P.roll(p, now, () => .5), null); assert.ok(p.nextEmergency > new Date(now + 86400e3 * 1.9));
