@@ -3,7 +3,7 @@ const express = require('express');
 const User = require('../models/User');
 const ACPhoto = require('../models/ACPhoto');
 const { Report, Friendship } = require('../models/Social');
-const { GistPost, GistLike, GistComment, GistCommentLike, GistVote, GistFollow, GistVideoUpload } = require('../models/Gist');
+const { GistPost, GistLike, GistComment, GistCommentLike, GistVote, GistFollow } = require('../models/Gist');
 const registry = require('../games/registry');
 const ensureAuth = require('../middleware/auth');
 const { normalizeUsername } = require('../utils/allconnect');
@@ -11,9 +11,53 @@ const { notify } = require('../utils/acnotify');
 const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
-const { muxPlaybackUrl } = require('../utils/gistVideo');
+const reelstore = require('../utils/reelstore');
+
+const { muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
+const ACVideo = require('../models/ACVideo');
 
 const router = express.Router();
+
+/* ---------- reel video bytes (public, unguessable id). Supports Range so seeking + iOS playback work. ---------- */
+router.get('/reels/raw/:id', async (req, res, next) => {
+  try {
+    const f = await reelstore.stat(req.params.id); if (!f) return res.status(404).end();
+    const size = f.length, mime = (f.metadata && f.metadata.mime) || 'video/mp4';
+    let start = 0, end = size - 1, code = 200;
+    const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+    if (m && (m[1] || m[2])) {
+      if (m[1] === '') { start = Math.max(0, size - parseInt(m[2], 10)); } else { start = parseInt(m[1], 10); if (m[2]) end = Math.min(end, parseInt(m[2], 10)); }
+      if (!(start <= end) || start >= size) { res.set('Content-Range', 'bytes */' + size); return res.status(416).end(); }
+      code = 206; res.set('Content-Range', `bytes ${start}-${end}/${size}`);
+    }
+    res.status(code).set({ 'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1), 'Cache-Control': 'public, max-age=31536000, immutable', 'Cross-Origin-Resource-Policy': 'cross-origin' });
+    if (req.method === 'HEAD') return res.end();
+    const st = reelstore.read(req.params.id, start, end);
+    st.on('error', () => res.destroy()); res.on('close', () => st.destroy()); st.pipe(res);
+  } catch (e) { next(e); }
+});
+
+/* ---------- Mux webhook: Mux calls this when a video is ready / failed / deleted (needs MUX_WEBHOOK_SECRET; body arrives raw, see server.js) ---------- */
+router.post('/mux-webhook', async (req, res) => {
+  const secret = menv('MUX_WEBHOOK_SECRET'); if (!secret) return res.status(503).end();
+  const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (!verifyWebhook(raw, req.headers['mux-signature'], secret)) return res.status(401).end();
+  try {
+    const ev = JSON.parse(raw.toString('utf8')), d = ev.data || {};
+    if (ev.type === 'video.asset.ready') {
+      const v = muxVideo(d); const uid = String(d.passthrough || '');
+      if (v && uid) await ACVideo.updateOne(d.upload_id ? { uploadId: d.upload_id } : { assetId: d.id }, { $set: fill(v), $setOnInsert: { user: uid, createdAt: new Date() } }, { upsert: true }).catch(() => {});
+    } else if (ev.type === 'video.asset.errored') {
+      await ACVideo.deleteOne(d.upload_id ? { uploadId: d.upload_id, status: 'pending' } : { assetId: d.id });
+    } else if (ev.type === 'video.upload.cancelled' || ev.type === 'video.upload.errored') {
+      await ACVideo.deleteOne({ uploadId: d.id, status: 'pending' });
+    } else if (ev.type === 'video.asset.deleted') {
+      await ACVideo.deleteOne({ assetId: d.id }); await router.removeVideoPosts(d.id).catch(() => 0);
+    }
+    res.json({ ok: true });
+  } catch (e) { console.error('[mux webhook]', e.message); res.status(200).json({ ok: false }); }
+});
+
 router.use(ensureAuth);
 
 const isId = (s) => /^[a-f\d]{24}$/i.test(String(s || ''));
@@ -77,10 +121,10 @@ async function hydrate(posts, uid) {
   const shape = (p, withShared) => {
     const id = String(p._id), o = {
       id, author: pubUser(uMap.get(p.author)), mine: p.author === uid, text: p.text || '', images: p.images || [],
-      video: p.video && muxPlaybackUrl(p.video.playbackId) ? { playbackId: p.video.playbackId, playbackUrl: muxPlaybackUrl(p.video.playbackId), duration: Number(p.video.duration || 0) } : null,
       game: p.game && p.game.key ? { key: p.game.key, name: p.game.name, code: p.game.code || '' } : null,
       match: p.match && p.match.game ? { game: p.match.game, name: p.match.name, score: p.match.score || '', opponent: p.match.opponent || '', result: p.match.result || 'win' } : null,
       election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
+      video: p.video && p.video.url ? (() => { const pb = p.video.kind === 'mux' ? playback(p.video) : null; return { kind: p.video.kind || 'db', url: pb ? pb.url : p.video.url, mime: p.video.mime || 'video/mp4', dur: p.video.dur || 0, poster: pb ? pb.poster : ((p.video.poster && (p.video.poster.thumb || p.video.poster.url)) || ''), preview: pb ? pb.preview : '', cc: !!(p.video.mux && p.video.mux.captions) }; })() : null, views: p.views || 0,
       tags: p.tags || [], pinned: !!p.pinned, edited: !!p.editedAt,
       likes: Math.max(0, p.likes || 0), rx: p.rx || {}, comments: Math.max(0, p.comments || 0), shares: Math.max(0, p.shares || 0),
       myRx: liked.get(id) || '', liked: liked.has(id), createdAt: p.createdAt,
@@ -95,31 +139,30 @@ async function hydrate(posts, uid) {
   return posts.map((p) => shape(p, true));
 }
 
-async function page(filter, req, uid, extra = {}) {
-  const q = { ...filter };
+async function page(filter, req, uid, extra = {}, size = PAGE) {
+  const q = { ...filter }; if (String(q.author) !== uid) q.hidden = { $ne: true };   // posts with 3+ reports are hidden from everyone but their author
   if (req.query.before && !isNaN(Date.parse(req.query.before))) q.createdAt = { $lt: new Date(req.query.before) };
-  const rows = await GistPost.find(q).sort({ createdAt: -1 }).limit(PAGE + 1).lean();
-  const more = rows.length > PAGE; if (more) rows.pop();
+  const rows = await GistPost.find(q).sort({ createdAt: -1 }).limit(size + 1).lean();
+  const more = rows.length > size; if (more) rows.pop();
   return { posts: await hydrate(rows, uid), more, ...extra };
 }
 
 /* ---------- feed: latest | trending | following | me (+ ?tag=) ---------- */
 router.get('/feed', async (req, res, next) => {
   try {
-    const uid = me(req), blocked = await blockedSet(uid), tab = String(req.query.tab || 'latest'), clipTab = tab === 'clips' || tab === 'clips-following';
+    const uid = me(req), blocked = await blockedSet(uid), tab = String(req.query.tab || 'latest');
     const filter = {};
-    if (tab === 'following' || tab === 'clips-following') {
+    if (tab === 'following') {
       const f = await GistFollow.find({ follower: uid }).select('following').lean();
       filter.author = { $in: f.map((x) => x.following).concat(uid).filter((id) => !blocked.includes(id)) };
     } else if (tab === 'me') filter.author = uid;
     else if (blocked.length) filter.author = { $nin: blocked };
-    if (clipTab) filter['video.playbackId'] = { $exists: true, $ne: '' };
     const tag = String(req.query.tag || '').toLowerCase().replace(/^#/, '');
     if (tag) filter.tags = tag;
     if (tab === 'trending' && !tag) {
       const off = Math.max(0, parseInt(req.query.offset, 10) || 0), since = new Date(Date.now() - 7 * 86400000);
       const rows = await GistPost.aggregate([
-        { $match: { ...filter, createdAt: { $gte: since } } },
+        { $match: { ...filter, hidden: { $ne: true }, createdAt: { $gte: since } } },
         { $addFields: { score: { $add: ['$likes', { $multiply: ['$comments', 2] }, { $multiply: ['$shares', 3] }] } } },
         { $sort: { score: -1, createdAt: -1 } }, { $skip: off }, { $limit: PAGE + 1 }]);
       const more = rows.length > PAGE; if (more) rows.pop();
@@ -136,91 +179,6 @@ router.get('/trending', async (req, res, next) => {
       { $group: { _id: '$tags', n: { $sum: 1 }, last: { $max: '$createdAt' } } }, { $sort: { n: -1, last: -1 } }, { $limit: 10 }]);
     res.json({ tags: rows.map((r) => ({ tag: r._id, count: r.n })) });
   } catch (e) { next(e); }
-});
-
-/* ---------- short clips: the browser uploads directly to Mux; P-Gist owns post metadata and recovery ---------- */
-function muxConfigured() { return !!(process.env.MUX_TOKEN_ID && process.env.MUX_TOKEN_SECRET); }
-const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
-const VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime', 'application/octet-stream']);
-async function muxRequest(path, method = 'GET', body) {
-  if (!muxConfigured()) { const e = new Error('Video publishing is not configured. Add MUX_TOKEN_ID and MUX_TOKEN_SECRET to the server environment.'); e.status = 503; throw e; }
-  const headers = { Authorization: 'Basic ' + Buffer.from(`${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`).toString('base64') };
-  if (body) headers['Content-Type'] = 'application/json';
-  const response = await fetch('https://api.mux.com/video/v1/' + path, { method, headers, ...(body ? { body: JSON.stringify(body) } : {}) });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = payload && payload.error && (payload.error.message || (payload.error.messages || []).join(', '));
-    const e = new Error(message || `Video provider request failed (${response.status}).`); e.status = 502; throw e;
-  }
-  return payload.data || {};
-}
-router.post('/videos/uploads', limit('video-upload', 5, 3600000), async (req, res, next) => {
-  try {
-    const caption = String((req.body && req.body.caption) || '').trim().slice(0, 500);
-    const fileSize = Number(req.body && req.body.fileSize), contentType = String(req.body && req.body.contentType || '').split(';')[0].trim().toLowerCase();
-    if (!Number.isSafeInteger(fileSize) || fileSize < 1 || fileSize > MAX_VIDEO_BYTES) return bad(res, 'Clips must be between 1 byte and 500 MB.', 413);
-    if (!VIDEO_MIME_TYPES.has(contentType)) return bad(res, 'Choose an MP4, WebM, or MOV video.', 415);
-    const requestedOrigin = req.get('origin') || '';
-    const configuredOrigins = [process.env.CLIENT_URL || '', ...(process.env.ALLOWED_ORIGINS || '').split(',')].map((value) => { try { return new URL(value.trim()).origin; } catch (e) { return ''; } }).filter(Boolean);
-    let sameOrigin = false; try { sameOrigin = !!requestedOrigin && new URL(requestedOrigin).host === req.get('host'); } catch (e) {}
-    const origin = configuredOrigins.includes(requestedOrigin) ? requestedOrigin : sameOrigin ? requestedOrigin : configuredOrigins[0] || '*';
-    const upload = await muxRequest('uploads', 'POST', { cors_origin: origin, new_asset_settings: { playback_policy: ['public'] } });
-    if (!upload.id || !upload.url) return bad(res, 'The video provider did not return an upload URL.', 502);
-    await GistVideoUpload.create({ owner: me(req), uploadId: upload.id, fileSize, contentType, caption, tags: parseTags(caption) });
-    res.status(201).json({ uploadId: upload.id, uploadUrl: upload.url });
-  } catch (e) { if (e.status === 503) return bad(res, e.message, 503); next(e); }
-});
-router.get('/videos/uploads/pending', limit('video-pending', 20, 60000), async (req, res, next) => {
-  try {
-    const rows = await GistVideoUpload.find({ owner: me(req), status: { $in: ['uploading', 'processing'] } }).sort({ createdAt: -1 }).limit(5).select('uploadId caption status createdAt').lean();
-    res.json({ uploads: rows.map((row) => ({ uploadId: row.uploadId, caption: row.caption, status: row.status, createdAt: row.createdAt })) });
-  } catch (e) { next(e); }
-});
-router.get('/videos/uploads/:uploadId', limit('video-status', 80, 60000), async (req, res, next) => {
-  try {
-    const uploadId = String(req.params.uploadId || '');
-    if (!/^[A-Za-z0-9_-]{8,128}$/.test(uploadId)) return bad(res, 'Invalid upload.');
-    const pending = await GistVideoUpload.findOne({ owner: me(req), uploadId });
-    if (!pending) return bad(res, 'Upload not found.', 404);
-    if (pending.postId) {
-      const saved = await GistPost.findById(pending.postId).lean();
-      if (saved) return res.json({ status: 'ready', post: (await hydrate([saved], me(req)))[0] });
-    }
-    const upload = await muxRequest('uploads/' + encodeURIComponent(uploadId));
-    if (upload.status === 'errored') { pending.status = 'failed'; await pending.save(); return res.json({ status: 'failed', message: 'The video upload did not complete. Please try again.' }); }
-    if (!upload.asset_id) return res.json({ status: 'uploading' });
-    const asset = await muxRequest('assets/' + encodeURIComponent(upload.asset_id));
-    if (asset.status === 'errored') { pending.status = 'failed'; await pending.save(); return res.json({ status: 'failed', message: 'The video could not be processed. Please try another file.' }); }
-    if (asset.status !== 'ready') { pending.status = 'processing'; await pending.save(); return res.json({ status: 'processing' }); }
-    if (Number(asset.duration || 0) > 600) { pending.status = 'failed'; await pending.save(); muxRequest('assets/' + encodeURIComponent(asset.id || upload.asset_id), 'DELETE').catch(() => {}); return res.json({ status: 'failed', message: 'Clips must be ten minutes or shorter.' }); }
-    const playback = (asset.playback_ids || []).find((item) => item.policy === 'public') || (asset.playback_ids || [])[0];
-    if (!playback || !/^[A-Za-z0-9_-]{6,}$/.test(String(playback.id || ''))) return bad(res, 'The processed video has no playable stream.', 502);
-    let post;
-    try {
-      post = await GistPost.create({ author: me(req), text: pending.caption, tags: pending.tags, video: { uploadId, assetId: String(asset.id || upload.asset_id), playbackId: playback.id, duration: Number(asset.duration || 0) } });
-    } catch (e) {
-      if (e.code !== 11000) throw e;
-      post = await GistPost.findOne({ 'video.uploadId': uploadId });
-      if (!post) throw e;
-    }
-    pending.postId = String(post._id); pending.status = 'ready'; await pending.save();
-    const io = req.app.get('io'); if (io) io.of('/ac').emit('gist:new', { id: String(post._id), author: me(req) });
-    res.json({ status: 'ready', post: (await hydrate([post.toObject ? post.toObject() : post], me(req)))[0] });
-  } catch (e) { if (e.status === 503) return bad(res, e.message, 503); next(e); }
-});
-router.delete('/videos/uploads/:uploadId', limit('video-discard', 10, 60000), async (req, res, next) => {
-  try {
-    const uploadId = String(req.params.uploadId || '');
-    if (!/^[A-Za-z0-9_-]{8,128}$/.test(uploadId)) return bad(res, 'Invalid upload.');
-    const pending = await GistVideoUpload.findOne({ owner: me(req), uploadId });
-    if (!pending) return bad(res, 'Upload not found.', 404);
-    if (pending.postId) return bad(res, 'This clip is already published. Delete the post instead.', 409);
-    const upload = await muxRequest('uploads/' + encodeURIComponent(uploadId)).catch(() => null);
-    if (upload && upload.asset_id) muxRequest('assets/' + encodeURIComponent(upload.asset_id), 'DELETE').catch(() => {});
-    else muxRequest('uploads/' + encodeURIComponent(uploadId), 'DELETE').catch(() => {});
-    await GistVideoUpload.deleteOne({ _id: pending._id, owner: me(req) });
-    res.json({ ok: true });
-  } catch (e) { if (e.status === 503) return bad(res, e.message, 503); next(e); }
 });
 
 /* ---------- create / edit / delete posts ---------- */
@@ -245,7 +203,13 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
   try {
     const uid = me(req), b = req.body || {};
     const text = String(b.text || '').trim().slice(0, 500);
-    const images = await buildImages(b.images, uid, res); if (!images) return;
+    let video = null;
+    if (!video && b.video && b.video.mux && b.video.mux.assetId) {
+      const v = await ACVideo.findOne({ assetId: String(b.video.mux.assetId), user: uid, status: 'ready' }).lean();
+      if (!v) return bad(res, 'That video was not found in your gallery. Please upload it again.');
+      video = { kind: 'mux', mux: { assetId: v.assetId, playbackId: v.playbackId, signed: !!v.signed, captions: !!v.cc }, url: v.url, mime: 'application/x-mpegURL', size: 0, dur: Math.round(v.dur || 0), poster: { url: v.poster, thumb: v.thumb || v.poster } };
+    }
+    const images = video ? [] : await buildImages(b.images, uid, res); if (!images) return;
     let game;
     if (b.game && b.game.key) {
       const g = registry.find((x) => x.key === b.game.key && x.available);
@@ -270,9 +234,10 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
       sharedFrom = String(orig._id); origAuthor = orig.author;
       await GistPost.updateOne({ _id: orig._id }, { $inc: { shares: 1 } });
     }
-    if (!text && !images.length && !game && !sharedFrom && !poll) return bad(res, 'Write something or add a photo first.');
+    if (!text && !images.length && !game && !sharedFrom && !poll && !video) return bad(res, 'Write something or add a photo first.');
     const tags = parseTags(text), mentions = await parseMentions(text);
-    const post = await GistPost.create({ author: uid, text, images, game, poll, sharedFrom, tags, mentions });
+    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, sharedFrom, tags, mentions });
+    if (video && video.fileId) await reelstore.markUsed(video.fileId).catch(() => {});
     const pid = String(post._id), who = label(req.user);
     if (origAuthor) ping(req, origAuthor, `${who} reshared your gist`, { icon: '🔁', ref: sharedFrom, key: 'rs:' + uid + sharedFrom });
     mentions.forEach((m) => ping(req, m, `${who} mentioned you in a gist`, { icon: '＠', ref: pid }));
@@ -296,7 +261,7 @@ router.put('/posts/:id', limit('edit', 20, 60000), async (req, res, next) => {
     const p = await GistPost.findOne({ _id: req.params.id, author: uid });
     if (!p) return bad(res, 'Post not found.', 404);
     const text = String((req.body && req.body.text) || '').trim().slice(0, 500);
-    if (!text && !p.images.length && !p.video && !p.game && !p.sharedFrom && !(p.poll && p.poll.options && p.poll.options.length)) return bad(res, 'A gist cannot be empty.');
+    if (!text && !p.images.length && !p.game && !p.sharedFrom && !(p.video && p.video.url) && !(p.poll && p.poll.options && p.poll.options.length)) return bad(res, 'A gist cannot be empty.');
     if (text === p.text) return res.json({ post: (await hydrate([p.toObject()], uid))[0] });
     const old = new Set((p.mentions || []).map(String));
     p.text = text; p.tags = parseTags(text); p.mentions = await parseMentions(text); p.editedAt = new Date();
@@ -314,9 +279,8 @@ router.delete('/posts/:id', async (req, res, next) => {
     const id = String(p._id);
     const cids = (await GistComment.find({ post: id }).select('_id').lean()).map((c) => String(c._id));
     await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
-    await GistVideoUpload.deleteOne({ postId: id });
     if (p.sharedFrom) await GistPost.updateOne({ _id: p.sharedFrom, shares: { $gt: 0 } }, { $inc: { shares: -1 } });
-    if (p.video && p.video.assetId && muxConfigured()) muxRequest('assets/' + encodeURIComponent(p.video.assetId), 'DELETE').catch(() => {});
+    if (p.video && p.video.fileId) await reelstore.remove(p.video.fileId);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -361,6 +325,90 @@ async function react(req, res, next, type) {
 }
 router.post('/posts/:id/like', limit('like', 90, 60000), (req, res, next) => react(req, res, next, 'like'));
 router.post('/posts/:id/react', limit('like', 90, 60000), (req, res, next) => react(req, res, next, String((req.body && req.body.type) || 'like')));
+
+/* ---------- reels: upload a clip, vertical feed, view counter ---------- */
+router.get('/reels/config', (req, res) => res.json({ mux: muxOn(), maxMB: 200, maxSec: MUX_MAX_SEC, dataKey: menv('MUX_DATA_ENV_KEY'), captions: menv('MUX_CAPTIONS') === 'true', signed: signingOn() }));
+
+/* Mux direct upload: the phone sends the file straight to Mux (it never passes through our server), then we poll (or Mux calls our webhook) until it is ready. */
+router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, next) => {
+  try {
+    if (!muxOn()) return bad(res, 'Video storage is not set up yet.', 503);
+    const uid = me(req);
+    if (await ACVideo.countDocuments({ user: uid }) >= reelstore.MAX_PER_USER) return bad(res, `Your gallery has ${reelstore.MAX_PER_USER} videos already. Delete an old one to upload a new one.`, 409);
+    if (await ACVideo.countDocuments({ user: uid, createdAt: { $gte: new Date(Date.now() - 86400000) } }) >= DAILY_UPLOADS) return bad(res, `You can upload ${DAILY_UPLOADS} videos a day. Try again tomorrow.`, 429);
+    const origin = String(req.headers.origin || '') || '*';
+    const { d, cc } = await createUpload(uid, origin);
+    await ACVideo.create({ user: uid, uploadId: d.id, status: 'pending', cc });   // saved now, so it is never lost if the app closes mid-upload
+    res.json({ uploadId: d.id, url: d.url });
+  } catch (e) { console.error('[mux upload]', e.message); bad(res, 'Could not start the upload. Please try again.', 502); }
+});
+router.get('/reels/mux-status/:uploadId', async (req, res, next) => {
+  try {
+    if (!muxOn()) return bad(res, 'Video storage is not set up yet.', 503);
+    if (!/^[A-Za-z0-9]{10,80}$/.test(req.params.uploadId)) return bad(res, 'Invalid upload.');
+    const u = await mux('GET', '/video/v1/uploads/' + req.params.uploadId);
+    if (u.status === 'errored' || u.status === 'cancelled' || u.status === 'timed_out') return res.json({ error: 'The upload did not finish. Please try again.' });
+    if (!u.asset_id) return res.json({ ready: false, status: u.status });
+    const a = await mux('GET', '/video/v1/assets/' + u.asset_id);
+    if (a.passthrough !== me(req)) return bad(res, 'That upload is not yours.', 403);
+    if (a.status === 'errored') { mux('DELETE', '/video/v1/assets/' + a.id).catch(() => {}); return res.json({ error: 'That video could not be processed. Try an MP4 (H.264).' }); }
+    if (a.status !== 'ready') return res.json({ ready: false, status: a.status });
+    if ((a.duration || 0) > MUX_MAX_SEC + 1) { mux('DELETE', '/video/v1/assets/' + a.id).catch(() => {}); return res.json({ error: `Reels can be up to ${MUX_MAX_SEC / 60} minutes.` }); }
+    const mv = muxVideo(a); if (!mv) return res.json({ ready: false, status: 'preparing' });
+    await ACVideo.updateOne({ uploadId: req.params.uploadId, user: me(req) }, { $set: fill(mv) }, { upsert: true });
+    res.json({ ready: true, assetId: a.id, dur: a.duration || 0 });
+  } catch (e) { console.error('[mux status]', e.message); res.json({ ready: false, status: 'checking' }); }
+});
+
+const REEL_PAGE = 6;
+/* For you is ranked: engagement (likes, comments, shares), how much people actually watch and finish it, freshness, and a boost for creators you follow. */
+function reelScore(p, follows) {
+  const hrs = (Date.now() - new Date(p.createdAt).getTime()) / 3600000, plays = Math.max(1, p.plays || 0), dur = Math.max(3, (p.video && p.video.dur) || 15);
+  const frac = Math.min(1, (p.watchMs || 0) / plays / 1000 / dur), comp = Math.min(1, (p.completions || 0) / plays);
+  const eng = (p.likes || 0) * 2 + (p.comments || 0) * 4 + (p.shares || 0) * 5 + Math.log1p(p.views || 0) * 2;
+  let s = (1 + eng) * (0.6 + frac + comp) / Math.pow(hrs + 2, 1.15);
+  if (follows.has(p.author)) s *= 1.6;
+  return s;
+}
+router.get('/reels', async (req, res, next) => {
+  try {
+    const uid = me(req), blocked = await blockedSet(uid), tab = req.query.tab === 'following' ? 'following' : 'foryou';
+    const filter = { 'video.url': { $exists: true, $ne: '' } };
+    const f = await GistFollow.find({ follower: uid }).select('following').lean(), follows = new Set(f.map((x) => x.following));
+    if (tab === 'following') filter.author = { $in: [...follows].filter((id) => !blocked.includes(id)) };
+    else if (blocked.length) filter.author = { $nin: blocked };
+    const tag = String(req.query.tag || '').toLowerCase().replace(/^#/, ''); if (tag) filter.tags = tag;
+    let out;
+    if (tab === 'following') out = await page(filter, req, uid, {}, REEL_PAGE);
+    else {
+      const off = Math.max(0, parseInt(req.query.offset, 10) || 0);
+      const rows = await GistPost.find({ ...filter, hidden: { $ne: true } }).sort({ createdAt: -1 }).limit(200).lean();
+      rows.forEach((p) => { p._s = reelScore(p, follows); }); rows.sort((a, b) => b._s - a._s);
+      const slice = rows.slice(off, off + REEL_PAGE);
+      out = { posts: await hydrate(slice, uid), more: rows.length > off + REEL_PAGE, next: off + slice.length };
+    }
+    out.posts.forEach((p) => { p.author.following = follows.has(p.author.id); });
+    res.json(out);
+  } catch (e) { next(e); }
+});
+
+/* watch analytics: how long a reel was watched, and whether it was finished (feeds the ranking above) */
+router.post('/posts/:id/watch', limit('watch', 120, 60000), async (req, res, next) => {
+  try {
+    if (!isId(req.params.id)) return bad(res, 'Invalid post.');
+    const b = req.body || {}, ms = Math.min(600000, Math.max(0, parseInt(b.ms, 10) || 0)); if (ms < 500) return res.json({ ok: true });
+    await GistPost.updateOne({ _id: req.params.id, 'video.url': { $exists: true } }, { $inc: { plays: 1, watchMs: ms, completions: b.completed ? 1 : 0 } });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+router.post('/posts/:id/view', limit('view', 120, 60000), async (req, res, next) => {
+  try {
+    if (!isId(req.params.id)) return bad(res, 'Invalid post.');
+    await GistPost.updateOne({ _id: req.params.id, 'video.url': { $exists: true } }, { $inc: { views: 1 } });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
 
 /* ---------- polls ---------- */
 router.post('/posts/:id/vote', limit('vote', 30, 60000), async (req, res, next) => {
@@ -534,6 +582,8 @@ router.post('/posts/:id/report', limit('report', 10, 3600000), async (req, res, 
     if (p.author === uid) return bad(res, 'You cannot report your own post.');
     const reason = String((req.body && req.body.reason) || 'Inappropriate').slice(0, 120);
     await Report.create({ reporter: uid, target: p.author, roomCode: 'GIST', reason: `P-Gist post ${req.params.id}: ${reason}` });
+    const up = await GistPost.findOneAndUpdate({ _id: req.params.id }, { $addToSet: { reporters: uid } }, { new: true }).select('reporters').lean();
+    if (up && (up.reporters || []).length >= 3) await GistPost.updateOne({ _id: req.params.id }, { $set: { hidden: true } });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
@@ -550,6 +600,17 @@ router.postMatchWin = async function postMatchWin(io, { userId, game, name, scor
     const post = await GistPost.create({ author: userId, text: '', match: { game, name, score: String(score || ''), opponent: String(opponent || '').slice(0, 40), result: 'win' } });
     if (io) io.of('/ac').emit('gist:new', { id: String(post._id), author: userId });
   } catch (e) { console.error('[gist win]', e.message); }
+};
+
+/* gallery -> deleting a video there removes every reel/post that used it (comments, likes and votes go too) */
+router.removeVideoPosts = async function removeVideoPosts(assetId) {
+  const posts = await GistPost.find({ 'video.mux.assetId': String(assetId) }).select('_id sharedFrom').lean();
+  for (const p of posts) {
+    const id = String(p._id), cids = (await GistComment.find({ post: id }).select('_id').lean()).map((c) => String(c._id));
+    await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
+  }
+  if (posts.length) await GistPost.deleteMany({ _id: { $in: posts.map((p) => p._id) } });
+  return posts.length;
 };
 
 module.exports = router;

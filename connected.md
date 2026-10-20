@@ -57,12 +57,7 @@ CLIENT_URL=http://localhost:3000
 MONGODB_URI=<your MongoDB connection string>
 GOOGLE_CLIENT_ID=<from step 2>
 GOOGLE_CLIENT_SECRET=<from step 2>
-# Optional: enable P-Gist Clips (create a Mux API token)
-MUX_TOKEN_ID=<Mux token ID>
-MUX_TOKEN_SECRET=<Mux token secret>
 ```
-
-P-Gist remains usable without the optional Mux values; clip upload will show a clear setup message until both are configured. Keep the Mux secret server-side only—do not add it to a `VITE_` or other browser-exposed variable.
 
 ## 5. Run it
 
@@ -258,17 +253,6 @@ VAPID_SUBJECT=mailto:your-real-admin-email@example.com
 ```
 
 Keep the same keys across deploys. If the keys change, existing browser subscriptions must be recreated.
-
-## P-Gist Clips (Mux)
-
-To enable the Clips feed and direct video publishing, add these **server-side** environment variables to Render (or your server host):
-
-```text
-MUX_TOKEN_ID=<Mux API token ID>
-MUX_TOKEN_SECRET=<Mux API token secret>
-```
-
-Create a Mux API token with video upload and asset read/delete access. P-Gist asks its server for a short-lived Mux upload URL; the **browser then uploads the video bytes directly to Mux**. Node does not proxy the video file. The composer limits selected files to 500 MB, while the server validates the submitted file metadata and rejects processed clips longer than ten minutes. Post metadata and upload ownership use the existing MongoDB database. If you leave before processing finishes, reopening P-Gist offers a way to check and recover pending clips. Clips use the existing account, feed, likes, comments, shares, follows, and profile. Never expose `MUX_TOKEN_SECRET` in frontend variables or source code. Without the keys, regular posts keep working and clip publishing is disabled.
 
 ## User flow
 

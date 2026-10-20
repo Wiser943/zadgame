@@ -6,7 +6,7 @@
 const RXE = { like: '❤️', laugh: '😂', fire: '🔥', sad: '😢', wow: '😮' };
 const GIST = {
   tab: 'latest', tagF: '', F: {}, trend: [], pending: 0, stack: [], cur: null, ret: null, cache: new Map(), C: null, pf: null, cm: null, replyTo: null,
-  pk: { tab: 'mine', mine: null, plat: null, busy: false }, games: null, ready: false, clipObserver: null, clipPlayers: [], hlsPromise: null, videoGeneration: 0, pendingClips: [],
+  pk: { tab: 'mine', mine: null, plat: null, busy: false }, games: null, ready: false,
   api(u, o) { return NET.api('/api/ac/gist' + u, o) },
   uid() { return (NET.user && NET.user.id) || 'me' },
   put(list) { (list || []).forEach(p => { this.cache.set(p.id, p); if (p.shared && p.shared.id) this.cache.set(p.shared.id, p.shared) }); return list },
@@ -21,7 +21,6 @@ const GIST = {
   },
   init() {
     if (this.ready) return; this.ready = true;
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.pauseVideos(); else if (PH.view === 'gist') this.bindVideos() });
     document.addEventListener('click', e => {
       const t = e.target.closest('[data-tag],[data-u]'); if (!t || !PH.$a().contains(t)) return;
       e.preventDefault(); e.stopPropagation(); if (t.dataset.tag) this.tag(t.dataset.tag); else this.nav('profile', t.dataset.u)
@@ -37,13 +36,14 @@ const GIST = {
     document.addEventListener('contextmenu', e => { if (lkOf(e)) e.preventDefault() });
   },
   /* ---------- navigation ---------- */
-  open() { this.pauseVideos(); this.init(); PH.view = 'gist'; this.stack = []; this.cur = null; this.C = null; this.ret = null; this.tagF = ''; this.pending = 0; this.feed(); this.loadPendingClips() },
+  open() { this.init(); PH.view = 'gist'; this.stack = []; this.cur = null; this.C = null; this.ret = null; this.tagF = ''; this.pending = 0; this.feed() },
   /* deep links: notifications, mentions, leaderboard, settings, contacts -> post / profile, with a way back */
   deep(fn, arg, ret) { this.init(); document.querySelector('.screen').classList.add('light'); PH.view = 'gist'; this.stack = []; this.cur = null; this.C = null; this.ret = ret || null; this.tagF = ''; this[fn](arg) },
   openProfile(id, ret) { this.deep('profile', id, ret) },
   openPost(id, ret) { this.deep('post', id, ret) },
-  nav(fn, ...a) { this.pauseVideos(); const ab = $('ab'); if (this.cur) this.stack.push({ ...this.cur, scroll: ab ? ab.scrollTop : 0 }); this[fn](...a) },
-  back() { this.pauseVideos(); const s = this.stack.pop(); if (!s) { this.C = null; const r = this.ret; this.ret = null; if (r) return r(); return PH.close() } this[s.fn](...s.args); requestAnimationFrame(() => { const ab = $('ab'); if (ab) ab.scrollTop = s.scroll || 0 }) },
+  reels(id) { RL.show(id) },
+  nav(fn, ...a) { if (typeof RL !== 'undefined') RL.stop(); const ab = $('ab'); if (this.cur) this.stack.push({ ...this.cur, scroll: ab ? ab.scrollTop : 0 }); this[fn](...a) },
+  back() { if (typeof RL !== 'undefined') RL.stop(); const s = this.stack.pop(); if (!s) { this.C = null; const r = this.ret; this.ret = null; if (r) return r(); return PH.close() } this[s.fn](...s.args); requestAnimationFrame(() => { const ab = $('ab'); if (ab) ab.scrollTop = s.scroll || 0 }) },
   set(fn, ...args) { this.cur = { fn, args } },
   err(e) { toast((e && e.message) || 'Something went wrong. Try again.') },
   bell() { const n = (PH.badges.updates || 0) + (PH.localUnread || 0); return `<button class="gbell" onclick="PH.shade(true)" aria-label="Notifications"><i class="fa-solid fa-bell"></i>${n ? `<em>${n > 9 ? '9+' : n}</em>` : ''}</button>` },
@@ -54,71 +54,12 @@ const GIST = {
     if (n === 1) return `<div class="gimgs n1">${one(0)}</div>`;
     return `<div class="gcar"><div class="gcs" onscroll="GIST.car(this)">${p.images.map((_, i) => one(i)).join('')}</div><span class="gcn">1/${n}</span><div class="gdots">${p.images.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`
   },
-  videoHtml(p) {
-    const src = p.video && p.video.playbackUrl;
-    if (!src || !/^https:\/\/stream\.mux\.com\/[A-Za-z0-9_-]{6,}\.m3u8$/.test(src)) return '';
-    return `<div class="gvinline gvideo-shell" onclick="GIST.videoSurface(this,event)"><video class="gvplayer" data-src="${esc(src)}" playsinline muted loop preload="metadata" aria-label="Video clip"></video><div class="gvideo-ui is-paused"><button type="button" class="gvideo-center" onclick="GIST.videoToggle(this,event)" aria-label="Play video"><i class="fa-solid fa-play"></i></button><div class="gvideo-controls" role="group" aria-label="Video playback controls"><button type="button" class="gvideo-play" onclick="GIST.videoToggle(this,event)" aria-label="Play video"><i class="fa-solid fa-play"></i></button><span class="gvideo-time" aria-live="off">0:00 / 0:00</span><input class="gvideo-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek video"><button type="button" class="gvideo-sound" onclick="GIST.videoSound(this,event)" aria-label="Turn sound on"><i class="fa-solid fa-volume-xmark"></i></button><button type="button" class="gvideo-fullscreen" onclick="GIST.videoFullscreen(this,event)" aria-label="Enter fullscreen"><i class="fa-solid fa-expand"></i></button></div></div></div>`
-  },
-  ensureHls() {
-    if (window.Hls) return Promise.resolve(window.Hls);
-    if (this.hlsPromise) return this.hlsPromise;
-    this.hlsPromise = new Promise(resolve => {
-      const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js'; script.onload = () => resolve(window.Hls || null); script.onerror = () => resolve(null); document.head.appendChild(script)
-    });
-    return this.hlsPromise
-  },
-  videoTime(seconds) { const s = Math.max(0, Math.floor(Number(seconds) || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') },
-  videoToggle(control, event) { if (event) event.stopPropagation(); const shell = control.closest('.gvideo-shell'), video = shell && shell.querySelector('.gvplayer'); if (!video) return; if (video.paused) video.play().catch(() => toast('Tap to start video')); else video.pause() },
-  videoSurface(shell, event) { if (event) event.stopPropagation(); if (!event || event.target.closest('.gvideo-controls,.gvideo-center')) return; this.videoToggle(shell, event) },
-  videoSound(button, event) { if (event) event.stopPropagation(); const shell = button.closest('.gvideo-shell'), video = shell && shell.querySelector('.gvplayer'); if (!video) return; video.muted = !video.muted; this.bindPostVideoControls(video) },
-  videoFullscreen(button, event) { if (event) event.stopPropagation(); const shell = button.closest('.gvideo-shell'); if (!shell) return; const exit = document.fullscreenElement === shell; if (exit && document.exitFullscreen) document.exitFullscreen().catch(() => {}); else if (!exit && shell.requestFullscreen) shell.requestFullscreen().catch(() => {}); else if (!exit) toast('Fullscreen is not available in this browser') },
-  bindPostVideoControls(video) {
-    const shell = video.closest('.gvideo-shell'); if (!shell || shell.dataset.playerBound) return;
-    const ui = shell.querySelector('.gvideo-ui'), seek = shell.querySelector('.gvideo-seek'), clock = shell.querySelector('.gvideo-time'), sound = shell.querySelector('.gvideo-sound'), fs = shell.querySelector('.gvideo-fullscreen');
-    if (!ui || !seek || !clock || !sound) return;
-    shell.dataset.playerBound = '1'; video.controls = false; let dragging = false;
-    const update = () => {
-      const duration = Number.isFinite(video.duration) ? video.duration : 0, current = Number.isFinite(video.currentTime) ? video.currentTime : 0, pct = duration ? Math.min(100, current / duration * 100) : 0, playing = !video.paused && !video.ended;
-      if (!dragging) { seek.max = String(duration || 100); seek.value = String(duration ? Math.min(current, duration) : 0) }
-      seek.style.setProperty('--video-progress', pct + '%'); clock.textContent = this.videoTime(current) + ' / ' + this.videoTime(duration);
-      ui.classList.toggle('is-playing', playing); ui.classList.toggle('is-paused', !playing);
-      shell.querySelectorAll('.gvideo-play,.gvideo-center').forEach(button => { button.innerHTML = `<i class="fa-solid fa-${playing ? 'pause' : 'play'}"></i>`; button.setAttribute('aria-label', playing ? 'Pause video' : 'Play video') });
-      sound.innerHTML = video.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>'; sound.setAttribute('aria-label', video.muted ? 'Turn sound on' : 'Mute video');
-    };
-    video.addEventListener('play', update); video.addEventListener('pause', update); video.addEventListener('ended', update); video.addEventListener('timeupdate', update); video.addEventListener('loadedmetadata', update); video.addEventListener('durationchange', update); video.addEventListener('volumechange', update);
-    seek.addEventListener('pointerdown', e => { e.stopPropagation(); dragging = true }); seek.addEventListener('change', () => { dragging = false; update() });
-    seek.addEventListener('input', e => { e.stopPropagation(); if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = Number(seek.value); update() });
-    seek.addEventListener('click', e => e.stopPropagation()); if (fs) fs.hidden = !(shell.requestFullscreen || video.requestFullscreen);
-    update()
-  },
-  bindVideos() {
-    const area = $('ab'); this.pauseVideos(); if (!area) return;
-    const videos = [...area.querySelectorAll('.gvplayer[data-src]')]; if (!videos.length) return;
-    const generation = this.videoGeneration;
-    this.ensureHls().then(Hls => {
-      if (!area.isConnected || generation !== this.videoGeneration) return;
-      videos.forEach(video => {
-        if (!video.closest('.gshort')) this.bindPostVideoControls(video);
-        if (Hls && Hls.isSupported()) { const player = new Hls({ enableWorker: true }); player.loadSource(video.dataset.src); player.attachMedia(video); this.clipPlayers.push(player) }
-        else video.src = video.dataset.src;
-      });
-      if (!window.IntersectionObserver) return;
-      this.clipObserver = new IntersectionObserver(entries => entries.forEach(entry => {
-        const video = entry.target;
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.58 && document.visibilityState === 'visible') video.play().catch(() => {});
-        else video.pause();
-      }), { root: area, threshold: [0, 0.58, 1] });
-      videos.forEach(video => this.clipObserver.observe(video));
-    })
-  },
-  pauseVideos() {
-    this.videoGeneration++;
-    if (this.clipObserver) { this.clipObserver.disconnect(); this.clipObserver = null }
-    (this.clipPlayers || []).forEach(player => { try { player.destroy() } catch (e) {} }); this.clipPlayers = [];
-    document.querySelectorAll('.appview .gvplayer').forEach(video => { try { video.pause() } catch (e) {} });
-  },
-  clipSound(btn) { const video = btn.closest('.gshort').querySelector('.gvplayer'); video.muted = !video.muted; btn.innerHTML = video.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>' },
   car(el) { const n = el.children.length, i = Math.min(n - 1, Math.round(el.scrollLeft / Math.max(1, el.clientWidth))), w = el.parentNode; w.querySelectorAll('.gdots i').forEach((d, k) => d.classList.toggle('on', k === i)); const c = w.querySelector('.gcn'); if (c) c.textContent = (i + 1) + '/' + n },
+  vid(p, detail) {
+    if (!p || !p.video) return ''; const u = window.apiUrl ? apiUrl(p.video.url) : p.video.url, po = p.video.poster ? (window.apiUrl ? apiUrl(p.video.poster) : p.video.poster) : '';
+    if (detail && p.video.kind !== 'mux') return `<div class="gvid det"><video src="${esc(u)}" ${po ? `poster="${esc(po)}"` : ''} controls playsinline preload="metadata" loop></video></div>`;
+    return `<div class="gvid" onclick="event.stopPropagation();RL.openFrom('${p.id}')">${po || p.video.kind === 'mux' ? `<img loading="lazy" decoding="async" src="${esc(po)}" ${p.video.preview ? `data-prev="${esc(p.video.preview)}"` : ''} alt="">` : `<video src="${esc(u)}#t=0.1" muted playsinline preload="metadata"></video>`}<span class="gvp"><i class="fa-solid fa-play"></i></span><em><i class="fa-solid fa-clapperboard"></i> Reel${p.video.dur ? ' · ' + RL.dur(p.video.dur) : ''}${p.views ? ' · ' + RL.fmt(p.views) + ' views' : ''}</em></div>`
+  },
   gamecard(g) { if (!g) return ''; return `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(g.name)}</b><small>${g.code ? 'Room code <code>' + esc(g.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.play('${esc(g.code || '')}')">${g.code ? 'Join' : 'Play'}</button></div>` },
   electioncard(e, id) {
     if (!e) return '';
@@ -135,54 +76,38 @@ const GIST = {
     return `<div class="gpoll" data-id="${p.id}">${q.options.map((o, i) => show ? `<div class="gpo res ${q.myVote === i ? 'mine' : ''}"><u style="width:${tot ? Math.round(o.votes / tot * 100) : 0}%"></u><span>${esc(o.text)}${q.myVote === i ? ' ✓' : ''}</span><b>${tot ? Math.round(o.votes / tot * 100) : 0}%</b></div>` : `<button class="gpo" onclick="GIST.vote('${p.id}',${i})"><span>${esc(o.text)}</span></button>`).join('')}<small>${tot} vote${tot === 1 ? '' : 's'} · ${left}</small></div>`
   },
   rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '❤️'}</span> ${p.likes}` : '' },
-  clipCount(n) { n = Math.max(0, Number(n) || 0); return n >= 1000000 ? (n / 1000000).toFixed(n >= 10000000 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n || '') },
-  shortCard(p, index = 0) {
-    const a = p.author, src = p.video && p.video.playbackUrl;
-    if (!src || !/^https:\/\/stream\.mux\.com\/[A-Za-z0-9_-]{6,}\.m3u8$/.test(src)) return `<article class="gp"><p class="empty">This clip is not available.</p></article>`;
-    const tags = (p.tags || []).map(tag => `<a data-tag="${esc(tag)}">#${esc(tag)}</a>`).join(' ');
-    const em = p.myRx ? RXE[p.myRx] : '🤍';
-    return `<article class="gp gshort" data-id="${p.id}"><video class="gvplayer" data-src="${esc(src)}" playsinline muted loop preload="metadata" aria-label="Short video"></video><div class="gshort-shade"></div>
-      <div class="gshort-head"><span class="gshort-audio"><i class="fa-solid fa-music"></i> Original sound</span><span class="gshort-index">${String(index + 1).padStart(2, '0')}</span><button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button></div>
-      <div class="gshort-copy"><button class="gshort-profile" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${this.ago(p.createdAt)}</i></span></button>${p.text ? `<p>${this.txt(p.text)}</p>` : ''}${tags ? `<div class="gshort-tags">${tags}</div>` : ''}</div>
-      <div class="gact gshort-actions"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em}</span><em>${this.clipCount(p.likes)}</em></button><button class="cm" onclick="GIST.nav('post','${p.id}')"><span><i class="fa-solid fa-comment"></i></span><em>${this.clipCount(p.comments)}</em></button><button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${this.clipCount(p.shares)}</em></button><button class="gshort-sound" onclick="GIST.clipSound(this)" aria-label="Toggle sound"><i class="fa-solid fa-volume-xmark"></i></button></div>
-      <div class="grs gshort-reactions">${this.rxSummary(p)}</div></article>`
-  },
   card(p, o) {
-    if (p.video && ['clips', 'clips-following'].includes(this.tab) && this.cur && this.cur.fn === 'feed') return this.shortCard(p, o && o.index || 0);
     o = o || {}; const a = p.author, tmp = String(p.id).startsWith('tmp');
     const who = `<button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${tmp ? 'posting…' : this.ago(p.createdAt)}${p.edited ? ' · edited' : ''}</i></span></button>`;
     let shared = '';
-    if (p.shared) shared = p.shared.deleted ? `<div class="gshared gone">This post is no longer available.</div>` : `<div class="gshared" onclick="GIST.nav('post','${p.shared.id}')"><div class="gsh"><b>${esc(p.shared.author.displayName)}${this.vb(p.shared.author)}</b><i>${p.shared.author.username ? '@' + esc(p.shared.author.username) : ''} · ${this.ago(p.shared.createdAt)}</i></div>${p.shared.text ? `<div class="gtx">${this.txt(p.shared.text)}</div>` : ''}${this.videoHtml(p.shared)}${this.imgs(p.shared)}${this.matchcard(p.shared.match, p.shared.id)}${this.electioncard(p.shared.election, p.shared.id)}${this.gamecard(p.shared.game)}</div>`;
+    if (p.shared) shared = p.shared.deleted ? `<div class="gshared gone">This post is no longer available.</div>` : `<div class="gshared" onclick="GIST.nav('post','${p.shared.id}')"><div class="gsh"><b>${esc(p.shared.author.displayName)}${this.vb(p.shared.author)}</b><i>${p.shared.author.username ? '@' + esc(p.shared.author.username) : ''} · ${this.ago(p.shared.createdAt)}</i></div>${p.shared.text ? `<div class="gtx">${this.txt(p.shared.text)}</div>` : ''}${this.imgs(p.shared)}${this.vid(p.shared)}${this.matchcard(p.shared.match, p.shared.id)}${this.electioncard(p.shared.election, p.shared.id)}${this.gamecard(p.shared.game)}</div>`;
     const em = p.myRx ? RXE[p.myRx] : '🤍';
     return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
-      ${p.text ? `<div class="gtx">${this.txt(p.text)}</div>` : ''}${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.videoHtml(p)}${this.imgs(p)}${this.pollHtml(p)}${this.gamecard(p.game)}${shared}
+      ${p.text ? `<div class="gtx">${this.txt(p.text)}</div>` : ''}${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${shared}
       <div class="grs">${this.rxSummary(p)}</div>
       <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em}</span><em>${p.likes || ''}</em></button>
       <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}"><span><i class="fa-solid fa-comment"></i></span><em>${p.comments || ''}</em></button>
       <button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${p.shares || ''}</em></button></div></article>`
   },
-  list(arr) { return arr.map((p, index) => this.card(p, { index })).join('') },
+  list(arr) { return arr.map(p => this.card(p)).join('') },
   /* ---------- feed ---------- */
   feed() {
-    this.pauseVideos(); this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {}, clipMode = ['clips', 'clips-following'].includes(T) && !this.tagF;
-    const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['clips', 'Clips'], ['me', 'Me']];
+    this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
+    const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['reels', 'Reels <i class="fa-solid fa-clapperboard"></i>'], ['me', 'Me']];
     const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-    const clips = `<div class="abody gclips-mode" id="ab"><div class="gclip-topline"><button class="gclip-posts" onclick="GIST.setTab('latest')"><i class="fa-solid fa-layer-group"></i><span>Posts</span></button><div class="gclip-feed-tabs"><button class="${T === 'clips-following' ? 'on' : ''}" onclick="GIST.setTab('clips-following')">Following</button><button class="${T === 'clips' ? 'on' : ''}" onclick="GIST.setTab('clips')">For You</button></div><div class="gclip-tools">${this.bell()}<button class="gclip-create" onclick="GIST.newClip()" aria-label="Create clip"><i class="fa-solid fa-plus"></i></button></div></div><div id="gpending"></div><div id="gnew"></div><div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading clips…</p>'}</div></div>`;
-    const posts = `<div class="abody" id="ab"><div id="gpending"></div><div id="gnew"></div>
-      <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button></div>
-      <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div><div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`;
-    PH.shell(clipMode ? 'Clips' : this.tagF ? '#' + esc(this.tagF) : 'Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', clipMode ? clips : posts, clipMode ? '' : seg, clipMode ? '' : this.bell());
-    if (clipMode) { const av = PH.$a(), screen = document.querySelector('.screen'); av.classList.add('gist-clips-view'); screen.classList.add('gist-clips-theme'); screen.style.setProperty('--hbg', '#11150f') }
-    this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore(); this.bindVideos()
+    PH.shell(this.tagF ? '#' + esc(this.tagF) : 'Your pulse', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
+      <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>
+      <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div>
+      <div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`, seg, this.bell());
+    this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore()
   },
-  newClip() { this.nav('compose'); requestAnimationFrame(() => this.chooseVideo()) },
-  setTab(t) { if (this.tab === t && !this.tagF) return; this.tab = t; this.tagF = ''; this.stack = []; this.pending = 0; this.feed() },
+  setTab(t) { if (t === 'reels') return RL.show(''); if (this.tab === t && !this.tagF) return; this.tab = t; this.tagF = ''; this.stack = []; this.pending = 0; this.feed() },
   tag(t) { t = String(t).toLowerCase(); this.tagF = t; this.pending = 0; this.stack = [{ fn: 'feed', args: [], scroll: 0 }]; this.cur = null; this.feed() },
   untag() { this.tagF = ''; this.stack = []; this.feed() },
   trendHtml() { return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
   loadTrend() { NET.swr('/api/ac/gist/trending', (d) => { this.trend = d.tags || []; const e = $('gtrend'); if (e && !this.tagF) e.innerHTML = this.trendHtml() }, { ttl: 60000 }).catch(() => { }) },
   feedHtml(F) {
-    if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : ['clips', 'clips-following'].includes(this.tab) ? `<div class="gclip-empty"><span class="gclip-empty-icon"><i class="fa-solid fa-film"></i></span><b>${this.tab === 'clips-following' ? 'No clips from people you follow yet.' : 'Your For You feed is ready.'}</b><p>${this.tab === 'clips-following' ? 'Follow a creator or switch to For You to find more.' : 'Be the first to share a short video.'}</p><button onclick="GIST.newClip()"><i class="fa-solid fa-plus"></i> Create a clip</button></div>` : this.tab === 'following' ? '<p class="empty">Nothing here yet. Follow players to see their gists. Find someone, or open a profile from a post.</p>' : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : '<p class="empty">No gists yet. Be the first to post something! 🎉</p>';
+    if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : this.tab === 'following' ? '<p class="empty">Nothing here yet. Follow players to see their gists. Find someone, or open a profile from a post.</p>' : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : '<p class="empty">No gists yet. Be the first to post something! 🎉</p>';
     return this.list(F.p) + (F.more ? '<button class="gmorebtn" id="gmb" onclick="GIST.loadFeed()">Load more</button>' : '<p class="empty gend">You are all caught up ✨</p>')
   },
   feedUrl(first) {
@@ -194,7 +119,7 @@ const GIST = {
     const apply = (r, cached) => {
       this.put(r.posts); const pend = F.p.filter(p => String(p.id).startsWith('tmp'));
       F.p = (first ? pend.concat(r.posts) : F.p.concat(r.posts)).filter((x, i, a) => a.findIndex(y => y.id === x.id) === i); F.more = r.more; F.next = r.next || 0; F.ok = true; F.busy = false;
-      if (this.cur && this.cur.fn === 'feed' && this.key() === k) { const f = $('gfeed'); if (f) { const st = $('ab').scrollTop; f.innerHTML = this.feedHtml(F); if (first && !cached) $('ab').scrollTop = st; this.watchMore(); this.bindVideos() } }
+      if (this.cur && this.cur.fn === 'feed' && this.key() === k) { const f = $('gfeed'); if (f) { const st = $('ab').scrollTop; f.innerHTML = this.feedHtml(F); if (first && !cached) $('ab').scrollTop = st; this.watchMore() } }
     };
     F.busy = true;
     NET.swr(url, apply, { persist: first && !this.tagF && this.tab === 'latest', ttl: first ? 0 : 5000 }).catch(e => {
@@ -211,38 +136,6 @@ const GIST = {
     this.pending++; this.showPill()
   },
   showPill() { const e = $('gnew'); if (!e) return; e.innerHTML = this.pending > 0 ? `<button class="gpill" onclick="GIST.flush()">↑ ${this.pending} new gist${this.pending > 1 ? 's' : ''}</button>` : '' },
-  loadPendingClips() {
-    this.api('/videos/uploads/pending').then(r => {
-      this.pendingClips = (r.uploads || []).map(x => ({ ...x, checking: false })); this.drawPendingClips();
-      this.pendingClips.forEach(x => this.resumeClip(x.uploadId, true));
-    }).catch(() => {});
-  },
-  drawPendingClips() {
-    const box = $('gpending'); if (!box) return;
-    box.innerHTML = this.pendingClips.length ? `<div class="gclip-pending"><b>Unfinished clips</b>${this.pendingClips.map(x => `<div class="gclip-pending-row"><span><strong>${esc(x.caption || 'Video clip')}</strong><small>${x.message ? esc(x.message) : x.status === 'processing' ? 'Processing on Mux…' : 'Upload not finished or still processing'}</small></span><button onclick="GIST.resumeClip('${esc(x.uploadId)}')" ${x.checking ? 'disabled' : ''}>${x.checking ? 'Checking…' : 'Check'}</button><button class="gclip-discard" onclick="GIST.discardClip('${esc(x.uploadId)}')" aria-label="Discard clip"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '';
-  },
-  async resumeClip(uploadId, auto = false) {
-    const row = this.pendingClips.find(x => x.uploadId === uploadId); if (!row || row.checking) return;
-    row.checking = true; this.drawPendingClips();
-    try {
-      const state = await this.api('/videos/uploads/' + encodeURIComponent(uploadId));
-      if (state.status === 'ready' && state.post) {
-        this.put([state.post]); this.pendingClips = this.pendingClips.filter(x => x.uploadId !== uploadId); this.drawPendingClips();
-        Object.values(this.F).forEach(f => { f.stale = true }); NET.drop('/api/ac/gist/profile');
-        if (this.cur && this.cur.fn === 'feed') this.loadFeed(true); toast('Recovered and published a clip ✓'); return
-      }
-      if (state.status === 'failed') { row.status = 'failed'; row.message = state.message || 'This clip could not be processed. Discard it and upload again.'; return }
-      row.status = state.status || 'uploading'; row.message = '';
-    } catch (e) { row.message = 'Could not check this clip yet.' }
-    finally {
-      row.checking = false; this.drawPendingClips();
-      if (auto && PH.view === 'gist' && this.pendingClips.some(x => x.uploadId === uploadId) && row.status !== 'failed') setTimeout(() => this.resumeClip(uploadId, true), 10000)
-    }
-  },
-  async discardClip(uploadId) {
-    try { await this.api('/videos/uploads/' + encodeURIComponent(uploadId), { method: 'DELETE' }); this.pendingClips = this.pendingClips.filter(x => x.uploadId !== uploadId); this.drawPendingClips(); toast('Pending clip discarded') }
-    catch (e) { this.err(e) }
-  },
   flush() { this.pending = 0; this.showPill(); const ab = $('ab'); if (ab) ab.scrollTo({ top: 0, behavior: 'smooth' }); this.loadFeed(true) },
   /* ---------- reactions (optimistic) ---------- */
   react(id, type) {
@@ -269,7 +162,7 @@ const GIST = {
       const l = c.querySelector('.lk'); l.classList.toggle('on', !!p.myRx); l.querySelector('span').textContent = p.myRx ? RXE[p.myRx] : '🤍'; l.querySelector('em').textContent = p.likes || '';
       c.querySelector('.grs').innerHTML = this.rxSummary(p); c.querySelector('.cm em').textContent = p.comments || ''; c.querySelector('.sh em').textContent = p.shares || '';
       const pl = c.querySelector('.gpoll'); if (pl) pl.outerHTML = this.pollHtml(p)
-    })
+    }); if (typeof RL !== 'undefined') RL.sync(id)
   },
   /* ---------- polls ---------- */
   vote(id, i) {
@@ -285,7 +178,7 @@ const GIST = {
     const draw = p => { if (!this.cur || this.cur.fn !== 'post' || this.cur.args[0] !== id) return;
       PH.shell('Gist', 'GIST.back()', `<div class="abody" id="ab">${this.card(p, { detail: 1 })}<div class="lab2">COMMENTS</div><div id="gcm"><p class="empty">Loading…</p></div></div>
         <div id="grep"></div><div class="gcin"><input id="gc_in" placeholder="Write a comment…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')GIST.send('${id}')"><button onclick="GIST.send('${id}')" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></div>`);
-      this.bindVideos(); this.loadComments(id) };
+      this.loadComments(id) };
     if (have && !have.deleted) draw(have); else PH.shell('Gist', 'GIST.back()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
     this.api('/posts/' + id).then(r => { this.put([r.post]); this.cache.set(id, r.post); if (!have) draw(r.post); else this.sync(id) }).catch(e => { if (!have) { const ab = $('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>` } })
   },
@@ -402,8 +295,7 @@ const GIST = {
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
       <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
-      <div class="lab2">GISTS</div>${posts.length ? this.list(posts) + (more ? '<button class="gmorebtn" onclick="GIST.moreProfile()">Load more</button>' : '') : '<p class="empty">No gists yet.</p>'}`;
-    this.bindVideos()
+      <div class="lab2">GISTS</div>${posts.length ? this.list(posts) + (more ? '<button class="gmorebtn" onclick="GIST.moreProfile()">Load more</button>' : '') : '<p class="empty">No gists yet.</p>'}`
   },
   async moreProfile() { const p = this.pf; try { const last = p.posts.filter(x => !x.pinned); const r = await this.api('/profile/' + p.r.user.id + '/posts?before=' + encodeURIComponent((last[last.length - 1] || p.posts[p.posts.length - 1]).createdAt)); this.put(r.posts); p.posts = p.posts.concat(r.posts); p.more = r.more; const s = $('ab').scrollTop; this.drawProfile(); $('ab').scrollTop = s } catch (e) { this.err(e) } },
   follow() {
@@ -449,7 +341,7 @@ const GIST = {
     PH.sheet(`<h3>Edit gist</h3><textarea class="gedit" id="ged" maxlength="500">${esc(p.text)}</textarea><div class="aerr" id="gede"></div><button class="btn p" onclick="GIST.saveEdit('${id}')">Save</button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`); const t = $('ged'); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length) }
   },
   saveEdit(id) {
-    const p = this.cache.get(id), t = ($('ged').value || '').trim(); if (!t && !p.images.length && !p.video && !p.game && !p.poll && !p.shared) return $('gede').textContent = 'A gist cannot be empty.';
+    const p = this.cache.get(id), t = ($('ged').value || '').trim(); if (!t && !p.images.length && !p.game && !p.poll && !p.shared) return $('gede').textContent = 'A gist cannot be empty.';
     if (t === p.text) return PH.closeSheet(); const old = { text: p.text, edited: p.edited, tags: p.tags }; PH.closeSheet(); p.text = t; p.edited = true; this.redraw(id);
     this.api('/posts/' + id, { method: 'PUT', body: { text: t } }).then(r => { this.put([r.post]); Object.assign(p, r.post); this.redraw(id); toast('Gist updated ✓') }).catch(e => { Object.assign(p, old); this.redraw(id); this.err(e) })
   },
@@ -464,7 +356,7 @@ const GIST = {
   del(id) {
     PH.closeSheet(); const p = this.cache.get(id); this.cache.delete(id); Object.values(this.F).forEach(f => { f.p = f.p.filter(x => x.id !== id) });
     if (this.pf) { this.pf.posts = this.pf.posts.filter(x => x.id !== id); this.pf.r.postsCount = Math.max(0, this.pf.r.postsCount - 1) } toast('Gist deleted');
-    if (this.cur.fn === 'post') this.back(); else if (this.cur.fn === 'profile') this.drawProfile(); else { const f = $('gfeed'); if (f) f.innerHTML = this.feedHtml(this.FF()) }
+    if (this.cur.fn === 'reels') RL.removed(id); else if (this.cur.fn === 'post') this.back(); else if (this.cur.fn === 'profile') this.drawProfile(); else { const f = $('gfeed'); if (f) f.innerHTML = this.feedHtml(this.FF()) }
     this.api('/posts/' + id, { method: 'DELETE' }).catch(e => { this.err(e); if (p) { this.cache.set(id, p); Object.values(this.F).forEach(f => f.stale = true); this.loadFeed(true) } })
   },
   reportSheet(id) { PH.closeSheet(); PH.sheet(`<h3>Report this gist</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam', 'Harassment', 'Inappropriate content', 'Scam'].map(r => `<button class="fopt" onclick="GIST.report('${id}','${r}')"><span>${r}</span></button>`).join('')}`) },
@@ -492,77 +384,28 @@ const GIST = {
   /* ---------- composer ---------- */
   compose(mode, arg) {
     this.set('compose', mode, arg); const u = NET.user || {};
-    if (!this.C) this.C = { text: '', images: [], game: null, shared: null, poll: null, busy: false, videoFile: null, videoUploadId: '', videoUploadUrl: '', videoUploaded: false };
+    if (!this.C) this.C = { text: '', images: [], game: null, shared: null, poll: null, busy: false };
     const C = this.C;
     if (mode === 'share' && arg) { C.shared = this.cache.get(arg) || null }
     if (mode === 'image' && arg && !C.images.some(i => i.url === arg.url)) C.images.push(arg);
     PH.shell(C.shared ? 'Share gist' : 'New gist', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp"><div class="gcwho">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></div>
       <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'What’s the gist? Use #hashtags and @mentions <i class="fa-solid fa-gamepad"></i>'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
-      <div id="gc_att"></div><input id="gvideo_file" type="file" accept="video/mp4,video/webm,video/quicktime" hidden onchange="GIST.pickVideo(this)"><div class="gtools"><button onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button onclick="GIST.chooseVideo()"><i class="fa-solid fa-film"></i> Video</button><button onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
+      <div id="gc_att"></div><div class="gtools"><button onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button onclick="RL.pick()"><i class="fa-solid fa-video"></i> Video</button><button onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
       <div class="aerr" id="gc_e"></div><button class="btn p" id="gc_b" onclick="GIST.submit()">${C.shared ? 'Share' : 'Post'}</button></div></div>`);
-    this.attDraw(); this.cc(); if (mode === 'photos') this.pickOpen(); else if (!('ontouchstart' in window)) $('gc_t').focus()
+    this.attDraw(); this.cc(); if (mode === 'photos') this.pickOpen(); else if (mode === 'video') RL.pick(); else if (!('ontouchstart' in window)) $('gc_t').focus()
   },
-  cancelCompose() { if (this.C && this.C.busy) return toast('Please wait for the clip upload to finish.'); const t = $('gc_t'); if (this.C) this.C.text = t ? t.value : ''; const C = this.C; if (C && (C.text || C.images.length || C.game || C.poll || C.videoFile) && !C.shared) { PH.sheet(`<h3>Discard this gist?</h3><button class="fopt red out" onclick="PH.closeSheet();GIST.C=null;GIST.back()"><span>Discard</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Keep writing</span></button>`) } else { this.C = null; this.back() } },
+  cancelCompose() { const t = $('gc_t'); if (this.C) this.C.text = t ? t.value : ''; if (this.C && this.C.video && !this.C.text) { RL.rm() } const C = this.C; if (C && (C.text || C.images.length || C.game || C.poll || C.video) && !C.shared) { PH.sheet(`<h3>Discard this gist?</h3><button class="fopt red out" onclick="PH.closeSheet();GIST.C=null;GIST.back()"><span>Discard</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Keep writing</span></button>`) } else { this.C = null; this.back() } },
   cc() { const t = $('gc_t'); if (!t) return; this.C.text = t.value; const n = t.value.length, c = $('gcc'); c.textContent = n ? n + ' / 500' : ''; this.btn() },
-  btn() { const C = this.C, b = $('gc_b'); if (!b) return; b.disabled = C.busy || !(C.text.trim() || C.images.length || C.game || C.shared || C.poll || C.videoFile); b.textContent = C.busy ? (C.uploadMsg || 'Uploading clip…') : C.videoFile ? (C.videoUploaded ? 'Check clip processing' : 'Publish clip') : C.shared ? 'Share' : 'Post' },
+  btn() { const C = this.C, b = $('gc_b'); if (!b) return; b.disabled = C.busy || !(C.text.trim() || C.images.length || C.game || C.shared || C.poll || C.video); b.textContent = C.shared ? 'Share' : 'Post' },
   attDraw() {
     const C = this.C, a = $('gc_att'); if (!a) return;
-    a.innerHTML = (C.videoFile ? `<div class="gvid-att"><i class="fa-solid fa-film"></i><span><b>${esc(C.videoFile.name)}</b><small>${C.videoUploaded ? 'Uploaded — waiting for video processing' : 'Short video clip'}</small></span>${C.videoUploaded ? '' : '<button onclick="GIST.removeVideo()" aria-label="Remove video"><i class="fa-solid fa-xmark"></i></button>'}</div>` : '') +
-      (C.images.length ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
+    a.innerHTML = RL.prevHtml(C) + (C.images.length ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
       (C.poll ? `<div class="gpollp"><b><i class="fa-solid fa-chart-simple"></i> Poll · ${C.poll.hours >= 24 ? C.poll.hours / 24 + 'd' : C.poll.hours + 'h'}</b>${C.poll.options.map(o => `<span>${esc(o)}</span>`).join('')}<button onclick="GIST.C.poll=null;GIST.attDraw()" aria-label="Remove poll"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.game ? `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(C.game.name)}</b><small>${C.game.code ? 'Room code <code>' + esc(C.game.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.C.game=null;GIST.attDraw()"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.shared ? `<div class="gshared"><div class="gsh"><b>${esc(C.shared.author.displayName)}</b></div>${C.shared.text ? `<div class="gtx">${this.txt(C.shared.text.slice(0, 200))}</div>` : ''}${this.imgs(C.shared)}</div>` : ''); this.btn()
   },
-  chooseVideo() { if (!this.C) return; if (this.C.images.length || this.C.game || this.C.shared || this.C.poll) return toast('A clip is posted by itself. Remove other attachments first.'); if (this.C.videoUploaded) return toast('This clip is already uploaded and still processing.'); $('gvideo_file').click() },
-  pickVideo(input) {
-    const file = input.files && input.files[0]; input.value = ''; if (!file) return;
-    const extOk = /\.(mp4|webm|mov)$/i.test(file.name || '');
-    if (!(String(file.type || '').startsWith('video/') || extOk)) return toast('Choose an MP4, WebM, or MOV video.');
-    if (file.size > 500 * 1024 * 1024) return toast('Clips must be smaller than 500 MB.');
-    if (this.C.images.length || this.C.game || this.C.shared || this.C.poll) return toast('A clip is posted by itself. Remove other attachments first.');
-    this.C.videoFile = file; this.C.videoUploadId = ''; this.C.videoUploadUrl = ''; this.C.videoUploaded = false; this.C.uploadMsg = ''; this.attDraw()
-  },
-  removeVideo() { const C = this.C; if (!C || C.videoUploaded) return; C.videoFile = null; C.videoUploadId = ''; C.videoUploadUrl = ''; C.uploadMsg = ''; this.attDraw() },
-  async publishVideo() {
-    const C = this.C, error = $('gc_e'); if (!C || !C.videoFile || C.busy) return;
-    C.text = ($('gc_t').value || '').trim(); C.busy = true; C.uploadMsg = 'Preparing upload…'; if (error) error.textContent = ''; this.btn();
-    try {
-      if (!C.videoUploadId) {
-        const upload = await this.api('/videos/uploads', { method: 'POST', body: { caption: C.text, fileSize: C.videoFile.size, contentType: C.videoFile.type || 'application/octet-stream' } });
-        C.videoUploadId = upload.uploadId; C.videoUploadUrl = upload.uploadUrl; $('gc_t').disabled = true
-      }
-      if (!C.videoUploaded) {
-        C.uploadMsg = 'Uploading clip…'; this.btn();
-        await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest(); xhr.open('PUT', C.videoUploadUrl);
-          if (C.videoFile.type) xhr.setRequestHeader('Content-Type', C.videoFile.type);
-          xhr.upload.onprogress = event => { if (event.lengthComputable) { C.uploadMsg = `Uploading ${Math.round(event.loaded / event.total * 100)}%`; this.btn() } };
-          xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error('The video upload failed. Check your connection and try again.'));
-          xhr.onerror = () => reject(new Error('The video upload failed. Check your connection and try again.'));
-          xhr.send(C.videoFile)
-        });
-        C.videoUploaded = true; C.uploadMsg = 'Upload complete — processing…'; this.attDraw(); this.btn()
-      }
-      for (let i = 0; i < 180; i++) {
-        const state = await this.api('/videos/uploads/' + encodeURIComponent(C.videoUploadId));
-        if (state.status === 'ready' && state.post) {
-          const post = state.post, activeComposer = this.C === C && PH.view === 'gist' && this.cur && this.cur.fn === 'compose';
-          this.put([post]); if (this.C === C) this.C = null; NET.drop('/api/ac/gist/profile');
-          if (activeComposer) { this.tab = 'clips'; this.tagF = ''; this.stack = []; this.F.clips = { p: [post], more: false, ok: true, next: 0 }; this.feed() }
-          else { Object.values(this.F).forEach(f => { f.stale = true }); if (PH.view === 'gist' && this.cur && this.cur.fn === 'feed') this.loadFeed(true) }
-          toast('Clip published ✓'); return
-        }
-        if (state.status === 'failed') throw new Error(state.message || 'The video could not be processed.');
-        C.uploadMsg = state.status === 'processing' ? 'Processing clip…' : 'Finishing upload…'; this.btn();
-        await new Promise(resolve => setTimeout(resolve, 3000))
-      }
-      throw new Error('The clip is uploaded and still processing. Tap “Check clip processing” to check again shortly.')
-    } catch (e) { if (error) error.textContent = e.message || 'The clip could not be published.' }
-    finally { if (this.C === C) { C.busy = false; C.uploadMsg = ''; this.btn() } }
-  },
   rmImg(i) { this.C.images.splice(i, 1); this.attDraw() },
   pollSheet() {
-    if (this.C.videoFile) return toast('A clip is posted by itself. Remove it before adding a poll.');
     const P = this.C.poll || { options: ['', ''], hours: 24 }; this.pp = { options: P.options.slice(), hours: P.hours };
     PH.sheet(`<h3>Create a poll</h3><div id="pp_o"></div><button class="fopt" id="pp_add" onclick="GIST.ppAdd()"><span><i class="fa-solid fa-plus"></i> Add option</span></button><div class="lab2">POLL LENGTH</div><div class="pre" id="pp_h">${[[1, '1 hour'], [6, '6 hours'], [24, '1 day'], [72, '3 days'], [168, '7 days']].map(h => `<button class="${h[0] === this.pp.hours ? 'on' : ''}" onclick="GIST.pp.hours=${h[0]};GIST.ppDraw()">${h[1]}</button>`).join('')}</div><div class="aerr" id="pp_e"></div><button class="btn p" onclick="GIST.ppSave()">Add poll</button>`); this.ppDraw()
   },
@@ -571,7 +414,7 @@ const GIST = {
   ppSave() { const o = this.pp.options.map(x => x.trim()).filter(Boolean); if (o.length < 2) return $('pp_e').textContent = 'Add at least 2 options.'; this.C.poll = { options: o, hours: this.pp.hours }; PH.closeSheet(); this.attDraw() },
   /* optimistic submit: the post shows up instantly; the server catches up in the background */
   submit() {
-    const C = this.C; if (C.busy) return; C.text = ($('gc_t').value || ''); if (C.videoFile) return this.publishVideo(); const u = NET.user || {}, orig = C.shared && C.shared.id;
+    const C = this.C; if (C.busy) return; if (C.video) return RL.publish(); C.text = ($('gc_t').value || ''); const u = NET.user || {}, orig = C.shared && C.shared.id;
     const body = { text: C.text, images: C.images.map(i => i.src === 'mine' ? { src: 'mine', id: i.id } : { src: 'platform', url: i.url }) };
     if (C.game) body.game = { key: C.game.key, code: C.game.code }; if (C.shared) body.sharedFrom = C.shared.id; if (C.poll) body.poll = C.poll;
     const tmp = { id: 'tmp' + Date.now(), author: { id: u.id, displayName: u.displayName || 'You', username: u.username || '', avatar: u.avatar || '', verified: !!u.verified }, mine: true, text: C.text.trim(), images: C.images.map(i => ({ url: i.url, thumb: i.thumb || i.url })), game: C.game ? { key: C.game.key, name: C.game.name, code: C.game.code } : null, match: null, election: null, tags: [], pinned: false, edited: false, likes: 0, rx: {}, comments: 0, shares: 0, myRx: '', liked: false, createdAt: new Date().toISOString(), shared: C.shared || undefined,
@@ -584,9 +427,9 @@ const GIST = {
     }).catch(e => { this.cache.delete(tmp.id); Object.values(this.F).forEach(f => { f.p = f.p.filter(x => x !== tmp) }); this.err(e); this.C = C; if (this.cur && this.cur.fn === 'feed') this.nav('compose') })
   },
   /* ---------- photo picker ---------- */
-  pickOpen() { if (this.C.videoFile) return toast('A clip is posted by itself. Remove it before adding photos.'); this.pk.tab = 'mine'; PH.sheet(`<h3>Add photos</h3><div class="seg2 gpk" id="pk_tabs"></div><div id="pk_body"></div><button class="btn p" onclick="PH.closeSheet();GIST.attDraw()">Done</button>`); this.pickDraw(); this.pickLoad() },
+  pickOpen() { if (this.C && this.C.video) return toast('Remove the video first to add photos.'); this.pk.tab = 'mine'; PH.sheet(`<h3>Add photos</h3><div class="seg2 gpk" id="pk_tabs"></div><div id="pk_body"></div><button class="btn p" onclick="PH.closeSheet();GIST.attDraw()">Done</button>`); this.pickDraw(); this.pickLoad() },
   pickTab(t) { this.pk.tab = t; this.pickDraw(); this.pickLoad() },
-  async pickLoad() { const k = this.pk; try { if (k.tab === 'mine' && !k.mine) { const r = await NET.api('/api/ac/photos'); k.mine = r.photos || [] } if (k.tab === 'plat' && !k.plat) { const r = await this.api('/gallery/platform'); k.plat = r.photos || [] } } catch (e) { this.err(e); if (k.tab === 'mine') k.mine = []; else k.plat = [] } this.pickDraw() },
+  async pickLoad() { const k = this.pk; try { if (k.tab === 'mine' && !k.mine) { const r = await NET.api('/api/ac/photos'); k.mine = (r.photos || []).filter(x => !x.video) } if (k.tab === 'plat' && !k.plat) { const r = await this.api('/gallery/platform'); k.plat = r.photos || [] } } catch (e) { this.err(e); if (k.tab === 'mine') k.mine = []; else k.plat = [] } this.pickDraw() },
   has(it) { return this.C.images.some(i => (i.id && i.id === it.id) || (i.url && i.url === it.url)) },
   pickDraw() {
     const k = this.pk, t = $('pk_tabs'), b = $('pk_body'); if (!t || !b) return;
@@ -599,14 +442,13 @@ const GIST = {
   },
   pickToggle(tab, i) { const L = tab === 'mine' ? this.pk.mine : this.pk.plat, p = L[i], C = this.C; const at = C.images.findIndex(x => (x.id && x.id === p.id) || (x.url && x.url === p.url)); if (at >= 0) C.images.splice(at, 1); else { if (C.images.length >= 10) return toast('You can add up to 10 photos'); C.images.push(tab === 'mine' ? { src: 'mine', id: p.id, url: p.url, thumb: p.thumb || p.url } : { src: 'platform', url: p.url, thumb: p.thumb || p.url }) } this.pickDraw() },
   async pickFiles(inp) {
-    if (this.C.videoFile) return toast('A clip is posted by itself. Remove it before adding photos.');
     const files = [...inp.files]; inp.value = ''; const k = this.pk; if (!files.length) return; k.busy = true; this.pickDraw();
     for (const f of files) { if (this.C.images.length >= 10) { toast('You can add up to 10 photos'); break } if (!f.type.startsWith('image/')) continue;
       try { const data = await PH.resize(f, 1600, .88), r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: data } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }) } catch (e) { this.err(e); break } }
     k.busy = false; this.pickDraw(); this.attDraw()
   },
   /* ---------- game link picker ---------- */
-  async gameSheet() { if (this.C.videoFile) return toast('A clip is posted by itself. Remove it before attaching a game.'); if (!this.games) { try { this.games = (await this.api('/games')).games } catch (e) { return this.err(e) } } this.gsel = this.C.game ? this.C.game.key : null; PH.sheet(`<h3>Attach a game</h3><p class="hint2">Pick a game. Add a room code if you already created a room so friends can join in one tap.</p><div class="pre" id="gg_list"></div><input class="sinput" id="gg_code" placeholder="Room code or invite link (optional)" autocapitalize="characters" autocomplete="off" value="${esc(this.C.game && this.C.game.code || '')}"><div class="aerr" id="gg_e"></div><button class="btn p" onclick="GIST.gameAttach()">Attach</button>`); this.gameDraw() },
+  async gameSheet() { if (!this.games) { try { this.games = (await this.api('/games')).games } catch (e) { return this.err(e) } } this.gsel = this.C.game ? this.C.game.key : null; PH.sheet(`<h3>Attach a game</h3><p class="hint2">Pick a game. Add a room code if you already created a room so friends can join in one tap.</p><div class="pre" id="gg_list"></div><input class="sinput" id="gg_code" placeholder="Room code or invite link (optional)" autocapitalize="characters" autocomplete="off" value="${esc(this.C.game && this.C.game.code || '')}"><div class="aerr" id="gg_e"></div><button class="btn p" onclick="GIST.gameAttach()">Attach</button>`); this.gameDraw() },
   gameDraw() { const l = $('gg_list'); if (l) l.innerHTML = this.games.map(g => `<button class="${g.key === this.gsel ? 'on' : ''}" onclick="GIST.gsel='${g.key}';GIST.gameDraw()">${esc(g.name)}</button>`).join('') },
   gameAttach() { if (!this.gsel) return $('gg_e').textContent = 'Pick a game first.'; let v = ($('gg_code').value || '').trim(); const m = /[?&]code=([A-Za-z0-9]+)/.exec(v); if (m) v = m[1]; v = v.toUpperCase(); if (v && !/^[A-Z0-9]{3,8}$/.test(v)) return $('gg_e').textContent = 'Room codes are 3 to 8 letters or numbers.'; const g = this.games.find(x => x.key === this.gsel); this.C.game = { key: g.key, name: g.name, code: v }; PH.closeSheet(); this.attDraw() }
 };
