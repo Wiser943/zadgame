@@ -54,10 +54,10 @@ const GIST = {
     if (n === 1) return `<div class="gimgs n1">${one(0)}</div>`;
     return `<div class="gcar"><div class="gcs" onscroll="GIST.car(this)">${p.images.map((_, i) => one(i)).join('')}</div><span class="gcn">1/${n}</span><div class="gdots">${p.images.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`
   },
-  videoHtml(p, controls = true) {
+  videoHtml(p) {
     const src = p.video && p.video.playbackUrl;
     if (!src || !/^https:\/\/stream\.mux\.com\/[A-Za-z0-9_-]{6,}\.m3u8$/.test(src)) return '';
-    return `<div class="gvinline"><video class="gvplayer" data-src="${esc(src)}" ${controls ? 'controls' : ''} playsinline muted loop preload="metadata" aria-label="Video clip"></video></div>`
+    return `<div class="gvinline gvideo-shell" onclick="GIST.videoSurface(this,event)"><video class="gvplayer" data-src="${esc(src)}" playsinline muted loop preload="metadata" aria-label="Video clip"></video><div class="gvideo-ui is-paused"><button type="button" class="gvideo-center" onclick="GIST.videoToggle(this,event)" aria-label="Play video"><i class="fa-solid fa-play"></i></button><div class="gvideo-controls" role="group" aria-label="Video playback controls"><button type="button" class="gvideo-play" onclick="GIST.videoToggle(this,event)" aria-label="Play video"><i class="fa-solid fa-play"></i></button><span class="gvideo-time" aria-live="off">0:00 / 0:00</span><input class="gvideo-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek video"><button type="button" class="gvideo-sound" onclick="GIST.videoSound(this,event)" aria-label="Turn sound on"><i class="fa-solid fa-volume-xmark"></i></button><button type="button" class="gvideo-fullscreen" onclick="GIST.videoFullscreen(this,event)" aria-label="Enter fullscreen"><i class="fa-solid fa-expand"></i></button></div></div></div>`
   },
   ensureHls() {
     if (window.Hls) return Promise.resolve(window.Hls);
@@ -67,6 +67,30 @@ const GIST = {
     });
     return this.hlsPromise
   },
+  videoTime(seconds) { const s = Math.max(0, Math.floor(Number(seconds) || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') },
+  videoToggle(control, event) { if (event) event.stopPropagation(); const shell = control.closest('.gvideo-shell'), video = shell && shell.querySelector('.gvplayer'); if (!video) return; if (video.paused) video.play().catch(() => toast('Tap to start video')); else video.pause() },
+  videoSurface(shell, event) { if (event) event.stopPropagation(); if (!event || event.target.closest('.gvideo-controls,.gvideo-center')) return; this.videoToggle(shell, event) },
+  videoSound(button, event) { if (event) event.stopPropagation(); const shell = button.closest('.gvideo-shell'), video = shell && shell.querySelector('.gvplayer'); if (!video) return; video.muted = !video.muted; this.bindPostVideoControls(video) },
+  videoFullscreen(button, event) { if (event) event.stopPropagation(); const shell = button.closest('.gvideo-shell'); if (!shell) return; const exit = document.fullscreenElement === shell; if (exit && document.exitFullscreen) document.exitFullscreen().catch(() => {}); else if (!exit && shell.requestFullscreen) shell.requestFullscreen().catch(() => {}); else if (!exit) toast('Fullscreen is not available in this browser') },
+  bindPostVideoControls(video) {
+    const shell = video.closest('.gvideo-shell'); if (!shell || shell.dataset.playerBound) return;
+    const ui = shell.querySelector('.gvideo-ui'), seek = shell.querySelector('.gvideo-seek'), clock = shell.querySelector('.gvideo-time'), sound = shell.querySelector('.gvideo-sound'), fs = shell.querySelector('.gvideo-fullscreen');
+    if (!ui || !seek || !clock || !sound) return;
+    shell.dataset.playerBound = '1'; video.controls = false; let dragging = false;
+    const update = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0, current = Number.isFinite(video.currentTime) ? video.currentTime : 0, pct = duration ? Math.min(100, current / duration * 100) : 0, playing = !video.paused && !video.ended;
+      if (!dragging) { seek.max = String(duration || 100); seek.value = String(duration ? Math.min(current, duration) : 0) }
+      seek.style.setProperty('--video-progress', pct + '%'); clock.textContent = this.videoTime(current) + ' / ' + this.videoTime(duration);
+      ui.classList.toggle('is-playing', playing); ui.classList.toggle('is-paused', !playing);
+      shell.querySelectorAll('.gvideo-play,.gvideo-center').forEach(button => { button.innerHTML = `<i class="fa-solid fa-${playing ? 'pause' : 'play'}"></i>`; button.setAttribute('aria-label', playing ? 'Pause video' : 'Play video') });
+      sound.innerHTML = video.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>'; sound.setAttribute('aria-label', video.muted ? 'Turn sound on' : 'Mute video');
+    };
+    video.addEventListener('play', update); video.addEventListener('pause', update); video.addEventListener('ended', update); video.addEventListener('timeupdate', update); video.addEventListener('loadedmetadata', update); video.addEventListener('durationchange', update); video.addEventListener('volumechange', update);
+    seek.addEventListener('pointerdown', e => { e.stopPropagation(); dragging = true }); seek.addEventListener('change', () => { dragging = false; update() });
+    seek.addEventListener('input', e => { e.stopPropagation(); if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = Number(seek.value); update() });
+    seek.addEventListener('click', e => e.stopPropagation()); if (fs) fs.hidden = !(shell.requestFullscreen || video.requestFullscreen);
+    update()
+  },
   bindVideos() {
     const area = $('ab'); this.pauseVideos(); if (!area) return;
     const videos = [...area.querySelectorAll('.gvplayer[data-src]')]; if (!videos.length) return;
@@ -74,6 +98,7 @@ const GIST = {
     this.ensureHls().then(Hls => {
       if (!area.isConnected || generation !== this.videoGeneration) return;
       videos.forEach(video => {
+        if (!video.closest('.gshort')) this.bindPostVideoControls(video);
         if (Hls && Hls.isSupported()) { const player = new Hls({ enableWorker: true }); player.loadSource(video.dataset.src); player.attachMedia(video); this.clipPlayers.push(player) }
         else video.src = video.dataset.src;
       });
@@ -110,19 +135,20 @@ const GIST = {
     return `<div class="gpoll" data-id="${p.id}">${q.options.map((o, i) => show ? `<div class="gpo res ${q.myVote === i ? 'mine' : ''}"><u style="width:${tot ? Math.round(o.votes / tot * 100) : 0}%"></u><span>${esc(o.text)}${q.myVote === i ? ' ✓' : ''}</span><b>${tot ? Math.round(o.votes / tot * 100) : 0}%</b></div>` : `<button class="gpo" onclick="GIST.vote('${p.id}',${i})"><span>${esc(o.text)}</span></button>`).join('')}<small>${tot} vote${tot === 1 ? '' : 's'} · ${left}</small></div>`
   },
   rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '❤️'}</span> ${p.likes}` : '' },
-  shortCard(p) {
+  clipCount(n) { n = Math.max(0, Number(n) || 0); return n >= 1000000 ? (n / 1000000).toFixed(n >= 10000000 ? 0 : 1).replace(/\.0$/, '') + 'M' : n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(n || '') },
+  shortCard(p, index = 0) {
     const a = p.author, src = p.video && p.video.playbackUrl;
     if (!src || !/^https:\/\/stream\.mux\.com\/[A-Za-z0-9_-]{6,}\.m3u8$/.test(src)) return `<article class="gp"><p class="empty">This clip is not available.</p></article>`;
     const tags = (p.tags || []).map(tag => `<a data-tag="${esc(tag)}">#${esc(tag)}</a>`).join(' ');
     const em = p.myRx ? RXE[p.myRx] : '🤍';
     return `<article class="gp gshort" data-id="${p.id}"><video class="gvplayer" data-src="${esc(src)}" playsinline muted loop preload="metadata" aria-label="Short video"></video><div class="gshort-shade"></div>
-      <div class="gshort-head"><button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${this.ago(p.createdAt)}</i></span></button><button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button></div>
-      <div class="gshort-copy"><button class="gshort-creator" onclick="GIST.nav('profile','${a.id}')">@${esc(a.username || a.displayName)}</button>${p.text ? `<p>${this.txt(p.text)}</p>` : ''}${tags ? `<div class="gshort-tags">${tags}</div>` : ''}</div>
-      <div class="gact gshort-actions"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em}</span><em>${p.likes || ''}</em></button><button class="cm" onclick="GIST.nav('post','${p.id}')"><span><i class="fa-solid fa-comment"></i></span><em>${p.comments || ''}</em></button><button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${p.shares || ''}</em></button><button class="gshort-sound" onclick="GIST.clipSound(this)" aria-label="Toggle sound"><i class="fa-solid fa-volume-xmark"></i></button></div>
+      <div class="gshort-head"><span class="gshort-audio"><i class="fa-solid fa-music"></i> Original sound</span><span class="gshort-index">${String(index + 1).padStart(2, '0')}</span><button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button></div>
+      <div class="gshort-copy"><button class="gshort-profile" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${this.ago(p.createdAt)}</i></span></button>${p.text ? `<p>${this.txt(p.text)}</p>` : ''}${tags ? `<div class="gshort-tags">${tags}</div>` : ''}</div>
+      <div class="gact gshort-actions"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em}</span><em>${this.clipCount(p.likes)}</em></button><button class="cm" onclick="GIST.nav('post','${p.id}')"><span><i class="fa-solid fa-comment"></i></span><em>${this.clipCount(p.comments)}</em></button><button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${this.clipCount(p.shares)}</em></button><button class="gshort-sound" onclick="GIST.clipSound(this)" aria-label="Toggle sound"><i class="fa-solid fa-volume-xmark"></i></button></div>
       <div class="grs gshort-reactions">${this.rxSummary(p)}</div></article>`
   },
   card(p, o) {
-    if (p.video && this.tab === 'clips' && this.cur && this.cur.fn === 'feed') return this.shortCard(p);
+    if (p.video && ['clips', 'clips-following'].includes(this.tab) && this.cur && this.cur.fn === 'feed') return this.shortCard(p, o && o.index || 0);
     o = o || {}; const a = p.author, tmp = String(p.id).startsWith('tmp');
     const who = `<button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${tmp ? 'posting…' : this.ago(p.createdAt)}${p.edited ? ' · edited' : ''}</i></span></button>`;
     let shared = '';
@@ -135,25 +161,28 @@ const GIST = {
       <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}"><span><i class="fa-solid fa-comment"></i></span><em>${p.comments || ''}</em></button>
       <button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${p.shares || ''}</em></button></div></article>`
   },
-  list(arr) { return arr.map(p => this.card(p)).join('') },
+  list(arr) { return arr.map((p, index) => this.card(p, { index })).join('') },
   /* ---------- feed ---------- */
   feed() {
-    this.pauseVideos(); this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
+    this.pauseVideos(); this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {}, clipMode = ['clips', 'clips-following'].includes(T) && !this.tagF;
     const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['clips', 'Clips'], ['me', 'Me']];
     const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-    PH.shell(this.tab === 'clips' && !this.tagF ? 'Clips' : this.tagF ? '#' + esc(this.tagF) : 'Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody ${this.tab === 'clips' && !this.tagF ? 'gclips-mode' : ''}" id="ab"><div id="gpending"></div><div id="gnew"></div>
+    const clips = `<div class="abody gclips-mode" id="ab"><div class="gclip-topline"><button class="gclip-posts" onclick="GIST.setTab('latest')"><i class="fa-solid fa-layer-group"></i><span>Posts</span></button><div class="gclip-feed-tabs"><button class="${T === 'clips-following' ? 'on' : ''}" onclick="GIST.setTab('clips-following')">Following</button><button class="${T === 'clips' ? 'on' : ''}" onclick="GIST.setTab('clips')">For You</button></div><div class="gclip-tools">${this.bell()}<button class="gclip-create" onclick="GIST.newClip()" aria-label="Create clip"><i class="fa-solid fa-plus"></i></button></div></div><div id="gpending"></div><div id="gnew"></div><div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading clips…</p>'}</div></div>`;
+    const posts = `<div class="abody" id="ab"><div id="gpending"></div><div id="gnew"></div>
       <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button></div>
-      <div id="gtrend">${this.tagF || this.tab === 'clips' ? '' : this.trendHtml()}</div>
-      <div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`, seg, this.bell());
+      <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div><div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`;
+    PH.shell(clipMode ? 'Clips' : this.tagF ? '#' + esc(this.tagF) : 'Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', clipMode ? clips : posts, clipMode ? '' : seg, clipMode ? '' : this.bell());
+    if (clipMode) { const av = PH.$a(), screen = document.querySelector('.screen'); av.classList.add('gist-clips-view'); screen.classList.add('gist-clips-theme'); screen.style.setProperty('--hbg', '#11150f') }
     this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore(); this.bindVideos()
   },
+  newClip() { this.nav('compose'); requestAnimationFrame(() => this.chooseVideo()) },
   setTab(t) { if (this.tab === t && !this.tagF) return; this.tab = t; this.tagF = ''; this.stack = []; this.pending = 0; this.feed() },
   tag(t) { t = String(t).toLowerCase(); this.tagF = t; this.pending = 0; this.stack = [{ fn: 'feed', args: [], scroll: 0 }]; this.cur = null; this.feed() },
   untag() { this.tagF = ''; this.stack = []; this.feed() },
   trendHtml() { return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
   loadTrend() { NET.swr('/api/ac/gist/trending', (d) => { this.trend = d.tags || []; const e = $('gtrend'); if (e && !this.tagF) e.innerHTML = this.trendHtml() }, { ttl: 60000 }).catch(() => { }) },
   feedHtml(F) {
-    if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : this.tab === 'clips' ? '<p class="empty gclip-empty">No clips yet. Share a short video from New gist to start the feed.</p>' : this.tab === 'following' ? '<p class="empty">Nothing here yet. Follow players to see their gists. Find someone, or open a profile from a post.</p>' : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : '<p class="empty">No gists yet. Be the first to post something! 🎉</p>';
+    if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : ['clips', 'clips-following'].includes(this.tab) ? `<div class="gclip-empty"><span class="gclip-empty-icon"><i class="fa-solid fa-film"></i></span><b>${this.tab === 'clips-following' ? 'No clips from people you follow yet.' : 'Your For You feed is ready.'}</b><p>${this.tab === 'clips-following' ? 'Follow a creator or switch to For You to find more.' : 'Be the first to share a short video.'}</p><button onclick="GIST.newClip()"><i class="fa-solid fa-plus"></i> Create a clip</button></div>` : this.tab === 'following' ? '<p class="empty">Nothing here yet. Follow players to see their gists. Find someone, or open a profile from a post.</p>' : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : '<p class="empty">No gists yet. Be the first to post something! 🎉</p>';
     return this.list(F.p) + (F.more ? '<button class="gmorebtn" id="gmb" onclick="GIST.loadFeed()">Load more</button>' : '<p class="empty gend">You are all caught up ✨</p>')
   },
   feedUrl(first) {

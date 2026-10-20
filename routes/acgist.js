@@ -106,14 +106,14 @@ async function page(filter, req, uid, extra = {}) {
 /* ---------- feed: latest | trending | following | me (+ ?tag=) ---------- */
 router.get('/feed', async (req, res, next) => {
   try {
-    const uid = me(req), blocked = await blockedSet(uid), tab = String(req.query.tab || 'latest');
+    const uid = me(req), blocked = await blockedSet(uid), tab = String(req.query.tab || 'latest'), clipTab = tab === 'clips' || tab === 'clips-following';
     const filter = {};
-    if (tab === 'following') {
+    if (tab === 'following' || tab === 'clips-following') {
       const f = await GistFollow.find({ follower: uid }).select('following').lean();
       filter.author = { $in: f.map((x) => x.following).concat(uid).filter((id) => !blocked.includes(id)) };
     } else if (tab === 'me') filter.author = uid;
     else if (blocked.length) filter.author = { $nin: blocked };
-    if (tab === 'clips') filter['video.playbackId'] = { $exists: true, $ne: '' };
+    if (clipTab) filter['video.playbackId'] = { $exists: true, $ne: '' };
     const tag = String(req.query.tag || '').toLowerCase().replace(/^#/, '');
     if (tag) filter.tags = tag;
     if (tab === 'trending' && !tag) {
