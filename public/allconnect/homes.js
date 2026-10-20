@@ -39,9 +39,40 @@ const HOMES = {
       const activeP = p && p.id === active, expired = p && p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date();
       const price = h.mode === 'rent' ? h.rent : h.price;
       const term = h.mode === 'rent' ? `Rent · ${h.rentDays} days` : 'Permanent ownership';
-      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
+      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.layoutLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
     }
     target.innerHTML = rows.join('');
+  },
+  /* expansions: the server owns the prices; this only mirrors them for display */
+  next(p, h) {
+    const lv = Math.max(0, Number(p && p.level) | 0), ex = (this.data && this.data.expansions) || [], n = ex[lv + 1];
+    if (!n || !h || h.mode !== 'buy' || !p || p.tenure !== 'owned') return null;
+    return { level: n.level, name: n.name, grid: n.grid, description: n.description, cost: Math.max(1000, Math.round((h.price * n.share) / 1000) * 1000) };
+  },
+  layoutLine(p, h) {
+    const g = homeGrid(p), n = this.next(p, h);
+    return `<p>Layout · ${g}×${g} cells${(Number(p.level) | 0) ? ' (expanded)' : ''}${n ? ` · next: ${this.esc(n.name)} (${n.grid}×${n.grid})` : (h.mode === 'buy' ? ' · fully expanded' : '')}</p>`;
+  },
+  expandButton(p, h) {
+    const n = this.next(p, h); if (!n) return '';
+    return `<button class="secondary" ${this.busy ? 'disabled' : ''} onclick="HOMES.expand('${this.esc(p.id)}')">Expand · ${this.money(n.cost)}</button>`;
+  },
+  async expand(id) {
+    if (this.busy) return;
+    const p = ((this.data && this.data.properties) || []).find(x => x.id === id), h = ((this.data && this.data.catalogue) || []).find(x => p && x.id === p.type), n = this.next(p, h);
+    if (!n) return;
+    if (!confirm(`${n.name}: ${n.description}\n\nThis costs ${this.money(n.cost)}. Continue?`)) return;
+    this.busy = true; this.errorMessage = ''; this.draw();
+    try {
+      const r = await NET.api('/api/ac/properties/' + encodeURIComponent(id) + '/expand', { method: 'POST' });
+      if (!r || !r.ac || !r.property) throw new Error('The server did not confirm the expansion. Refresh and check your homes before trying again.');
+      applyAC(r.ac);
+      this.data.properties = (r.ac.properties || []);
+      this.data.cash = r.ac.cash;
+      toast(`${n.name} added ✓ Your home is now ${n.grid}×${n.grid}`);
+    } catch (e) {
+      this.errorMessage = e.status === 402 ? 'You do not have enough money for this expansion.' : e.status === 401 ? 'Your session has expired. Please sign in again.' : (e.message || 'The expansion could not be completed. Please try again.');
+    } finally { this.busy = false; this.draw(); }
   },
   esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
   async acquire(type) {
@@ -66,6 +97,7 @@ const HOMES = {
     const p = (S.properties || []).find(x => x.id === S.activePropertyId);
     S.activeProperty = p || null;
     S.items = p ? p.items : (S.legacyItems || []);
+    S.grid = homeGrid(p);
     setPaint(p ? (p.paint || S.legacyPaint) : S.legacyPaint);
     if (window.ROOM3D) ROOM3D.sync();
     if (window.BUY && BUY.active) BUY.draw();

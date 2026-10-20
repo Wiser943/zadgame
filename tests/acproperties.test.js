@@ -29,3 +29,23 @@ test('public AllConnect state returns safe property fields and furniture without
   assert.equal(Object.hasOwn(out.properties[0], 'secret'), false);
   assert.equal(Object.hasOwn(out.properties[0].items[0], 'extra'), false);
 });
+
+test('home expansions: bought homes grow 6 -> 8 -> 10 cells with server-defined prices; rentals cannot expand', () => {
+  assert.equal(P.gridFor(0), 6); assert.equal(P.gridFor(1), 8); assert.equal(P.gridFor(2), 10); assert.equal(P.gridFor(99), 10); assert.equal(P.gridFor(-3), 6);
+  assert.equal(P.levelOf({}), 0); assert.equal(P.levelOf({ level: 1 }), 1); assert.equal(P.levelOf({ level: 7 }), 0);
+  assert.equal(P.expansionCost('mainland_room', 0), 0);              // rent-only home
+  assert.equal(P.expansionCost('self_contained', 0), 105000);          // 30% of 350,000
+  assert.equal(P.expansionCost('self_contained', 1), 210000);          // 60% of 350,000
+  assert.equal(P.expansionCost('self_contained', 2), 0);               // already maxed
+  const pub = P.publicHome({ id: 'h', type: 'mini_flat', tenure: 'owned', items: [] });
+  assert.equal(pub.level, 0); assert.equal(pub.grid, 6); assert.equal(pub.nextExpansion.grid, 8); assert.equal(pub.nextExpansion.cost, 270000);
+  assert.equal(P.publicHome({ id: 'h', type: 'mini_flat', tenure: 'owned', level: 2, items: [] }).nextExpansion, null);
+});
+
+test('furniture placement follows the room size of the expanded home', () => {
+  const F = require('../utils/furniture');
+  assert.equal(F.canPlace([], 'Plastic Chair', 7, 7, 0), false);               // default 6x6 room
+  assert.equal(F.canPlace([], 'Plastic Chair', 7, 7, 0, undefined, 8), true);  // level 1: 8x8
+  assert.equal(F.canPlace([], 'Plastic Chair', 8, 8, 0, undefined, 8), false);
+  assert.equal(F.canPlace([], 'Velvet Sofa', 8, 9, 0, undefined, 10), true);
+});
