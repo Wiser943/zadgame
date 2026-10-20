@@ -1,0 +1,186 @@
+/* AllConnect phone apps: Contacts, Messages (chats + updates), Settings, friend visits.
+   Everything talks to /api/ac/* (same login as GameHub) and live events from the /ac socket. */
+const FOOD=[['jollof','🍛','Jollof rice & chicken',2500],['suya','🍢','Suya',1500],['chops','🥟','Small chops',1000]];
+const KIND_BG={warn:'#fdecec',good:'#e8f5ee',friend:'#e8f0fe',admin:'#fff4d6',update:'#efe8ff',info:'#f1f3f9'};
+const PH={
+  view:null,tab:'chats',chatId:null,peer:null,msgs:[],friends:null,updates:[],local:[],localUnread:0,badges:{messages:0,requests:0,updates:0},low:{},
+  $a(){return document.getElementById('appview')},
+  init(){this.refreshBadges();this.initShade()},
+  async refreshBadges(){try{this.badges=await NET.api('/api/ac/badges')}catch(e){}this.drawBadges()},
+  drawBadges(){const n={Messages:this.badges.messages+this.badges.updates+this.localUnread,Contacts:this.badges.requests};
+    document.querySelectorAll('.app[data-app]').forEach(a=>{const b=a.querySelector('.bdg');if(!b)return;const v=n[a.dataset.app]||0;b.textContent=v>9?'9+':(v||'')});
+    const gb=document.querySelector('.gbell');if(gb){const c=(this.badges.updates||0)+(this.localUnread||0);let e=gb.querySelector('em');if(c){if(!e){e=document.createElement('em');gb.appendChild(e)}e.textContent=c>9?'9+':c}else if(e)e.remove()}},
+  /* ----- shell ----- */
+  open(name){document.querySelector('.screen').classList.add('light');({contacts:()=>this.contacts(),messages:()=>this.messages(),settings:()=>this.settings(),bank:()=>this.bank(),camera:()=>CAM.open(),police:()=>POL.open(),gist:()=>GIST.open(),jobs:()=>JOBS.open(),invest:()=>INV.open(),venues:()=>VEN.open(),style:()=>STYLE.open(),ads:()=>ADS.open()})[name]()},
+  close(){if(this.view==='gist'&&typeof GIST!=='undefined')GIST.pauseVideos();if(window.PET&&this.view==='pet')PET.leave();if(this.view==='jobs'&&window.WORKCARD)setTimeout(()=>WORKCARD.flush(true),300);const sc=document.querySelector('.screen');sc.classList.remove('light');sc.style.removeProperty('--hbg');this.view=null;this.chatId=null;if(window.ADS)ADS.hideHost();this.shade(false,true);this.$a().innerHTML='';this.refreshBadges()},
+  /* header tint per app, so the status bar + header match the app instead of being plain white everywhere */
+  TINT:{contacts:'#e3f5ec',messages:'#e6eeff',chat:'#e6eeff',group:'#e6eeff',groupinfo:'#e6eeff',settings:'#eceef5',bank:'#e0f3e8',jobs:'#fff0d6',ads:'#fde4ef',pet:'#fff1d6',gist:'#ffe8d9',police:'#e2e8fb',appsearch:'#eceef5',adapp:'#eceef5'},
+  shell(title,back,body,sub,right){const av=this.$a();av.classList.remove('adview','hdr-min','hdr-off');clearTimeout(window.ADS&&ADS.ht);if(window.ADS)ADS.hideHost();document.querySelector('.screen').style.setProperty('--hbg',this.TINT[this.view]||'#ffffff');
+    av.innerHTML=`<div class="ahw"><div class="ahead"><button class="aback" onclick="${back}">‹</button><h2>${title}</h2>${right||''}</div>${sub||''}</div>${body}`;this.watchScroll()},
+  /* headers slide away when you scroll down and come back when you scroll up (chats keep their header) */
+  watchScroll(){const a=this.$a();if(a._ws)return;a._ws=1;
+    a.addEventListener('scroll',e=>{const b=e.target;if(!b.classList||!b.classList.contains('abody')||b.classList.contains('chat'))return;
+      const w=a.querySelector('.ahw');if(!w)return;const y=b.scrollTop,dy=y-(b._l||0);if(Math.abs(dy)<8)return;b._l=y;
+      const h=w.offsetHeight,room=b.scrollHeight-b.clientHeight;
+      if(dy>0&&y>60&&room>h+80){w.style.marginTop=-h+'px';w.classList.add('hide')}else if(dy<0||y<=0){w.style.marginTop='';w.classList.remove('hide')}},true)},
+  sheet(html){this.closeSheet();const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
+  closeSheet(){this.$a().querySelectorAll('.asheet').forEach(s=>s.remove())},
+  /* Avatar: the initial circle is ALWAYS drawn, and the profile photo is layered on top of it.
+     If the photo is missing, blocked, broken or still loading, the first letter of the name shows instead of an empty circle. */
+  avOk(a){return typeof a==='string'&&/^(https?:\/\/|\/\/|\/(?!\/)|data:image\/|blob:)/i.test(a.trim())},
+  av(u,big){u=u||{};const raw=String(u.username||u.displayName||u.name||'?').replace(/^@/,'').trim();const n=(Array.from(raw)[0]||'?').toUpperCase();
+    const c=['#6366f1','#0ea5e9','#f97316','#10b981','#ec4899','#8b5cf6'][(n.codePointAt(0)||0)%6];const a=this.avOk(u.avatar)?u.avatar.trim():'';
+    return `<span class="avi ${big?'big':''}" data-avl style="background:${c}">${esc(n)}${a?`<img class="avp" src="${esc(a)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</span>`},
+  imgFail(img){if(img&&img.remove)img.remove()},
+  vb(u){return u&&u.verified?'<i class="vbadge" title="Verified">✔</i>':''},
+  name(u){return (u.username?'@'+esc(u.username):esc(u.displayName))+this.vb(u)},
+  time(t){const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')},
+  rel(t){const s=(Date.now()-new Date(t))/1000;return s<60?'now':s<3600?Math.floor(s/60)+'m':s<86400?Math.floor(s/3600)+'h':Math.floor(s/86400)+'d'},
+  /* ----- Contacts ----- */
+  async contacts(){this.view='contacts';this.shell('Contacts','PH.close()','<div class="abody" id="ab"><p class="empty">Loading…</p></div>');if(this.friends)this.drawContacts();await this.loadFriends()},
+  async loadFriends(){try{await NET.swr('/api/ac/friends',d=>{this.friends=d;if(this.view==='contacts')this.drawContacts()})}catch(e){return toast(e.message)}},
+  prof(id,back){return `onclick="GIST.openProfile('${id}',()=>${back})"`},
+  drawContacts(){const f=this.friends,keep=(document.getElementById('psearch')||{}).value||'';
+    const row=(u,right,sub)=>`<div class="row"><div class="rowp" ${this.prof(u.id,'PH.contacts()')}>${this.av(u)}<div class="rt"><b>${this.name(u)}</b><span>${sub}</span></div></div>${right}</div>`;
+    let h=`<div class="row"><span class="avi" style="background:var(--sfo);font-size:22px">👵🏾</span><div class="rt"><b>Mummy</b><span>Always picks up</span></div><button class="rbtn grn" onclick="PH.mummy()">📞</button></div>
+      <div class="lab2">FIND A PLAYER</div><input class="sinput" id="psearch" value="${esc(keep)}" placeholder="Search by username, e.g. @tobi" oninput="PH.search(this.value)" autocomplete="off"><div id="sres"></div>`;
+    if(f.incoming.length)h+=`<div class="lab2">FRIEND REQUESTS</div>`+f.incoming.map(u=>row(u,`<button class="rbtn grn" onclick="PH.respond('${u.id}',1)">✓</button><button class="rbtn gry" onclick="PH.respond('${u.id}',0)">✕</button>`,'wants to be friends')).join('');
+    if(f.outgoing.length)h+=`<div class="lab2">PENDING</div>`+f.outgoing.map(u=>row(u,`<button class="pbtn" onclick="PH.unfriend('${u.id}')">Cancel</button>`,'Waiting for them to accept')).join('');
+    h+=`<div class="lab2">${f.friends.length?'MY FRIENDS':'PLAYERS YOU\'VE MET'}</div>`;
+    h+=f.friends.length?f.friends.map(u=>row(u,`<button class="rbtn blu" onclick="PH.chat('${u.id}')">💬</button>`,u.online?'<i class="ond"></i>Online':'Offline')).join(''):`<p class="empty">Search a friend's username above to add them. When they accept, they show up here.</p>`;
+    document.getElementById('ab').innerHTML=h;if(keep)this.search(keep,true)},
+  mummy(){toast('Mummy: "Wetin you chop today? Come home o!" 🍲')},
+  search(q,quiet){clearTimeout(this.st);const box=document.getElementById('sres');q=q.trim();if(q.replace(/^@/,'').length<2){if(box)box.innerHTML='';return}
+    this.st=setTimeout(async()=>{try{const r=await NET.api('/api/ac/search?q='+encodeURIComponent(q));const b=document.getElementById('sres');if(!b)return;
+      b.innerHTML=r.users.length?r.users.map(u=>{const btn={none:`<button class="pbtn blu" onclick="PH.add('${u.id}')">Add</button>`,sent:`<span class="tag">Pending</span>`,received:`<button class="pbtn grn" onclick="PH.respond('${u.id}',1)">Accept</button>`,friend:`<button class="pbtn blu" onclick="PH.chat('${u.id}')">Chat</button>`,blocked:`<button class="pbtn" onclick="PH.unblock('${u.id}')">Unblock</button>`}[u.relation];
+        return `<div class="row"><div class="rowp" ${this.prof(u.id,'PH.contacts()')}>${this.av(u)}<div class="rt"><b>${this.name(u)}</b><span>${u.username?esc(u.displayName):'No username yet'}</span></div></div>${btn}</div>`}).join(''):'<p class="empty">No players found.</p>'}catch(e){if(!quiet)toast(e.message)}},quiet?0:300)},
+  async unblock(id){try{await NET.api('/api/ac/unblock/'+id,{method:'POST'});NET.drop('/api/ac/');toast('Unblocked');const q=(document.getElementById('psearch')||{}).value;if(q)this.search(q,true)}catch(e){toast(e.message)}},
+  async add(id){try{NET.drop('/api/ac/friends');const r=await NET.api(`/api/ac/friends/${id}/request`,{method:'POST'});toast(r.state==='friend'?'You are now friends 🎉':'Friend request sent ✓');await this.loadFriends()}catch(e){toast(e.message)}},
+  async respond(id,yes){try{NET.drop('/api/ac/friends');await NET.api(`/api/ac/friends/${id}/${yes?'accept':'decline'}`,{method:'POST'});toast(yes?'Friend added 🎉':'Request declined');await this.loadFriends();this.refreshBadges()}catch(e){toast(e.message)}},
+  async unfriend(id){try{NET.drop('/api/ac/friends');await NET.api(`/api/ac/friends/${id}`,{method:'DELETE'});await this.loadFriends()}catch(e){toast(e.message)}},
+  /* ----- Messages ----- */
+  async messages(tab){const sh=tab==='updates';if(tab&&!sh)this.tab=tab;if(this.tab!=='groups')this.tab='chats';this.view='messages';this.chatId=null;
+    const seg=`<div class="seg2"><button class="${this.tab==='chats'?'on':''}" onclick="PH.messages('chats')">Chats</button><button class="${this.tab==='groups'?'on':''}" onclick="PH.messages('groups')">Groups</button></div>`;
+    this.shell('Messages','PH.close()','<div class="abody" id="ab"><p class="empty">Loading…</p></div>',seg);
+    if(sh)this.shade(true);
+    this.tab==='groups'?await this.drawGroups():await this.drawChats()},
+  async drawGroups(){const paint=()=>{if(this.view!=='messages'||this.tab!=='groups')return;const ab=document.getElementById('ab');if(ab)ab.innerHTML=this.groupSection()};
+    if(this._gload)paint();try{await NET.swr('/api/ac/groups',d=>{this.groups=d.groups;this._gload=1;paint()})}catch(e){toast(e.message)}},
+  async drawChats(){const paint=()=>{if(this.view!=='messages'||this.tab!=='chats')return;this.paintChats(this._chats||[])};try{await NET.swr('/api/ac/chats',d=>{this._chats=d.chats;paint()})}catch(e){toast(e.message)}},
+  paintChats(list){
+    const nt='Notification' in window&&Notification.permission==='default';
+    const prev=m=>m.deleted?'🚫 Message deleted':m.kind==='text'?(m.from===NET.user.id?'You: ':'')+(m.image?'📷 ':'')+esc(m.text||(m.image?'Photo':m.voice?'Voice note':'')):esc(m.text);
+    document.getElementById('ab').innerHTML=(nt?`<div class="banner">🔔 <span>Get notified when friends message you</span><button onclick="PH.notifOn()">Turn on</button></div>`:'')+
+      `<input class="sinput" id="msgto" placeholder="✏️ Message someone: @username" onkeydown="if(event.key==='Enter')PH.msgTo(this.value)" autocomplete="off">
+       <div class="lab2">CHATS</div>`+(list.length?list.map(c=>`<div class="row tap" onclick="PH.chat('${c.peer.id}')">${this.av(c.peer,1)}<div class="rt"><b>${this.name(c.peer)}</b><span class="pv">${prev(c.last)}</span></div><div class="rm"><small>${this.rel(c.last.at)}</small>${c.unread?`<em class="cnt">${c.unread}</em>`:''}</div></div>`).join(''):`<p class="empty">No chats yet. Add friends in Contacts, then message them here.</p>`)},
+  async msgTo(v){const q=v.trim().replace(/^@/,'').toLowerCase();if(!q)return;try{const f=await NET.api('/api/ac/friends');const m=f.friends.find(u=>(u.username||'').toLowerCase()===q||u.displayName.toLowerCase()===q);m?this.chat(m.id):toast(`Add @${q} as a friend in Contacts first`)}catch(e){toast(e.message)}},
+  notifOn(){return this.notifEnable()},
+  /* ONE notifications switch: in-app alerts and background push turn on together, and stay off together if either can't work */
+  async notifEnable(){const ok=await PUSH.enable();if(ok)toast('Notifications on 🔔');await PUSH.status();if(this.view==='settings')this.settings();else if(this.view==='messages')this.messages()},
+  async notifPaint(){const el=document.getElementById('nright');if(!el)return;const st=await PUSH.status();if(!document.getElementById('nright'))return;
+    el.innerHTML=st.perm==='unsupported'?'<b>Not supported</b>':st.on?'<b class="okc">On</b>':st.perm==='denied'?'<b>Blocked in browser</b>':'<button class="pbtn blu" onclick="PH.notifEnable()">Turn on</button>'},
+  /* ----- Updates: a panel you pull down from the top-left of the phone (status bar). Clear empties it. ----- */
+  shade(open,instant){let s=document.getElementById('ushade');
+    if(open===false){this.shadeOn=false;if(!s)return;if(instant)return s.remove();s.classList.remove('on');setTimeout(()=>{if(!this.shadeOn)s.remove()},260);return}
+    if(s&&this.shadeOn)return;
+    if(s)s.remove();s=document.createElement('div');s.id='ushade';s.className='ushade';
+    s.innerHTML=`<div class="ucard"><div class="uhead"><span class="uttl">Updates</span><button class="uclr" id="uclr" onclick="PH.clearUpdates()">Clear</button></div><div class="ubody" id="ubody"><p class="empty">Loading…</p></div><div class="ugrab"><i></i></div></div>`;
+    s.onclick=e=>{if(e.target===s)this.shade(false)};
+    let st=null;s.addEventListener('pointerdown',e=>{st={y:e.clientY,id:e.pointerId}});
+    s.addEventListener('pointermove',e=>{if(st&&e.pointerId===st.id&&st.y-e.clientY>50){st=null;this.shade(false)}});
+    ['pointerup','pointercancel'].forEach(k=>s.addEventListener(k,()=>{st=null}));
+    document.querySelector('.screen').appendChild(s);this.shadeOn=true;requestAnimationFrame(()=>s.classList.add('on'));this.drawShade()},
+  initShade(){const sb=document.querySelector('.screen .sb');if(!sb||sb._sh)return;sb._sh=1;let st=null;
+    sb.addEventListener('pointerdown',e=>{const r=sb.getBoundingClientRect();st=(e.clientX-r.left)<r.width*.5?{y:e.clientY,x:e.clientX,id:e.pointerId}:null});
+    sb.addEventListener('pointermove',e=>{if(!st||e.pointerId!==st.id)return;const dy=e.clientY-st.y;if(dy>28&&dy>Math.abs(e.clientX-st.x)){st=null;this.shade(true)}});
+    ['pointerup','pointercancel'].forEach(k=>sb.addEventListener(k,()=>{st=null}));
+    const t=document.getElementById('pt');if(t)t.addEventListener('click',()=>this.shade(true))},
+  async drawShade(){
+    const paint=rows=>{this.updates=rows;const b=document.getElementById('ubody');if(!b)return;
+      const all=[...rows,...this.local].sort((a,b)=>new Date(b.at)-new Date(a.at));const c=document.getElementById('uclr');if(c)c.disabled=!all.length;
+      b.innerHTML=all.length?all.map(u=>{const go=u.ref&&!u.local?` tap" onclick="PH.shade(false,true);PH.openUpd('${esc(u.ref)}')`:'';return `<div class="upd${go}"><span class="uic">${u.icon}</span><div class="ub k-${KIND_BG[u.kind]?u.kind:'info'}" style="background:${KIND_BG[u.kind]||KIND_BG.info}">${esc(u.text)}<small>${this.ago2(u.at)}${u.ref&&!u.local?' · tap to open':''}</small></div></div>`}).join(''):`<p class="empty">Nothing yet. Likes, comments, replies, mentions, new followers, friend requests and news from the team show up here.</p>`};
+    paint(this.updates||[]);
+    try{await NET.swr('/api/ac/updates',d=>paint(d.updates))}catch(e){}
+    NET.api('/api/ac/updates/seen',{method:'POST'}).then(()=>{this.badges.updates=0;this.localUnread=0;this.drawBadges()}).catch(()=>{})},
+  async clearUpdates(){try{await NET.api('/api/ac/updates/clear',{method:'POST'})}catch(e){return toast(e.message)}
+    this.updates=[];this.local=[];this.localUnread=0;this.badges.updates=0;NET.drop('/api/ac/updates');this.drawShade();this.drawBadges();toast('Updates cleared')},
+  ago2(t){const d=new Date(t),s=(Date.now()-d)/1000;return s<60?'just now':s<3600?Math.floor(s/60)+'m ago':s<86400?this.time(t):d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+this.time(t)},
+  /* tapping a notification opens the gist / profile it is about */
+  openUpd(ref){const back=()=>PH.messages('updates');if(ref.startsWith('u:'))GIST.openProfile(ref.slice(2),back);else GIST.openPost(ref,back)},
+  local_(icon,text,kind){this.local.unshift({id:'l'+Date.now(),icon,text,kind,at:Date.now(),local:true});this.local.length=Math.min(this.local.length,30);if(!this.shadeOn)this.localUnread++;this.drawBadges();if(this.shadeOn)this.drawShade()},
+  /* ----- Chat ----- */
+  async chat(id,back){this.view='chat';this.chatId=id;this.replyTo=null;this.editing=null;this._tp=null;this.newId=null;this.newCount=0;this.chatBack=back||null;const bk=this.chatBack||'PH.messages()';document.querySelector('.screen').classList.add('light');
+    const hit=NET.cache.get('/api/ac/messages/'+id);
+    try{if(hit){this.peer=hit.d.peer;this.msgs=hit.d.messages;this.isFriend=hit.d.isFriend}else{const r=await NET.api('/api/ac/messages/'+id);NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});this.peer=r.peer;this.msgs=r.messages;this.isFriend=r.isFriend;this.markNew()}}catch(e){this.view='messages';return toast(e.message)}
+    if(hit)NET.api('/api/ac/messages/'+id).then(r=>{NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});if(this.view==='chat'&&this.chatId===id){this.msgs=r.messages;this.isFriend=r.isFriend;this.markNew();this.drawMsgs();this.applyPending(true);this.refreshBadges()}}).catch(()=>{});
+    const n=this.name(this.peer),fr=this.isFriend;
+    this.shell(`<span onclick="GIST.openProfile('${id}',()=>PH.chat('${id}'))" style="cursor:pointer">${n}</span>`,bk,`<div class="abody chat" id="ab"><div class="cmsgs" id="cm"></div></div>
+      <div class="qr">${['How far? 👋','I dey o 😄','Wetin dey happen?'].map(t=>`<button onclick="PH.send('${t}')">${t}</button>`).join('')}</div>
+      <div class="emo" id="emo" style="display:none">${['😂','😍','🙏🏾','🔥','👏🏾','😭','🎉','🍛'].map(e=>`<button onclick="PH.emoji('${e}')">${e}</button>`).join('')}</div>
+      <div id="crep"></div><div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><button class="ebtn" onclick="CHATX.pick()" aria-label="Send a photo"><span class="fa-solid fa-image"></span></button><input id="cinput" placeholder="Message ${n}…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')PH.sendInput()"><button class="sbtn vnmic" data-vn="chat" aria-label="Send, or hold to record a voice note"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`,
+      `<div class="csub">🔒 Private · only you and ${n} can see this</div><div class="chips2">
+        <button class="c3" onclick="PH.payUser('${id}','${esc(this.peer.username||'')}','PH.chat(\\'${id}\\')')">💸 Send money</button>${fr?`<button class="c1" onclick="PH.invite()">🏠 Invite over</button><button class="c2" onclick="PH.visit()">🚪 Visit them</button><button class="c4" onclick="PH.foodSheet()">🍛 Buy food</button>`:''}<button class="c5" onclick="PH.blockSheet()">🚫 Block</button><button class="c5" onclick="PH.reportSheet()">⚑ Report</button></div>`);
+    const cmEl=document.getElementById('cm');if(cmEl){cmEl.addEventListener('click',e=>this.tapMsg(e));if(window.CHATX)CHATX.bind(cmEl)}
+    this.drawMsgs();this.applyPending(!hit);this.refreshBadges()},
+  /* "New messages" divider: first incoming message that was unread when the chat was opened */
+  markNew(){if(this.newId)return;const me=NET.user.id,un=this.msgs.filter(m=>m.from!==me&&!m.read&&m.kind!=='system');if(un.length){this.newId=un[0].id;this.newCount=un.length;this._scrollNew=true}},
+  /* Coming from a push notification: open the chat with that message already selected for reply */
+  applyPending(fresh){const id=this.pendingReply;if(!id)return;let m=this.msgs.find(x=>x.id===id);
+    if(!m&&fresh){const inc=this.msgs.filter(x=>x.from!==NET.user.id&&x.kind==='text');m=inc[inc.length-1]}
+    if(!m)return;this.pendingReply=null;this.setReply(m.id,!!this.pendingFocus);this.pendingFocus=false;
+    const el=document.querySelector(`.msg[data-id="${m.id}"]`);if(el){el.classList.add('hl');if(!this.newId)el.scrollIntoView({block:'center'})}},
+  bubble(m,last){const mine=m.from===NET.user.id;
+    if(m.kind==='money'||m.kind==='food'||m.kind==='system')return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
+    if(m.kind==='invite')return `<div class="sys inv">${esc(m.text)} · ${this.time(m.at)}${mine?'':`<br><button onclick="PH.visit('${esc(m.propertyId||'')}')">Go over 🏠</button>`}</div>`;
+    return `<div class="msg ${mine?'me':'th'}" data-id="${m.id}"><div class="mb">${m.reply?`<div class="mrep"><b>${m.reply.from===NET.user.id?'You':esc(this.name(this.peer))}</b><span>${esc(m.reply.text)}</span></div>`:''}${esc(m.text)}</div><small>${this.time(m.at)}${mine&&last&&m.read?' · Seen':''}</small></div>`},
+  drawMsgs(keep){const el=document.getElementById('cm');if(!el)return;const st0=document.getElementById('ab').scrollTop;const lastMine=[...this.msgs].reverse().find(m=>m.from===NET.user.id&&m.kind==='text');
+    el.innerHTML=this.msgs.length?this.msgs.map(m=>(this.newId&&m.id===this.newId?`<div class="newdiv"><span>${this.newCount>1?this.newCount+' new messages':'New message'}</span></div>`:'')+this.bubble(m,lastMine&&m.id===lastMine.id)).join(''):`<p class="empty">Say hi to ${this.name(this.peer)} 👋</p>`;const b=document.getElementById('ab'),dv=el.querySelector('.newdiv');
+    if(dv&&this._scrollNew){this._scrollNew=false;dv.scrollIntoView({block:'start'})}else if(keep===true)b.scrollTop=st0;else b.scrollTop=b.scrollHeight},
+  push(m){if(this.msgs.some(x=>x.id===m.id))return;this.msgs.push(m);const h=NET.cache.get('/api/ac/messages/'+this.chatId);if(h)h.d.messages=this.msgs;NET.drop('/api/ac/chats');this.drawMsgs()},
+  emoji(e){const i=document.getElementById('cinput');i.value+=e;i.focus()},
+  sendInput(){const i=document.getElementById('cinput');const t=i.value.trim();if(!t)return;i.value='';this.send(t)},
+  async send(t){const rid=this.replyTo&&this.replyTo.id;this.cancelReply();try{this.push((await NET.api('/api/ac/messages/'+this.chatId,{method:'POST',body:{text:t,replyTo:rid||undefined}})).message)}catch(e){toast(e.message)}},
+  /* double-tap (or double-click) a message to reply to it, like WhatsApp */
+  tapMsg(e){const el=e.target.closest&&e.target.closest('.msg[data-id]');if(!el)return;const id=el.dataset.id,now=Date.now();
+    if(this._tp&&this._tp.id===id&&now-this._tp.t<380){this._tp=null;this.setReply(id)}else this._tp={id,t:now}},
+  setReply(id,focus){const m=this.msgs.find(x=>x.id===id);if(!m||m.kind!=='text')return;this.replyTo={id:m.id,from:m.from,text:String(m.text).slice(0,120)};
+    const who=m.from===NET.user.id?'You':this.name(this.peer),r=document.getElementById('crep');
+    if(r)r.innerHTML=`<div class="crepl"><div><b>Replying to ${esc(who)}</b><span>${esc(this.replyTo.text)}</span></div><button onclick="PH.cancelReply()" aria-label="Cancel reply">✕</button></div>`;
+    if(focus!==false){if(navigator.vibrate)navigator.vibrate(15);const i=document.getElementById('cinput');if(i)i.focus()}},
+  cancelReply(){this.replyTo=null;const r=document.getElementById('crep');if(r)r.innerHTML=''},
+  async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST',body:{propertyId:S.activePropertyId||''}})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
+  foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${Math.round(f[3]*(window.LAGOS?LAGOS.foodMult():1)).toLocaleString('en-NG')}</b></button>`).join('')}`)},
+  async buyFood(k){try{const r=await NET.api('/api/ac/buy-food/'+this.chatId,{method:'POST',body:{item:k}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Food delivered 🍛')}catch(e){toast(e.message)}},
+  blockSheet(){this.sheet(`<h3>Block ${this.name(this.peer)}?</h3><p class="hint2">They won't be able to find you, message you or send you money. You can unblock later.</p><button class="fopt red" onclick="PH.block()"><span>🚫 Block</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
+  async block(){try{await NET.api('/api/ac/block/'+this.chatId,{method:'POST'});toast('Blocked');this.tab='chats';this.messages()}catch(e){toast(e.message)}},
+  reportSheet(){this.sheet(`<h3>Report ${this.name(this.peer)}</h3><p class="hint2">Pick a reason. Our team reviews every report.</p>${['Spam','Harassment','Scam','Inappropriate'].map(r=>`<button class="fopt" onclick="PH.report('${r}')"><span>${r}</span></button>`).join('')}`)},
+  async report(r){try{await NET.api('/api/ac/report/'+this.chatId,{method:'POST',body:{reason:r}});this.closeSheet();toast('Report sent. Thank you 🙏🏾')}catch(e){toast(e.message)}},
+  async visit(propertyId=''){try{const q=propertyId?'?propertyId='+encodeURIComponent(propertyId):'';const r=await NET.api('/api/ac/visit/'+this.chatId+q);openVisit(r.host)}catch(e){toast(e.message)}},
+  notify(title,body,target){if(window.PUSH&&PUSH.ok===false)return;if(!document.hidden||!('Notification' in window)||Notification.permission!=='granted')return;try{const n=new Notification(title,{body,icon:'/pwa-192.png',tag:target?.type||'allconnect'});n.onclick=()=>{window.focus();location.href='/?open='+encodeURIComponent(target?.type||'updates')+(target?.id?'&id='+encodeURIComponent(target.id):'')+(target?.mid?'&mid='+encodeURIComponent(target.mid):'')+(target?.ref?'&ref='+encodeURIComponent(target.ref):'')};}catch(e){}},
+  openDeepLink(){const q=new URLSearchParams(location.search);let kind=q.get('open'),kept='';try{kept=sessionStorage.getItem('ac:open')||'';sessionStorage.removeItem('ac:open')}catch(e){}if(!kind)kind=kept;if(!kind)return;history.replaceState(null,'',history.state&&history.state.ac?location.pathname:'/play/home');if(kind==='chat'&&q.get('id')){this.pendingReply=q.get('mid')||null;this.pendingFocus=q.get('reply')==='1';this.open('messages');setTimeout(()=>this.chat(q.get('id')),80)}else if(kind==='gist'&&q.get('ref')){GIST.openPost(q.get('ref'))}else if(kind==='updates'){this.messages('updates') }else if(kind==='gamehub'){openHub()}else if(kind==='lagosrun'){openLagosRun()}else if(kind==='song'){const raw=q.get('track');if(raw){try{const track=JSON.parse(raw);nav('phone');setTimeout(()=>{SONGIFY.open();setTimeout(()=>SONGIFY.openSharedTrack(track),80)},100)}catch(e){toast('This shared song link is invalid.')}}}},
+  /* ----- live events ----- */
+  on(ev,p){
+    if(ev==='gmsg'||ev==='group'){this.gEvent(ev,p);return}
+    if(ev==='gist:new'){if(window.GIST)GIST.onNew(p);return}
+    if(ev==='dm'){NET.drop('/api/ac/chats');NET.cache.delete('/api/ac/messages/'+p.from);this.badges.messages++;const open=this.view==='chat'&&this.chatId===p.from;
+      if(open){this.push(p);NET.api('/api/ac/messages/'+p.from).catch(()=>{});this.badges.messages=Math.max(0,this.badges.messages-1)}
+      else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+(p.text||'📷 Photo').slice(0,40));this.notify('New message on AllConnect',p.text||'📷 Photo',{type:'chat',id:p.from,mid:p.id});
+        if(this.view==='messages'&&this.tab==='chats')this.drawChats()}
+      this.drawBadges()}
+    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.shadeOn)this.drawShade();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}
+    if(ev==='friends'){NET.drop('/api/ac/friends');this.refreshBadges();if(this.view==='contacts')this.loadFriends()}
+    if(ev==='seen'&&this.view==='chat'&&this.chatId===p.by){this.msgs.forEach(m=>{if(m.from===NET.user.id)m.read=true});this.drawMsgs()}
+    if(ev==='cash'&&this.view==='bank')this.bankLoad();if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}
+};
+const fmtCash=n=>'₦'+Number(n).toLocaleString('en-NG');
+/* ----- visiting a friend's place ----- */
+function openVisit(h){const v=document.getElementById('visit');
+  let s=document.getElementById('room').outerHTML.replace(/ id="room"/,'').replace(/ onclick="walk\(event\)"/,'').replace(/ id="[a-z]+"/g,'').replace('class="room"','class="room vroom"');
+  v.style.setProperty('--wall',h.paint);v.innerHTML=`${s}<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div><div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items===1?'':'s'} · ${esc(h.propertyName||'Home')}</div>`;v.style.display='block'}
+function closeVisit(){document.getElementById('visit').style.display='none'}
+
+/* Desktop: Esc steps back (visit -> GameHub -> phone app) */
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const vis=document.getElementById('visit'),hub=document.getElementById('hub');
+  const lr=document.getElementById('lagosrun');if(lr&&lr.style.display==='block')closeLagosRun();else if(vis&&vis.style.display==='block')closeVisit();else if(hub&&hub.style.display==='flex')closeHub();else if(PH.view==='chat'||PH.view==='group')PH.messages();else if(PH.view==='groupinfo')PH.group(PH.gid);else if(PH.view)PH.close()});
+
+window.PH = PH;
