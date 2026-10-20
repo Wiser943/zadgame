@@ -3,7 +3,7 @@ const express = require('express');
 const User = require('../models/User');
 const ACPhoto = require('../models/ACPhoto');
 const { Report, Friendship } = require('../models/Social');
-const { GistPost, GistLike, GistComment, GistCommentLike, GistVote, GistFollow } = require('../models/Gist');
+const { GistPost, GistLike, GistComment, GistCommentLike, GistVote, GistFollow, GistVideoUpload } = require('../models/Gist');
 const registry = require('../games/registry');
 const ensureAuth = require('../middleware/auth');
 const { normalizeUsername } = require('../utils/allconnect');
@@ -11,6 +11,7 @@ const { notify } = require('../utils/acnotify');
 const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
+const { muxPlaybackUrl } = require('../utils/gistVideo');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -76,6 +77,7 @@ async function hydrate(posts, uid) {
   const shape = (p, withShared) => {
     const id = String(p._id), o = {
       id, author: pubUser(uMap.get(p.author)), mine: p.author === uid, text: p.text || '', images: p.images || [],
+      video: p.video && muxPlaybackUrl(p.video.playbackId) ? { playbackId: p.video.playbackId, playbackUrl: muxPlaybackUrl(p.video.playbackId), duration: Number(p.video.duration || 0) } : null,
       game: p.game && p.game.key ? { key: p.game.key, name: p.game.name, code: p.game.code || '' } : null,
       match: p.match && p.match.game ? { game: p.match.game, name: p.match.name, score: p.match.score || '', opponent: p.match.opponent || '', result: p.match.result || 'win' } : null,
       election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
@@ -111,6 +113,7 @@ router.get('/feed', async (req, res, next) => {
       filter.author = { $in: f.map((x) => x.following).concat(uid).filter((id) => !blocked.includes(id)) };
     } else if (tab === 'me') filter.author = uid;
     else if (blocked.length) filter.author = { $nin: blocked };
+    if (tab === 'clips') filter['video.playbackId'] = { $exists: true, $ne: '' };
     const tag = String(req.query.tag || '').toLowerCase().replace(/^#/, '');
     if (tag) filter.tags = tag;
     if (tab === 'trending' && !tag) {
@@ -133,6 +136,91 @@ router.get('/trending', async (req, res, next) => {
       { $group: { _id: '$tags', n: { $sum: 1 }, last: { $max: '$createdAt' } } }, { $sort: { n: -1, last: -1 } }, { $limit: 10 }]);
     res.json({ tags: rows.map((r) => ({ tag: r._id, count: r.n })) });
   } catch (e) { next(e); }
+});
+
+/* ---------- short clips: the browser uploads directly to Mux; P-Gist owns post metadata and recovery ---------- */
+function muxConfigured() { return !!(process.env.MUX_TOKEN_ID && process.env.MUX_TOKEN_SECRET); }
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+const VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime', 'application/octet-stream']);
+async function muxRequest(path, method = 'GET', body) {
+  if (!muxConfigured()) { const e = new Error('Video publishing is not configured. Add MUX_TOKEN_ID and MUX_TOKEN_SECRET to the server environment.'); e.status = 503; throw e; }
+  const headers = { Authorization: 'Basic ' + Buffer.from(`${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`).toString('base64') };
+  if (body) headers['Content-Type'] = 'application/json';
+  const response = await fetch('https://api.mux.com/video/v1/' + path, { method, headers, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = payload && payload.error && (payload.error.message || (payload.error.messages || []).join(', '));
+    const e = new Error(message || `Video provider request failed (${response.status}).`); e.status = 502; throw e;
+  }
+  return payload.data || {};
+}
+router.post('/videos/uploads', limit('video-upload', 5, 3600000), async (req, res, next) => {
+  try {
+    const caption = String((req.body && req.body.caption) || '').trim().slice(0, 500);
+    const fileSize = Number(req.body && req.body.fileSize), contentType = String(req.body && req.body.contentType || '').split(';')[0].trim().toLowerCase();
+    if (!Number.isSafeInteger(fileSize) || fileSize < 1 || fileSize > MAX_VIDEO_BYTES) return bad(res, 'Clips must be between 1 byte and 500 MB.', 413);
+    if (!VIDEO_MIME_TYPES.has(contentType)) return bad(res, 'Choose an MP4, WebM, or MOV video.', 415);
+    const requestedOrigin = req.get('origin') || '';
+    const configuredOrigins = [process.env.CLIENT_URL || '', ...(process.env.ALLOWED_ORIGINS || '').split(',')].map((value) => { try { return new URL(value.trim()).origin; } catch (e) { return ''; } }).filter(Boolean);
+    let sameOrigin = false; try { sameOrigin = !!requestedOrigin && new URL(requestedOrigin).host === req.get('host'); } catch (e) {}
+    const origin = configuredOrigins.includes(requestedOrigin) ? requestedOrigin : sameOrigin ? requestedOrigin : configuredOrigins[0] || '*';
+    const upload = await muxRequest('uploads', 'POST', { cors_origin: origin, new_asset_settings: { playback_policy: ['public'] } });
+    if (!upload.id || !upload.url) return bad(res, 'The video provider did not return an upload URL.', 502);
+    await GistVideoUpload.create({ owner: me(req), uploadId: upload.id, fileSize, contentType, caption, tags: parseTags(caption) });
+    res.status(201).json({ uploadId: upload.id, uploadUrl: upload.url });
+  } catch (e) { if (e.status === 503) return bad(res, e.message, 503); next(e); }
+});
+router.get('/videos/uploads/pending', limit('video-pending', 20, 60000), async (req, res, next) => {
+  try {
+    const rows = await GistVideoUpload.find({ owner: me(req), status: { $in: ['uploading', 'processing'] } }).sort({ createdAt: -1 }).limit(5).select('uploadId caption status createdAt').lean();
+    res.json({ uploads: rows.map((row) => ({ uploadId: row.uploadId, caption: row.caption, status: row.status, createdAt: row.createdAt })) });
+  } catch (e) { next(e); }
+});
+router.get('/videos/uploads/:uploadId', limit('video-status', 80, 60000), async (req, res, next) => {
+  try {
+    const uploadId = String(req.params.uploadId || '');
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(uploadId)) return bad(res, 'Invalid upload.');
+    const pending = await GistVideoUpload.findOne({ owner: me(req), uploadId });
+    if (!pending) return bad(res, 'Upload not found.', 404);
+    if (pending.postId) {
+      const saved = await GistPost.findById(pending.postId).lean();
+      if (saved) return res.json({ status: 'ready', post: (await hydrate([saved], me(req)))[0] });
+    }
+    const upload = await muxRequest('uploads/' + encodeURIComponent(uploadId));
+    if (upload.status === 'errored') { pending.status = 'failed'; await pending.save(); return res.json({ status: 'failed', message: 'The video upload did not complete. Please try again.' }); }
+    if (!upload.asset_id) return res.json({ status: 'uploading' });
+    const asset = await muxRequest('assets/' + encodeURIComponent(upload.asset_id));
+    if (asset.status === 'errored') { pending.status = 'failed'; await pending.save(); return res.json({ status: 'failed', message: 'The video could not be processed. Please try another file.' }); }
+    if (asset.status !== 'ready') { pending.status = 'processing'; await pending.save(); return res.json({ status: 'processing' }); }
+    if (Number(asset.duration || 0) > 600) { pending.status = 'failed'; await pending.save(); muxRequest('assets/' + encodeURIComponent(asset.id || upload.asset_id), 'DELETE').catch(() => {}); return res.json({ status: 'failed', message: 'Clips must be ten minutes or shorter.' }); }
+    const playback = (asset.playback_ids || []).find((item) => item.policy === 'public') || (asset.playback_ids || [])[0];
+    if (!playback || !/^[A-Za-z0-9_-]{6,}$/.test(String(playback.id || ''))) return bad(res, 'The processed video has no playable stream.', 502);
+    let post;
+    try {
+      post = await GistPost.create({ author: me(req), text: pending.caption, tags: pending.tags, video: { uploadId, assetId: String(asset.id || upload.asset_id), playbackId: playback.id, duration: Number(asset.duration || 0) } });
+    } catch (e) {
+      if (e.code !== 11000) throw e;
+      post = await GistPost.findOne({ 'video.uploadId': uploadId });
+      if (!post) throw e;
+    }
+    pending.postId = String(post._id); pending.status = 'ready'; await pending.save();
+    const io = req.app.get('io'); if (io) io.of('/ac').emit('gist:new', { id: String(post._id), author: me(req) });
+    res.json({ status: 'ready', post: (await hydrate([post.toObject ? post.toObject() : post], me(req)))[0] });
+  } catch (e) { if (e.status === 503) return bad(res, e.message, 503); next(e); }
+});
+router.delete('/videos/uploads/:uploadId', limit('video-discard', 10, 60000), async (req, res, next) => {
+  try {
+    const uploadId = String(req.params.uploadId || '');
+    if (!/^[A-Za-z0-9_-]{8,128}$/.test(uploadId)) return bad(res, 'Invalid upload.');
+    const pending = await GistVideoUpload.findOne({ owner: me(req), uploadId });
+    if (!pending) return bad(res, 'Upload not found.', 404);
+    if (pending.postId) return bad(res, 'This clip is already published. Delete the post instead.', 409);
+    const upload = await muxRequest('uploads/' + encodeURIComponent(uploadId)).catch(() => null);
+    if (upload && upload.asset_id) muxRequest('assets/' + encodeURIComponent(upload.asset_id), 'DELETE').catch(() => {});
+    else muxRequest('uploads/' + encodeURIComponent(uploadId), 'DELETE').catch(() => {});
+    await GistVideoUpload.deleteOne({ _id: pending._id, owner: me(req) });
+    res.json({ ok: true });
+  } catch (e) { if (e.status === 503) return bad(res, e.message, 503); next(e); }
 });
 
 /* ---------- create / edit / delete posts ---------- */
@@ -208,7 +296,7 @@ router.put('/posts/:id', limit('edit', 20, 60000), async (req, res, next) => {
     const p = await GistPost.findOne({ _id: req.params.id, author: uid });
     if (!p) return bad(res, 'Post not found.', 404);
     const text = String((req.body && req.body.text) || '').trim().slice(0, 500);
-    if (!text && !p.images.length && !p.game && !p.sharedFrom && !(p.poll && p.poll.options && p.poll.options.length)) return bad(res, 'A gist cannot be empty.');
+    if (!text && !p.images.length && !p.video && !p.game && !p.sharedFrom && !(p.poll && p.poll.options && p.poll.options.length)) return bad(res, 'A gist cannot be empty.');
     if (text === p.text) return res.json({ post: (await hydrate([p.toObject()], uid))[0] });
     const old = new Set((p.mentions || []).map(String));
     p.text = text; p.tags = parseTags(text); p.mentions = await parseMentions(text); p.editedAt = new Date();
@@ -226,7 +314,9 @@ router.delete('/posts/:id', async (req, res, next) => {
     const id = String(p._id);
     const cids = (await GistComment.find({ post: id }).select('_id').lean()).map((c) => String(c._id));
     await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
+    await GistVideoUpload.deleteOne({ postId: id });
     if (p.sharedFrom) await GistPost.updateOne({ _id: p.sharedFrom, shares: { $gt: 0 } }, { $inc: { shares: -1 } });
+    if (p.video && p.video.assetId && muxConfigured()) muxRequest('assets/' + encodeURIComponent(p.video.assetId), 'DELETE').catch(() => {});
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
