@@ -1,0 +1,153 @@
+:root {
+  --ink: #152033;
+  --mut: #5b6578;
+  --paper: #eef3f8;
+  --sea: #3d9ad8;
+  --grass: #8fc85a;
+  --grass2: #b7e07a;
+  --brand: #075bff;
+  --ok: #22b573;
+  --card: #fff;
+  --shadow: 0 18px 50px rgba(21, 32, 51, .12);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif; }
+a { color: var(--brand); text-decoration: none; }
+img { max-width: 100%; display: block; }
+.wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 12px; top: 12px; background: #fff; padding: 8px 12px; z-index: 9; }
+header {
+  position: sticky; top: 0; z-index: 5;
+  background: rgba(238, 243, 248, .92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(21, 32, 51, .06);
+}
+.bar { display: flex; align-items: center; gap: 16px; padding: 12px 0; }
+.brand { display: flex; align-items: center; gap: 10px; color: inherit; font-weight: 800; }
+.brand img { width: 42px; height: 42px; border-radius: 12px; }
+.brand small { display: block; font-weight: 600; color: var(--mut); font-size: 12px; }
+nav { margin-left: auto; display: flex; gap: 18px; font-weight: 650; }
+nav a { color: var(--ink); }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 999px; padding: 11px 18px; font-weight: 750; border: 0; cursor: pointer;
+}
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-ghost { background: #fff; color: var(--ink); box-shadow: 0 1px 0 rgba(21,32,51,.08), 0 8px 20px rgba(21,32,51,.06); }
+.hero { padding: 36px 0 28px; display: grid; grid-template-columns: 1fr 1.15fr; gap: 28px; align-items: center; }
+.eyebrow { color: var(--ok); font-weight: 750; letter-spacing: .02em; margin: 0 0 10px; }
+h1 { font: 800 52px/1.05 Outfit, "Segoe UI", sans-serif; margin: 0 0 12px; }
+h1 span { color: var(--brand); }
+.lead { color: var(--mut); font-size: 18px; margin: 0 0 20px; max-width: 38ch; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.note { color: var(--mut); font-size: 13px; margin-top: 14px; }
+.city {
+  position: relative; min-height: 340px; border-radius: 28px; overflow: hidden;
+  background: linear-gradient(#6db4e6, #2b86c9); box-shadow: var(--shadow);
+}
+.island {
+  position: absolute; inset: 18% 8% 22% 8%;
+  background:
+    repeating-linear-gradient(90deg, var(--grass) 0 14px, var(--grass2) 14px 28px),
+    repeating-linear-gradient(0deg, transparent 0 14px, rgba(255,255,255,.08) 14px 15px);
+  clip-path: polygon(4% 12%, 96% 8%, 98% 88%, 6% 94%);
+  box-shadow: 0 18px 0 #6b7d4b;
+}
+.road { position: absolute; background: #6d7075; }
+.r1 { left: 6%; right: 8%; top: 38%; height: 10px; }
+.r2 { left: 42%; top: 18%; bottom: 16%; width: 10px; }
+.apt { position: absolute; left: 10%; top: 16%; width: 26%; height: 22%; background: #d7dde2; border-radius: 6px; }
+.apt::after { content: ""; position: absolute; left: 8%; right: 8%; bottom: -10px; height: 8px; background: #9aa3ab; }
+.pin {
+  position: absolute; transform: translate(-50%, -50%);
+  background: #fff; border-radius: 999px; padding: 4px 8px 4px 6px;
+  font: 750 11px/1 "Plus Jakarta Sans", sans-serif; display: flex; gap: 6px; align-items: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+.pin i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.hud {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  background: #fff; border-radius: 999px; display: flex; padding: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.18);
+}
+.hud span { padding: 8px 16px; border-radius: 999px; font-weight: 750; font-size: 13px; color: var(--mut); }
+.hud .on { background: #1b2236; color: #fff; }
+.snapshot { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 8px 0 40px; }
+.snapshot article, .card, .panel {
+  background: var(--card); border-radius: 20px; padding: 16px 18px; box-shadow: 0 1px 0 rgba(21,32,51,.04);
+}
+.snapshot h3, .card h3 { margin: 0 0 4px; font-size: 16px; }
+.snapshot p, .card p { margin: 0; color: var(--mut); font-size: 14px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+section { padding: 10px 0 42px; }
+h2 { font: 800 32px/1.15 Outfit, "Segoe UI", sans-serif; margin: 0 0 8px; }
+.sub { color: var(--mut); margin: 0 0 18px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.panel dt { color: var(--mut); font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: .04em; }
+.panel dd { margin: 0 0 12px; }
+.cta {
+  display: flex; justify-content: space-between; gap: 16px; align-items: center;
+  background: #1b2236; color: #fff; border-radius: 24px; padding: 22px 24px;
+}
+.cta p { color: #c9d2e3; margin: 6px 0 0; }
+footer { padding: 28px 0 40px; color: var(--mut); font-size: 13px; }
+footer .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  nav { display: none; }
+  .hero, .snapshot, .grid, .two, .cta { grid-template-columns: 1fr; display: grid; }
+  .cta { text-align: left; }
+  h1 { font-size: 36px; }
+  .city { min-height: 280px; }
+}
+
+
+/* ---- 3D map tour in the hero ---- */
+.city3d { min-height: 400px; background: linear-gradient(#7fc1ef, #cfe6f4); }
+.city3d .dio, .city3d .flat { position: absolute; inset: 0; transition: opacity .8s ease; }
+.city3d .dio { opacity: 0; }
+.city3d.on .dio { opacity: 1; }
+.city3d.on .flat { opacity: 0; pointer-events: none; }
+.city3d .flat { background: linear-gradient(#6db4e6, #2b86c9); }
+.dio-cap {
+  position: absolute; left: 14px; bottom: 14px; max-width: min(360px, calc(100% - 28px));
+  display: flex; gap: 12px; align-items: center; padding: 10px 16px 10px 12px;
+  background: rgba(255,255,255,.95); border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; pointer-events: none;
+}
+.dio-cap.in { opacity: 1; transform: none; }
+.dio-em { font-size: 26px; line-height: 1; }
+.dio-cap b { display: block; font: 800 15px/1.2 Outfit, "Segoe UI", sans-serif; color: #1b2236; }
+.dio-cap small { display: block; color: var(--mut); font-size: 12.5px; line-height: 1.35; margin-top: 2px; }
+.dio-dots { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 2px; background: rgba(255,255,255,.55); border-radius: 999px; padding: 2px 4px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dio-dots button { width: 24px; height: 24px; border: 0; background: none; padding: 0; cursor: pointer; display: grid; place-items: center; }
+.dio-dots button::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: rgba(27,34,54,.35); transition: all .25s; }
+.dio-dots button.on::before { width: 20px; border-radius: 6px; background: #1b2236; }
+@media (max-width: 640px) { .city3d { min-height: 340px; } .dio-cap small { display: none; } }
+
+
+/* ---- hero fills the screen: the 3D map tour is the background, the intro sits on a frosted card ---- */
+.herofull { position: relative; isolation: isolate; overflow: hidden; display: grid; align-items: center;
+  min-height: calc(100vh - 68px); min-height: calc(100svh - 68px); }
+.herofull > .city { position: absolute; inset: 0; margin: 0; width: auto; z-index: -1; min-height: 0; border-radius: 0; box-shadow: none; }
+.herofull .hero { display: block; padding: 40px 0; }
+.herotext { max-width: min(520px, 100%); padding: 26px 28px 24px; border-radius: 28px;
+  background: rgba(255,255,255,.66); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 18px 50px rgba(20,40,80,.2); }
+.herotext .lead { max-width: none; }
+.herotext .note { margin-bottom: 0; }
+.herofull .dio-cap { left: 18px; bottom: 18px; }
+.herofull .dio-dots { top: auto; bottom: 22px; left: auto; right: 18px; transform: none; }
+@media (max-width: 700px) {
+  .herofull { align-items: start; }
+  .herofull .hero { padding: 14px 0 0; }
+  .herotext { padding: 16px 18px 16px; border-radius: 24px; }
+  .herotext .eyebrow { font-size: 13px; margin-bottom: 6px; }
+  .herotext h1 { font-size: clamp(30px, 9vw, 40px); margin-bottom: 8px; }
+  .herotext .lead { font-size: 15px; margin-bottom: 14px; }
+  .herotext .note { display: none; }
+  .herofull .dio-cap { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  .herofull .dio-dots { right: auto; left: 50%; transform: translateX(-50%); bottom: 84px; }
+}
+.snapshot { margin: 8px auto 40px; }
+
+header .btn { white-space: nowrap; }
