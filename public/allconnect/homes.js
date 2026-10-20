@@ -46,10 +46,11 @@ const HOMES = {
   /* expansions: the server owns the prices; this only mirrors them for display */
   next(p, h) {
     const lv = Math.max(0, Number(p && p.level) | 0), ex = (this.data && this.data.expansions) || [], n = ex[lv + 1];
-    if (!n || !h || h.mode !== 'buy' || !p || p.tenure !== 'owned') return null;
+    if (!n || !h || h.mode !== 'buy' || h.layout || !p || p.tenure !== 'owned') return null;
     return { level: n.level, name: n.name, grid: n.grid, description: n.description, cost: Math.max(1000, Math.round((h.price * n.share) / 1000) * 1000) };
   },
   layoutLine(p, h) {
+    if (h && h.layout) return '<p>Layout · full house plan with separate rooms (fixed size)</p>';
     const g = homeGrid(p), n = this.next(p, h);
     return `<p>Layout · ${g}×${g} cells${(Number(p.level) | 0) ? ' (expanded)' : ''}${n ? ` · next: ${this.esc(n.name)} (${n.grid}×${n.grid})` : (h.mode === 'buy' ? ' · fully expanded' : '')}</p>`;
   },
@@ -97,7 +98,7 @@ const HOMES = {
     const p = (S.properties || []).find(x => x.id === S.activePropertyId);
     S.activeProperty = p || null;
     S.items = p ? p.items : (S.legacyItems || []);
-    S.grid = homeGrid(p);
+    S.grid = homeGrid(p); S.layout = homeLayout(p);
     setPaint(p ? (p.paint || S.legacyPaint) : S.legacyPaint);
     if (window.ROOM3D) ROOM3D.sync();
     if (window.BUY && BUY.active) BUY.draw();

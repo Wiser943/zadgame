@@ -45,19 +45,21 @@ const isItem = (n) => Object.prototype.hasOwnProperty.call(ITEMS, n);
 const sellPrice = (n) => (isItem(n) ? Math.max(100, Math.floor((ITEMS[n].price * SELL_RATE) / 100) * 100) : 0);
 const footprint = (name, rot) => { const it = ITEMS[name]; if (!it || it.fixed) return [0, 0]; return (((rot % 360) + 360) % 360) % 180 === 90 ? [it.d, it.w] : [it.w, it.d]; };
 const validRot = (r) => [0, 90, 180, 270].includes(r);
-const inBounds = (x, z, w, d, grid = GRID) => Number.isInteger(x) && Number.isInteger(z) && x >= 0 && z >= 0 && x + w <= grid && z + d <= grid;
+// `grid` is a number (square room) or a layout { w, d, blocked: Set('x,z') } for homes built from a house model
+const gridW = (g) => (typeof g === 'object' && g ? g.w : g), gridD = (g) => (typeof g === 'object' && g ? g.d : g);
+const inBounds = (x, z, w, d, grid = GRID) => Number.isInteger(x) && Number.isInteger(z) && x >= 0 && z >= 0 && x + w <= gridW(grid) && z + d <= gridD(grid);
 const cellsOf = (it) => { const [w, d] = footprint(it.name, it.rot); const out = []; for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) out.push([it.x + i, it.z + j]); return out; };
-const occupied = (items, skipId) => { const s = new Set(); for (const it of items) { if (it.id === skipId || it.placed === false || !isItem(it.name) || ITEMS[it.name].fixed) continue; for (const [a, b] of cellsOf(it)) s.add(a + ',' + b); } return s; };
+const occupied = (items, skipId, grid) => { const s = new Set(grid && typeof grid === 'object' && grid.blocked ? grid.blocked : []); for (const it of items) { if (it.id === skipId || it.placed === false || !isItem(it.name) || ITEMS[it.name].fixed) continue; for (const [a, b] of cellsOf(it)) s.add(a + ',' + b); } return s; };
 // Can `name` stand at (x,z,rot)? (ignoring the item `skipId` itself, for moves)
 function canPlace(items, name, x, z, rot, skipId, grid = GRID) {
   if (!isItem(name) || ITEMS[name].fixed || !validRot(rot)) return false;
   const [w, d] = footprint(name, rot); if (!inBounds(x, z, w, d, grid)) return false;
-  const occ = occupied(items, skipId); for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) if (occ.has((x + i) + ',' + (z + j))) return false;
+  const occ = occupied(items, skipId, grid); for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) if (occ.has((x + i) + ',' + (z + j))) return false;
   return true;
 }
 // First free spot, scanning the room (used for starters/migration and for the preview ghost).
 function autoPlace(items, name, grid = GRID) {
-  for (const rot of [0, 90]) { const [w, d] = footprint(name, rot); for (let z = 0; z + d <= grid; z++) for (let x = 0; x + w <= grid; x++) if (canPlace(items, name, x, z, rot, undefined, grid)) return { x, z, rot }; }
+  for (const rot of [0, 90]) { const [w, d] = footprint(name, rot); for (let z = 0; z + d <= gridD(grid); z++) for (let x = 0; x + w <= gridW(grid); x++) if (canPlace(items, name, x, z, rot, undefined, grid)) return { x, z, rot }; }
   return null;
 }
 const newId = () => require('crypto').randomBytes(5).toString('hex');

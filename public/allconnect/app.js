@@ -80,6 +80,7 @@ function applyAC(ac) {
   if (!S.activeProperty) S.activePropertyId = '';
   S.items = S.activeProperty ? S.activeProperty.items : S.legacyItems;
   S.grid = window.homeGrid ? homeGrid(S.activeProperty) : 6;
+  S.layout = window.homeLayout ? homeLayout(S.activeProperty) : null;
   if (S.activeProperty) S.paint = S.activeProperty.paint || S.legacyPaint;
   else S.paint = S.legacyPaint;
   S.wish = ac.wish || [];

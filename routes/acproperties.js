@@ -5,7 +5,7 @@ const ensureAuth = require('../middleware/auth');
 const F = require('../utils/furniture');
 const { publicAC } = require('../utils/allconnect');
 const { ensureAC } = require('./allconnect');
-const { HOMES, EXPANSIONS, isHome, publicHome, levelOf, gridFor, expansionCost, MAX_LEVEL } = require('../utils/acproperties');
+const { HOMES, EXPANSIONS, isHome, publicHome, levelOf, gridFor, gridOf, expansionCost, MAX_LEVEL } = require('../utils/acproperties');
 const router = express.Router();
 router.use(ensureAuth);
 const bad = (res, message, status = 400) => res.status(status).json({ message });
@@ -119,7 +119,7 @@ router.post('/:id/furniture/buy', async (req, res, next) => {
     const name = String(req.body?.name || ''); if (!F.isItem(name)) return bad(res, 'Unknown furniture item.');
     const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404);
     const it = F.ITEMS[name], items = c.p.items || []; if (items.length >= 120) return bad(res, 'This home is full of furniture.');
-    if (it.fixed ? items.some(i => i.name === name) : !F.canPlace(items, name, Number(req.body?.x), Number(req.body?.z), Number(req.body?.rot) || 0, undefined, gridFor(levelOf(c.p)))) return bad(res, it.fixed ? 'You already have that.' : 'That spot is taken or outside the room.');
+    if (it.fixed ? items.some(i => i.name === name) : !F.canPlace(items, name, Number(req.body?.x), Number(req.body?.z), Number(req.body?.rot) || 0, undefined, gridOf(c.p))) return bad(res, it.fixed ? 'You already have that.' : 'That spot is taken or outside the room.');
     const inst = { id: F.newId(), name, x: Number(req.body?.x) || 0, z: Number(req.body?.z) || 0, rot: Number(req.body?.rot) || 0, placed: true };
     const path = 'ac.properties.$[p].items';
     const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: it.price }, ...activePropertyFilter(req.params.id) }, { $inc: { 'ac.cash': -it.price }, $push: { [path]: inst } }, { new: true, arrayFilters: [{ 'p.id': req.params.id }] });
@@ -129,7 +129,7 @@ router.post('/:id/furniture/buy', async (req, res, next) => {
 });
 async function itemContext(req, res) { const c = await getOwned(req); if (!c.p) { bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404); return null; } const it = (c.p.items || []).find(i => i.id === req.params.itemId); if (!it) { bad(res, 'Item not found.', 404); return null; } return { ...c, it, items: c.p.items }; }
 async function updateItem(req, res, fields) { const set = Object.fromEntries(Object.entries(fields).map(([k,v]) => [`ac.properties.$[p].items.$[i].${k}`, v])); const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.properties.items.id': req.params.itemId, ...activePropertyFilter(req.params.id) }, { $set: set }, { new: true, arrayFilters: [{ 'p.id': req.params.id }, { 'i.id': req.params.itemId }] }); if (!u) return bad(res, 'Item not found.', 404); res.json({ ac: publicAC(u.ac), property: publicHome((u.ac.properties || []).find(p => p.id === req.params.id)) }); }
-async function place(req, res, storedOnly) { const c = await itemContext(req, res); if (!c) return; const def = F.ITEMS[c.it.name]; if (!def || def.fixed) return bad(res, 'That item cannot be moved.'); if (storedOnly && c.it.placed !== false) return bad(res, 'Already in your room.'); const x = Number(req.body?.x), z = Number(req.body?.z), rot = Number(req.body?.rot) || 0; if (!F.canPlace(c.items, c.it.name, x, z, rot, c.it.id, gridFor(levelOf(c.p)))) return bad(res, 'That spot is taken or outside the room.'); return updateItem(req, res, { x, z, rot, placed: true }); }
+async function place(req, res, storedOnly) { const c = await itemContext(req, res); if (!c) return; const def = F.ITEMS[c.it.name]; if (!def || def.fixed) return bad(res, 'That item cannot be moved.'); if (storedOnly && c.it.placed !== false) return bad(res, 'Already in your room.'); const x = Number(req.body?.x), z = Number(req.body?.z), rot = Number(req.body?.rot) || 0; if (!F.canPlace(c.items, c.it.name, x, z, rot, c.it.id, gridOf(c.p))) return bad(res, 'That spot is taken or outside the room.'); return updateItem(req, res, { x, z, rot, placed: true }); }
 router.post('/:id/furniture/:itemId/move', async (req,res,next)=>{ try { return await place(req,res,false); } catch(e){next(e);} });
 router.post('/:id/furniture/:itemId/place', async (req,res,next)=>{ try { return await place(req,res,true); } catch(e){next(e);} });
 router.post('/:id/furniture/:itemId/store', async (req,res,next)=>{ try { const c=await itemContext(req,res); if(!c)return; if(F.ITEMS[c.it.name]?.locked)return bad(res,'You need that one in the room.'); return await updateItem(req,res,{placed:false}); } catch(e){next(e);} });

@@ -2,7 +2,7 @@
    Walls that face the camera fade out so you can always see inside. Falls back to the flat SVG room if WebGL or the library is unavailable. */
 window.ROOM3D = {
   on: false, loading: false, T: null, az: Math.PI / 4, pol: 0.95, dist: 30, d0: 30, tAz: null, W: 0, H: 0, shiftY: 0, dark_: false, page_: 'home',
-  walls: [], grid: 6, off: 0, extras: null, avatar: null, goal: null, ptr: new Map(), pinch: 0, drag: false, down: null, last: 0,
+  walls: [], gw: 6, gd: 6, offX: 0, offZ: 0, layout: null, roomKey: 6, extras: null, avatar: null, goal: null, ptr: new Map(), pinch: 0, drag: false, down: null, last: 0,
   load() {
     return new Promise((ok, no) => {
       if (window.THREE) return ok();
@@ -36,11 +36,12 @@ window.ROOM3D = {
     // four walls (the ones facing the camera fade away)
     const W = (w, h, d, x, z, out) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: S.paint, transparent: true })); m.position.set(x, h / 2, z); sc.add(m); this.walls.push({ m, out }); return m };
     this.wW = W(.15, 3, 6.15, -3.075, 0, [-1, 0]); this.wN = W(6.15, 3, .15, 0, -3.075, [0, -1]); this.wE = W(.15, 3, 6.15, 3.075, 0, [1, 0]); this.wS = W(6.15, 3, .15, 0, 3.075, [0, 1]);
+    const n0 = sc.children.length;
     // door + poster + lamp on the west wall, window + AC + lamp on the north wall
     this.box(.12, 2.1, 1.1, 0x5a2c14, -2.95, 1.05, 1.6); this.box(.1, .9, .7, 0xf2f2f2, -2.97, 1.8, -1.5);
     this.box(1.5, 1.0, .12, 0x80868a, 1.6, 1.7, -2.94); this.walls.glass = this.box(1.3, .8, .1, 0xbfe4ff, 1.6, 1.7, -2.9).material; Object.assign(this.walls.glass, { transparent: true, opacity: .7 }); this.box(1.3, .08, .12, 0x555a5c, 1.6, 1.7, -2.88);
     this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.4, -2.8);
-    this.glass = this.walls.glass;
+    this.glass = this.walls.glass; this.shellDecor = sc.children.slice(n0);
     this.moon = new THREE.DirectionalLight(0x7f9bff, 0); this.moon.position.set(-6, 10, -4); sc.add(this.moon); this.lamps = [];
     this.itemsGroup = new THREE.Group(); sc.add(this.itemsGroup); this.ghostG = null; this.ring = null; this.path = [];
     // the player's character (male or female, chosen on the start card)
@@ -244,7 +245,7 @@ window.ROOM3D = {
     const bl = ((t % 4200) < 130 ? .1 : 1) * (this.mood === 'sleepy' ? .35 : 1); P.eyes.forEach((e, i) => { e.scale.y = (i === 0 || i === 2 ? bl * .85 : bl) });
     if (P.skirt) P.skirt.rotation.x = 0;
   },
-  resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const half = 4.3 * (this.grid || 6) / 6, asp = Math.min(w / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
+  resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const half = 4.3 * Math.max(this.gw || 6, this.gd || 6) / 6, asp = Math.min(w / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
   applyShift() { const sh = this.shiftY * this.H; this.cam.setViewOffset(this.W, this.H, 0, -sh, this.W, this.H); this.cam.updateProjectionMatrix() },
   zoom(f) { this.userDist = true; this.dist = Math.max(this.d0 * .35, Math.min(this.d0 * 1.5, this.dist * f)) },
   flip() { this.tAz = (this.tAz == null ? this.az : this.tAz) + Math.PI / 2 },
@@ -281,25 +282,40 @@ window.ROOM3D = {
     return g
   },
   ensureAvatarFree() {
+    if (this.act) return;
     const occ = FURN.occupied(S.items || []), a = this.avatar, cx = Math.floor(a.position.x + 3), cz = Math.floor(a.position.z + 3);
     if (!occ.has(cx + ',' + cz)) return; const f = this.nearestFree(cx, cz, occ); if (f) { a.position.set(this.cc(f[0]), 0, this.cc(f[1])); this.path = [] }
   },
-  nearestFree(cx, cz, occ) { let best = null, bd = 1e9; for (let x = 0; x < this.grid; x++) for (let z = 0; z < this.grid; z++) { if (occ.has(x + ',' + z)) continue; const d = Math.abs(x - cx) + Math.abs(z - cz); if (d < bd) { bd = d; best = [x, z] } } return best },
+  nearestFree(cx, cz, occ) { let best = null, bd = 1e9; for (let x = 0; x < this.gw; x++) for (let z = 0; z < this.gd; z++) { if (occ.has(x + ',' + z)) continue; const d = Math.abs(x - cx) + Math.abs(z - cz); if (d < bd) { bd = d; best = [x, z] } } return best },
   /* rebuild the room's furniture + lamps from S.items (placed ones) */
-  /* An expanded home grows toward the east and south, so the door, window, AC and wall lamps on the west and north
-     walls stay exactly where they were. grid = 6 | 8 | 10 cells per side. */
-  setGrid(G) {
-    G = [6, 8, 10].includes(G) ? G : 6; if (G === this.grid || !this.scene) return; this.grid = G;
-    const off = this.off = (G - 6) / 2, L = G + .15, edge = G - 3 + .075, rep = G / 2;
-    const geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
-    this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(G, G); this.floor.position.set(off, 0, off); this.floor.material.map.repeat.set(rep, rep);
-    geo(this.slab, G + .5, .3, G + .5); this.slab.position.set(off, -.15, off); this.groundM.position.set(off, -.45, off);
-    geo(this.wW, .15, 3, L); this.wW.position.set(-3.075, 1.5, off); geo(this.wN, L, 3, .15); this.wN.position.set(off, 1.5, -3.075);
-    geo(this.wE, .15, 3, L); this.wE.position.set(edge, 1.5, off); geo(this.wS, L, 3, .15); this.wS.position.set(off, 1.5, edge);
+  /* The room. Square homes (6 / 8 / 10 cells) use the box shell and grow toward the east and south, so the door, window,
+     AC and wall lamps on the west and north walls stay put. A home with a floor-plan `layout` (Family House) hides the box
+     shell and shows its 3D house model instead (see models3d.js), with its own blocked cells and walls. */
+  setRoom(L, G) {
+    if (!this.scene) return; G = [6, 8, 10].includes(G) ? G : 6;
+    const key = L ? L.id : G; if (key === this.roomKey) return; this.roomKey = key;
+    const was = this.layout; this.layout = L || null; if (this.act) this.endAct(true);
+    const gw = this.gw = L ? L.w : G, gd = this.gd = L ? L.d : G, offX = this.offX = (gw - 6) / 2, offZ = this.offZ = (gd - 6) / 2, shell = !!L;
+    this.floor.visible = this.slab.visible = !shell; this.walls.forEach(w => { w.m.visible = !shell }); (this.shellDecor || []).forEach(m => { m.visible = !shell });
+    if (shell) {
+      this.groundM.position.set(offX, -.45, offZ); const gs = Math.max(1, Math.max(gw, gd) / 9); this.groundM.scale.set(gs, 1, gs);
+      if (window.M3D) M3D.houseShell(this, L);
+      if (this.avatar) { this.avatar.position.set(this.cc(L.start[0]), 0, this.cc(L.start[1])); this.path = []; this.onArrive = null }
+    } else {
+      if (window.M3D) M3D.dropShell(this);
+      const wl = G + .15, edge = G - 3 + .075, geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
+      this.groundM.scale.set(1, 1, 1);
+      this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(G, G); this.floor.position.set(offX, 0, offZ); this.floor.material.map.repeat.set(G / 2, G / 2);
+      geo(this.slab, G + .5, .3, G + .5); this.slab.position.set(offX, -.15, offZ); this.groundM.position.set(offX, -.45, offZ);
+      geo(this.wW, .15, 3, wl); this.wW.position.set(-3.075, 1.5, offZ); geo(this.wN, wl, 3, .15); this.wN.position.set(offX, 1.5, -3.075);
+      geo(this.wE, .15, 3, wl); this.wE.position.set(edge, 1.5, offZ); geo(this.wS, wl, 3, .15); this.wS.position.set(offX, 1.5, edge);
+      if (was && this.avatar) { this.avatar.position.set(-1, 0, 1.2); this.path = []; this.onArrive = null }
+    }
     this.resize()
   },
+  ek(a, b) { const f = (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) ? [a, b] : [b, a]; return f[0][0] + ',' + f[0][1] + '|' + f[1][0] + ',' + f[1][1] },
   sync() {
-    if (!this.on) return; this.setGrid(S.grid || 6); this.petLoad(); if (this.petCfg && !this.pet3) this.petBuild(); if (!this.petCfg && this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
+    if (!this.on) return; this.setRoom(S.layout || null, S.grid || 6); this.petLoad(); if (this.petCfg && !this.pet3) this.petBuild(); if (!this.petCfg && this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
     this.lamps = []; this.byId = {}; const items = S.items || [], own = (n) => items.some(i => i.name === n && i.placed !== false);
     const lamp = (x, y, z, big, par) => { const bm = new THREE.MeshBasicMaterial({ color: 0x8a8466 }); const b = new THREE.Mesh(new THREE.SphereGeometry(big ? .2 : .13, 12, 10), bm); b.position.set(x, y, z); ig.add(b); const l = new THREE.PointLight(0xffd68a, 0, big ? 11 : 8); l.position.set(x, y - .1, z); ig.add(l); this.lamps.push({ l, bm, k: big ? 1.15 : .9 }) };
     for (const it of items) {
@@ -308,8 +324,8 @@ window.ROOM3D = {
       const [w, d] = FURN.footprint(it.name, it.rot), g = this.model(it.name); g.position.set(this.cc(it.x) + (w - 1) / 2, 0, this.cc(it.z) + (d - 1) / 2); g.rotation.y = it.rot * Math.PI / 180; g.userData.id = it.id; g.userData.name = it.name; ig.add(g); this.byId[it.id] = g;
       if (g.userData.lamp) lamp(g.position.x, g.userData.lamp.y, g.position.z, false)
     }
-    if (own('Ceiling Bulb')) { this.cyl(.015, .35, 0x222222, 0, 2.82, 0, ig); lamp(0, 2.6, 0, true) }
-    if (own('Wall Lamp')) { this.box(.12, .2, .22, 0x555555, -2.93, 2.2, .2, ig); lamp(-2.8, 2.2, .2); this.box(.22, .2, .12, 0x555555, 1.2, 2.2, -2.93, ig); lamp(1.2, 2.2, -2.8) }
+    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .35, 0x222222, bx, 2.82, bz, ig); lamp(bx, 2.6, bz, true) }
+    if (own('Wall Lamp') && !this.layout) { this.box(.12, .2, .22, 0x555555, -2.93, 2.2, .2, ig); lamp(-2.8, 2.2, .2); this.box(.22, .2, .12, 0x555555, 1.2, 2.2, -2.93, ig); lamp(1.2, 2.2, -2.8) }
     this.ensureAvatarFree(); if (this.selId) this.select(this.selId); if (this.ghostInfo) this.ghost(this.ghostInfo.name, this.ghostInfo.x, this.ghostInfo.z, this.ghostInfo.rot, this.ghostInfo.valid)
   },
   /* ---------- her pet cat (from the Pet app, when "Show in my room" is on): a small cat that wanders the floor ---------- */
@@ -367,12 +383,12 @@ window.ROOM3D = {
       const url = this.tr.domElement.toDataURL('image/png'); this.ts.remove(g); this.th.set(name, url); return url
     } catch (e) { return '' }
   },
-  cellFromPoint(p) { const m = this.grid - 1; return [Math.max(0, Math.min(m, Math.floor(p.x + 3))), Math.max(0, Math.min(m, Math.floor(p.z + 3)))] },
+  cellFromPoint(p) { return [Math.max(0, Math.min(this.gw - 1, Math.floor(p.x + 3))), Math.max(0, Math.min(this.gd - 1, Math.floor(p.z + 3)))] },
   /* breadth-first path over free cells (avatar walks around furniture) */
   bfs(from, to, occ) {
     const key = (c) => c[0] + ',' + c[1], prev = new Map([[key(from), null]]), q = [from];
     while (q.length) { const c = q.shift(); if (c[0] === to[0] && c[1] === to[1]) { const out = []; let k = c; while (k) { out.unshift(k); k = prev.get(key(k)) } return out }
-      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = [c[0] + dx, c[1] + dz]; if (n[0] < 0 || n[1] < 0 || n[0] >= this.grid || n[1] >= this.grid || occ.has(key(n)) || prev.has(key(n))) continue; prev.set(key(n), c); q.push(n) } }
+      for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = [c[0] + dx, c[1] + dz]; if (n[0] < 0 || n[1] < 0 || n[0] >= this.gw || n[1] >= this.gd || occ.has(key(n)) || prev.has(key(n)) || (this.layout && this.layout.wallSet.has(this.ek(c, n)))) continue; prev.set(key(n), c); q.push(n) } }
     return null
   },
   walkToCell(cell, exact) {
@@ -384,8 +400,42 @@ window.ROOM3D = {
   reachesCooler(items) {
     const cool = items.find(i => i.name === 'Cooler Box' && i.placed !== false); if (!cool) return true; const occ = FURN.occupied(items), door = [0, 4];
     if (occ.has('0,4')) return false; const [w, d] = FURN.footprint(cool.name, cool.rot);
-    for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) { if ((i >= 0 && i < w) && (j >= 0 && j < d)) continue; if ((i === -1 || i === w) && (j === -1 || j === d)) continue; const c = [cool.x + i, cool.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] >= this.grid || c[1] >= this.grid || occ.has(c[0] + ',' + c[1])) continue; if (this.bfs(door, c, occ)) return true }
+    for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) { if ((i >= 0 && i < w) && (j >= 0 && j < d)) continue; if ((i === -1 || i === w) && (j === -1 || j === d)) continue; const c = [cool.x + i, cool.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] >= this.gw || c[1] >= this.gd || occ.has(c[0] + ',' + c[1])) continue; if (this.bfs(door, c, occ)) return true }
     return false
+  },
+  /* ---------- using furniture: walk next to it, then lie / sit / stand there for a while ---------- */
+  SEAT: { chair: .54, stool: .82, sofa: .58, armchair: .58, toilet: .5 },
+  useItem(it, act, cb) {
+    const D = FURN.ITEMS[it.name]; if (!D) return; const [w, d] = FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, f = [Math.sin(th), Math.cos(th)];
+    const occ = FURN.occupied(S.items || []), from = this.cellFromPoint(this.avatar.position); occ.delete(from[0] + ',' + from[1]);
+    const cx = it.x + (w - 1) / 2, cz = it.z + (d - 1) / 2; let best = null, bs = 1e9, bp = null;
+    for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) {
+      if (i >= 0 && i < w && j >= 0 && j < d) continue; if ((i === -1 || i === w) && (j === -1 || j === d)) continue;
+      const c = [it.x + i, it.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] >= this.gw || c[1] >= this.gd || occ.has(c[0] + ',' + c[1])) continue;
+      const p = this.bfs(from, c, occ); if (!p) continue; const front = (c[0] - cx) * f[0] + (c[1] - cz) * f[1], sc = p.length - (act.pose !== 'lie' && front > 0 ? 2 : 0);
+      if (sc < bs) { bs = sc; best = c; bp = p }
+    }
+    if (!best) { if (cb && cb.fail) cb.fail('Something is blocking the way'); return }
+    this.endAct(true); this.onArrive = null; this.pending = true;
+    const go = () => { this.pending = false; this.beginAct(it, act, best, cb) };
+    if (bp.length <= 1) { this.path = []; go() } else { this.walkToCell(best); this.onArrive = go }
+  },
+  beginAct(it, act, cell, cb) {
+    const D = FURN.ITEMS[it.name], [w, d] = FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, a = this.avatar;
+    const center = new THREE.Vector3(this.cc(it.x) + (w - 1) / 2, 0, this.cc(it.z) + (d - 1) / 2); let pos = new THREE.Vector3(this.cc(cell[0]), 0, this.cc(cell[1])), yaw = a.rotation.y, h = 0;
+    if (act.pose === 'lie') { pos = center; h = .57; yaw = Math.atan2(Math.cos(th), -Math.sin(th)) }                 // head toward the pillow end (local -x of the bed)
+    else if (act.pose === 'sit') {
+      let bd = 1e9; for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) { const c = [it.x + i, it.z + j], dd = Math.abs(c[0] - cell[0]) + Math.abs(c[1] - cell[1]); if (dd < bd) { bd = dd; pos = new THREE.Vector3(this.cc(c[0]), 0, this.cc(c[1])) } }
+      h = this.SEAT[D.kind] || .54; yaw = th                                                                          // seats face local +z
+    } else yaw = Math.atan2(center.x - pos.x, center.z - pos.z);                                                      // standing: face the thing
+    a.position.set(pos.x, 0, pos.z); a.rotation.y = yaw; this.path = [];
+    this.act = { kind: act.pose, act, item: it.id, pos, yaw, h, from: cell, t0: performance.now(), dur: (act.sec || 10) * 1000, cb }
+  },
+  /* stop using it: needs go up in proportion to how long you stayed (cb.done), and you step back to where you came from */
+  endAct(cancel) {
+    const A = this.act; if (!A) return; this.act = null; this.pending = false;
+    const el = Math.min(1, (performance.now() - A.t0) / A.dur); if (this.avatar) this.avatar.position.set(this.cc(A.from[0]), 0, this.cc(A.from[1]));
+    if (A.cb && A.cb.done) A.cb.done(cancel ? el : 1, !!cancel)
   },
   floorCell(cx, cy) { const r = this.cv.getBoundingClientRect(), v = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), ray = new THREE.Raycaster(); ray.setFromCamera(v, this.cam); const h = ray.intersectObject(this.floor)[0]; return h ? { p: h.point, cell: this.cellFromPoint(h.point) } : null },
   tap(cx, cy) {
@@ -393,23 +443,25 @@ window.ROOM3D = {
     const hits = ray.intersectObjects([this.itemsGroup, this.floor], true); let itemG = null, floorHit = null;
     for (const h of hits) { if (h.object === this.floor) { floorHit = floorHit || h; if (!itemG) break; continue } let o = h.object; while (o && !(o.userData && o.userData.id)) o = o.parent; if (o && !itemG) itemG = o }
     if (this.buy) { if (itemG) this.buy({ type: 'item', id: itemG.userData.id }); else if (floorHit) this.buy({ type: 'cell', cell: this.cellFromPoint(floorHit.point) }); else this.buy({ type: 'none' }); return }
+    if (itemG && window.USE && USE.open(itemG.userData.id)) return;
     if (itemG && itemG.userData.eat) {
       const it = (S.items || []).find(i => i.id === itemG.userData.id), occ = FURN.occupied(S.items || []), [w, d] = FURN.footprint(it.name, it.rot); let best = null, bl = 1e9;
-      for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) { if ((i >= 0 && i < w) && (j >= 0 && j < d)) continue; const c = [it.x + i, it.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] > 5 || c[1] > 5 || occ.has(c[0] + ',' + c[1])) continue; const dd = Math.hypot(this.cc(c[0]) - this.avatar.position.x, this.cc(c[1]) - this.avatar.position.z); if (dd < bl && this.walkToCell(c)) { bl = dd; best = c } }
+      for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) { if ((i >= 0 && i < w) && (j >= 0 && j < d)) continue; const c = [it.x + i, it.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] >= this.gw || c[1] >= this.gd || occ.has(c[0] + ',' + c[1])) continue; const dd = Math.hypot(this.cc(c[0]) - this.avatar.position.x, this.cc(c[1]) - this.avatar.position.z); if (dd < bl && this.walkToCell(c)) { bl = dd; best = c } }
       if (!best) { toast('Something is blocking your cooler box'); return } this.walkToCell(best); this.onArrive = () => eat({ stopPropagation() { } }); return
     }
-    if (floorHit) { this.onArrive = null; const cell = this.cellFromPoint(floorHit.point); if (!this.walkToCell(cell, floorHit.point)) toast('You cannot walk there') }
+    if (floorHit) { if (this.act) this.endAct(true); if (window.USE) USE.close(); this.onArrive = null; const cell = this.cellFromPoint(floorHit.point); if (!this.walkToCell(cell, floorHit.point)) toast('You cannot walk there') }
   },
   loop(t) {
     requestAnimationFrame(tt => this.loop(tt)); if (!this.on || document.hidden || this.cv.style.display === 'none' || document.getElementById('hub').style.display === 'flex') return;
     const dt = Math.min(.05, (t - this.last) / 1000 || .016); if (isSaver() && t - this.last < 33) return; this.last = t;
     if (this.tAz != null) { const d = this.tAz - this.az; this.az += d * Math.min(1, dt * 8); if (Math.abs(d) < .002) { this.az = this.tAz; this.tAz = null } }
     const cam = this.cam, sp = Math.sin(this.pol), px = this.dist * sp * Math.sin(this.az), pz = this.dist * sp * Math.cos(this.az), py = this.dist * Math.cos(this.pol);
-    cam.position.set(px + this.off, py + .8, pz + this.off); cam.lookAt(this.off, .8, this.off);
+    cam.position.set(px + this.offX, py + .8, pz + this.offZ); cam.lookAt(this.offX, .8, this.offZ);
     // walls between the camera and the room fade out
-    this.walls.forEach(w => { const side = px * w.out[0] + pz * w.out[1], want = side > 2.2 ? .08 : 1, m = w.m.material; m.opacity += (want - m.opacity) * Math.min(1, dt * 8); m.depthWrite = m.opacity > .6; w.m.visible = m.opacity > .02 });
+    this.walls.forEach(w => { if (this.layout) return; const side = px * w.out[0] + pz * w.out[1], want = side > 2.2 ? .08 : 1, m = w.m.material; m.opacity += (want - m.opacity) * Math.min(1, dt * 8); m.depthWrite = m.opacity > .6; w.m.visible = m.opacity > .02 });
     // avatar walking along the path
     const a = this.avatar; let moving = false;
+    if (this.act && performance.now() - this.act.t0 >= this.act.dur) this.endAct(false);
     if (this.path.length) { const goal = this.path[0], d = goal.clone().sub(a.position); d.y = 0; const L = d.length(); if (L < .08) { this.path.shift(); if (!this.path.length && this.onArrive) { const f = this.onArrive; this.onArrive = null; f() } } else { moving = true; d.normalize(); a.position.addScaledVector(d, Math.min(L, 2.5 * dt)); const ta = Math.atan2(d.x, d.z), df = ((ta - a.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; a.rotation.y += df * Math.min(1, dt * 10) } }
     this.animate(t, dt, moving);
     // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
