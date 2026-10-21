@@ -17,7 +17,7 @@
   background:radial-gradient(circle at 78% 6%,rgba(96,112,255,.55),transparent 46%),radial-gradient(circle at 0% 40%,rgba(190,64,190,.4),transparent 42%),linear-gradient(180deg,#26286b 0%,#231c5b 42%,#1b1a52 72%,#2b2b86 100%)}
 .screen::after{display:none}
 .island{top:calc(10px + env(safe-area-inset-top, 0px));width:31%;height:29px;border-radius:20px;background:#000;z-index:5}
-.sb{height:56px;padding:calc(15px + env(safe-area-inset-top, 0px)) 26px 0;font-size:15.5px;font-weight:600;letter-spacing:.2px;position:relative;z-index:4}
+.sb{height:56px;padding:0 26px 7px;top:env(safe-area-inset-top, 0px);font-size:15.5px;font-weight:600;letter-spacing:.2px;position:relative;z-index:4}
 .sbr{display:flex;align-items:center;gap:6px}
 .sbr svg{display:block}
 .home{display:block;width:34%;height:5px;bottom:8px;background:rgba(255,255,255,.9)}

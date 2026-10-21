@@ -12,6 +12,7 @@ const GistPostSchema = new Schema({
   match: { game: String, name: String, score: String, opponent: String, result: String },  // auto-posted match win card
   election: { office: String, kind: String, slogan: String, votes: Number },   // State House cards: campaign / result / announce (see services/govService.js)
   poll: { options: { type: [PollOption], default: undefined }, endsAt: Date },
+  song: { title: String, artist: String, albumArt: String, streamUrl: String },   // a Songify track shared to the feed: tapping it opens Songify and plays it
   video: { kind: String, mux: { assetId: String, playbackId: String, signed: Boolean, captions: Boolean }, url: String, fileId: String, mime: String, size: Number, dur: Number, poster: { url: String, thumb: String } },   // reel / video post (bytes live in GridFS, see utils/reelstore.js)
   views: { type: Number, default: 0 },
   plays: { type: Number, default: 0 }, watchMs: { type: Number, default: 0 }, completions: { type: Number, default: 0 },   // watch analytics, used to rank reels

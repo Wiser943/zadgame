@@ -121,6 +121,7 @@ async function hydrate(posts, uid) {
   const shape = (p, withShared) => {
     const id = String(p._id), o = {
       id, author: pubUser(uMap.get(p.author)), mine: p.author === uid, text: p.text || '', images: p.images || [],
+      song: p.song && p.song.streamUrl ? { title: p.song.title || 'Song', artist: p.song.artist || '', albumArt: p.song.albumArt || '', streamUrl: p.song.streamUrl } : null,
       game: p.game && p.game.key ? { key: p.game.key, name: p.game.name, code: p.game.code || '' } : null,
       match: p.match && p.match.game ? { game: p.match.game, name: p.match.name, score: p.match.score || '', opponent: p.match.opponent || '', result: p.match.result || 'win' } : null,
       election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
@@ -218,6 +219,12 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
       if (code && !/^[A-Z0-9]{3,8}$/.test(code)) return bad(res, 'Room codes are 3 to 8 letters or numbers.');
       game = { key: g.key, name: g.name, code };
     }
+    let song;
+    if (b.song && typeof b.song.streamUrl === 'string') {
+      const url = String(b.song.streamUrl).trim().slice(0, 1000), art = String(b.song.albumArt || '').trim().slice(0, 1000);
+      if (!/^https?:\/\//i.test(url)) return bad(res, 'That song link is not valid.');
+      song = { title: String(b.song.title || 'Song').slice(0, 120), artist: String(b.song.artist || '').slice(0, 120), albumArt: /^https?:\/\//i.test(art) ? art : '', streamUrl: url };
+    }
     let poll;
     if (b.poll && Array.isArray(b.poll.options)) {
       const opts = b.poll.options.map((x) => String(x || '').trim().slice(0, 40)).filter(Boolean).slice(0, 4);
@@ -234,9 +241,9 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
       sharedFrom = String(orig._id); origAuthor = orig.author;
       await GistPost.updateOne({ _id: orig._id }, { $inc: { shares: 1 } });
     }
-    if (!text && !images.length && !game && !sharedFrom && !poll && !video) return bad(res, 'Write something or add a photo first.');
+    if (!text && !images.length && !game && !sharedFrom && !poll && !video && !song) return bad(res, 'Write something or add a photo first.');
     const tags = parseTags(text), mentions = await parseMentions(text);
-    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, sharedFrom, tags, mentions });
+    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, song, sharedFrom, tags, mentions });
     if (video && video.fileId) await reelstore.markUsed(video.fileId).catch(() => {});
     const pid = String(post._id), who = label(req.user);
     if (origAuthor) ping(req, origAuthor, `${who} reshared your gist`, { icon: '🔁', ref: sharedFrom, key: 'rs:' + uid + sharedFrom });

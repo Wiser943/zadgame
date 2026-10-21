@@ -204,7 +204,7 @@ const STYLE = {
   t_body() {
     const me = this.me, C = this.D.catalog;
     return `<div class="lab2">BASE MODEL</div><p class="hint2">This only sets the frame your outfits are fitted to. Your pronouns are separate (see Identity).</p>
-      ${this.chips([['male', 'Model 1 · broader frame'], ['female', 'Model 2 · slimmer frame']], me.render.g, 'STYLE.model')}
+      ${this.chips([['male', 'Model 1 · broader frame'], ['female', 'Model 2 · slimmer frame']], me.render.g, 'STYLE.model').replace('class="stchips"', 'class="stchips stpair"')}
       <div class="lab2">BODY TYPE</div><div class="stlist">${C.bodies.map(b => `<button class="stcard ${me.look.body === b.id ? 'eq' : ''}" onclick="STYLE.setBody('${b.id}')"><div class="stmain"><div class="stnm">${esc(b.name)}</div><div class="stsub">${b.h > 1.05 ? 'Taller' : b.h < .95 ? 'Shorter' : 'Average height'} · ${b.tw > 1.15 ? 'fuller' : b.tw < .9 ? 'slimmer' : 'balanced'} build</div></div><span class="stb ${me.look.body === b.id ? 'on' : ''}">${me.look.body === b.id ? 'Selected' : 'Choose'}</span></button>`).join('')}</div>
       <div class="lab2">SKIN TONE</div>${this.swatches(C.skin.map((c, i) => [ACAvatar.SKIN_HEX && ['Very light', 'Light', 'Light tan', 'Tan', 'Medium brown', 'Brown', 'Deep brown', 'Dark brown', 'Very dark brown', 'Deepest brown'][i], c]), me.look.skin, 'STYLE.setSkin')}<p class="hint2">Body types and skin tones are always free.</p>`;
   },

@@ -295,22 +295,19 @@ window.ROOM3D = {
     if (!this.scene) return; G = [6, 8, 10].includes(G) ? G : 6;
     const key = L ? L.id : G; if (key === this.roomKey) return; this.roomKey = key;
     const was = this.layout; this.layout = L || null; if (this.act) this.endAct(true);
-    const gw = this.gw = L ? L.w : G, gd = this.gd = L ? L.d : G, offX = this.offX = (gw - 6) / 2, offZ = this.offZ = (gd - 6) / 2, shell = !!L;
+    const gw = this.gw = L ? L.w : G, gd = this.gd = L ? L.d : G, offX = this.offX = (gw - 6) / 2, offZ = this.offZ = (gd - 6) / 2, shell = !!(L && L.model);
     this.floor.visible = this.slab.visible = !shell; this.walls.forEach(w => { w.m.visible = !shell }); (this.shellDecor || []).forEach(m => { m.visible = !shell });
-    if (shell) {
-      this.groundM.position.set(offX, -.45, offZ); const gs = Math.max(1, Math.max(gw, gd) / 9); this.groundM.scale.set(gs, 1, gs);
-      if (window.M3D) M3D.houseShell(this, L);
-      if (this.avatar) { this.avatar.position.set(this.cc(L.start[0]), 0, this.cc(L.start[1])); this.path = []; this.onArrive = null }
-    } else {
-      if (window.M3D) M3D.dropShell(this);
-      const wl = G + .15, edge = G - 3 + .075, geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
-      this.groundM.scale.set(1, 1, 1);
-      this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(G, G); this.floor.position.set(offX, 0, offZ); this.floor.material.map.repeat.set(G / 2, G / 2);
-      geo(this.slab, G + .5, .3, G + .5); this.slab.position.set(offX, -.15, offZ); this.groundM.position.set(offX, -.45, offZ);
-      geo(this.wW, .15, 3, wl); this.wW.position.set(-3.075, 1.5, offZ); geo(this.wN, wl, 3, .15); this.wN.position.set(offX, 1.5, -3.075);
-      geo(this.wE, .15, 3, wl); this.wE.position.set(edge, 1.5, offZ); geo(this.wS, wl, 3, .15); this.wS.position.set(offX, 1.5, edge);
-      if (was && this.avatar) { this.avatar.position.set(-1, 0, 1.2); this.path = []; this.onArrive = null }
+    const gs = L ? Math.max(1, (Math.max(gw, gd) + 6) / 9) : 1; this.groundM.scale.set(gs, 1, gs); this.groundM.position.set(offX, -.45, offZ);
+    if (shell) { if (window.M3D) { M3D.dropFixtures(this); M3D.houseShell(this, L) } }
+    else {                                                   // the box room, any size: 6/8/10 square, or the Market Shop's 10 x 8
+      if (window.M3D) { M3D.dropShell(this); L && L.fixtures && L.fixtures.length ? M3D.shopFixtures(this, L) : M3D.dropFixtures(this) }
+      const lx = gw + .15, lz = gd + .15, ex = gw - 3 + .075, ez = gd - 3 + .075, geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
+      this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(gw, gd); this.floor.position.set(offX, 0, offZ); this.floor.material.map.repeat.set(gw / 2, gd / 2);
+      geo(this.slab, gw + .5, .3, gd + .5); this.slab.position.set(offX, -.15, offZ);
+      geo(this.wW, .15, 3, lz); this.wW.position.set(-3.075, 1.5, offZ); geo(this.wN, lx, 3, .15); this.wN.position.set(offX, 1.5, -3.075);
+      geo(this.wE, .15, 3, lz); this.wE.position.set(ex, 1.5, offZ); geo(this.wS, lx, 3, .15); this.wS.position.set(offX, 1.5, ez);
     }
+    if (this.avatar && (L || was)) { const c = L ? L.start : null; this.avatar.position.set(c ? this.cc(c[0]) : -1, 0, c ? this.cc(c[1]) : 1.2); this.path = []; this.onArrive = null }
     this.resize()
   },
   ek(a, b) { const f = (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) ? [a, b] : [b, a]; return f[0][0] + ',' + f[0][1] + '|' + f[1][0] + ',' + f[1][1] },
@@ -403,10 +400,12 @@ window.ROOM3D = {
     for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) { if ((i >= 0 && i < w) && (j >= 0 && j < d)) continue; if ((i === -1 || i === w) && (j === -1 || j === d)) continue; const c = [cool.x + i, cool.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] >= this.gw || c[1] >= this.gd || occ.has(c[0] + ',' + c[1])) continue; if (this.bfs(door, c, occ)) return true }
     return false
   },
+  /* built-in things of a fixed-plan home (shop counter, shelves ...) as use-able pseudo items */
+  fixture(id) { const f = ((this.layout && this.layout.fixtures) || []).find(x => 'fx:' + x.id === id); return f ? { id, name: f.name, kind: f.kind, x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, fixture: true } : null },
   /* ---------- using furniture: walk next to it, then lie / sit / stand there for a while ---------- */
   SEAT: { chair: .54, stool: .82, sofa: .58, armchair: .58, toilet: .5 },
   useItem(it, act, cb) {
-    const D = FURN.ITEMS[it.name]; if (!D) return; const [w, d] = FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, f = [Math.sin(th), Math.cos(th)];
+    const D = FURN.ITEMS[it.name] || (it.fixture ? {} : null); if (!D) return; const [w, d] = it.fixture ? [it.w, it.d] : FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, f = [Math.sin(th), Math.cos(th)];
     const occ = FURN.occupied(S.items || []), from = this.cellFromPoint(this.avatar.position); occ.delete(from[0] + ',' + from[1]);
     const cx = it.x + (w - 1) / 2, cz = it.z + (d - 1) / 2; let best = null, bs = 1e9, bp = null;
     for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) {
@@ -421,7 +420,7 @@ window.ROOM3D = {
     if (bp.length <= 1) { this.path = []; go() } else { this.walkToCell(best); this.onArrive = go }
   },
   beginAct(it, act, cell, cb) {
-    const D = FURN.ITEMS[it.name], [w, d] = FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, a = this.avatar;
+    const D = FURN.ITEMS[it.name] || {}, [w, d] = it.fixture ? [it.w, it.d] : FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, a = this.avatar;
     const center = new THREE.Vector3(this.cc(it.x) + (w - 1) / 2, 0, this.cc(it.z) + (d - 1) / 2); let pos = new THREE.Vector3(this.cc(cell[0]), 0, this.cc(cell[1])), yaw = a.rotation.y, h = 0;
     if (act.pose === 'lie') { pos = center; h = .57; yaw = Math.atan2(Math.cos(th), -Math.sin(th)) }                 // head toward the pillow end (local -x of the bed)
     else if (act.pose === 'sit') {
@@ -440,9 +439,9 @@ window.ROOM3D = {
   floorCell(cx, cy) { const r = this.cv.getBoundingClientRect(), v = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), ray = new THREE.Raycaster(); ray.setFromCamera(v, this.cam); const h = ray.intersectObject(this.floor)[0]; return h ? { p: h.point, cell: this.cellFromPoint(h.point) } : null },
   tap(cx, cy) {
     const r = this.cv.getBoundingClientRect(), v = new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), ray = new THREE.Raycaster(); ray.setFromCamera(v, this.cam);
-    const hits = ray.intersectObjects([this.itemsGroup, this.floor], true); let itemG = null, floorHit = null;
+    const hits = ray.intersectObjects([this.itemsGroup, this.fxG, this.floor].filter(Boolean), true); let itemG = null, floorHit = null;
     for (const h of hits) { if (h.object === this.floor) { floorHit = floorHit || h; if (!itemG) break; continue } let o = h.object; while (o && !(o.userData && o.userData.id)) o = o.parent; if (o && !itemG) itemG = o }
-    if (this.buy) { if (itemG) this.buy({ type: 'item', id: itemG.userData.id }); else if (floorHit) this.buy({ type: 'cell', cell: this.cellFromPoint(floorHit.point) }); else this.buy({ type: 'none' }); return }
+    if (this.buy) { if (itemG && String(itemG.userData.id).startsWith('fx:')) { this.buy({ type: 'none' }); return } if (itemG) this.buy({ type: 'item', id: itemG.userData.id }); else if (floorHit) this.buy({ type: 'cell', cell: this.cellFromPoint(floorHit.point) }); else this.buy({ type: 'none' }); return }
     if (itemG && window.USE && USE.open(itemG.userData.id)) return;
     if (itemG && itemG.userData.eat) {
       const it = (S.items || []).find(i => i.id === itemG.userData.id), occ = FURN.occupied(S.items || []), [w, d] = FURN.footprint(it.name, it.rot); let best = null, bl = 1e9;

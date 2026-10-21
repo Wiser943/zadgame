@@ -1486,4 +1486,23 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 #usebar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(96px + var(--sab));z-index:31;background:#1b2236;color:#fff;border-radius:99px;padding:8px 8px 8px 18px;align-items:center;gap:14px;font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.3)}
 #usebar button{background:#ffc83d;color:#1b2236;border:0;border-radius:99px;padding:8px 16px;font:800 14px Outfit,system-ui,sans-serif;cursor:pointer}
 
+/* milestone / option rows inside phone sheets: a stray ".big b" rule made the reward text huge and squeezed the title */
+.fopt b,.fopt.pdr b{font:800 14px Outfit,system-ui,sans-serif;flex:none;margin-left:10px;letter-spacing:0;color:var(--ink);white-space:nowrap}
+.fopt.pdr>span{flex:1;min-width:0;display:block}.fopt.pdr small{display:block;margin-top:2px;font:600 12px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--mut);white-space:normal}
+.fopt.pdr.lock{opacity:.7}
+
+/* long-press message menu + reaction badges use line icons instead of emoji (chatx.js) */
+.cxi{width:26px;height:26px;display:block;flex:none}.cxi.sm{width:15px;height:15px;display:inline-block;vertical-align:-2px;margin-right:4px}
+.cxbar button{display:flex;align-items:center;justify-content:center}.cxbar button .cxi{width:25px;height:25px}.cxbar .more .cxi{width:20px;height:20px}
+.cxact button span{display:flex;align-items:center;justify-content:center}.cxact button span .cxi{width:20px;height:20px}
+.rx{display:inline-flex;align-items:center;gap:2px}.rx .cxi{width:16px;height:16px}
+
+/* step outside / step inside (door.js) */
+.doorbtn{position:absolute;left:10px;top:calc(96px + var(--sat));z-index:7;display:none;align-items:center;gap:8px;border:0;border-radius:999px;background:rgba(255,255,255,.94);color:#1b2236;padding:10px 16px 10px 12px;font:800 14px Outfit,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}
+.doorbtn:active{transform:scale(.97)}.doorbtn[data-mode=in]{background:#ffc83d}
+:where(html[data-theme="dark"]) .doorbtn{background:rgba(27,32,52,.94);color:#e3e6f1}:where(html[data-theme="dark"]) .doorbtn[data-mode=in]{background:#ffc83d;color:#1b2236}
+
 :where(html[data-theme="dark"]) .gpickp button{background:#232842}
+
+/* Style app: the two base-model buttons sit side by side */
+.stchips.stpair{flex-wrap:nowrap}.stchips.stpair button{flex:1 1 0;min-width:0;text-align:center;line-height:1.2;padding:8px 6px}

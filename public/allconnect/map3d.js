@@ -1290,6 +1290,11 @@
       const xy = hoodSlotXY(hood, slot); const home = PINS.find(p => p[5] === 'home'); if (!xy || !home) return;
       home[2] = xy[0]; home[3] = xy[1];
     },
+    /* leaving your home: you appear on the street just outside your door; coming back is the "Step inside" button (door.js) */
+    homePin() { return PINS.find(p => p[5] === 'home') },
+    stepOutside() { API.init(); const h = API.homePin(); if (!h) return; ensureMe(); teleport(h[2], h[3] + 34); M.follow = true; M.tD = Math.min(M.tD || 240, 240) },
+    nearHome(r) { const h = API.homePin(); return !!(h && M.me && Math.hypot(M.me.x - h[2], M.me.y - (h[3] + 34)) <= (r || 70)) },
+    walkHome() { const h = API.homePin(); if (h) { M.follow = true; API.walkTo(h[2], h[3] + 34) } },
     walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
     visit(em, title) {      /* Visit only works when you are at the place; from farther away you travel there first */

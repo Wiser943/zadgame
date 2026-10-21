@@ -50,7 +50,7 @@ const HOMES = {
     return { level: n.level, name: n.name, grid: n.grid, description: n.description, cost: Math.max(1000, Math.round((h.price * n.share) / 1000) * 1000) };
   },
   layoutLine(p, h) {
-    if (h && h.layout) return '<p>Layout · full house plan with separate rooms (fixed size)</p>';
+    if (h && h.layout) return `<p>Layout · ${this.esc(h.layoutNote || 'Fixed floor plan')}</p>`;
     const g = homeGrid(p), n = this.next(p, h);
     return `<p>Layout · ${g}×${g} cells${(Number(p.level) | 0) ? ' (expanded)' : ''}${n ? ` · next: ${this.esc(n.name)} (${n.grid}×${n.grid})` : (h.mode === 'buy' ? ' · fully expanded' : '')}</p>`;
   },

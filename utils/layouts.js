@@ -10,7 +10,7 @@ function layoutFor(id) {
   let out = null;
   try {
     const j = JSON.parse(fs.readFileSync(path.join(DIR, id + '.json'), 'utf8'));
-    out = { id: j.id, w: j.w, d: j.d, blocked: new Set(j.blocked.map((c) => c[0] + ',' + c[1])), walls: new Set(j.walls), start: j.start, model: j.model };
+    out = { id: j.id, w: j.w, d: j.d, blocked: new Set(j.blocked.map((c) => c[0] + ',' + c[1])), walls: new Set(j.walls), start: j.start, model: j.model || null, fixtures: j.fixtures || [] };
   } catch (e) { out = null; }
   cache.set(id, out); return out;
 }
