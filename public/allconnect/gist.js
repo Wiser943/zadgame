@@ -95,7 +95,7 @@ const GIST = {
     this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
     const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['reels', 'Reels <i class="fa-solid fa-clapperboard"></i>'], ['me', 'Me']];
     const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-    PH.shell(this.tagF ? '#' + esc(this.tagF) : 'Your pulse', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
+    PH.shell(this.tagF ? '#' + esc(this.tagF) : 'Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
       <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>
       <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div>
       <div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`, seg, this.bell());
@@ -389,7 +389,7 @@ const GIST = {
     if (mode === 'share' && arg) { C.shared = this.cache.get(arg) || null }
     if (mode === 'image' && arg && !C.images.some(i => i.url === arg.url)) C.images.push(arg);
     PH.shell(C.shared ? 'Share gist' : 'New gist', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp"><div class="gcwho">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></div>
-      <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'What’s the gist? Use #hashtags and @mentions <i class="fa-solid fa-gamepad"></i>'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
+      <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'What’s the gist? Use #hashtags and @mentions'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
       <div id="gc_att"></div><div class="gtools"><button onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button onclick="RL.pick()"><i class="fa-solid fa-video"></i> Video</button><button onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
       <div class="aerr" id="gc_e"></div><button class="btn p" id="gc_b" onclick="GIST.submit()">${C.shared ? 'Share' : 'Post'}</button></div></div>`);
     this.attDraw(); this.cc(); if (mode === 'photos') this.pickOpen(); else if (mode === 'video') RL.pick(); else if (!('ontouchstart' in window)) $('gc_t').focus()
@@ -438,7 +438,7 @@ const GIST = {
     if (k.tab === 'dev') { b.innerHTML = head + `<label class="btn s pickf"><i class="fa-solid fa-folder-open"></i> Choose photos from this device<input type="file" accept="image/*" multiple hidden onchange="GIST.pickFiles(this)"></label><p class="hint2">${k.busy ? 'Uploading…' : 'Photos you pick are also saved to your gallery.'}</p>`; return }
     const L = k.tab === 'mine' ? k.mine : k.plat; if (!L) { b.innerHTML = head + '<p class="empty">Loading…</p>'; return }
     if (!L.length) { b.innerHTML = head + `<p class="empty">${k.tab === 'mine' ? 'Your gallery is empty. Take a photo with the Camera app or choose one from your device.' : 'No platform photos yet.'}</p>`; return }
-    b.innerHTML = head + `<div class="gpick">${L.map((p, i) => `<button class="${this.has(p) ? 'sel' : ''}" onclick="GIST.pickToggle('${k.tab}',${i})"><img src="${esc(p.thumb || p.url)}" alt=""><i>✓</i></button>`).join('')}</div>`
+    b.innerHTML = head + `<div class="gpickp">${L.map((p, i) => `<button class="${this.has(p) ? 'sel' : ''}" onclick="GIST.pickToggle('${k.tab}',${i})"><img src="${esc(p.thumb || p.url)}" alt=""><i>✓</i></button>`).join('')}</div>`
   },
   pickToggle(tab, i) { const L = tab === 'mine' ? this.pk.mine : this.pk.plat, p = L[i], C = this.C; const at = C.images.findIndex(x => (x.id && x.id === p.id) || (x.url && x.url === p.url)); if (at >= 0) C.images.splice(at, 1); else { if (C.images.length >= 10) return toast('You can add up to 10 photos'); C.images.push(tab === 'mine' ? { src: 'mine', id: p.id, url: p.url, thumb: p.thumb || p.url } : { src: 'platform', url: p.url, thumb: p.thumb || p.url }) } this.pickDraw() },
   async pickFiles(inp) {

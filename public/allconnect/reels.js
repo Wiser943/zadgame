@@ -35,9 +35,7 @@ const RL = {
   show(startId) {
     this.stop(); this.cfg(); this.start = startId || ''; GIST.set('reels', this.start); PH.view = 'gist';
     const tabs = [['foryou', 'For you'], ['following', 'Following']];
-    PH.shell('Reels', 'GIST.back()', '<div class="abody rlb" id="ab"><div class="rl-feed" id="rlf"></div></div>',
-      `<div class="gtabs rltabs">${tabs.map(t => `<button class="${this.tab === t[0] ? 'on' : ''}" onclick="RL.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`,
-      `<button class="gbell" onclick="GIST.nav('compose','video')" aria-label="New reel"><i class="fa-solid fa-plus"></i></button>`);
+    PH.shell('Reels', 'GIST.back()', `<div class="abody rlb" id="ab"><div class="rl-top"><button class="rl-back" onclick="GIST.back()" aria-label="Back"><i class="fa-solid fa-chevron-left"></i></button><div class="rl-tabs">${tabs.map(t => `<button class="${this.tab === t[0] ? 'on' : ''}" onclick="RL.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div><span class="rl-sp"></span></div><div class="rl-feed" id="rlf"></div></div>`);
     const F = this.List(), first = startId && GIST.cache.get(startId);
     if (first && first.video && !F.p.some(x => x.id === first.id)) F.p.unshift(first);
     if (F.p.length) this.draw();
@@ -67,7 +65,7 @@ const RL = {
       <div class="rl-wash"></div><span class="rl-no">${String(i + 1).padStart(2, '0')}</span><div class="rl-pz"><i class="fa-solid fa-play"></i></div><div class="rl-burst"></div>
       ${p.video.cc ? `<button class="rl-cc ${this.ccOn ? 'on' : ''}" onclick="event.stopPropagation();RL.cc()" aria-label="Captions">CC</button>` : ''}
       <button class="rl-snd" onclick="event.stopPropagation();RL.snd()" aria-label="Sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i></button>
-      <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
+      <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
       ${p.text ? `<div class="rl-cap">${GIST.txt(p.text)}</div>` : ''}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
       <div class="rl-act"><button class="lk ${p.myRx ? 'on' : ''}" onclick="event.stopPropagation();GIST.react('${p.id}','like')" aria-label="Like"><span>${em || '<i class="fa-solid fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
       <button onclick="event.stopPropagation();RL.comments('${p.id}')" aria-label="Comments"><span><i class="fa-solid fa-comment-dots"></i></span><em>${this.fmt(p.comments) || 'Chat'}</em></button>
@@ -78,6 +76,7 @@ const RL = {
   draw() {
     const f = this.feedEl(); if (!f) return; const F = this.List();
     if (this.obs) this.obs.disconnect();
+    const av = PH.$a(); if (av) av.classList.toggle('rlfull', !!F.p.length);
     if (!F.p.length) { f.innerHTML = F.ok ? this.empty() : '<div class="rl-empty"><span class="rl-spin"></span><p>Finding your next reel…</p></div>'; return }
     f.innerHTML = F.p.map((p, i) => this.card(p, i)).join(''); this.bind(f);
     let at = Math.max(0, F.p.findIndex(p => p.id === this.start)); this.start = '';
@@ -98,6 +97,7 @@ const RL = {
       if (this.tapT) { clearTimeout(this.tapT); this.tapT = 0; this.dbl(c, e); return }
       this.tapT = setTimeout(() => { this.tapT = 0; this.toggle(c) }, 260)
     });
+    f.addEventListener('loadedmetadata', e => { const v = e.target; if (v.classList && v.classList.contains('rl-v')) v.classList.toggle('fit', v.videoWidth > v.videoHeight * 1.05) }, true);
     window.addEventListener('resize', () => this.fit())
   },
   observe() {
@@ -243,16 +243,18 @@ const RL = {
   },
 };
 
-/* ---------- TokTok look for every P-Gist screen: paper/lime skin + bottom dock ---------- */
+/* ---------- P-Gist bottom dock (Pulse / Reels / + / Studio) + full-bleed reels mode. Colours come from the app's own theme. ---------- */
 (function () {
-  if (typeof PH === 'undefined' || PH._tk) return; PH._tk = 1; PH.TINT.gist = '#f3f1e8';
-  const shell = PH.shell;
+  if (typeof PH === 'undefined' || PH._tk) return; PH._tk = 1;
+  const shell = PH.shell, close = PH.close;
   PH.shell = function () {
-    const r = shell.apply(this, arguments), sc = document.querySelector('.screen'), on = this.view === 'gist'; if (sc) sc.classList.toggle('tk', on);
-    const a = this.$a(), old = a.querySelector('.tkdock'); if (old) old.remove();
-    if (on && GIST.cur && ['feed', 'reels'].includes(GIST.cur.fn) && !GIST.tagF) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
+    const r = shell.apply(this, arguments), a = this.$a(), old = a.querySelector('.tkdock'); if (old) old.remove();
+    const gist = this.view === 'gist', reels = gist && GIST.cur && GIST.cur.fn === 'reels';
+    a.classList.toggle('rlmode', !!reels); a.classList.remove('rlfull');
+    if (gist && GIST.cur && ['feed', 'reels'].includes(GIST.cur.fn) && !GIST.tagF) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
     return r
   };
+  PH.close = function () { const a = this.$a(); if (a) a.classList.remove('rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };
 })();
 Object.assign(RL, {
   dock(at) {
