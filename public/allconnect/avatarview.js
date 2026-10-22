@@ -36,6 +36,7 @@ window.AvatarView = {
     const sun = new THREE.DirectionalLight(0xfff0d0, .6); sun.position.set(2, 4, 3); AV.scene.add(sun);
     AV.pose = {}; AV.tp = {}; AV.ph = 0; AV.tt = 0; AV.spin = 0; AV.dn = 0;
     AV.buildAvatar(gender, o.render || null);
+    AV.avatar.position.set(0, 0, 0);   // buildAvatar defaults a brand-new avatar to the house's spawn point (-1,0,1.2); this view's orbit camera circles the origin, so recenter here or the model swings toward/away from camera as it turns — looking like it's scaling, with legs clipping out of frame
     AV.setExt(o.ext || {});
     if (o.pose) AV.setPose(o.pose);
 

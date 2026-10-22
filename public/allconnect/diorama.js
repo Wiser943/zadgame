@@ -32,7 +32,9 @@
   /* ---------- the model ---------- */
   function buildWorld(scene) {
     const mats = {}, anim = { cars: [], boats: [], plane: null, flags: [] };
-    const M = c => mats[c] || (mats[c] = new THREE.MeshLambertMaterial({ color: c }));
+    // Phong instead of flat Lambert shading: the same change that makes the room avatars read as smooth instead
+    // of blocky (see room3d.js's MSkin) — a soft specular highlight on every surface instead of flat color.
+    const M = c => mats[c] || (mats[c] = new THREE.MeshPhongMaterial({ color: c, shininess: 18, specular: 0x334455 }));
     const put = (geo, mat, x, y, z, p) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); (p || scene).add(m); return m };
     const box = (w, h, d, c, x, y, z, p) => put(new THREE.BoxGeometry(w, h, d), M(c), x, y + h / 2, z, p);   // y = bottom of the box
     const cyl = (rt, rb, h, c, x, y, z, seg, p) => put(new THREE.CylinderGeometry(rt, rb, h, seg || 16), M(c), x, y + h / 2, z, p);
