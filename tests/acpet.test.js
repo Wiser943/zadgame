@@ -26,10 +26,35 @@ test('game rewards are capped per score and per day', () => {
   assert.equal(P.reward('paws', 3, P.GAME.cap - 100), 100);
   assert.equal(P.reward('nope', 3, 0), 0); assert.equal(P.reward('mouse', -4, 0), 0);
 });
+test('Pet feature defaults, care guide, alert preferences, and catalogs are safe', () => {
+  const p = P.defaults('u'); assert.equal(p.roomItem, 'bed'); assert.deepEqual(P.alertPrefs(p), P.ALERT_DEFAULTS);
+  p.hunger = 18; assert.equal(P.careNext(p).action, 'food'); p.health = 10; assert.equal(P.careNext(p).item, 'vet');
+  assert.deepEqual(Object.keys(P.TRICKS), ['sit', 'highfive', 'spin']); assert.deepEqual(Object.keys(P.ROOM_ITEMS), ['bed', 'scratch', 'toy']);
+  p.alertPrefs = { hunger: false, quietStart: 1 }; assert.deepEqual(P.alertPrefs(p), { ...P.ALERT_DEFAULTS, hunger: false, quietStart: 1 });
+});
 
 /* ---------- routes with fakes ---------- */
 const users = new Map(), pets = new Map(), txns = [], notes = [], friends = new Set(); let curEvent = { mult: {} };
 const mkPet = (o) => Object.assign({ markModified() {}, async save() { pets.set(this.user, this); } }, o);
+const getPath = (o, path) => path.split('.').reduce((x, k) => x == null ? undefined : x[k], o);
+const setPath = (o, path, v) => { const a = path.split('.'); let x = o; for (const k of a.slice(0, -1)) x = x[k] || (x[k] = {}); x[a.at(-1)] = v; };
+function matches(d, q) {
+  for (const [k, v] of Object.entries(q || {})) {
+    if (k === '$or') { if (!v.some((c) => matches(d, c))) return false; continue; }
+    const actual = getPath(d, k);
+    if (v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)) {
+      for (const [op, n] of Object.entries(v)) {
+        if (op === '$ne' && actual === n) return false;
+        if (op === '$lte' && !(actual == null ? false : +new Date(actual) <= +new Date(n))) return false;
+        if (op === '$lt' && !(actual == null ? false : actual < n)) return false;
+        if (op === '$gte' && !(actual >= n)) return false;
+        if (op === '$exists' && (actual !== undefined) !== n) return false;
+      }
+    } else if (v === null) { if (actual != null) return false; }
+    else if (actual !== v) return false;
+  }
+  return true;
+}
 const plain = (d) => (d ? Object.fromEntries(Object.entries(d).filter(([, v]) => typeof v !== 'function')) : null);
 const withLean = (v, lean) => { const pr = Promise.resolve(v); pr.lean = async () => lean(v); return pr; };
 const fakes = {
@@ -44,7 +69,7 @@ const fakes = {
     findOne(q) { return withLean(pets.get(q.user) || null, plain); },
     find(q) { const ids = q.user.$in; return withLean(ids.map((i) => pets.get(i)).filter(Boolean), (a) => a.map(plain)); },
     async create(o) { const d = mkPet(o); pets.set(o.user, d); return d; },
-    async updateOne(q, u) { const d = pets.get(q.user); if (!d || (q.lastCheckin && q.lastCheckin.$ne === d.lastCheckin)) return { modifiedCount: 0 }; Object.assign(d, u.$set || {}); return { modifiedCount: 1 }; }
+    async updateOne(q, u) { const d = pets.get(q.user); if (!d || !matches(d, q)) return { modifiedCount: 0 }; for (const [k, v] of Object.entries(u.$set || {})) setPath(d, k, v); for (const [k, v] of Object.entries(u.$inc || {})) if (k !== 'gameEarned') setPath(d, k, (getPath(d, k) || 0) + v); return { modifiedCount: 1 }; }
   },
   '../models/Social': { Friendship: { async exists(q) { return friends.has([q.$or[0].requester, q.$or[0].recipient].sort().join('|')) ? { _id: 1 } : null; }, find() { return { async lean() { return [...friends].map((k) => ({ requester: k.split('|')[0], recipient: k.split('|')[1], status: 'accepted' })); } }; } } },
   '../middleware/auth': (req, res, next) => { req.user = { id: 'u1' }; next(); },
@@ -98,10 +123,25 @@ maybe('routes: mini-games pay a small capped amount, with a cooldown, and tire h
   r = await call('/game', { game: 'mouse', score: 10 }); assert.equal(r.s, 429);
   d.lastGame = new Date(Date.now() - 60000); r = await call('/game', { game: 'mouse', score: 9999 }); assert.equal(r.j.prize, 6000);
   d.lastGame = new Date(Date.now() - 60000); r = await call('/game', { game: 'paws', score: 15 }); assert.equal(r.j.prize, 500); assert.equal(r.j.game.capped, true);
+  d.gameDay = P.dayKey(); d.gameEarned = 0; d.lastGame = null; d.energy = 90; const before = users.get('u1').ac.cash;
+  const parallel = await Promise.all([call('/game', { game: 'mouse', score: 2 }), call('/game', { game: 'mouse', score: 2 })]);
+  assert.deepEqual(parallel.map(x => x.s).sort(), [200, 429]); assert.equal(users.get('u1').ac.cash, before + 300);
 });
 maybe('routes: names are checked', async () => {
   assert.equal((await call('/rename', { name: '<b>x</b>' })).s, 400);
   const r = await call('/rename', { name: 'Mimi' }); assert.equal(r.j.pet.name, 'Mimi');
+});
+maybe('routes: Pet preferences persist safely, and trick lessons save progress with a cooldown', async () => {
+  const d = pets.get('u1'); d.energy = 85; d.health = 90; d.asleep = false; d.tricks = {}; d.trickAt = null;
+  let r = await call('/settings', { roomItem: 'toy', inRoom: true, alertPrefs: { hunger: false, quietStart: 2, quietEnd: 8 } });
+  assert.equal(r.s, 200); assert.equal(r.j.pet.roomItem, 'toy'); assert.equal(r.j.pet.inRoom, true); assert.equal(r.j.pet.alertPrefs.hunger, false);
+  assert.equal((await call('/settings', { roomItem: 'not-a-room-item' })).s, 400);
+  r = await call('/room'); assert.equal(r.j.roomItem, 'toy');
+  r = await call('/trick', { id: 'sit' }); assert.equal(r.s, 200); assert.equal(r.j.trick.progress, 1); assert.equal(r.j.pet.tricks.sit.learned, false);
+  assert.equal((await call('/trick', { id: 'sit' })).s, 429);
+  d.trickAt = new Date(Date.now() - 16000); r = await call('/trick', { id: 'sit' }); assert.equal(r.j.trick.progress, 2);
+  d.trickAt = new Date(Date.now() - 16000); r = await call('/trick', { id: 'sit' }); assert.equal(r.j.trick.learned, true); assert.equal(r.j.pet.tricks.sit.learned, true);
+  await call('/settings', { inRoom: false });
 });
 test('growth: steady care grows her, with daily caps, and nothing counts while she is ill', () => {
   const p = P.defaults('u'); assert.equal(P.stageView(p).name, 'Baby kitten');
@@ -180,10 +220,11 @@ test('seasonal costumes are only available during their event', () => {
   assert.deepEqual(on.filter((c) => c.available).map((c) => c.id), ['raincoat']); assert.equal(off.filter((c) => c.available).length, 0); assert.match(on[0].eventTitle, /\w/);
 });
 const AL = require('../services/petalerts');
-test('away alerts: only when hungry or ill, never at night, and at most twice per absence', async () => {
-  const c = P.defaults('u'); assert.equal(AL.decide(c), null); c.hunger = 10; assert.match(AL.decide(c).text, /hungry/); c.health = 10; c.emergency = { name: 'the flu' }; assert.match(AL.decide(c).text, /the flu/);
+test('away alerts respect alert choices and quiet hours, and remain bounded per absence', async () => {
+  const c = P.defaults('u'); assert.equal(AL.decide(c), null); c.hunger = 10; assert.match(AL.decide(c).text, /hungry/); assert.equal(AL.decide(c, { hunger: false }), null); c.health = 10; c.emergency = { name: 'the flu' }; assert.match(AL.decide(c).text, /the flu/);
   const noon = Date.UTC(2026, 5, 10, 11, 0, 0), night = Date.UTC(2026, 5, 10, 22, 30, 0);   // 12:00 and 23:30 in Lagos
   assert.equal(AL.quiet(noon), false); assert.equal(AL.quiet(night), true);
+  assert.equal(AL.quiet(night, { quietStart: 0, quietEnd: 0 }), false); assert.equal(AL.quiet(noon, { quietStart: 11, quietEnd: 17 }), true);
   const row = Object.assign(P.defaults('u9'), { _id: 'r1', user: 'u9', t: new Date(noon - 4 * 3600e3), alerts: true, noteN: 0, lastNote: null, nextEmergency: new Date(noon + 5 * 86400e3) }); let claims = 0, sent = [];
   const fake = { find() { return { limit() { return { async lean() { return [row]; } }; } }; }, async updateOne() { claims++; return { modifiedCount: claims === 1 ? 1 : 0 }; } };
   const n = await AL.tick(null, noon, { ACPet: fake, notify: async (io, to, o) => sent.push(o) }); assert.equal(n, 1); assert.equal(sent.length, 1); assert.match(sent[0].text, /hungry/);
@@ -244,5 +285,7 @@ maybe('routes: friends can cuddle once a day and gift food (paid by the visitor)
   const poor = users.get('u1').ac.cash; users.get('u1').ac.cash = 100; assert.equal((await call('/visit', { to: ID2, act: 'gift', gift: 'suya' })).s, 402); users.get('u1').ac.cash = poor;
   pets.get(ID2).hunger = 99; assert.equal((await call('/visit', { to: ID2, act: 'gift', gift: 'chops' })).s, 409);          // full: nothing charged
   assert.equal(users.get('u1').ac.cash, poor);
+  pets.get(ID2).vDay = P.dayKey(Date.now() - 86400e3); pets.get(ID2).vLog = { u1: { c: 1, g: 3 } }; pets.get(ID2).hunger = 30;
+  assert.equal((await call('/visit', { to: ID2, act: 'cuddle' })).s, 200);                                                // yesterday’s local caps reset
 });
 maybe('routes: teardown', () => { server.close(); Module._load = load; });

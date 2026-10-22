@@ -129,6 +129,8 @@
   <div id="map">
    <canvas id="mapCv" aria-label="Map of Lagos. Drag to move, pinch or scroll to zoom, twist with two fingers to rotate."></canvas>
    <button class="pill maplg" onclick="HUB.view('legend')" aria-label="Map legend"><i class="fa-solid fa-circle-info"></i> Legend</button>
+   <button class="pill maptour" id="mapTourBtn" onclick="MAP3D.startTour()">🧭 City Tour</button>
+   <div class="pill mapTourLabel" id="mapTourLabel" aria-live="polite" style="display:none"></div>
    <!-- the old filter-chip row (Go-slow/Billboards/Neighbours/Sea/Gov) was dropped: those are the same five layers the
         Legend sheet already lists, so each legend row now doubles as its on/off toggle instead (see hub.js v_legend). -->
    <button class="pill walkyaba" onclick="MAP3D.walkYaba()">🚶 Walk Yaba</button>

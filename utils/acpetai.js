@@ -1,12 +1,12 @@
 // Pet "Answer mode": the pet answers questions using Google Gemini. The API key stays on the server (set GEMINI_API_KEY on Render, like IMGBB_KEY).
-// Optional: GEMINI_MODEL (default gemini-2.5-flash) and PET_AI_DAILY (answers per player per day, default 60).
+// Optional: GEMINI_MODEL (default gemini-3.5-flash-lite) and PET_AI_DAILY (answers per player per day, default 60).
 // Everything the player types or says is treated as untrusted text. She always answers in plain English, in a few short spoken sentences.
 const KEY_NAMES = ['GEMINI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_KEY', 'GOOGLE_GENAI_API_KEY'];
 const keyInfo = () => {
   for (const n of KEY_NAMES) { let v = process.env[n]; if (v && String(v).trim()) { v = String(v).trim().replace(/^["']|["']$/g, '').trim(); if (v) return { name: n, key: v }; } }
   return { name: '', key: '' };
 };
-const models = () => [...new Set([String(process.env.GEMINI_MODEL || '').trim(), 'gemini-2.5-flash', 'gemini-2.0-flash'].filter(Boolean))];
+const models = () => [...new Set([String(process.env.GEMINI_MODEL || '').trim(), 'gemini-3.5-flash-lite', 'gemini-3.8-flash'].filter(Boolean))];
 const daily = () => Math.max(1, Math.floor(Number(process.env.PET_AI_DAILY)) || 60);
 const MAX_TEXT = 200, MAX_AUDIO_B64 = 700000;
 let doFetch = (...a) => fetch(...a);
@@ -101,12 +101,24 @@ async function ask({ mode, text, audio, pet, history, ctx }) {
     const body = { systemInstruction: { parts: [{ text: repeat ? 'You transcribe short voice notes accurately.' : persona(pet, ctx) }] }, contents, generationConfig: gc };
     let r; try { r = await callGemini(key, model, body); } catch (e) { throw fail(504, 'She is taking too long to think. Try again.'); }
     if (r.status === 404 || (r.status === 400 && /model/i.test(JSON.stringify(r.json || {})) && !/key/i.test(JSON.stringify(r.json || {})))) { last = r; continue; }   // model name not available: try the next one
-    if (r.status === 429) throw fail(429, 'She needs a short rest. Try again in a moment.');
-    if (r.status === 401 || r.status === 403 || (r.status === 400 && /API key/i.test(JSON.stringify(r.json || {})))) { console.error('[pet-ai] Gemini rejected the API key (' + r.status + ')'); throw fail(503, 'Answer mode is not available right now.'); }
-    if (r.status >= 400 || !r.json) { console.error('[pet-ai] Gemini error', r.status, JSON.stringify(r.json || {}).slice(0, 300)); throw fail(502, 'She could not think of an answer. Try again.'); }
+    if (r.status === 429) { console.error('[pet-ai] Gemini quota/rate limit (429)'); throw fail(429, 'Gemini is rate-limiting requests or the project quota is exhausted. Check Google AI Studio usage and try again later.'); }
+    if (r.status === 401 || r.status === 403 || (r.status === 400 && /API key/i.test(JSON.stringify(r.json || {})))) {
+      console.error('[pet-ai] Gemini key/access rejected (' + r.status + '): ' + String(r.json && r.json.error && r.json.error.message || '').slice(0, 220));
+      throw fail(503, 'Google rejected the Gemini key or its access. Check the server key, key restrictions, and that the Gemini API is enabled for its Google project.');
+    }
+    if (r.status >= 400 || !r.json) {
+      const detail = String(r.json && r.json.error && (r.json.error.message || r.json.error.status) || 'No error details returned').replace(/[\r\n]+/g, ' ').slice(0, 220);
+      console.error('[pet-ai] Gemini request failed (' + r.status + '): ' + detail);
+      if (r.status === 400) throw fail(502, 'Gemini rejected the request (400). Check the configured model and generation settings in the server logs.');
+      throw fail(502, 'Gemini request failed (' + r.status + '). Check the server logs for the Google error; no key value is logged.');
+    }
     const c = (r.json.candidates || [])[0];
     if ((r.json.promptFeedback && r.json.promptFeedback.blockReason) || (c && c.finishReason === 'SAFETY')) return { heard: repeat ? '' : text || '', reply: repeat ? '' : SAFE_LINE, blocked: true };
-    const raw = c && c.content && (c.content.parts || []).map((x) => x.text || '').join('') || '';
+    if (!c || !c.content || !Array.isArray(c.content.parts) || !c.content.parts.some((x) => typeof x.text === 'string' && x.text.trim())) {
+      console.error('[pet-ai] Gemini returned no text candidate (' + String(c && c.finishReason || 'no-candidate') + ')');
+      throw fail(502, 'Gemini returned an empty answer. Check model availability and response safety in the server logs.');
+    }
+    const raw = c.content.parts.map((x) => x.text || '').join('');
     let heard = '', reply = '', remember = '';
     try { const o = JSON.parse(raw); heard = cleanText(o.heard); reply = o.reply; remember = repeat ? '' : cleanMemory(o.remember); } catch (e) { reply = raw; }
     if (repeat) { const w = heard || cleanText(reply); return { heard: w, reply: w }; }

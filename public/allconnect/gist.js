@@ -21,6 +21,8 @@ const GIST = {
   },
   init() {
     if (this.ready) return; this.ready = true;
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.pauseMedia() });
+    window.addEventListener('pagehide', () => this.pauseMedia());
     document.addEventListener('click', e => {
       const t = e.target.closest('[data-tag],[data-u]'); if (!t || !PH.$a().contains(t)) return;
       e.preventDefault(); e.stopPropagation(); if (t.dataset.tag) this.tag(t.dataset.tag); else this.nav('profile', t.dataset.u)
@@ -34,6 +36,13 @@ const GIST = {
     document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
     document.addEventListener('click', e => { const b = lkOf(e); if (!b) return; e.preventDefault(); e.stopPropagation(); if (fired) { fired = false; return } this.react(b.dataset.id, 'like') }, true);
     document.addEventListener('contextmenu', e => { if (lkOf(e)) e.preventDefault() });
+  },
+  pauseMedia() {
+    if (typeof RL !== 'undefined') RL.stop();
+    document.querySelectorAll('#appview video').forEach(v => {
+      try { v.pause() } catch (e) {}
+      const wrap = v.closest('.ginline'); if (wrap) { wrap.classList.remove('playing'); this.vtime(v) }
+    });
   },
   /* ---------- navigation ---------- */
   open() { this.init(); PH.view = 'gist'; this.stack = []; this.cur = null; this.C = null; this.ret = null; this.tagF = ''; this.pending = 0; this.feed() },

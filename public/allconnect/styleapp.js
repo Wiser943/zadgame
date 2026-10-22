@@ -3,6 +3,7 @@
    This file also keeps the player's look in sync with the map, the 3D room, the HUD portrait and the live roster. */
 const STYLE = {
   D: null, tab: 'body', sub: '', pv: null, busy: false, tried: '', fetching: null, timers: [],
+  _settingsChain: Promise.resolve(), _settingsSeq: 0, _settingsPending: 0, _settingsFailed: false, _settingsBase: null,
   JK: { j_neck: 'neck', j_ear: 'ear', j_wrist: 'wrist', j_ring: 'ring', j_waist: 'waist', j_ankle: 'ankle' },
   MK: { m_lips: 'lips', m_eyes: 'eyes', m_cheeks: 'cheeks', m_liner: 'liner', m_glow: 'glow' },
   TABS: [['body', 'Body', '🧍'], ['salon', 'Salon', '💇'], ['clothes', 'Clothes', '👕'], ['culture', 'Culture', '🪘'], ['work', 'Work', '🦺'], ['season', 'Seasonal', '🍂'], ['shoes', 'Shoes', '👟'], ['jewel', 'Jewels', '💎'],
@@ -73,6 +74,31 @@ const STYLE = {
     if (this.busy) return null; this.busy = true;
     try { const r = await NET.api('/api/ac/style' + path, { method: method || 'POST', body: body || {} }); this.take(r); return r }
     catch (e) { toast(e.message); return null } finally { this.busy = false }
+  },
+  optimisticSetting(path, body, mutate) {
+    if (!this.me) return Promise.resolve(null);
+    const before = JSON.parse(JSON.stringify(this.me));
+    if (!this._settingsPending) this._settingsBase = before;
+    this._settingsPending++; const seq = ++this._settingsSeq;
+    mutate(); this.apply(); this.paint(); this.busy = true;
+    const task = this._settingsChain.catch(() => {}).then(async () => {
+      try {
+        const r = await NET.api('/api/ac/style' + path, { method: 'PUT', body });
+        if (seq === this._settingsSeq) { if (this._settingsFailed) await this.load(); else this.take(r); }
+        return r;
+      } catch (e) {
+        this._settingsFailed = true; toast(e.message);
+        if (seq === this._settingsSeq) {
+          try { await this.load(); }
+          catch { this.D.me = this._settingsBase || before; S.cash = this.me.cash; this.apply(); this.paint(); }
+        }
+        return null;
+      } finally {
+        this._settingsPending--;
+        if (seq === this._settingsSeq && !this._settingsPending) { this.busy = false; this._settingsFailed = false; this._settingsBase = null; }
+      }
+    });
+    this._settingsChain = task; return task;
   },
 
   /* ---------- helpers about items ---------- */
@@ -339,8 +365,8 @@ const STYLE = {
       <div class="lab2">WALK STYLE</div>${this.list(this.of(i => i.slot === 'walk')).replace(/onclick="STYLE.wear\('(walk_[a-z]+)'\)"/g, `onclick="STYLE.wear('$1');STYLE.demo('walk','$1')"`)}
       <div class="lab2">IDLE ANIMATION</div>${this.list(this.of(i => i.slot === 'idle')).replace(/onclick="STYLE.wear\('(idle_[a-z]+)'\)"/g, `onclick="STYLE.wear('$1');STYLE.demo('idle','$1')"`)}`;
   },
-  async setMood(m) { await this.call('/motion', 'PUT', { mood: m, autoMood: false }) },
-  autoMood() { return this.call('/motion', 'PUT', { autoMood: !this.me.motion.autoMood }) },
+  async setMood(m) { return this.optimisticSetting('/motion', { mood: m, autoMood: false }, () => { this.me.motion.mood = m; this.me.motion.autoMood = false; }) },
+  autoMood() { const autoMood = !this.me.motion.autoMood; return this.optimisticSetting('/motion', { autoMood }, () => { this.me.motion.autoMood = autoMood; }) },
   demo(kind, id) { if (!this.pv) return; this.pv.ext(Object.assign(this.ext(), { [kind]: id })); this.pv.state(kind === 'walk' ? 'walk' : 'idle'); this.pv.av.speed = 1.5; clearTimeout(this.dt); if (kind === 'walk') this.dt = setTimeout(() => this.pv && this.pv.state('idle'), 3500) },
 
   /* ----- 155 photo studio ----- */
@@ -387,8 +413,8 @@ const STYLE = {
       <button class="fopt red out" onclick="STYLE.clearId()"><span>Erase my pronouns and title</span></button>`;
   },
   seen(label, rel) { const pv = this.me.identity.privacy, can = v => v === 'everyone' || (v === 'friends' && rel === 'friend'), pr = this.me.identity.pronouns; const list = [['look', 'outfit'], ['pronouns', 'pronouns'], ['mood', 'mood'], ['collection', 'collections'], ['poses', 'photo poses']].filter(x => can(pv[x[0]])).map(x => x[1]); if (rel === 'stranger' && !pv.roster) list.splice(list.indexOf('outfit'), 1); return `<b>${label}</b> can see: ${list.length ? list.join(', ') : 'nothing about your look'}${pr ? '' : ' (no pronouns set)'}.` },
-  acc(k) { return this.call('/identity', 'PUT', { access: { [k]: !this.me.identity.access[k] } }) },
-  priv(k, v) { return this.call('/identity', 'PUT', { privacy: { [k]: v } }) },
+  acc(k) { const value = !this.me.identity.access[k]; return this.optimisticSetting('/identity', { access: { [k]: value } }, () => { this.me.identity.access[k] = value; }); },
+  priv(k, v) { return this.optimisticSetting('/identity', { privacy: { [k]: v } }, () => { this.me.identity.privacy[k] = v; }); },
   setPron(v) { return this.call('/identity', 'PUT', { pronouns: v }) }, setCustom(v) { return this.call('/identity', 'PUT', { custom: v }) }, setTitle(v) { return this.call('/identity', 'PUT', { title: v }) },
   clearId() { if (!confirm('Erase your pronouns and collector title?')) return; this.call('/identity/clear', 'POST').then(r => r && toast('Erased')) }
 };

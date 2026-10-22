@@ -1144,10 +1144,12 @@
 
   /* ---------- input ---------- */
   const ptrs = new Map();
+  let guidedTour = null;
   function rectXY(e) { const r = M.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
   const maxD = () => (M.w > 900 ? 2100 : 1700);                  // wider screens can zoom out further, the extended world fills the view
   function zoomBy(f, at) { M.tD = clamp(M.tD * f, 80, maxD()); M.zoomAt = at || [M.w / 2, M.h / 2]; }
   function onDown(e) {
+    if (guidedTour) API.stopTour();
     M.cv.setPointerCapture(e.pointerId); const [x, y] = rectXY(e); ptrs.set(e.pointerId, { x, y, sx: x, sy: y, t: performance.now(), btn: e.button });
     M.vel = [0, 0];
     if (ptrs.size === 1) { M.drag = { mode: (e.button === 2 || e.ctrlKey || e.shiftKey) ? 'rot' : 'pan', anchor: cam.pick(x, y, 0), moved: 0, lx: x, ly: y }; }
@@ -1255,6 +1257,34 @@
     const box = $('map'); if (!box || !M.cv) return; M.dpr = Math.min(2, g.devicePixelRatio || 1);
     M.w = box.clientWidth; M.h = box.clientHeight; M.cv.width = M.w * M.dpr; M.cv.height = M.h * M.dpr; cam.cx = M.w / 2; cam.cy = M.h * .56; cam.F = Math.max(M.w, M.h * .6) * 1.15; cam.update();
   }
+  function stopTour() {
+    if (guidedTour) { clearTimeout(guidedTour.timer); cancelAnimationFrame(guidedTour.raf); guidedTour = null; }
+    const b = $('mapTourBtn'), l = $('mapTourLabel'); if (b) b.textContent = '🧭 City Tour'; if (l) l.style.display = 'none';
+  }
+  function startTour() {
+    if (guidedTour) { stopTour(); if (g.toast) g.toast('City Tour stopped.'); return; }
+    API.show();
+    const stops = PINS.filter(p => p[5] === 'district').slice(0, 7);
+    if (!stops.length) { if (g.toast) g.toast('No city stops are available right now.'); return; }
+    const state = guidedTour = { i: 0, raf: 0, timer: 0 }, btn = $('mapTourBtn'), label = $('mapTourLabel');
+    if (btn) btn.textContent = '■ Stop tour';
+    const go = () => {
+      if (guidedTour !== state || !M.on) return;
+      if (state.i >= stops.length) { stopTour(); if (g.toast) g.toast('You have finished the city tour. Explore anywhere on the map.'); return; }
+      const p = stops[state.i++], from = { x: cam.tx, y: cam.ty }, started = performance.now(), duration = 1100;
+      M.follow = false; M.path = null; M.dest = null; M.tD = 245;
+      if (label) { label.textContent = `${p[1]}  ${p[0]} · stop ${state.i} of ${stops.length}`; label.style.display = 'block'; }
+      const fly = now => {
+        if (guidedTour !== state || !M.on) return;
+        const t = Math.min(1, (now - started) / duration), e = t * t * (3 - 2 * t);
+        cam.tx = from.x + (p[2] - from.x) * e; cam.ty = from.y + (p[3] - from.y) * e; cam.update();
+        if (t < 1) state.raf = requestAnimationFrame(fly);
+        else state.timer = setTimeout(go, 2700);
+      };
+      state.raf = requestAnimationFrame(fly);
+    };
+    go();
+  }
   const API = {
     init() {
       if (M.cv) return; buildLagos(); M.cv = $('mapCv'); M.ctx = M.cv.getContext('2d');
@@ -1263,7 +1293,7 @@
       ensureMe(); cam.tx = M.me.x; cam.ty = M.me.y; cam.yaw = -.28; cam.tilt = 1.02; M.D = M.tD = 340; cam.D = 340;
     },
     show() { API.init(); M.on = true; resize(); if (M.saved) { API.restorePos(M.saved); M.saved = null; } sendPos(true); cancelAnimationFrame(M.raf); M.last = performance.now(); M.raf = requestAnimationFrame(frame); },
-    hide() { M.on = false; cancelAnimationFrame(M.raf); },
+    hide() { stopTour(); M.on = false; cancelAnimationFrame(M.raf); },
     zoom(f) { zoomBy(f); },
     rotate(a) { cam.yaw += a; cam.update(); },
     tilt(a) { cam.tilt = clamp(cam.tilt + a, 0, 1.15); cam.update(); },
@@ -1296,6 +1326,7 @@
     nearHome(r) { const h = API.homePin(); return !!(h && M.me && Math.hypot(M.me.x - h[2], M.me.y - (h[3] + 34)) <= (r || 70)) },
     walkHome() { const h = API.homePin(); if (h) { M.follow = true; API.walkTo(h[2], h[3] + 34) } },
     walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
+    startTour, stopTour,
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
     visit(em, title) {      /* Visit only works when you are at the place; from farther away you travel there first */
       const p = PINS.find(q => q[0].replace(' · Coming soon', '') === title);

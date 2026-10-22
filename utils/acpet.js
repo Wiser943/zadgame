@@ -86,6 +86,7 @@ const ACH = [
   { id: 'stylish', icon: '👗', name: 'Fashionista', desc: 'Own 5 pieces of clothing.', reward: 5000, ok: (p) => (p.owned || []).length >= 5 },
   { id: 'limited', icon: '✨', name: 'Limited edition', desc: 'Buy a seasonal costume.', reward: 5000, ok: (p) => (p.owned || []).some((id) => CLOTHES[id] && CLOTHES[id].event) },
   { id: 'gamer', icon: '🎮', name: 'Playful', desc: 'Play 10 mini-games.', reward: 3000, ok: (p) => st(p, 'games') >= 10 },
+  { id: 'trickster', icon: '🎓', name: 'Quick learner', desc: 'Practise tricks three times.', reward: 2000, ok: (p) => st(p, 'tricks') >= 3 },
   { id: 'snap', icon: '📸', name: 'Photogenic', desc: 'Take her first photo.', reward: 1500, ok: (p) => st(p, 'photos') >= 1 },
   { id: 'kitten', icon: '🐱', name: 'Growing up', desc: 'Reach the Kitten stage.', reward: 3000, ok: (p) => stageIdx(p.xp) >= 1 },
   { id: 'young', icon: '🐈', name: 'Young cat', desc: 'Reach the Young cat stage.', reward: 6000, ok: (p) => stageIdx(p.xp) >= 2 },
@@ -107,7 +108,24 @@ function unlock(p, now = Date.now()) {
 /* after care: a pet that has recovered from a sudden illness counts as cured */
 function settle(p) { if (p.emergency && p.health >= 60) { p.emergency = null; bump(p, 'cured'); return true; } return false; }
 const VISIT = { cuddleFun: 4, funMax: 80, maxGifts: 3 };
-const defaults = (user) => ({ user, name: 'Kobo', hunger: 80, energy: 80, fun: 80, clean: 80, health: 90, love: 0, words: 0, asleep: false, t: new Date(), owned: [], worn: {}, spent: 0 });
+const TRICKS = { sit: { name: 'Sit', emoji: '🪑', sessions: 3 }, highfive: { name: 'High five', emoji: '🐾', sessions: 4 }, spin: { name: 'Spin', emoji: '💫', sessions: 5 } };
+const TRICK_COOLDOWN_MS = 15000;
+const ROOM_ITEMS = { bed: { name: 'Cozy bed', emoji: '🛏️', position: [-2, -2] }, scratch: { name: 'Scratch post', emoji: '🪵', position: [2, -2] }, toy: { name: 'Toy corner', emoji: '🧶', position: [2, 2] } };
+const ALERT_DEFAULTS = { illness: true, hunger: true, clean: true, quietStart: 22, quietEnd: 7 };
+function alertPrefs(p) { return Object.assign({}, ALERT_DEFAULTS, p && p.alertPrefs || {}); }
+function careNext(p, cash = Infinity) {
+  if (!p || p.asleep) return { kind: 'rest', title: 'Let your pet rest', detail: 'She is sleeping. Wake her when she is ready.', action: 'rest' };
+  if (sick(p)) return { kind: 'care', title: 'Visit the vet', detail: 'Your pet is ill and needs health care.', action: 'care', item: 'vet', affordable: cash >= CARE.vet.price };
+  const needs = [
+    { v: p.hunger, kind: 'food', title: 'Feed your pet', detail: 'Hunger is getting low.', action: 'food', item: 'chops', affordable: cash >= FOOD.chops.price },
+    { v: p.clean, kind: 'care', title: 'Give your pet a bath', detail: 'She could use a clean-up.', action: 'care', item: 'bath', affordable: cash >= CARE.bath.price },
+    { v: p.energy, kind: 'rest', title: 'A rest would help', detail: 'Energy is running low.', action: 'rest' },
+    { v: p.fun, kind: 'play', title: 'Play together', detail: 'She is getting bored.', action: 'play' },
+    { v: p.health, kind: 'care', title: 'Check her health', detail: 'Health is getting low.', action: 'care', item: 'vitamins', affordable: cash >= CARE.vitamins.price }
+  ].filter(x => x.v < 60).sort((a, b) => a.v - b.v);
+  return needs[0] || { kind: 'great', title: 'You are doing great', detail: 'All her needs look good. Teach a trick or visit a friend.', action: 'tricks' };
+}
+const defaults = (user) => ({ user, name: 'Kobo', hunger: 80, energy: 80, fun: 80, clean: 80, health: 90, love: 0, words: 0, asleep: false, t: new Date(), owned: [], worn: {}, spent: 0, tricks: {}, trickAt: null, roomItem: 'bed', alertPrefs: Object.assign({}, ALERT_DEFAULTS) });
 const cl = (v) => Math.max(3, Math.min(100, Number.isFinite(v) ? v : 3));
 const dayKey = (now = Date.now()) => new Date(now + 3600000).toISOString().slice(0, 10);   // Lagos is UTC+1
 
@@ -156,8 +174,8 @@ const reward = (game, score, earnedToday) => {
 };
 function view(p, now = Date.now()) {
   return { name: p.name, hunger: Math.round(p.hunger), energy: Math.round(p.energy), fun: Math.round(p.fun), clean: Math.round(p.clean), health: Math.round(p.health),
-    love: p.love || 0, words: p.words || 0, asleep: !!p.asleep, sick: sick(p), owned: p.owned || [], worn: p.worn || {}, spent: p.spent || 0, stage: stageView(p, now), checkin: checkinView(p, now), badges: Object.keys(p.badges || {}), memory: p.memory || [], inRoom: !!p.inRoom, alerts: p.alerts !== false,
-    emergency: p.emergency && sick(p) ? { name: p.emergency.name } : null, protectedUntil: protectedUntil(p, now), visits: (p.visits || []).slice(0, 8).map((v) => ({ name: v.name, act: v.act, gift: v.gift || '', at: v.at })), at: now };
+    love: p.love || 0, words: p.words || 0, asleep: !!p.asleep, sick: sick(p), owned: p.owned || [], worn: p.worn || {}, spent: p.spent || 0, stage: stageView(p, now), checkin: checkinView(p, now), badges: Object.keys(p.badges || {}), memory: p.memory || [], inRoom: !!p.inRoom, roomItem: ROOM_ITEMS[p.roomItem] ? p.roomItem : 'bed', alerts: p.alerts !== false, alertPrefs: alertPrefs(p), tricks: p.tricks || {}, trickAt: p.trickAt || null,
+    emergency: p.emergency && sick(p) ? { name: p.emergency.name } : null, protectedUntil: protectedUntil(p, now), visits: (p.visits || []).slice(0, 15).map((v) => ({ name: v.name, act: v.act, gift: v.gift || '', at: v.at })), at: now };
 }
 function stageView(p, now = Date.now()) {
   const i = stageIdx(p.xp), st = STAGES[i], nx = STAGES[i + 1] || null;
@@ -169,4 +187,4 @@ const catalog = (ev) => {
   return out;
 };
 const validName = (s) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); return s.length >= 1 && s.length <= 14 && /^[\p{L}\p{N} '._-]+$/u.test(s) ? s : '' };
-module.exports = { CHECKIN, checkinAmount, checkinView, EMERGENCIES, roll, protectedUntil, bump, ACH, unlock, settle, VISIT, eventTitle, DAY, STAGES, XP, stageIdx, stageView, gain, xpFor, NEEDS, FOOD, CARE, TOYS, CLOTHES, SLOTS, KINDS, RATE, GAME, defaults, advance, apply, sick, priceOf, reward, view, catalog, validName, dayKey, cl };
+module.exports = { CHECKIN, checkinAmount, checkinView, EMERGENCIES, roll, protectedUntil, bump, ACH, unlock, settle, VISIT, TRICKS, TRICK_COOLDOWN_MS, ROOM_ITEMS, ALERT_DEFAULTS, alertPrefs, careNext, eventTitle, DAY, STAGES, XP, stageIdx, stageView, gain, xpFor, NEEDS, FOOD, CARE, TOYS, CLOTHES, SLOTS, KINDS, RATE, GAME, defaults, advance, apply, sick, priceOf, reward, view, catalog, validName, dayKey, cl };

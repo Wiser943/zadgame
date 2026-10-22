@@ -312,7 +312,7 @@ window.ROOM3D = {
   },
   ek(a, b) { const f = (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) ? [a, b] : [b, a]; return f[0][0] + ',' + f[0][1] + '|' + f[1][0] + ',' + f[1][1] },
   sync() {
-    if (!this.on) return; this.setRoom(S.layout || null, S.grid || 6); this.petLoad(); if (this.petCfg && !this.pet3) this.petBuild(); if (!this.petCfg && this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
+    if (!this.on) return; this.setRoom(S.layout || null, S.grid || 6); this.petLoad(); if (this.petCfg && !this.pet3) this.petBuild(); if (!this.petCfg && this.pet3) { this.scene.remove(this.pet3); this.pet3 = null; if (this.petItem3) { this.scene.remove(this.petItem3); this.petItem3 = null } } const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
     this.lamps = []; this.byId = {}; const items = S.items || [], own = (n) => items.some(i => i.name === n && i.placed !== false);
     const lamp = (x, y, z, big, par) => { const bm = new THREE.MeshBasicMaterial({ color: 0x8a8466 }); const b = new THREE.Mesh(new THREE.SphereGeometry(big ? .2 : .13, 12, 10), bm); b.position.set(x, y, z); ig.add(b); const l = new THREE.PointLight(0xffd68a, 0, big ? 11 : 8); l.position.set(x, y - .1, z); ig.add(l); this.lamps.push({ l, bm, k: big ? 1.15 : .9 }) };
     for (const it of items) {
@@ -331,11 +331,18 @@ window.ROOM3D = {
   setPet(cfg) { this.petCfg = cfg || null; if (this.on && this.scene) this.petSync() },
   petLoad() {
     if (this.petAsked || !window.NET || !NET.user) return; this.petAsked = true;
-    NET.api('/api/ac/pet/room').then(r => { if (r && r.on && !this.petCfg) { this.petCfg = { name: r.name, scale: r.stage.scale, worn: r.worn }; this.petSync() } }).catch(() => { this.petAsked = false });
+      NET.api('/api/ac/pet/room').then(r => { if (r && r.on && !this.petCfg) { this.petCfg = { name: r.name, scale: r.stage.scale, worn: r.worn, roomItem: r.roomItem || 'bed' }; this.petSync() } }).catch(() => { this.petAsked = false });
   },
-  petSync() { if (this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } if (this.petCfg) this.petBuild() },
+  petSync() { if (this.pet3) { this.scene.remove(this.pet3); this.pet3 = null } if (this.petItem3) { this.scene.remove(this.petItem3); this.petItem3 = null } if (this.petCfg) this.petBuild() },
   petBuild() {
     const c = this.petCfg, g = new THREE.Group(), fur = 0xf4a640, belly = 0xffe6bf, eye = 0x2b2140;
+    if (this.petItem3) { this.scene.remove(this.petItem3); this.petItem3 = null; }
+    const item = this.petItem3 = new THREE.Group(), itemId = c.roomItem || 'bed', pos = itemId === 'bed' ? [-2, -2] : itemId === 'scratch' ? [2, -2] : [2, 2];
+    item.position.set(pos[0], 0, pos[1]);
+    if (itemId === 'bed') { this.box(.9, .14, .68, 0x7c5ce5, 0, .08, 0, item); this.box(.7, .2, .5, 0xc4b5fd, 0, .22, .02, item); this.box(.28, .12, .32, 0xf5e7ff, -.2, .34, -.12, item); }
+    else if (itemId === 'scratch') { this.box(.48, .12, .48, 0x8b5e3c, 0, .06, 0, item); this.cyl(.11, .78, 0xd3a47a, 0, .48, 0, item, 14); this.cyl(.16, .1, 0xb7791f, 0, .86, 0, item, 14); }
+    else { this.cyl(.27, .1, 0xfbbf24, 0, .05, 0, item, 18); const ball = new THREE.Mesh(new THREE.SphereGeometry(.17, 14, 12), this.mat(0xef476f)); ball.position.set(0, .2, 0); item.add(ball); this.cyl(.025, .2, 0x22c55e, .07, .38, 0, item, 8); }
+    this.scene.add(item);
     const S = (r, col, x, y, z, sx, sy, sz, par) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), this.mat(col)); m.position.set(x, y, z); if (sx) m.scale.set(sx, sy, sz); (par || g).add(m); return m };
     S(.2, fur, 0, .2, 0, 1, .9, 1.35); S(.14, belly, 0, .17, .08, 1, .9, 1.1);
     const outfit = this.CATCOL[c.worn && c.worn.body]; if (outfit) S(.215, outfit, 0, .2, -.02, 1, .92, 1.2);
@@ -345,14 +352,18 @@ window.ROOM3D = {
     const hat = this.HATCOL[c.worn && c.worn.hat]; if (hat) { const h = new THREE.Mesh(new THREE.ConeGeometry(.09, .14, 12), this.mat(hat)); h.position.set(0, .22, 0); head.add(h) }
     const tail = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, .3, 8), this.mat(fur)); tail.position.set(0, .3, -.3); tail.rotation.x = -.8; g.add(tail);
     [[-.09, .1], [.09, .1], [-.09, -.12], [.09, -.12]].forEach(([x, z]) => S(.05, fur, x, .05, z));
-    g.scale.setScalar(.75 + .5 * (c.scale || 1)); g.position.set(1, 0, 1); g.userData = { head, tail, tx: 1, tz: 1, wait: 1, ph: 0 };
+    g.scale.setScalar(.75 + .5 * (c.scale || 1)); g.position.set(1, 0, 1); g.userData = { head, tail, tx: 1, tz: 1, wait: 1, ph: 0, roomItem: itemId };
     this.scene.add(g); this.pet3 = g;
   },
   petStep(t, dt) {
     const g = this.pet3; if (!g) return; const u = g.userData; u.wait -= dt;
     const dx = u.tx - g.position.x, dz = u.tz - g.position.z, d = Math.hypot(dx, dz);
     if (d > .06) { const sp = Math.min(d, 1.1 * dt); g.position.x += dx / d * sp; g.position.z += dz / d * sp; g.rotation.y = Math.atan2(dx, dz); u.ph += dt * 9; g.position.y = Math.abs(Math.sin(u.ph)) * .03 }
-    else { g.position.y = 0; if (u.wait <= 0) { u.tx = Math.random() * 4.4 - 2.2; u.tz = Math.random() * 4.4 - 2.2; u.wait = 2 + Math.random() * 4 } }
+    else { g.position.y = 0; if (u.wait <= 0) {
+      if (u.roomItem && Math.random() < .45) { const x = u.roomItem === 'bed' ? -2 : 2, z = u.roomItem === 'toy' ? 2 : -2; u.tx = x + (Math.random() - .5) * .7; u.tz = z + (Math.random() - .5) * .7; }
+      else { u.tx = Math.random() * 4.4 - 2.2; u.tz = Math.random() * 4.4 - 2.2; }
+      u.wait = 2 + Math.random() * 4;
+    } }
     u.tail.rotation.z = Math.sin(t / 300) * .35; u.head.rotation.y = Math.sin(t / 1100) * .3;
   },
   /* ---------- buy mode helpers: ghost preview, selection ring, hide, thumbnails ---------- */

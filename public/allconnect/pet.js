@@ -3,7 +3,7 @@
    Her state lives on the server (routes/acpet.js, rules in utils/acpet.js) so it follows you to any device, and EVERYTHING bought for her is
    charged from your main balance (S.cash). Reuses PH.shell / PH.sheet / CARD / UI.bar / LAGOS.setCash / NET.api / STYLE.mood and the room's wall colour. Everything she says is English. */
 const PET = {
-  p: null, cat: null, gm: null, rates: null, tmr: null, rec: null, speaking: false, greeted: false, cry: 0, bt: null, g: null, n: 0, lt: 0, lastGame: 0, lastAct: 0, tab: 'hat', busy: false, mode: 'repeat', ai: null, ach: [], city: null, fr: [], shot_: null, hist: [], thinking: false, lip: null, mr: null,
+  p: null, cat: null, gm: null, rates: null, tmr: null, rec: null, speaking: false, greeted: false, cry: 0, bt: null, g: null, n: 0, lt: 0, lastGame: 0, lastAct: 0, tab: 'hat', busy: false, mode: 'repeat', ai: null, ach: [], city: null, fr: [], shot_: null, hist: [], thinking: false, lip: null, mr: null, trickCatalog: {}, roomItems: {},
   NEEDS: [['hunger', '🍛', 'Hunger'], ['energy', '⚡', 'Energy'], ['fun', '🎾', 'Fun'], ['clean', '🛁', 'Clean'], ['health', '❤️‍🩹', 'Health']],
   SLOTS: [['hat', 'Hats'], ['face', 'Face'], ['neck', 'Neck'], ['body', 'Outfits']],
   q(id) { return document.getElementById(id) },
@@ -14,7 +14,7 @@ const PET = {
   apply(r) {
     if (r.pet) { const w = JSON.stringify(this.p && this.p.worn); this.p = Object.assign({}, r.pet); this.lt = Date.now(); this.syncRoom(); if (w !== JSON.stringify(this.p.worn) && this.q('pfig')) { this.q('pfig').innerHTML = this.svg(); this.paintFig() } }
     if (r.catalog) this.cat = r.catalog; if (r.rates) this.rates = r.rates; if (r.game) this.gm = Object.assign(this.gm || {}, r.game);
-    if (r.ach) this.ach = r.ach; if (r.city) this.city = r.city; if (r.badges && r.badges.length && this.p) setTimeout(() => this.badgeCard(r.badges), 700);
+    if (r.ach) this.ach = r.ach; if (r.tricks) this.trickCatalog = r.tricks; if (r.roomItems) this.roomItems = r.roomItems; if (r.city) this.city = r.city; if (r.badges && r.badges.length && this.p) setTimeout(() => this.badgeCard(r.badges), 700);
     if (r.ai) this.ai = r.ai; if (typeof r.cash === 'number') this.setCash(r.cash);
     if (r.grew && this.p) setTimeout(() => this.grew(r.grew), 900);
   },
@@ -48,6 +48,7 @@ const PET = {
     const p = this.p;
     PH.shell(`<span onclick="PET.rename()" style="cursor:pointer">${UI.esc(p.name)} ✎</span>`, 'PH.close()', `<div class="abody chat pet" id="ab"><div class="pbanner" id="pbanner"></div>
       <div class="pstage" id="pst" onclick="PET.poke(event)"><div class="pbub" id="pbub"></div><div id="pfig">${this.svg()}</div><span class="pill pchip" id="pchip"></span><span class="pill pchip pcash" id="pcash"></span></div>
+      <div class="pnext" id="pnext" aria-live="polite"></div>
       <div class="gln pneeds" id="pn"></div><div class="pgrow" id="pgrow"></div>
       <div class="pact"><button onclick="PET.foodSheet()"><b>🍛</b>${('Feed')}</button><button onclick="PET.careSheet()"><b>🩺</b>${('Care')}</button><button onclick="PET.playSheet()"><b>🎾</b>${('Play')}</button><button onclick="PET.dress()"><b>👕</b>${('Dress')}</button><button onclick="PET.sleep()" id="pslp"></button></div></div>
       <div class="seg2 pmode" id="pmode"></div><div class="qr" id="pchips"></div>
@@ -66,7 +67,25 @@ const PET = {
     if (++this.n % 6 === 0) this.load().then(() => this.paintAll()).catch(() => {});
     const p = this.p; if (!p.asleep && !this.speaking && Date.now() - this.cry > 40000) { const x = this.extra(); if (x && Math.random() < .5) { this.cry = Date.now(); this.speak(x); if (p.sick) this.fx('🤒') } }
   },
-  paintAll() { this.paintNeeds(); this.paintGrow(); this.paintBanner(); this.paintFig() },
+  paintAll() { this.paintNeeds(); this.paintGrow(); this.paintBanner(); this.paintCare(); this.paintFig() },
+  careSuggestion() {
+    const p = this.p; if (!p) return { icon: '🐱', title: 'Checking in…', detail: 'Loading your pet’s needs.', action: 'tricks' };
+    if (p.asleep) return { icon: '😴', title: `${p.name} is resting`, detail: 'Let her sleep, or wake her when she is ready.', action: 'wake' };
+    if (p.sick) return { icon: '🩺', title: 'A vet visit is next', detail: 'She is ill. Open Care to help her feel better.', action: 'care' };
+    const candidates = [
+      { v: p.hunger, icon: '🍛', title: 'Feed your pet', detail: 'Her hunger is getting low.', action: 'food' },
+      { v: p.clean, icon: '🛁', title: 'Give her a bath', detail: 'She could use a clean-up.', action: 'care' },
+      { v: p.energy, icon: '⚡', title: 'Let her rest', detail: 'Her energy is running low.', action: 'sleep' },
+      { v: p.fun, icon: '🎾', title: 'Play together', detail: 'She is getting bored.', action: 'play' },
+      { v: p.health, icon: '💚', title: 'Check her health', detail: 'Her health is getting low.', action: 'care' }
+    ].filter(x => x.v < 60).sort((a, b) => a.v - b.v);
+    return candidates[0] || { icon: '✨', title: 'You are doing great', detail: 'All her needs look good. Teach a trick or visit a friend.', action: 'tricks' };
+  },
+  paintCare() {
+    const e = this.q('pnext'); if (!e) return; const a = this.careSuggestion();
+    e.innerHTML = `<span>${a.icon}</span><div><b>${UI.esc(a.title)}</b><small>${UI.esc(a.detail)}</small></div><button onclick="PET.careAction('${a.action}')">${a.action === 'tricks' ? 'Explore' : a.action === 'wake' ? 'Wake' : 'Open'}</button>`;
+  },
+  careAction(a) { if (a === 'food') this.foodSheet(); else if (a === 'care') this.careSheet(); else if (a === 'sleep') this.sleep(); else if (a === 'wake') this.sleep(); else if (a === 'play') this.playSheet(); else this.trickSheet(); },
   paintNeeds() {
     const p = this.p, n = this.q('pn'); if (!n) return;
     n.innerHTML = this.NEEDS.map(x => `<div class="${p[x[0]] < 25 ? 'low' : ''}"><span>${x[1]} ${x[2]}</span>${UI.bar(p[x[0]])}</div>`).join('');
@@ -372,14 +391,60 @@ const PET = {
     PH.sheet(`<h3>${UI.esc(p.name)} 🐱</h3>` +
       row('📅', 'Daily check-in', c.claimable ? `Day ${c.streak}: collect ${UI.fmt(c.amount || c.next)}` : `Done today. Tomorrow ${UI.fmt(c.next)}`, c.claimable ? 'PET.checkin()' : "toast('Come back tomorrow for the next check-in')", c.claimable ? 'Collect' : '✓') +
       row('👫', 'Friends & visitors', v ? `${v} recent visit${v > 1 ? 's' : ''}` : "Cuddle a friend's pet or send a gift", 'PET.friendsSheet()') +
+      row('🎓', 'Trick training', 'Teach and practise three tricks', 'PET.trickSheet()') +
+      row('📖', 'Visitbook', `${(p.visits || []).length} recent friend visit${(p.visits || []).length === 1 ? '' : 's'}`, 'PET.visitbook()') +
       row('🏅', 'Milestones', `${(p.badges || []).length} of ${(this.ach || []).length} earned`, 'PET.milestones()') +
       row('🧠', 'What she remembers', `${(p.memory || []).length} thing${(p.memory || []).length === 1 ? '' : 's'}`, 'PET.memorySheet()') +
       row('📸', 'Pet photo', 'Save it or post it on P-Gist', 'PET.photo()') +
       row('🏠', 'Show in my room', p.inRoom ? 'She wanders around your 3D room' : 'Let her roam your house', "PET.toggle('inRoom')", p.inRoom ? 'On' : 'Off') +
-      row('🔔', 'Away alerts', 'Tell me when she is hungry or ill', "PET.toggle('alerts')", p.alerts ? 'On' : 'Off'));
+      row('🪑', 'Room enrichment', `${(this.roomItems[p.roomItem] || {}).name || 'Cozy bed'} · choose her favourite corner`, 'PET.roomSheet()') +
+      row('🔔', 'Away alerts', p.alerts ? 'Choose alert types and quiet hours' : 'Alerts are off', 'PET.alertSheet()', p.alerts ? 'Set up' : 'Off'));
   },
   async toggle(k) {
-    try { await this.post('settings', { [k]: !this.p[k] }); toast(k === 'inRoom' ? (this.p.inRoom ? 'She is in your room now' : 'She left your room') : (this.p.alerts ? 'Away alerts on' : 'Away alerts off')); this.menu() } catch (e) { toast(e.message) }
+    const old = this.p[k]; this.p[k] = !old; if (k === 'inRoom') this.syncRoom(); this.paintAll();
+    try { await this.post('settings', { [k]: this.p[k] }); toast(k === 'inRoom' ? (this.p.inRoom ? 'She is in your room now' : 'She left your room') : (this.p.alerts ? 'Away alerts on' : 'Away alerts off')); k === 'alerts' ? this.alertSheet() : this.menu() }
+    catch (e) { this.p[k] = old; this.syncRoom(); this.paintAll(); toast(e.message); if (k === 'alerts') this.alertSheet() }
+  },
+  trickSheet() {
+    const defs = this.trickCatalog || {}, progress = this.p.tricks || {}, ready = !this.p.trickAt || Date.now() - new Date(this.p.trickAt).getTime() >= 15000;
+    const rows = Object.entries(defs).map(([id, t]) => {
+      const s = progress[id] || { progress: 0, learned: false }, done = !!s.learned, count = Math.min(t.sessions, s.progress || 0);
+      const label = done ? 'Show trick' : ready ? 'Practise' : `Rest ${Math.max(1, Math.ceil((15000 - (Date.now() - new Date(this.p.trickAt).getTime())) / 1000))}s`;
+      return `<div class="fopt pdr"><span>${t.emoji} ${UI.esc(t.name)}<small>${done ? 'Learned!' : `${count} of ${t.sessions} short lessons · practice improves fun`}</small></span><button class="pbtn" ${!done && (!ready || this.p.asleep || this.p.sick || this.p.energy < 12) ? 'disabled' : ''} onclick="PET.${done ? `showTrick('${id}')` : `trainTrick('${id}')`}">${label}</button></div>`;
+    }).join('');
+    PH.sheet(`<h3>🎓 Teach ${UI.esc(this.p.name)} a trick</h3><p class="hint2">Practise briefly. Progress saves to your account. She needs energy and a little rest between lessons.</p>${rows}`);
+  },
+  async trainTrick(id) {
+    if (this.busy) return; this.busy = true;
+    try { const r = await this.post('trick', { id }); this.fx('⭐', 3); this.flash('jump', 900); toast(r.trick.learned ? `${this.trickCatalog[id].name} learned!` : `${r.trick.progress} lesson${r.trick.progress === 1 ? '' : 's'} done`); this.trickSheet() }
+    catch (e) { toast(e.message); this.trickSheet() }
+    this.busy = false;
+  },
+  showTrick(id) { const t = this.trickCatalog[id]; if (!t || !(this.p.tricks && this.p.tricks[id] && this.p.tricks[id].learned)) return; this.flash('jump', 1100); this.fx(t.emoji, 3); this.speak(`Look! I can ${t.name.toLowerCase()}!`); PH.closeSheet() },
+  visitbook() {
+    const rows = (this.p.visits || []).map(v => {
+      const dt = new Date(v.at), when = Number.isNaN(dt.getTime()) ? 'Recently' : dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return `<div class="fopt pdr"><span>${v.act === 'gift' ? '🎁' : '🤗'} ${UI.esc(v.name || 'A friend')}<small>${v.act === 'gift' ? `sent ${UI.esc(v.gift || 'a gift')}` : `spent time with ${UI.esc(this.p.name)}`} · ${UI.esc(when)}</small></span></div>`;
+    }).join('');
+    PH.sheet(`<h3>📖 ${UI.esc(this.p.name)}’s visitbook</h3><p class="hint2">Recent friends who stopped by or sent a gift.</p>${rows || '<p class="empty">No visits yet. Invite a friend to meet your pet.</p>'}<button class="fopt" onclick="PET.friendsSheet()"><span>Visit a friend’s pet</span><b>›</b></button>`);
+  },
+  roomSheet() {
+    const selected = this.p.roomItem || 'bed', choices = Object.entries(this.roomItems || {}).map(([id, x]) => `<button class="fopt ${selected === id ? 'grn' : ''}" onclick="PET.setRoomItem('${id}')"><span>${x.emoji} ${UI.esc(x.name)}<small>${id === 'bed' ? 'A soft place to curl up' : id === 'scratch' ? 'A little place to stretch and scratch' : 'A playful corner to explore'}</small></span><b>${selected === id ? '✓' : 'Choose'}</b></button>`).join('');
+    PH.sheet(`<h3>🪑 ${UI.esc(this.p.name)}’s room</h3><p class="hint2">Choose one free feature for her 3D room. Turn “Show in my room” on to see it.</p>${choices}`);
+  },
+  async setRoomItem(id) {
+    const old = this.p.roomItem; this.p.roomItem = id; this.syncRoom();
+    try { await this.post('settings', { roomItem: id }); toast('Room corner updated'); this.roomSheet() }
+    catch (e) { this.p.roomItem = old; this.syncRoom(); toast(e.message); this.roomSheet() }
+  },
+  alertSheet() {
+    const p = this.p, a = p.alertPrefs || {}, hours = Array.from({ length: 24 }, (_, i) => `<option value="${i}" ${Number(a.quietStart) === i ? 'selected' : ''}>${String(i).padStart(2, '0')}:00</option>`).join(''), end = Array.from({ length: 24 }, (_, i) => `<option value="${i}" ${Number(a.quietEnd) === i ? 'selected' : ''}>${String(i).padStart(2, '0')}:00</option>`).join('');
+    const check = (k, label, icon) => `<label class="paopt"><span>${icon} ${label}</span><input type="checkbox" ${a[k] !== false ? 'checked' : ''} ${!p.alerts ? 'disabled' : ''} onchange="PET.setAlertPref('${k}',this.checked)"></label>`;
+    PH.sheet(`<h3>🔔 Away alerts</h3><p class="hint2">Get a gentle notice if your pet needs you after you have been away. No alerts are sent during your quiet hours.</p><button class="fopt" onclick="PET.toggle('alerts')"><span>${p.alerts ? 'Turn alerts off' : 'Turn alerts on'}<small>${p.alerts ? 'You can keep preferences for later' : 'Use the alert choices below'}</small></span><b>${p.alerts ? 'On' : 'Off'}</b></button>${check('illness', 'Illness', '🩺')}${check('hunger', 'Hunger', '🍛')}${check('clean', 'Needs a bath', '🛁')}<div class="paquiet"><b>Quiet hours · Lagos time</b><div><label>From<select onchange="PET.setAlertPref('quietStart',this.value)">${hours}</select></label><label>Until<select onchange="PET.setAlertPref('quietEnd',this.value)">${end}</select></label></div><small>Set the same start and end time to turn quiet hours off.</small></div>`);
+  },
+  async setAlertPref(k, value) {
+    const old = Object.assign({}, this.p.alertPrefs || {}), a = Object.assign({}, old); a[k] = ['quietStart', 'quietEnd'].includes(k) ? Number(value) : !!value; this.p.alertPrefs = a;
+    try { await this.post('settings', { alertPrefs: a }); this.alertSheet() } catch (e) { this.p.alertPrefs = old; toast(e.message); this.alertSheet() }
   },
   badgeCard(list) { (list || []).forEach(b => CARD.show({ icon: b.icon, title: 'Milestone unlocked!', text: b.name, lines: [['Reward', b.reward ? UI.fmt(b.reward) : 'A new badge']], tone: 'gold', btn: 'Nice' })) },
   milestones() {
@@ -449,7 +514,7 @@ const PET = {
     this.busy = false;
   },
   /* the 3D room draws her when "Show in my room" is on */
-  syncRoom() { if (window.ROOM3D && ROOM3D.setPet && this.p) ROOM3D.setPet(this.p.inRoom ? { name: this.p.name, scale: (this.p.stage && this.p.stage.scale) || 1, worn: this.p.worn || {} } : null) },
+  syncRoom() { if (window.ROOM3D && ROOM3D.setPet && this.p) ROOM3D.setPet(this.p.inRoom ? { name: this.p.name, scale: (this.p.stage && this.p.stage.scale) || 1, worn: this.p.worn || {}, roomItem: this.p.roomItem || 'bed' } : null) },
   /* ----- the cat (drawn in SVG, so it needs no image files); clothes are extra layers ----- */
   LAY: {
     asoebi: '<path d="M58 134Q100 150 142 134L156 196Q100 214 44 196Z" fill="#d946ef"/><path d="M56 150Q100 166 144 150" stroke="#fbbf24" stroke-width="5" fill="none"/><circle cx="76" cy="176" r="6" fill="#fbbf24"/><circle cx="106" cy="188" r="6" fill="#fbbf24"/><circle cx="130" cy="172" r="6" fill="#fbbf24"/><path d="M96 140l8 0 0 14-8 0z" fill="#f0abfc"/>',
@@ -546,9 +611,12 @@ if (window.VN) VN.cfg.pet = {
 .pet .pneeds{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;padding-top:8px}.pet .pneeds>div{margin:0 0 6px}.pet .pneeds>div:last-child{grid-column:1/-1}.pet .pneeds span{font-size:12.5px;margin-bottom:3px}.pet .pneeds .low i{background:#e5484d}
 .pet .pneeds+.pgrow{margin:0 0 8px}.pgl{display:flex;justify-content:space-between;align-items:baseline;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-bottom:3px}.pgl small{color:var(--mut);font-weight:600;font-size:11.5px}.pmode.seg2{margin:2px 12px 0}.pmode.seg2 button{padding:6px}
 .pbanner:empty{display:none}.pdaily,.pemg{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 14px;border-radius:16px;margin-bottom:6px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;background:#fff6dc;color:#7a5b00}.pemg{background:#ffe9e9;color:#a11d1d}
+.pnext{display:flex;align-items:center;gap:9px;padding:10px 11px;margin:0 0 8px;border-radius:16px;background:linear-gradient(110deg,#eef8ff,#f1efff);color:var(--ink)}.pnext>span{font-size:23px}.pnext div{min-width:0;flex:1}.pnext b{display:block;font-size:12.5px}.pnext small{display:block;color:var(--mut);font-size:11px;line-height:1.35;margin-top:2px}.pnext button{border:0;border-radius:99px;background:#4f46e5;color:#fff;font-weight:800;font-size:11px;padding:7px 11px;white-space:nowrap}
+.paopt{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:14px;background:#f5f6fb;margin:6px 0;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif}.paopt input{width:20px;height:20px;accent-color:#4f46e5}.paquiet{padding:12px 14px;margin-top:9px;border-radius:14px;background:#f5f6fb;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif}.paquiet>div{display:flex;gap:12px;margin-top:9px}.paquiet label{flex:1}.paquiet select{display:block;width:100%;padding:8px;margin-top:4px;border:1px solid #dfe3ef;border-radius:10px;background:#fff;color:var(--ink)}.paquiet small{display:block;color:var(--mut);font-weight:500;margin-top:8px}
 .pdaily button,.pemg button{border:0;border-radius:99px;padding:8px 13px;background:#22b573;color:#fff;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;flex:none}.pemg button{background:#e5484d}.pdaily button:disabled{opacity:.5}
 .fopt.lock{opacity:.55}.pshot{width:100%;border-radius:16px;margin-bottom:10px;display:block}.pvis{margin:0 auto 10px}.ahead .gbell em[hidden]{display:none}
 :where(html[data-theme="dark"]) .pdaily{background:#3a3320;color:#f5d98a}:where(html[data-theme="dark"]) .pemg{background:#3a2024;color:#ffb3b3}
+:where(html[data-theme="dark"]) .pnext{background:linear-gradient(110deg,#1b2a40,#252044)}:where(html[data-theme="dark"]) .paopt,:where(html[data-theme="dark"]) .paquiet{background:#1b2034}:where(html[data-theme="dark"]) .paquiet select{background:#101426;color:var(--ink);border-color:#343b52}
 .pact{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding-bottom:4px}.pact button{border:0;background:#f3f4f9;border-radius:16px;padding:8px 0;font:700 11px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}.pact button:active{transform:scale(.95)}.pact b{font-size:21px;line-height:1.1}
 .ebtn.rec,.vnmic.rec{background:#e5484d;color:#fff;animation:prec 1s infinite}@keyframes prec{50%{opacity:.55}}
 .fopt:disabled{opacity:.45}.fopt small{display:block;color:var(--mut);font-weight:600;font-size:11.5px;margin-top:2px}.fopt.pdr{cursor:default}.fopt.pdr .pbtn:disabled{opacity:.45}

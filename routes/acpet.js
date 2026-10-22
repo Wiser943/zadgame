@@ -30,10 +30,11 @@ async function loadPet(me) {
   if (hit) await d.save();
   return d;
 }
-const aiInfo = (d, now = Date.now()) => ({ on: !!AI.keyInfo().key, daily: AI.daily(), left: Math.max(0, AI.daily() - (d.aiDay === P.dayKey(now) ? d.aiCount : 0)) });
+const aiInfo = (d, now = Date.now()) => ({ on: !!AI.keyInfo().key, model: AI.models()[0], daily: AI.daily(), left: Math.max(0, AI.daily() - (d.aiDay === P.dayKey(now) ? d.aiCount : 0)) });
 const full = async (me, d, extra) => {
   const u = await User.findById(me).select('ac.cash').lean();
-  return Object.assign({ pet: P.view(d), cash: (u && u.ac && u.ac.cash) || 0 }, extra || {});
+  const cash = (u && u.ac && u.ac.cash) || 0;
+  return Object.assign({ pet: P.view(d), cash, careNext: P.careNext(d, cash), tricks: P.TRICKS, roomItems: P.ROOM_ITEMS }, extra || {});
 };
 /* money in (rewards): atomic, on the bank statement, live balance update */
 async function credit(req, to, amount, note) {
@@ -55,7 +56,7 @@ router.get('/', async (req, res, next) => {
     const me = uid(req); await ensureAC(me);
     const d = await loadPet(me); await d.save();
     const day = P.dayKey(), ev = event(), earned = d.gameDay === day ? d.gameEarned : 0;
-    res.json(await full(me, d, { catalog: P.catalog(ev), slots: P.SLOTS, ai: aiInfo(d), ach: P.ACH.map(({ id, icon, name, desc, reward }) => ({ id, icon, name, desc, reward })),
+    res.json(await full(me, d, { catalog: P.catalog(ev), slots: P.SLOTS, ai: aiInfo(d), ach: P.ACH.map(({ id, icon, name, desc, reward }) => ({ id, icon, name, desc, reward })), tricks: P.TRICKS, roomItems: P.ROOM_ITEMS,
       city: ev ? { id: ev.id, title: ev.title, icon: ev.icon } : null, game: { earned, cap: P.GAME.cap, cooldownMs: P.GAME.cooldownMs, energy: P.GAME.energy }, rates: P.RATE }));
   } catch (e) { next(e); }
 });
@@ -152,7 +153,20 @@ router.post('/checkin', async (req, res, next) => {
 router.post('/settings', async (req, res, next) => {
   try {
     const me = uid(req), b = req.body || {}, d = await loadPet(me);
-    if (typeof b.alerts === 'boolean') d.alerts = b.alerts; if (typeof b.inRoom === 'boolean') d.inRoom = b.inRoom;
+    if (typeof b.alerts === 'boolean') d.alerts = b.alerts;
+    if (typeof b.inRoom === 'boolean') d.inRoom = b.inRoom;
+    if (Object.prototype.hasOwnProperty.call(b, 'roomItem')) {
+      if (!Object.prototype.hasOwnProperty.call(P.ROOM_ITEMS, b.roomItem)) return bad(res, 400, 'Choose one of the available room items.');
+      d.roomItem = b.roomItem;
+    }
+    if (b.alertPrefs && typeof b.alertPrefs === 'object' && !Array.isArray(b.alertPrefs)) {
+      const next = P.alertPrefs(d);
+      for (const k of ['illness', 'hunger', 'clean']) if (typeof b.alertPrefs[k] === 'boolean') next[k] = b.alertPrefs[k];
+      for (const k of ['quietStart', 'quietEnd']) if (b.alertPrefs[k] != null) {
+        const hour = Number(b.alertPrefs[k]); if (!Number.isInteger(hour) || hour < 0 || hour > 23) return bad(res, 400, 'Quiet hours must be between 0 and 23.'); next[k] = hour;
+      }
+      d.alertPrefs = next; d.markModified('alertPrefs');
+    }
     await d.save(); res.json(await full(me, d));
   } catch (e) { next(e); }
 });
@@ -161,7 +175,7 @@ router.get('/room', async (req, res, next) => {
   try {
     const d = await ACPet.findOne({ user: uid(req) }).lean();
     if (!d || !d.inRoom) return res.json({ on: false });
-    res.json({ on: true, name: d.name, stage: P.stageView(d), worn: d.worn || {} });
+    res.json({ on: true, name: d.name, stage: P.stageView(d), worn: d.worn || {}, roomItem: P.ROOM_ITEMS[d.roomItem] ? d.roomItem : 'bed' });
   } catch (e) { next(e); }
 });
 /* the client reports a photo it saved (milestone only, no reward beyond the badge) */
@@ -193,30 +207,35 @@ router.get('/friends', async (req, res, next) => {
 });
 router.post('/visit', async (req, res, next) => {
   try {
-    const me = uid(req), b = req.body || {}, to = String(b.to || ''), act = b.act === 'gift' ? 'gift' : 'cuddle';
+    const me = uid(req), b = req.body || {}, to = String(b.to || ''), act = String(b.act || '');
+    if (!['gift', 'cuddle'].includes(act)) return bad(res, 400, 'Choose cuddle or gift.');
     if (!isId(to) || to === me) return bad(res, 400, 'Pick a friend.');
     if (!(await Friendship.exists({ $or: [{ requester: me, recipient: to }, { requester: to, recipient: me }], status: 'accepted' }))) return bad(res, 403, 'You can only visit friends.');
     const od = await ACPet.findOne({ user: to }); if (!od) return bad(res, 404, 'Your friend has no pet yet.');
     await ensureAC(me); P.advance(od); const day = P.dayKey(), nm = od.name;
-    if (od.vDay !== day) { od.vDay = day; od.vLog = {}; }
-    const log = Object.assign({ c: 0, g: 0 }, od.vLog && od.vLog[me]), meU = await User.findById(me).select('displayName acUsername ac.cash').lean(), who = label(meU);
+    const newVisitDay = od.vDay !== day;
+    if (newVisitDay) { await ACPet.updateOne({ user: to, vDay: { $ne: day } }, { $set: { vDay: day, vLog: {} } }); od.vDay = day; }
+    const log = Object.assign({ c: 0, g: 0 }, !newVisitDay && od.vLog && od.vLog[me]), meU = await User.findById(me).select('displayName acUsername ac.cash').lean(), who = label(meU);
     let price = 0, food = null;
     if (act === 'cuddle') {
       if (log.c >= 1) return bad(res, 429, `You already cuddled ${nm} today.`);
-      log.c = 1; od.love = (od.love || 0) + 2; if (od.fun < P.VISIT.funMax) od.fun = P.cl(od.fun + P.VISIT.cuddleFun);
+      const path = `vLog.${me}.c`, claim = await ACPet.updateOne({ user: to, vDay: day, $or: [{ [path]: { $exists: false } }, { [path]: { $lt: 1 } }] }, { $inc: { [path]: 1 } });
+      if (!(claim.modifiedCount || claim.nModified)) return bad(res, 429, `You already cuddled ${nm} today.`);
+      od.love = (od.love || 0) + 2; if (od.fun < P.VISIT.funMax) od.fun = P.cl(od.fun + P.VISIT.cuddleFun);
     } else {
       food = P.FOOD[String(b.gift || '')]; if (!food) return bad(res, 400, 'Pick a gift.');
       if (log.g >= P.VISIT.maxGifts) return bad(res, 429, 'That is plenty of gifts for today.');
       if (od.hunger > 92) return bad(res, 409, `${nm} is full.`);
+      const path = `vLog.${me}.g`, claim = await ACPet.updateOne({ user: to, vDay: day, $or: [{ [path]: { $exists: false } }, { [path]: { $lt: P.VISIT.maxGifts } }] }, { $inc: { [path]: 1 } });
+      if (!(claim.modifiedCount || claim.nModified)) return bad(res, 429, 'That is plenty of gifts for today.');
       price = P.priceOf('food', String(b.gift), event());
       const u = await User.findOneAndUpdate({ _id: me, 'ac.cash': { $gte: price } }, { $inc: { 'ac.cash': -price } }, { new: true });
-      if (!u) return bad(res, 402, 'Not enough ₦.');
+      if (!u) { await ACPet.updateOne({ user: to }, { $inc: { [path]: -1 } }); return bad(res, 402, 'Not enough ₦.'); }
       try { P.apply(od, { hunger: food.hunger, fun: food.fun, love: 1 }); log.g += 1; }
-      catch (e) { await User.updateOne({ _id: me }, { $inc: { 'ac.cash': price } }); throw e; }
+      catch (e) { await User.updateOne({ _id: me }, { $inc: { 'ac.cash': price } }); await ACPet.updateOne({ user: to }, { $inc: { [path]: -1 } }); throw e; }
       await ACTxn.create({ user: me, type: 'debit', amount: price, cpName: 'Pet gift', cpNum: '', note: `${food.name} for ${nm}`, ref: makeRef(), kind: 'pet' });
       emitUser(io(req), me, 'cash', { delta: -price });
     }
-    od.vLog = Object.assign({}, od.vLog, { [me]: log }); od.markModified('vLog');
     od.visits = [{ from: me, name: who, act, gift: food ? food.name : '', at: new Date() }, ...(od.visits || [])].slice(0, 15); P.bump(od, 'visits');
     const nbO = P.unlock(od); await od.save();
     if (nbO.length) await credit(req, to, nbO.reduce((a, x) => a + (x.reward || 0), 0), `Pet milestone: ${nbO.map((x) => x.name).join(', ')}`);
@@ -239,8 +258,13 @@ router.post('/game', async (req, res, next) => {
     if (d.energy < 12) return bad(res, 409, `${d.name} is too tired to play.`);
     if (P.sick(d)) return bad(res, 409, `${d.name} is not well enough to play. Take her to the vet.`);
     if (d.lastGame && now - new Date(d.lastGame).getTime() < P.GAME.cooldownMs) return bad(res, 429, 'Let her catch her breath for a minute.');
-    if (d.gameDay !== day) { d.gameDay = day; d.gameEarned = 0; }
+    if (d.gameDay !== day) {
+      await ACPet.updateOne({ user: me, gameDay: { $ne: day } }, { $set: { gameDay: day, gameEarned: 0 } });
+      d.gameDay = day; d.gameEarned = 0;
+    }
     const prize = P.reward(game, (req.body || {}).score, d.gameEarned);
+    const claim = await ACPet.updateOne({ user: me, gameDay: day, gameEarned: { $lte: P.GAME.cap - prize }, $or: [{ lastGame: null }, { lastGame: { $lte: new Date(now - P.GAME.cooldownMs) } }] }, { $set: { lastGame: new Date(now) }, $inc: { gameEarned: prize } });
+    if (!(claim.modifiedCount || claim.nModified)) return bad(res, 429, d.lastGame && now - new Date(d.lastGame).getTime() < P.GAME.cooldownMs ? 'Let her catch her breath for a minute.' : 'Daily game limit reached. Come back tomorrow.');
     d.lastGame = new Date(now); d.gameEarned += prize; P.apply(d, { energy: -P.GAME.energy, fun: P.GAME.fun, hunger: -3, love: 1 }); P.bump(d, 'games'); const grew = P.gain(d, P.XP.game, false);
     if (prize) {
       await User.updateOne({ _id: me }, { $inc: { 'ac.cash': prize } });
@@ -248,6 +272,27 @@ router.post('/game', async (req, res, next) => {
       emitUser(io(req), me, 'cash', { delta: prize });
     }
     res.json(await settle(req, me, d, { prize, grew, game: { earned: d.gameEarned, cap: P.GAME.cap, capped: d.gameEarned >= P.GAME.cap } }));
+  } catch (e) { next(e); }
+});
+
+/* trick training: the server owns progress and enforces a short cooldown between lessons */
+router.post('/trick', async (req, res, next) => {
+  try {
+    const me = uid(req), id = String((req.body || {}).id || ''), trick = P.TRICKS[id];
+    if (!trick) return bad(res, 400, 'Choose a trick from the list.');
+    const d = await loadPet(me), now = Date.now();
+    if (d.asleep) return bad(res, 409, `${d.name} is asleep.`);
+    if (P.sick(d)) return bad(res, 409, `${d.name} needs care before training.`);
+    if (d.energy < 12) return bad(res, 409, `${d.name} is too tired to train.`);
+    const claim = await ACPet.updateOne({ user: me, $or: [{ trickAt: null }, { trickAt: { $lte: new Date(now - P.TRICK_COOLDOWN_MS) } }] }, { $set: { trickAt: new Date(now) } });
+    if (!(claim.modifiedCount || claim.nModified)) return bad(res, 429, 'Give her a little rest before another trick lesson.');
+    d.trickAt = new Date(now); d.tricks = Object.assign({}, d.tricks || {});
+    const old = d.tricks[id] || { progress: 0, learned: false }, progress = Math.min(trick.sessions, (old.progress || 0) + 1);
+    d.tricks[id] = { progress, learned: progress >= trick.sessions, learnedAt: progress >= trick.sessions ? (old.learnedAt || new Date(now)) : old.learnedAt || null };
+    d.energy = P.cl(d.energy - 2); d.fun = P.cl(d.fun + 4); d.love = (d.love || 0) + 1; P.bump(d, 'tricks'); const grew = P.gain(d, 2, false);
+    const nb = P.unlock(d); await d.save();
+    if (nb.length) await credit(req, me, nb.reduce((a, x) => a + (x.reward || 0), 0), `Pet milestone: ${nb.map((x) => x.name).join(', ')}`);
+    res.json(await full(me, d, { trick: { id, progress, sessions: trick.sessions, learned: progress >= trick.sessions }, grew, badges: nb }));
   } catch (e) { next(e); }
 });
 

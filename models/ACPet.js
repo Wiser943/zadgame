@@ -20,6 +20,8 @@ const S = new mongoose.Schema({
   stats: { type: mongoose.Schema.Types.Mixed, default: {} }, badges: { type: mongoose.Schema.Types.Mixed, default: {} },              // counters + unlocked milestones
   memory: { type: [String], default: [] },                                                                                             // what she remembers about her owner
   inRoom: { type: Boolean, default: false }, alerts: { type: Boolean, default: true },
+  tricks: { type: mongoose.Schema.Types.Mixed, default: {} }, trickAt: { type: Date, default: null },
+  roomItem: { type: String, enum: ['bed', 'scratch', 'toy'], default: 'bed' }, alertPrefs: { type: mongoose.Schema.Types.Mixed, default: {} },
   visits: { type: [mongoose.Schema.Types.Mixed], default: [] }, vDay: { type: String, default: '' }, vLog: { type: mongoose.Schema.Types.Mixed, default: {} },   // friends visiting
   nextEmergency: { type: Date, default: null }, protectUntil: { type: Date, default: null }, emergency: { type: mongoose.Schema.Types.Mixed, default: null }, sickPending: { type: Boolean, default: false },
   lastNote: { type: Date, default: null }, noteN: { type: Number, default: 0 }                                                          // alerts sent while the owner is away                                                         // answers from Gemini today

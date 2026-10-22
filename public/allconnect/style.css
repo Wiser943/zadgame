@@ -776,6 +776,8 @@ html[data-theme="dark"] .lgtoggle.on{background:#22b573;color:#fff}
 .altlinks{display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 18px;margin-top:10px}.altlinks a{color:var(--mut);font-weight:700;font-size:13px;cursor:pointer;text-decoration:none}
 .maplg{position:absolute;right:10px;top:calc(100px + var(--sat));z-index:5;border:0;padding:8px 13px;font:700 12.5px inherit;cursor:pointer}
 .walkyaba{position:absolute;right:10px;top:calc(144px + var(--sat));z-index:5;border:0;padding:8px 13px;font:700 12.5px inherit;cursor:pointer}
+.maptour{position:absolute;right:10px;top:calc(188px + var(--sat));z-index:5;border:0;padding:8px 13px;font:700 12.5px inherit;cursor:pointer}
+.mapTourLabel{position:absolute;top:calc(232px + var(--sat));left:50%;transform:translateX(-50%);z-index:5;padding:8px 14px;font-weight:800;font-size:12px;white-space:nowrap;pointer-events:none;max-width:calc(100% - 28px);overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- Style app (styleapp.js) ---------- */
 .abody.stx{padding:0 0 18px}

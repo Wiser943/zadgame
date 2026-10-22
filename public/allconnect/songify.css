@@ -119,6 +119,7 @@ html .sg-dark .songify-retry{background:#1ed760;color:#000}
 .np-disc::before{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;background:conic-gradient(from 0deg,transparent 0 18%,rgba(255,255,255,.13) 24%,transparent 31% 68%,rgba(255,255,255,.10) 74%,transparent 81%)}
 .np-disc::after{content:'';position:absolute;width:8%;aspect-ratio:1;border-radius:50%;background:#121212;box-shadow:0 0 0 3px rgba(255,255,255,.18)}
 .np-art{width:62%;aspect-ratio:1;border-radius:50%;object-fit:cover;background:#222}
+.np-error{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none;margin:12px 0 4px;padding:10px 12px;border:1px solid rgba(255,123,143,.35);border-radius:12px;background:rgba(120,20,40,.2);color:#ffdce2;font:500 12px 'Plus Jakarta Sans',system-ui,sans-serif}.np-error[hidden]{display:none}.np-error button{flex:none;border:0;border-radius:999px;background:#1ed760;color:#000;padding:8px 10px;font:700 11px 'Plus Jakarta Sans',system-ui,sans-serif}
 .sg-np.paused .np-disc{animation-play-state:paused}
 @keyframes npspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.np-disc{animation:none}}

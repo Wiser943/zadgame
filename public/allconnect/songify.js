@@ -5,6 +5,7 @@
 const SONGIFY = {
   view: 'songify', tab: 'home', q: '', results: [], defaults: null, queue: [], current: null, audio: null,
   busy: false, loading: false, searched: false, resLabel: 'TRENDING NOW', status: '', statusErr: false,
+  _searchSeq: 0, _searchPending: 0, _fallbackKey: '',
   recent: [], favs: [], shuffle: false, repeat: 'off', listName: 'results',
   key(n) { return `allconnect:songify:${n}:${NET.user?.id || 'guest'}`; },
   load(n) { try { return JSON.parse(localStorage.getItem(this.key(n)) || '[]').slice(0, n === 'recent' ? 12 : 200); } catch { return []; } },
@@ -29,7 +30,12 @@ const SONGIFY = {
     this.audio.addEventListener('play', () => this.repaint());
     this.audio.addEventListener('pause', () => this.repaint());
     this.audio.addEventListener('ended', () => this.onEnded());
-    this.audio.addEventListener('error', () => { if (!this.current) return; if (this._fb && this._fb.streamUrl === this.current.streamUrl) { const fb = this._fb; this._fb = null; this.busy = false; this.refetch(fb); return; } this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.repaint(); });
+    this.audio.addEventListener('error', () => {
+      if (!this.current) return;
+      const key = `${this.current.title || ''}|${this.current.artist || ''}`.toLowerCase();
+      if (key !== this._fallbackKey) { this._fallbackKey = key; this.setStatus('Stream unavailable. Looking for another source…'); this.refetch(this.current); return; }
+      this.setStatus('This track could not be streamed. Try another source or choose a different result.', true); if (typeof toast === 'function') toast('Songify could not play this track.'); this.busy = false; this.repaint();
+    });
   },
   repaint() { this.paint(); this.paintMini(); this.paintIsland(); },
   /* is the Songify screen the one on show? */
@@ -42,9 +48,9 @@ const SONGIFY = {
     this.listName = name; this.queue = this.lst(name).slice(); this.np = !quiet; this.start(song);
   },
   start(song) {
-    this.init(); this.current = song; this.remember(song);
+    this.init(); if (`${song.title || ''}|${song.artist || ''}`.toLowerCase() !== this._fallbackKey) this._fallbackKey = ''; this.current = song; this.remember(song); this.setStatus('');
     this.audio.src = song.streamUrl;
-    this.audio.play().catch(() => this.setStatus('Tap play again to start audio on this device.', true));
+    this.audio.play().catch(() => { this.setStatus('Tap play again to start audio on this device.', true); if (typeof toast === 'function') toast('Tap play again to start Songify audio.'); });
     this.repaint(); this.paintResults();
   },
   stop() { if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.np = false; this.repaint(); this.paintResults(); },
@@ -103,6 +109,7 @@ const SONGIFY = {
   setStatus(message, error = false) {
     this.status = message || ''; this.statusErr = error;
     const el = document.getElementById('songify-status'); if (el) { el.textContent = this.status; el.className = `songify-status${error ? ' error' : ''}`; }
+    const pe = document.getElementById('np-error'); if (pe) { pe.hidden = !error; const text = pe.querySelector('span'); if (text) text.textContent = this.status; }
   },
   async fetchSongs(query) {
     const data = await NET.api(`/api/ac/music/search?q=${encodeURIComponent(query)}`);
@@ -113,29 +120,31 @@ const SONGIFY = {
   async loadDefault() {
     if (this.loading) return;
     if (this.defaults) { if (!this.searched) { this.results = this.defaults; this.resLabel = 'TRENDING NOW'; } this.paintResults(); return; }
-    this.loading = true; this.busy = true; this.setStatus('Loading songs…'); this.paintResults();
+    this.loading = true; this.busy = true; if (!this._searchPending) this.setStatus('Loading songs…'); this.paintResults();
     try {
       const r = await this.fetchSongs('Afrobeats');
       this.defaults = r.list;
       if (!this.searched) { this.results = r.list; this.resLabel = 'TRENDING NOW'; }
-      this.setStatus(r.list.length ? `${r.list.length} tracks · ${r.label}` : (r.errors || ['No tracks found.']).join(' '), !r.list.length);
-    } catch (e) { this.setStatus(e.message || 'Could not load songs.', true); }
-    this.loading = false; this.busy = false;
+      if (!this._searchPending) this.setStatus(r.list.length ? `${r.list.length} tracks · ${r.label}` : (r.errors || ['No tracks found.']).join(' '), !r.list.length);
+    } catch (e) { if (!this._searchPending) this.setStatus(e.message || 'Could not load songs.', true); }
+    this.loading = false; this.busy = !!this._searchPending;
     const lab = document.getElementById('sg-lab'); if (lab) lab.textContent = this.resLabel;
     this.paintResults();
   },
   async search() {
     const query = (this.q || '').trim().replace(/^\.?play\s+/i, '');
     if (!query || query.length < 2) return this.setStatus('Enter at least 2 characters to search.', true);
-    this.searched = true; this.busy = true; this.resLabel = 'SEARCH RESULTS'; this.setStatus('Finding your song…'); this.draw();
+    const seq = ++this._searchSeq;
+    this._searchPending = seq; this.searched = true; this.busy = true; this.resLabel = 'SEARCH RESULTS'; this.setStatus('Finding your song…');
+    const lab = document.getElementById('sg-lab'); if (lab) lab.textContent = this.resLabel;
+    this.paintResults();
     try {
       const r = await this.fetchSongs(query);
+      if (seq !== this._searchSeq) return;
       this.results = r.list;
       this.setStatus(r.list.length ? `${r.list.length} tracks · ${r.label}` : (r.errors || ['No tracks found. Try another search.']).join(' '), !r.list.length);
-      this.busy = false; this.paintResults();
-      if (r.list.length) { this.playAt('results', 0, true); return; }
-    } catch (e) { this.results = []; this.setStatus(e.message || 'Music search failed.', true); }
-    this.busy = false; this.paintResults();
+    } catch (e) { if (seq !== this._searchSeq) return; this.results = []; this.setStatus(e.message || 'Music search failed.', true); }
+    if (seq === this._searchSeq) { this._searchPending = 0; this.busy = this.loading; this.paintResults(); }
   },
 
   /* ----- painting ----- */
@@ -198,8 +207,8 @@ const SONGIFY = {
       <div class="np-ctl"><button class="np-sh" onclick="SONGIFY.toggleShuffle()" aria-label="Shuffle"><i class="fa-solid fa-shuffle"></i></button><button onclick="SONGIFY.prev()" aria-label="Previous"><i class="fa-solid fa-backward-step"></i></button>
         <button class="np-pp" onclick="SONGIFY.toggle()" aria-label="Play or pause"><i class="fa-solid fa-play"></i></button><button onclick="SONGIFY.next()" aria-label="Next"><i class="fa-solid fa-forward-step"></i></button>
         <button class="np-rp" onclick="SONGIFY.cycleRepeat()" aria-label="Repeat"><i class="fa-solid fa-repeat"></i><sup></sup></button></div>
-      <div class="np-foot"><button onclick="SONGIFY.toggleQueue()"><i class="fa-solid fa-list"></i> Up next</button></div>
-      <div class="np-q" id="np-q"></div>`;
+      <div class="np-foot"><button onclick="SONGIFY.toggleQueue()"><i class="fa-solid fa-list"></i> Queue</button></div>
+      <div class="np-q" id="np-q"></div><div class="np-error" id="np-error" role="status" aria-live="polite" hidden><span></span><button onclick="SONGIFY.retryCurrent()">Try another source</button></div>`;
   },
   paintNP() {
     const sc = document.querySelector('.screen'); if (!sc) return;
@@ -218,13 +227,14 @@ const SONGIFY = {
     q('.np-sh').classList.toggle('on', this.shuffle); q('.np-rp').classList.toggle('on', this.repeat !== 'off'); q('.np-rp sup').textContent = this.repeat === 'one' ? '1' : '';
     q('.np-from b').textContent = this.listLabel();
     const i = Math.max(0, this.idx()), up = this.queue.slice(i, i + 25);
-    q('#np-q').innerHTML = `<div class="npq-h"><b>Up next</b><button onclick="SONGIFY.toggleQueue()" aria-label="Close queue"><i class="fa-solid fa-xmark"></i></button></div>` + (up.map((t, k) => { const on = k === 0; return `<div class="npq-r ${on ? 'on' : ''}" onclick="SONGIFY.playQ(${i + k})"><img src="${esc(t.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span>${on ? '<i class="fa-solid fa-volume-high"></i>' : ''}</div>`; }).join('') || '<p class="empty">Nothing queued.</p>');
+    q('#np-q').innerHTML = `<div class="npq-h"><b>Queue</b><button onclick="SONGIFY.toggleQueue()" aria-label="Close queue"><i class="fa-solid fa-xmark"></i></button></div>` + (up.map((t, k) => { const on = k === 0; return `<div class="npq-r ${on ? 'on' : ''}" onclick="SONGIFY.playQ(${i + k})"><img src="${esc(t.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span>${on ? '<i class="fa-solid fa-volume-high"></i>' : ''}</div>`; }).join('') || '<p class="empty">Nothing queued.</p>');
+    const err = q('#np-error'); if (err) { err.hidden = !this.statusErr; const text = err.querySelector('span'); if (text) text.textContent = this.statusErr ? this.status : ''; }
     this.paintProgress();
   },
   paintResults() {
     const el = document.getElementById('songify-results'); if (!el) return;
     const name = this.tab === 'favs' ? 'favs' : this.tab === 'recent' ? 'recent' : 'results', list = this.lst(name);
-    if (this.tab === 'home' && this.busy) { el.innerHTML = '<p class="empty">Loading songs…</p>'; return; }
+    if (this.tab === 'home' && (this._searchPending || (!this.searched && this.loading))) { el.innerHTML = '<p class="empty">Finding your song…</p>'; return; }
     if (!list.length) {
       el.innerHTML = this.tab === 'favs' ? '<p class="empty">No favorites yet. Tap the heart on a song to save it here.</p>'
         : this.tab === 'recent' ? '<p class="empty">Songs you play will show up here.</p>'
@@ -233,12 +243,13 @@ const SONGIFY = {
     }
     el.innerHTML = list.map((s, i) => {
       const playing = this.current?.streamUrl === s.streamUrl, fav = this.isFav(s);
-      return `<div class="songify-result${playing ? ' playing' : ''}" role="button" tabindex="0" onclick="SONGIFY.playAt('${name}',${i})"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
+      return `<div class="songify-result${playing ? ' playing' : ''}" role="button" tabindex="0" onclick="SONGIFY.playAt('${name}',${i})" onkeydown="if(event.target===this&&(event.key==='Enter'||event.key===' ')){event.preventDefault();SONGIFY.playAt('${name}',${i})}"><img src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(s.title)}</b><small>${esc(s.artist)}</small></span>
         <button class="sg-heart ${fav ? 'on' : ''}" onclick="event.stopPropagation();SONGIFY.favAt('${name}',${i})" aria-label="Favorite"><i class="fa-${fav ? 'solid' : 'regular'} fa-heart"></i></button>
         <em><i class="fa-solid ${playing ? (this.audio && !this.audio.paused ? 'fa-volume-high' : 'fa-pause') : 'fa-play'}"></i></em></div>`;
     }).join('');
   },
-  retry() { this.defaults = null; this.searched = false; this.results = []; this.loadDefault(); },
+  retry() { this._searchSeq++; this._searchPending = 0; this.defaults = null; this.searched = false; this.results = []; this.busy = false; this.loadDefault(); },
+  retryCurrent() { if (!this.current) return; const song = this.current; this._fallbackKey = ''; this.setStatus('Looking for another source…'); this.refetch(song); },
 
   /* ----- mini player on the home / map scenes ----- */
   paintMini() {
@@ -294,9 +305,9 @@ const SONGIFY = {
     try {
       const r = await this.fetchSongs(`${song.title} ${song.artist || ''}`.trim());
       const t = (song.title || '').toLowerCase(), hit = r.list.find((x) => (x.title || '').toLowerCase() === t) || r.list[0];
-      if (!hit) return this.setStatus('This shared song is no longer available.', true);
+      if (!hit) { this.setStatus('This shared song is no longer available.', true); if (typeof toast === 'function') toast('This shared song is no longer available.'); return; }
       this.queue = [hit]; this.start(hit);
-    } catch (e) { this.setStatus('This shared song is no longer available.', true); }
+    } catch (e) { this.setStatus('This shared song is no longer available.', true); if (typeof toast === 'function') toast('Could not find another stream for this song.'); }
   },
   share() {
     if (!this.current) return;

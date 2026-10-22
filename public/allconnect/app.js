@@ -409,7 +409,7 @@ const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "P
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
-const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
+const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
 const HOMEFIT = { per: 8 };
@@ -475,7 +475,7 @@ const APPSEARCH = {
     const box = $('appres'); if (!box) return;
     box.innerHTML = this.res.length ? this.res.map((a, i) => `<div class="row tap" onclick="APPSEARCH.go(${i})"><div class="ic sic" style="background:${a.bg}">${a.ic}</div><div class="rt"><b>${esc(a.name)}</b><span>${a.ad ? 'Sponsored app' : 'App'}</span></div></div>`).join('') : '<p class="empty">No apps found.</p>'
   },
-  go(i) { const a = this.res[i]; if (a) a.run() }
+  go(i) { const a = this.res[i]; if (a) { PH.pauseGistMedia(); a.run() } }
 };
 drawApps();
 try { window.matchMedia('(min-width:768px) and (min-height:520px)').addEventListener('change', () => drawApps()) } catch (e) {}

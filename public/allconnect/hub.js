@@ -74,6 +74,7 @@ const HUB = {
     return h.join('');
   },
   themeGo(g) { SHEET.close(); ({ buy: () => nav('buy'), jobs: () => { nav('phone'); setTimeout(() => PH.open('jobs'), 0) }, contacts: () => { nav('phone'); setTimeout(() => PH.open('contacts'), 0) }, gamehub: () => openHub(), gist: () => { nav('phone'); setTimeout(() => PH.open('gist'), 0) }, invest: () => { nav('phone'); setTimeout(() => PH.open('invest'), 0) } }[g] || (() => {}))() },
+  cityTour() { SHEET.close(); nav('map'); setTimeout(() => { if (window.MAP3D && MAP3D.startTour) MAP3D.startTour() }, 100) },
 
   /* ---------- hub menu: every city screen ---------- */
   async menu() {
@@ -84,7 +85,7 @@ const HUB = {
       ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('newspaper', '#0ea5e9', 'Newspaper', 'news')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}
       ${t('gamepad', '#e5484d', 'Play path', 'play')}${t('map', '#6366f1', 'Map legend', 'legend')}${t('circle-question', '#64748b', 'Help desk', 'help')}${t('road', '#10b981', 'Roadmap', 'roadmap')}
       ${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
-      ${t('user-group', '#3b82f6', 'Invite', 'invite')}${t('hand-pointer', '#f59e0b', 'Controls', 'controls')}${t('route', '#14b8a6', 'City tour', 'tour')}${t('signal', '#22b573', 'Status', 'status')}
+      ${t('user-group', '#3b82f6', 'Invite', 'invite')}<button class="htile" onclick="SHEET.close();HUB.controls()">${UI.ic('hand-pointer', '#f59e0b', 44)}<b>Controls tutorial</b></button><button class="htile" onclick="SHEET.close();HUB.cityTour()">${UI.ic('route', '#14b8a6', 44)}<b>City tour</b></button>${t('signal', '#22b573', 'Status', 'status')}
       ${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}</div>`, { id: 'menu', back: false });
   },
   async view(v) {
@@ -201,7 +202,7 @@ const HUB = {
     const nice = code ? code.replace(/(.{4})(?=.)/g, '$1-') : '';
     return `<div class="hhero"><div class="hbig">🎉</div><h3>Welcome, @${this.esc(uname)}</h3><p>Save your recovery code. It is the one-tap way back into your account if you forget your password.</p></div>
       ${code ? `<div class="hcode" id="hcode">${nice}</div><button class="rbigbtn" onclick="HUB.copy('${nice}',this)"><span class="fa-solid fa-copy"></span> Copy my code</button><p class="hsub">We show it once. Screenshot it or paste it in your notes.</p>` : ''}
-      <button class="rbigbtn ghost" onclick="SHEET.close();HUB.tour(true)">Take the 60-second tour</button><button class="hlink c" onclick="SHEET.close();HUB.afterSetup()">Skip the tour</button>`;
+      <button class="rbigbtn ghost" onclick="SHEET.close();HUB.tour(true)">Start your 60-second site tour</button><button class="hlink c" onclick="SHEET.close();HUB.afterSetup()">Skip for now</button>`;
   },
   async copy(text, btn) {
     try { await navigator.clipboard.writeText(text); if (btn) btn.innerHTML = '<span class="fa-solid fa-check"></span> Copied'; toast('Copied ✓') } catch (e) { toast('Press and hold the text to copy') }
@@ -213,14 +214,16 @@ const HUB = {
     try { localStorage.removeItem('ac:ref') } catch (e) {}
   },
 
-  /* ---------- 60-second tour (signed in) and the guest tour (before sign-up) ---------- */
+  /* ---------- first-time site tour (signed in) and the guest tour (before sign-up) ---------- */
   TOUR: [
     { ic: '🏠', t: 'Your flat', x: NG.say('This is home. Your needs (food, light, fun, chat, bath, toilet) drop slowly. Tap things to use them.', 'This na your house. Your needs (food, light, fun, chat, bath, toilet) dey drop small small. Tap things to use dem.') },
     { ic: '💼', t: NG.say('Get paid', 'Collect money'), x: NG.say('Phone → Jobs. Work shifts to earn ₦ and climb the ladder. Tick Go automatically.', 'Phone → Jobs. Do shift collect ₦ and climb the ladder. Tick Go automatically.') },
-    { ic: '💡', t: NG.say('Pay your bills', 'Pay your bills o'), x: NG.say('Bills arrive every Monday. Pay on time, or the light goes. The city event changes prices.', 'Bills dey come every Monday. Pay on time or light go go. The city event dey change prices.') },
-    { ic: '🛋️', t: NG.say('Make it yours', 'Make am yours'), x: NG.say('Tap Buy to decorate. Friends can visit your place.', 'Tap Buy to decorate. Your padi fit visit your place.') },
+    { ic: '💡', t: NG.say('Bills and your home', 'Bills and your house'), x: NG.say('Bills arrive every Monday. Pay on time, then use Buy to decorate and let friends visit.', 'Bills dey come every Monday. Pay on time, use Buy decorate, invite your padi dem come.') },
     { ic: '🗺️', t: 'The city', x: NG.say('The Map shows the city, other players, ads and homes. Open the legend if you are lost.', 'The Map dey show the city, other players, ads and homes. Open the legend if you lost.') },
-    { ic: '🎮', t: NG.say('Play and connect', 'Play and link up'), x: NG.say('GameHub for games, Contacts for friends, P-Gist for the gist. Start with the Beginner queue.', 'GameHub na for games, Contacts for padi, P-Gist for gist. Start with the Beginner queue.') }
+    { ic: '📱', t: 'Your phone apps', x: 'Open the phone grid to find your apps. Contacts helps you add friends; Messages is where chats and updates arrive.' },
+    { ic: '🎬', t: 'P-Gist and Songify', x: 'Share posts, photos, and vertical Reels in P-Gist. Songify is for listening; use a shared song link to open the track in Songify.' },
+    { ic: '🐱', t: 'Meet your pet', x: 'In Pet, follow the care guide, teach tricks, choose a room corner, and set alert types and quiet hours. Visitbook keeps recent friend visits. Answer mode uses Gemini when the server is configured.' },
+    { ic: '🎮', t: 'Choose a game', x: NG.say('Open GameHub, choose a game such as Ludo, chess or Connect Four, then practice with a bot or join a room with friends.', 'Open GameHub, choose Ludo, chess or Connect Four, practise with bot or join your padi dem.') }
   ],
   GUEST: [
     { ic: '🏙️', t: NG.say('Welcome to 9ja', 'Welcome to 9ja o!'), x: NG.say('A Naija life-sim that never resets. Your life continues even when you close the app.', 'Naija life-sim wey no dey reset. Your life dey continue even when you close the app.') },
@@ -232,9 +235,9 @@ const HUB = {
   tour(first) { this.tr = { i: 0, list: this.TOUR, guest: false, first: !!first, t: 0 }; this.tourDraw() },
   guestTour() { this.tr = { i: 0, list: this.GUEST, guest: true, t: 0 }; this.tourDraw() },
   tourDraw() {
-    const tr = this.tr, s = tr.list[tr.i], last = tr.i === tr.list.length - 1, per = tr.guest ? 7000 : 10000;
+    const tr = this.tr, s = tr.list[tr.i], last = tr.i === tr.list.length - 1, per = tr.guest ? 7000 : 7000;
     clearTimeout(tr.t); tr.t = setTimeout(() => { if (SHEET.isOpen('tour') && this.tr === tr) this.tourNext() }, per);
-    SHEET.open({ id: 'tour', title: tr.guest ? NG.say('See 9ja first', 'Come see 9ja first') : '60-second tour', onClose: () => { clearTimeout(tr.t); if (!tr.guest && !tr.done) this.tourEnd(tr) },
+    SHEET.open({ id: 'tour', title: tr.guest ? NG.say('See 9ja first', 'Come see 9ja first') : '60-second site tour', onClose: () => { clearTimeout(tr.t); if (!tr.guest && !tr.done) this.tourEnd(tr) },
       body: () => `<div class="hdots">${tr.list.map((_, i) => `<i class="${i < tr.i ? 'done' : i === tr.i ? 'on' : ''}"></i>`).join('')}</div><div class="htour"><div class="hbig">${s.ic}</div><h3>${s.t}</h3><p>${s.x}</p><div class="htimer"><i style="animation-duration:${per}ms"></i></div></div>
         <button class="rbigbtn" onclick="HUB.tourNext()">${last ? (tr.guest ? 'Create my account' : 'Start playing') : 'Next'}</button><button class="hlink c" onclick="SHEET.close()">${tr.guest ? 'Close' : 'Skip tour'}</button>` });
   },
