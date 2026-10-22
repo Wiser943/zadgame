@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en-NG">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AllConnect — live your Naija life with real players</title>
+  <meta name="description" content="AllConnect is a multiplayer Naija life simulation in your browser. Work, meet players, send Game Naira and walk a live city map.">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="theme-color" content="#EEF3F8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/landing.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header>
+    <div class="wrap bar">
+      <a class="brand" href="/">
+        <img src="/icon-192.png" width="42" height="42" alt="">
+        <span>AllConnect<small>Naija life, in the browser</small></span>
+      </a>
+      <nav aria-label="Main">
+        <a href="#start">Start here</a>
+        <a href="#map">Map</a>
+        <a href="#jobs">Jobs</a>
+        <a href="#money">Money</a>
+        <a href="/play?open=lagosrun">Lagos Run</a>
+      </nav>
+      <a class="btn btn-primary" href="/play">Play game</a>
+    </div>
+  </header>
+  <main id="main">
+    <section class="herofull">
+      <figure class="city city3d" id="cityDio" aria-label="A 3D tour of the AllConnect map: airport, Agege market, stadium, Third Mainland Bridge, Victoria Island and the beach resort">
+        <div class="dio" id="heroDio"></div>
+        <div class="flat">
+        <div class="island"></div>
+        <div class="road r1"></div>
+        <div class="road r2"></div>
+        <div class="apt" title="Airport"></div>
+        <div class="pin" style="left:22%;top:28%"><i></i> Airport</div>
+        <div class="pin" style="left:48%;top:44%"><i></i> 12</div>
+        <div class="pin" style="left:68%;top:52%"><i></i> 1000+</div>
+        <div class="pin" style="left:36%;top:62%"><i></i> Home</div>
+        <div class="hud"><span>Home</span><span>Buy</span><span class="on">Map</span><span>Phone</span></div>
+        </div>
+      </figure>
+      <div class="wrap hero">
+        <div class="herotext">
+        <p class="eyebrow">Unofficial-feeling city, official AllConnect world</p>
+        <h1>Your 9ja story,<br><span>on a live map.</span></h1>
+        <p class="lead">Create a Sim, walk the city, find work and meet other players as they move — not as statues parked on one tile.</p>
+        <div class="row">
+          <a class="btn btn-primary" href="/play">Enter the city</a>
+          <a class="btn btn-ghost" href="#start">How it works</a>
+        </div>
+        <p class="note">Phone or computer. Same account for the life-sim, GameHub and Lagos Run.</p>
+        </div>
+      </div>
+    </section>
+    <div class="wrap snapshot">
+      <article><h3>Browser game</h3><p>No store download required</p></article>
+      <article><h3>Life simulation</h3><p>Needs, jobs, home and city</p></article>
+      <article><h3>Live neighbours</h3><p>Other players walk the map in real time</p></article>
+      <article><h3>Lagos Run art</h3><p>Roads, roofs and danfos from the racing game</p></article>
+    </div>
+    <section class="wrap" id="start">
+      <h2>Start your Naija life</h2>
+      <p class="sub">Land here, then open the game when you are ready to walk the city.</p>
+      <div class="grid">
+        <a class="card" href="/play"><h3>Play AllConnect</h3><p>Sign in or create a Sim and drop onto the map.</p></a>
+        <a class="card" href="#jobs"><h3>Jobs &amp; pay</h3><p>Apply from Phone → Jobs and finish a shift.</p></a>
+        <a class="card" href="#money"><h3>Game Naira</h3><p>Wages, gigs and transfers stay in-game.</p></a>
+        <a class="card" href="#map"><h3>City map</h3><p>Airport, lagoon, estates and live player pins.</p></a>
+        <a class="card" href="/play?open=gamehub"><h3>GameHub</h3><p>Board games with the same account.</p></a>
+        <a class="card" href="/play?open=lagosrun"><h3>Lagos Run</h3><p>Drive the streets whose textures paint the map.</p></a>
+      </div>
+    </section>
+    <section class="wrap" id="map">
+      <h2>A map that moves with people</h2>
+      <p class="sub">Neighbours are tracked from the socket, interpolated on the client, and restored when you reconnect. You see them walking, not frozen on a spawn tile.</p>
+      <div class="two">
+        <div class="panel">
+          <h3>What you will see</h3>
+          <p>Grass plots, asphalt, potholes, zebra crossings, zinc roofs and danfos — the same sprites used in Lagos Run — plus cluster badges when a venue is busy.</p>
+        </div>
+        <div class="panel">
+          <h3>How to get around</h3>
+          <p>Tap the ground to walk. Too far? Open transport. Filters at the top of Map hide go-slow, ads, sea plots or government sites.</p>
+        </div>
+      </div>
+    </section>
+    <section class="wrap" id="jobs">
+      <h2>Work, then explore</h2>
+      <p class="sub">Your first days are about covering bills, then choosing a career path.</p>
+      <div class="two">
+        <div class="panel">
+          <dt>Find a job</dt>
+          <dd>Phone → Jobs. Apply, wait for an eligible work day, then Go to work.</dd>
+          <dt>Shift</dt>
+          <dd>Finish the shift to collect base pay. Skills unlock the next rung.</dd>
+        </div>
+        <div class="panel">
+          <dt>Banking · example</dt>
+          <dd>Entry marketer shift in Game Naira.</dd>
+          <dt>Tech · example</dt>
+          <dd>Intern shift while you train up.</dd>
+          <dt>Music · example</dt>
+          <dd>Backup singer while you gig after hours.</dd>
+        </div>
+      </div>
+    </section>
+    <section class="wrap" id="money">
+      <h2>Keep the lights on</h2>
+      <p class="sub">In-game currency only. There is no real-world cash-out.</p>
+      <div class="grid">
+        <div class="card"><h3>Wages</h3><p>Career shifts are the steady route.</p></div>
+        <div class="card"><h3>Send money</h3><p>Chat a player, check the fee, keep the receipt.</p></div>
+        <div class="card"><h3>Land &amp; shops</h3><p>Buy when rent and a cash buffer are already covered.</p></div>
+      </div>
+    </section>
+    <section class="wrap">
+      <div class="cta">
+        <div>
+          <h2>Ready for the city?</h2>
+          <p>Open AllConnect and walk the live city map.</p>
+        </div>
+        <a class="btn btn-primary" href="/play">Play now</a>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="wrap foot">
+      <p>AllConnect is a Naija life simulation. Game names and third-party imagery belong to their owners.</p>
+      <p><a href="/play">Play</a> · <a href="/play?open=gamehub">GameHub</a> · <a href="/play?open=lagosrun">Lagos Run</a></p>
+    </div>
+  </footer>
+  <script src="/allconnect/diorama.js" defer></script>
+  <script>
+    /* 3D map tour: the camera flies between popular places. The flat picture stays if WebGL is unavailable. */
+    addEventListener('load', function () {
+      var f = document.getElementById('cityDio'); if (!f || !window.DIORAMA) return;
+      DIORAMA.mount(document.getElementById('heroDio'), { mode: 'tour', shiftXWide: .2, shiftYWide: 0, shiftY: -.2 }).then(function (d) { if (d) f.classList.add('on'); });
+    });
+  </script>
+</body>
+</html>
