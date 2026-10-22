@@ -55,9 +55,33 @@ const GIST = {
     return `<div class="gcar"><div class="gcs" onscroll="GIST.car(this)">${p.images.map((_, i) => one(i)).join('')}</div><span class="gcn">1/${n}</span><div class="gdots">${p.images.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div></div>`
   },
   car(el) { const n = el.children.length, i = Math.min(n - 1, Math.round(el.scrollLeft / Math.max(1, el.clientWidth))), w = el.parentNode; w.querySelectorAll('.gdots i').forEach((d, k) => d.classList.toggle('on', k === i)); const c = w.querySelector('.gcn'); if (c) c.textContent = (i + 1) + '/' + n },
+  vplay(button) {
+    const w = button.closest('.ginline'), v = w && w.querySelector('video'); if (!v) return;
+    if (v.paused) {
+      document.querySelectorAll('#appview.pgist-social .ginline-v').forEach(x => { if (x !== v) { x.pause(); const p = x.closest('.ginline'); if (p) p.classList.remove('playing') } });
+      const p = v.play(); if (p && p.then) p.then(() => { w.classList.remove('play-error'); this.vtime(v) }).catch(() => { w.classList.add('play-error'); toast('Could not play this video. Tap play to retry.') });
+    } else v.pause();
+    this.vtime(v)
+  },
+  vtime(v) {
+    const w = v && v.closest('.ginline'); if (!w) return; w.classList.toggle('playing', !v.paused);
+    const r = w.querySelector('.gvseek'), cur = Number.isFinite(v.currentTime) ? v.currentTime : 0, total = Number.isFinite(v.duration) ? v.duration : 0;
+    if (r && total && !r.matches(':active')) r.value = String(cur / total * 100);
+    const t = w.querySelector('.gvtime'); if (t) t.textContent = `${RL.dur(cur)} / ${total ? RL.dur(total) : '--:--'}`;
+    w.querySelectorAll('.gvplay i,.gvcenter i').forEach(i => { i.className = 'fa-solid ' + (v.paused ? 'fa-play' : 'fa-pause') });
+    const m = w.querySelector('.gvmute i'); if (m) m.className = 'fa-solid ' + (v.muted ? 'fa-volume-xmark' : 'fa-volume-high')
+  },
+  vseek(r) { const v = r.closest('.ginline').querySelector('video'); if (v && Number.isFinite(v.duration)) v.currentTime = v.duration * Number(r.value) / 100 },
+  vmute(button) { const v = button.closest('.ginline').querySelector('video'); if (!v) return; v.muted = !v.muted; this.vtime(v) },
+  vfull(button) {
+    const w = button.closest('.ginline'); if (!w) return;
+    if (document.fullscreenElement === w) { const p = document.exitFullscreen && document.exitFullscreen(); if (p && p.catch) p.catch(() => {}); return }
+    if (w.classList.contains('gv-full')) { w.classList.remove('gv-full'); return }
+    if (w.requestFullscreen) { try { const p = w.requestFullscreen(); if (p && p.catch) p.catch(() => w.classList.add('gv-full')) } catch (e) { w.classList.add('gv-full') } } else w.classList.add('gv-full')
+  },
   vid(p, detail) {
     if (!p || !p.video) return ''; const u = window.apiUrl ? apiUrl(p.video.url) : p.video.url, po = p.video.poster ? (window.apiUrl ? apiUrl(p.video.poster) : p.video.poster) : '';
-    if (detail && p.video.kind !== 'mux') return `<div class="gvid det"><video src="${esc(u)}" ${po ? `poster="${esc(po)}"` : ''} controls playsinline preload="metadata" loop></video></div>`;
+    if (detail && p.video.kind !== 'mux') return `<div class="gvid det ginline"><video class="ginline-v" src="${esc(u)}" ${po ? `poster="${esc(po)}"` : ''} playsinline webkit-playsinline preload="metadata" loop onloadedmetadata="GIST.vtime(this)" ontimeupdate="GIST.vtime(this)" onplay="GIST.vtime(this)" onpause="GIST.vtime(this)"></video><button class="gvcenter" onclick="GIST.vplay(this)" aria-label="Play or pause"><i class="fa-solid fa-play"></i></button><div class="gvcontrols"><button class="gvplay" onclick="GIST.vplay(this)" aria-label="Play or pause"><i class="fa-solid fa-play"></i></button><span class="gvtime">0:00 / --:--</span><input class="gvseek" type="range" min="0" max="100" value="0" aria-label="Seek video" oninput="GIST.vseek(this)"><button class="gvmute" onclick="GIST.vmute(this)" aria-label="Toggle sound"><i class="fa-solid fa-volume-xmark"></i></button><button onclick="GIST.vfull(this)" aria-label="Fullscreen"><i class="fa-solid fa-expand"></i></button></div></div>`;
     return `<div class="gvid" onclick="event.stopPropagation();RL.openFrom('${p.id}')">${po || p.video.kind === 'mux' ? `<img loading="lazy" decoding="async" src="${esc(po)}" ${p.video.preview ? `data-prev="${esc(p.video.preview)}"` : ''} alt="">` : `<video src="${esc(u)}#t=0.1" muted playsinline preload="metadata"></video>`}<span class="gvp"><i class="fa-solid fa-play"></i></span><em><i class="fa-solid fa-clapperboard"></i> Reel${p.video.dur ? ' · ' + RL.dur(p.video.dur) : ''}${p.views ? ' · ' + RL.fmt(p.views) + ' views' : ''}</em></div>`
   },
   /* a shared Songify track: tap it to open Songify and play it */
@@ -106,7 +130,7 @@ const GIST = {
   /* ---------- feed ---------- */
   feed() {
     this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
-    const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['reels', 'Reels <i class="fa-solid fa-clapperboard"></i>'], ['me', 'Me']];
+    const tabs = [['latest', 'Latest'], ['trending', 'Trending <i class="fa-solid fa-fire"></i>'], ['following', 'Following'], ['me', 'Me']];
     const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
     PH.shell(this.tagF ? '#' + esc(this.tagF) : 'Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
       <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">What’s the gist, ${esc((u.displayName || 'player').split(' ')[0])}?</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>

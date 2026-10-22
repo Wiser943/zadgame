@@ -1,34 +1,77 @@
 /* Reels for P-Gist (ported from the TokTok app): full-screen vertical video feed with snap scrolling, autoplay of the clip on screen,
    For you / Following, double-tap to like, follow pill, comments (opens the gist), share, plus video upload from the gist composer.
-   Uses the P-Gist API: GET /api/ac/gist/reels, POST /reels/upload (raw video), POST /posts { video }. Depends on gist.js (GIST), phone.js (PH). */
+   Uses the P-Gist API: GET /api/ac/gist/reels, POST /reels/mux-upload and status routes; video bytes go from the browser straight to Mux. Depends on gist.js (GIST), phone.js (PH). */
 const RL = {
   tab: 'foryou', L: { foryou: { p: [], more: false, ok: false }, following: { p: [], more: false, ok: false } }, i: 0, muted: true, obs: null, seen: new Set(), busy: false, start: '', tapT: 0, gen: 0,
   src(u) { return window.apiUrl ? window.apiUrl(u) : u },
   fmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n || '') },
   dur(s) { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') },
-  /* Mux streams HLS: Safari plays it natively, everything else uses hls.js (loaded only when needed) */
-  hlsLib() { return this._hl || (this._hl = new Promise(r => { if (window.Hls) return r(true); const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js'; s.onload = () => r(!!window.Hls); s.onerror = () => r(false); document.head.appendChild(s) })) },
+  /* Mux streams HLS: native HLS where it works, otherwise hls.js. A second CDN is tried if the first is blocked. */
+  hlsLib() { return this._hl || (this._hl = new Promise(resolve => {
+    if (window.Hls) return resolve(true);
+    const urls = ['https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js', 'https://unpkg.com/hls.js@1.5.17/dist/hls.min.js'];
+    const next = () => {
+      const url = urls.shift(); if (!url) return resolve(false); const s = document.createElement('script'); s.async = true; s.src = url; let done = false;
+      const timer = setTimeout(() => { if (done) return; done = true; s.remove(); next() }, 10000);
+      s.onload = () => { if (done) return; done = true; clearTimeout(timer); window.Hls ? resolve(true) : next() };
+      s.onerror = () => { if (done) return; done = true; clearTimeout(timer); s.remove(); next() }; document.head.appendChild(s)
+    };
+    next()
+  })) },
   saver() { const c = navigator.connection || {}; return !!(c.saveData || /(^|-)(2g|3g)$/.test(c.effectiveType || '')) },
   dataLib() { return this._dl || (this._dl = new Promise(r => { if (window.mux) return r(true); const s = document.createElement('script'); s.src = 'https://src.litix.io/core/4/mux.js'; s.onload = () => r(!!window.mux); s.onerror = () => r(false); document.head.appendChild(s) })) },
   attach(v, near) {
-    const u = v.dataset.src; if (!u) return; if (!/\.m3u8/.test(u)) { v.src = u; v.preload = 'auto'; return }
-    if (v.canPlayType('application/vnd.apple.mpegurl')) { v.src = u; return }
-    v._want = u; const cf = this._cfg || {};
+    const u = v.dataset.src; if (!u || v._want === u || v._h) return; v._want = u;
+    if (!/\.m3u8(?:\?|$)/i.test(u)) { v.onerror = () => this.playFail(v); v.src = u; v.preload = 'auto'; v.load(); if (v._go) this.playReady(v); return }
+    const native = v.canPlayType('application/vnd.apple.mpegurl');
+    const useNative = () => {
+      if (v._want !== u || !v.isConnected) return;
+      v.onerror = () => { if (v._want !== u || !v.isConnected) return; v.onerror = null; this.hlsLib().then(ok => { if (ok && window.Hls && window.Hls.isSupported()) this.attachHls(v, u, near); else this.playFail(v) }) };
+      v.src = u; v.load(); if (v._go) this.playReady(v)
+    };
+    if (native === 'probably') { useNative(); return }
     this.hlsLib().then(ok => {
-      if (!ok || v._want !== u || v._h || !v.isConnected) return; if (!Hls.isSupported()) { v.src = u; return }
-      const sv = this.saver(), h = new Hls({ maxBufferLength: near ? 3 : 10, maxMaxBufferLength: 20, startLevel: 0, capLevelToPlayerSize: true, abrEwmaDefaultEstimate: sv ? 400000 : 1500000, enableWorker: true });
-      v._h = h; h.on(Hls.Events.MANIFEST_PARSED, (e, d) => { if (sv && d.levels && d.levels.length > 2) h.autoLevelCapping = 1 });
-      h.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => { h.subtitleDisplay = !!this.ccOn; h.subtitleTrack = this.ccOn ? 0 : -1 });
-      h.loadSource(u); h.attachMedia(v); if (v._go) v.play().catch(() => { });
-      if (cf.dataKey && !v._md) { v._md = 1; const c = v.closest('.rl-card'); this.dataLib().then(k => { if (k && window.mux) try { mux.monitor(v, { debug: false, hlsjs: h, Hls, data: { env_key: cf.dataKey, video_id: c ? c.dataset.id : '', video_title: 'P-Gist reel', player_name: 'P-Gist reels' } }) } catch (e) { } }) }
+      if (v._want !== u || v._h || !v.isConnected) return;
+      if (ok && window.Hls && window.Hls.isSupported()) this.attachHls(v, u, near);
+      else if (native) useNative();
+      else this.playFail(v)
     })
+  },
+  attachHls(v, u, near) {
+    const H = window.Hls; if (v._want !== u || v._h || !v.isConnected || !H || !H.isSupported()) return;
+    v.onerror = null; v.removeAttribute('src'); v.load();
+    const sv = this.saver(), cf = this._cfg || {}, h = new H({ maxBufferLength: near ? 3 : 10, maxMaxBufferLength: 20, startLevel: 0, capLevelToPlayerSize: true, abrEwmaDefaultEstimate: sv ? 400000 : 1500000, enableWorker: true });
+    v._h = h; let netRetries = 0, mediaRetries = 0;
+    h.on(H.Events.MANIFEST_PARSED, (e, d) => { if (sv && d.levels && d.levels.length > 2) h.autoLevelCapping = 1; if (v._go) this.playReady(v) });
+    h.on(H.Events.SUBTITLE_TRACKS_UPDATED, () => { h.subtitleDisplay = !!this.ccOn; h.subtitleTrack = this.ccOn ? 0 : -1 });
+    h.on(H.Events.ERROR, (e, d) => {
+      if (!d || !d.fatal || v._want !== u) return;
+      if (d.type === H.ErrorTypes.NETWORK_ERROR && netRetries++ < 2) { h.startLoad(); return }
+      if (d.type === H.ErrorTypes.MEDIA_ERROR && mediaRetries++ < 1) { h.recoverMediaError(); return }
+      this.playFail(v)
+    });
+    h.loadSource(u); h.attachMedia(v); if (v._go) this.playReady(v);
+    if (cf.dataKey && !v._md) { v._md = 1; const c = v.closest('.rl-card'); this.dataLib().then(k => { if (k && window.mux) try { mux.monitor(v, { debug: false, hlsjs: h, Hls: H, data: { env_key: cf.dataKey, video_id: c ? c.dataset.id : '', video_title: 'P-Gist reel', player_name: 'P-Gist reels' } }) } catch (e) { } }) }
+  },
+  playReady(v) {
+    if (!v || !v._go) return; const c = v.closest('.rl-card'), p = v.play();
+    if (p && p.then) p.then(() => { if (c) c.classList.remove('paused') }).catch(() => { if (c) c.classList.add('paused') });
+    else if (c) c.classList.remove('paused')
+  },
+  playFail(v) {
+    const c = v && v.closest('.rl-card'); if (!c) return; c.classList.add('play-error', 'paused');
+    if (!c.querySelector('.rl-error')) c.insertAdjacentHTML('beforeend', '<div class="rl-error"><div><i class="fa-solid fa-triangle-exclamation"></i><b>Video could not load</b><small>Check your connection, then try again.</small><button type="button" onclick="RL.retry(this)">Tap to retry</button></div></div>')
+  },
+  retry(button) {
+    const c = button.closest('.rl-card'), v = c && c.querySelector('.rl-v'); if (!c || !v) return;
+    c.classList.remove('play-error', 'paused'); const err = c.querySelector('.rl-error'); if (err) err.remove(); const i = Number(c.dataset.i) || 0; this.detach(v); this._hl = null; this.cur(i)
   },
   cc(btn) {
     this.ccOn = !this.ccOn; document.querySelectorAll('.rl-cc').forEach(b => b.classList.toggle('on', this.ccOn));
     document.querySelectorAll('.rl-v').forEach(v => { if (v._h) { v._h.subtitleDisplay = this.ccOn; v._h.subtitleTrack = this.ccOn ? 0 : -1 } else [...(v.textTracks || [])].forEach(t => { t.mode = this.ccOn ? 'showing' : 'disabled' }) });
     toast(this.ccOn ? 'Captions on' : 'Captions off')
   },
-  detach(v) { v._want = ''; if (v._h) { try { v._h.destroy() } catch (e) { } v._h = null } v.pause(); v.removeAttribute('src'); v.load() },
+  detach(v) { v._want = ''; v.onerror = null; if (v._h) { try { v._h.destroy() } catch (e) { } v._h = null } v.pause(); v.removeAttribute('src'); v.load() },
   List() { return this.L[this.tab] },
   feedEl() { return document.getElementById('rlf') },
   /* ---------- the reels screen ---------- */
@@ -110,10 +153,10 @@ const RL = {
     const f = this.feedEl(); if (!f) return; this.i = i; const cards = [...f.querySelectorAll('.rl-card')], F = this.List();
     cards.forEach((c, k) => {
       const v = c.querySelector('video'), d = Math.abs(k - i);
-      if ((d === 0 || (d === 1 && !this.saver())) && !v.getAttribute('src') && !v._h) this.attach(v, d > 0);
+      if ((d === 0 || (d === 1 && !this.saver())) && !v.getAttribute('src') && !v._h && !v._want) this.attach(v, d > 0);
       if (k === i && v._h) v._h.config.maxBufferLength = 12;
       if (d > 2 && (v.getAttribute('src') || v._h)) this.detach(v);
-      if (k === i) { c.classList.remove('paused'); v.muted = this.muted; v._go = 1; const pr = v.play(); if (pr && pr.catch) pr.catch(() => { if (!v.muted) { this.muted = true; v.muted = true; this.sndIcons(); v.play().catch(() => { }) } }) }
+      if (k === i) { c.classList.remove('paused'); v.muted = this.muted; v._go = 1; this.playReady(v) }
       else { v._go = 0; v.pause(); if (d > 0) try { v.currentTime = 0 } catch (e) { } }
       v.ontimeupdate = k === i ? () => { const b = c.querySelector('.rl-bar i'); if (b && v.duration) b.style.width = (v.currentTime / v.duration * 100) + '%' } : null
     });
@@ -128,12 +171,12 @@ const RL = {
     const body = JSON.stringify({ ms, completed: w.loops > 0 || (w.dur && ms >= w.dur * 900) });
     try { fetch(this.src('/api/ac/gist/posts/' + w.id + '/watch'), { method: 'POST', keepalive: true, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body }).catch(() => { }) } catch (e) { }
   },
-  toggle(c) { const v = c.querySelector('video'); if (v.paused) { v.play().catch(() => { }); c.classList.remove('paused') } else { v.pause(); c.classList.add('paused') } },
+  toggle(c) { const v = c.querySelector('video'); if (v.paused) { v._go = 1; this.playReady(v) } else { v._go = 0; v.pause(); c.classList.add('paused') } },
   dbl(c, e) {
     const id = c.dataset.id, p = GIST.cache.get(id); if (p && !p.myRx) GIST.react(id, 'like');
     const b = c.querySelector('.rl-burst'), r = c.getBoundingClientRect(); b.innerHTML = `<i class="fa-solid fa-heart" style="left:${e.clientX - r.left}px;top:${e.clientY - r.top}px"></i>`; const h = b.firstChild; h.getBoundingClientRect(); h.classList.add('go'); setTimeout(() => { b.innerHTML = '' }, 700)
   },
-  snd() { this.muted = !this.muted; document.querySelectorAll('.rl-v').forEach(v => { v.muted = this.muted }); this.sndIcons(); const v = this.feedEl() && this.feedEl().querySelectorAll('.rl-v')[this.i]; if (v && v.paused && !v.closest('.rl-card').classList.contains('paused')) v.play().catch(() => { }) },
+  snd() { this.muted = !this.muted; document.querySelectorAll('.rl-v').forEach(v => { v.muted = this.muted }); this.sndIcons(); const v = this.feedEl() && this.feedEl().querySelectorAll('.rl-v')[this.i]; if (v && v.paused && !v.closest('.rl-card').classList.contains('paused')) this.playReady(v) },
   sndIcons() { document.querySelectorAll('.rl-snd i').forEach(i => { i.className = 'fa-solid ' + (this.muted ? 'fa-volume-xmark' : 'fa-volume-high') }) },
   sync(id) {
     const p = GIST.cache.get(id); if (!p) return;
@@ -250,15 +293,15 @@ const RL = {
   PH.shell = function () {
     const r = shell.apply(this, arguments), a = this.$a(), old = a.querySelector('.tkdock'); if (old) old.remove();
     const gist = this.view === 'gist', reels = gist && GIST.cur && GIST.cur.fn === 'reels';
-    a.classList.toggle('rlmode', !!reels); a.classList.remove('rlfull');
-    if (gist && GIST.cur && ['feed', 'reels'].includes(GIST.cur.fn) && !GIST.tagF) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
+    a.classList.toggle('pgist-social', gist); a.classList.toggle('rlmode', !!reels); a.classList.remove('rlfull');
+    if (gist && GIST.cur && ['feed', 'reels', 'profile', 'post'].includes(GIST.cur.fn)) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
     return r
   };
-  PH.close = function () { const a = this.$a(); if (a) a.classList.remove('rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };
+  PH.close = function () { const a = this.$a(); if (a) a.classList.remove('pgist-social', 'rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };
 })();
 Object.assign(RL, {
   dock(at) {
-    const it = (k, ic, lb, fn) => `<button class="${at === k ? 'on' : ''}" onclick="${fn}"><i class="fa-solid ${ic}"></i><span>${lb}</span></button>`;
+    const active = at === 'profile' ? 'me' : at === 'post' ? 'feed' : at, it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}"><i class="fa-solid ${ic}"></i><span>${lb}</span></button>`;
     return `<nav class="tkdock" aria-label="Gist navigation">${it('feed', 'fa-house', 'Pulse', 'RL.goFeed()')}${it('reels', 'fa-clapperboard', 'Reels', 'RL.goReels()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i></button>${it('me', 'fa-user', 'Studio', 'RL.goMe()')}</nav>`
   },
   goFeed() { this.stop(); GIST.stack = []; GIST.tab = 'latest'; GIST.tagF = ''; GIST.feed() },
