@@ -1,0 +1,130 @@
+const mongoose = require('mongoose');
+
+const UserSchema = new mongoose.Schema({
+  // A user has either googleId, or (email or phone) + passwordHash, or both.
+  googleId: { type: String, unique: true, sparse: true, index: true },
+  email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  phone: { type: String, unique: true, sparse: true, trim: true },
+  passwordHash: { type: String },
+  displayName: { type: String, default: 'Player' },
+  avatar: { type: String, default: '' },
+  cover: { type: String, default: '' },                 // profile cover photo (small JPEG data URI)
+  bio: { type: String, default: '', maxlength: 160 },
+  verified: { type: Boolean, default: false },          // blue tick: granted only by an admin
+  autoPostWins: { type: Boolean, default: true },       // auto-post match wins to P-Gist
+  suspendedUntil: { type: Date, default: null },
+  penaltyPoints: { type: Number, default: 0 },
+  xp: { type: Number, default: 0 },
+  level: { type: Number, default: 1 },
+  achievements: { type: [String], default: [] },
+  lastDailyClaim: { type: Date, default: null },
+  cosmetics: { type: [String], default: ['default'] },
+  equipped: {
+    roomBg: { type: String, default: 'classic' },
+    boardSkin: { type: String, default: 'classic' },
+    tokenSkin: { type: String, default: 'classic' },
+    announcer: { type: String, default: 'classic' }
+  },
+  bestMoment: {
+    matchId: { type: String },
+    game: { type: String },
+    score: { type: Number },
+    at: { type: Date }
+  },
+  friends: { type: [String], default: [] },
+  friendRequests: { type: [String], default: [] },
+  blocked: { type: [String], default: [] },
+  tournamentWins: { type: Number, default: 0 },
+  shareHighlights: { type: Boolean, default: false },   // opt-in: show my winning highlight reels in the public gallery
+  winStreak: { type: Number, default: 0 },
+  bestStreak: { type: Number, default: 0 },
+  rating: { type: Number, default: 1000 },
+  gameRatings: { type: Map, of: Number, default: {} },
+  gameGames: { type: Map, of: Number, default: {} },
+  adminNote: { type: String, default: '' },
+  // Phase 2 pre-registration. Coming-soon only: no balances, no payouts, and NO bank/wallet/ID numbers are stored here.
+  rewardsInterest: {
+    registered: { type: Boolean, default: false },
+    legalName: { type: String, default: '' },
+    country: { type: String, default: '' },
+    over18: { type: Boolean, default: false },
+    method: { type: String, enum: ['', 'bank', 'mobile_money', 'crypto'], default: '' },
+    notify: { type: Boolean, default: true },
+    termsAccepted: { type: Boolean, default: false },
+    registeredAt: { type: Date, default: null }
+  },
+  creator: {                                              // creator programme (real-money payouts, reviewed by the team)
+    status: { type: String, enum: ['', 'applied', 'approved', 'rejected', 'suspended'], default: '' },
+    appliedAt: { type: Date, default: null }, approvedAt: { type: Date, default: null }, decidedAt: { type: Date, default: null }, note: { type: String, default: '' }
+  },
+  acUsername: { type: String, unique: true, sparse: true, lowercase: true, trim: true }, // @handle used to find friends
+  // ONE balance for the whole platform: ac.cash is the AllConnect balance AND the GameHub balance (₦). Changed only by the server.
+  ac: {
+    cash: { type: Number, default: 2000000 },
+    paint: { type: String, default: '#d9a93a' },
+    gender: { type: String, enum: ['', 'male', 'female'], default: '' },   // which character model the player uses
+    owned: { type: [String], default: ['Classic Cream'] },
+    v2: { type: Boolean, default: false },                 // furniture moved to placeable items
+    items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] },
+    // Additional player homes live beside (not instead of) the legacy starter room.
+    properties: { type: [{ _id: false, id: String, type: String, tenure: { type: String, enum: ['owned', 'rent'], default: 'owned' },
+      boughtAt: { type: Date, default: Date.now }, leaseExpiresAt: { type: Date, default: null }, paint: { type: String, default: '#d9a93a' },
+      level: { type: Number, default: 0, min: 0, max: 2 }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
+      items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },
+    wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
+    needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
+    min: { type: Number, default: 1140 },
+    mapPos: { x: { type: Number }, y: { type: Number }, h: { type: Number } },
+    gemsFound: { type: Number, default: 0 },
+    sentDay: { type: String, default: '' },
+    sentAmt: { type: Number, default: 0 },
+    updatesSeen: { type: Date, default: null },
+    updatesCleared: { type: Date, default: null },
+    jobId: { type: String, default: '' },
+    jobShifts: { type: Map, of: Number, default: {} },
+    autoWork: { type: Boolean, default: true },
+    lastShift: { type: Date, default: null },
+    shiftDay: { type: String, default: '' },
+    shiftsToday: { type: Number, default: 0 },
+    bills: { type: [{ _id: false, key: String, cycle: String, amount: Number, due: Date, paidAt: { type: Date, default: null }, fee: { type: Number, default: 0 } }], default: [] },
+    questsClaimed: { type: [String], default: [] },
+    streak: { type: Number, default: 0 },
+    lastDaily: { type: String, default: '' },
+    tr: {                                                  // Transport app (see utils/actransport.js, routes/actransport.js)
+      vehicles: { type: [{ _id: false, id: String, kind: String, cond: { type: Number, default: 100 }, fuel: { type: Number, default: 0 }, paint: { type: String, default: '' }, mods: { type: [String], default: [] },
+        insTier: { type: String, default: '' }, insUntil: { type: Date, default: null }, bought: { type: Date, default: null },
+        park: { lot: { type: String, default: '' }, until: { type: Date, default: null } }, route: { id: { type: String, default: '' }, since: { type: Date, default: null } } }], default: [] },
+      rentUntil: { type: Date, default: null },
+      licTheory: { type: Date, default: null }, licOk: { type: Date, default: null }, licLast: { type: Date, default: null }, licTries: { type: Number, default: 0 },
+      rep: { type: Number, default: 20 }, repDay: { type: String, default: '' }, repToday: { type: Number, default: 0 },
+      day: { type: String, default: '' }, signsToday: { type: Number, default: 0 }, lightToday: { type: Number, default: 0 }, rideToday: { type: Number, default: 0 }, rideEarn: { type: Number, default: 0 }, callsToday: { type: Number, default: 0 },
+      assistUntil: { type: Date, default: null }, lastRide: { type: Date, default: null },
+      reportsDay: { type: String, default: '' }, reportsToday: { type: Number, default: 0 }, reportPaidDay: { type: String, default: '' }, reportPaidToday: { type: Number, default: 0 }, lastReport: { type: Date, default: null },
+      rides: { type: Number, default: 0 }, fines: { type: Number, default: 0 }, crashes: { type: Number, default: 0 }, earned: { type: Number, default: 0 },
+      sess: { type: mongoose.Schema.Types.Mixed, default: null }     // the one quiz / light / okada round in progress (answers stay on the server)
+    },
+    hub: {                                                 // onboarding, missions, result cards, life timeline (see routes/achub.js)
+      hood: { type: String, default: '' }, hobby: { type: String, default: '' },
+      homeSlot: { type: Number, default: -1 },             // which numbered house in `hood`'s residential cluster is this player's (-1 = not assigned yet)
+      done: { type: Boolean, default: false }, tourDone: { type: Boolean, default: false }, controlsDone: { type: Boolean, default: false },
+      recoveryHash: { type: String, default: '' }, recoverySalt: { type: String, default: '' },
+      missionsClaimed: { type: [String], default: [] },
+      parcelDay: { type: String, default: '' }, parcelCount: { type: Number, default: 0 },
+      lastSeen: { type: Date, default: null }, returnGiftDay: { type: String, default: '' },
+      invitedBy: { type: String, default: '' }, invites: { type: Number, default: 0 },
+      cards: { type: [{ _id: false, id: String, icon: String, title: String, text: String, tone: String, btn: String, lines: [{ _id: false, k: String, v: String }], at: { type: Date, default: Date.now } }], default: [] },
+      timeline: { type: [{ _id: false, at: { type: Date, default: Date.now }, icon: String, text: String }], default: [] }
+    }
+  },
+  stats: {
+    gamesPlayed: { type: Number, default: 0 },
+    wins: { type: Number, default: 0 },
+    losses: { type: Number, default: 0 },
+    draws: { type: Number, default: 0 }
+  }
+}, { timestamps: true });
+
+UserSchema.index({ 'ac.tr.vehicles.park.until': 1 }, { sparse: true });      // parking lot occupancy
+UserSchema.index({ 'ac.tr.rep': -1 }, { sparse: true });                      // public transport reputation board
+
+module.exports = mongoose.model('User', UserSchema);
