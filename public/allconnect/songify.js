@@ -29,7 +29,7 @@ const SONGIFY = {
     this.audio.addEventListener('play', () => this.repaint());
     this.audio.addEventListener('pause', () => this.repaint());
     this.audio.addEventListener('ended', () => this.onEnded());
-    this.audio.addEventListener('error', () => { if (!this.current) return; if (this._fb && this._fb.streamUrl === this.current.streamUrl) { const fb = this._fb; this._fb = null; this.busy = false; this.refetch(fb); return; } this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.repaint(); });
+    this.audio.addEventListener('error', () => { if (!this.current) return; this.setStatus('This track could not be streamed. Try another result.', true); this.busy = false; this.repaint(); });
   },
   repaint() { this.paint(); this.paintMini(); this.paintIsland(); },
   /* is the Songify screen the one on show? */
@@ -268,26 +268,10 @@ const SONGIFY = {
       <div class="isl-ctl"><button onclick="SONGIFY.prev()" aria-label="Previous"><i class="fa-solid fa-backward-step"></i></button><button onclick="SONGIFY.toggle()" aria-label="${paused ? 'Play' : 'Pause'}"><i class="fa-solid fa-${paused ? 'play' : 'pause'}"></i></button><button onclick="SONGIFY.next()" aria-label="Next"><i class="fa-solid fa-forward-step"></i></button><button onclick="SONGIFY.stop()" aria-label="Stop"><i class="fa-solid fa-xmark"></i></button></div>`;
   },
   openFromMini() { nav('phone'); this.open(); },
-  /* a song someone shared in P-Gist: jump into Songify and play it (opens the full player) */
-  openSong(song) {
-    if (!song || !song.streamUrl) return;
-    nav('phone'); this.open();
-    this.listName = 'results'; this.queue = [song]; this.np = true; this._fb = song; this.start(song);
-  },
-  /* the shared stream link no longer works: look the track up again by name and play the best match */
-  async refetch(song) {
-    try {
-      const r = await this.fetchSongs(`${song.title} ${song.artist || ''}`.trim());
-      const t = (song.title || '').toLowerCase(), hit = r.list.find((x) => (x.title || '').toLowerCase() === t) || r.list[0];
-      if (!hit) return this.setStatus('This shared song is no longer available.', true);
-      this.queue = [hit]; this.start(hit);
-    } catch (e) { this.setStatus('This shared song is no longer available.', true); }
-  },
   share() {
     if (!this.current) return;
-    const cur = this.current, song = { title: cur.title, artist: cur.artist || '', albumArt: cur.albumArt || '', streamUrl: cur.streamUrl };
     GIST.nav('compose');
-    setTimeout(() => { if (GIST.C) { GIST.C.song = song; GIST.attDraw(); } const input = document.getElementById('gc_t'); if (input) { input.value = `Listening on Songify: ${this.current.title} - ${this.current.artist}`; input.dispatchEvent(new Event('input')); } }, 0);
+    setTimeout(() => { const input = document.getElementById('gc_t'); if (input) { input.value = `Listening on Songify: ${this.current.title} - ${this.current.artist}`; input.dispatchEvent(new Event('input')); } }, 0);
   }
 };
 window.SONGIFY = SONGIFY;

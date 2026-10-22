@@ -69,22 +69,7 @@ test('browser layouts.js mirrors the server JSON', () => {
   const fs = require('fs'), path = require('path'), vm = require('node:vm');
   const root = path.join(__dirname, '..', 'public', 'allconnect');
   const ctx = { window: {} }; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(root, 'layouts.js'), 'utf8'), ctx);
-  for (const id of ['family_house', 'market_shop']) {
-    const j = JSON.parse(fs.readFileSync(path.join(root, 'models', 'layouts', id + '.json'), 'utf8')), c = ctx.window.LAYOUTS[id];
-    assert.equal(JSON.stringify([c.w, c.d, c.blocked, c.walls, c.start, c.model, c.fixtures || []]), JSON.stringify([j.w, j.d, j.blocked, j.walls, j.start, j.model, j.fixtures || []]), id);
-    assert.equal(c.blockedSet.size, j.blocked.length);
-  }
-});
-
-test('Market Shop: buyable, fixed 10x8 shop floor with built-in counter/shelves/stock that block furniture', () => {
-  const { layoutFor } = require('../utils/layouts'), F = require('../utils/furniture'), L = layoutFor('market_shop');
-  assert.ok(P.isHome('market_shop')); assert.equal(P.HOMES.market_shop.mode, 'buy'); assert.equal(P.expansionCost('market_shop', 0), 0);
-  assert.equal(L.w, 10); assert.equal(L.d, 8); assert.equal(L.model, null); assert.deepEqual(L.fixtures.map(f => f.kind).sort(), ['counter', 'shelves', 'stock', 'stock']);
-  for (const f of L.fixtures) for (let i = 0; i < f.w; i++) for (let j = 0; j < f.d; j++) assert.ok(L.blocked.has((f.x + i) + ',' + (f.z + j)), f.id + ' cells are blocked');
-  assert.equal(L.blocked.size, L.fixtures.reduce((n, f) => n + f.w * f.d, 0));
-  assert.equal(F.canPlace([], 'Plastic Chair', 3, 2, 0, undefined, L), false);      // on the counter
-  assert.equal(F.canPlace([], 'Plastic Chair', 1, 6, 0, undefined, L), true);       // free floor
-  assert.equal(F.canPlace([], 'Plastic Chair', 9, 7, 0, undefined, L), false);      // barrels
-  assert.equal(F.canPlace([], 'Plastic Chair', 10, 3, 0, undefined, L), false);     // outside the 10-wide plan
-  assert.equal(F.canPlace([], 'Plastic Chair', 5, 7, 0, undefined, L), true);       // last row, 8 deep
+  const j = JSON.parse(fs.readFileSync(path.join(root, 'models', 'layouts', 'family_house.json'), 'utf8')), c = ctx.window.LAYOUTS.family_house;
+  assert.equal(JSON.stringify([c.w, c.d, c.blocked, c.walls, c.start, c.model]), JSON.stringify([j.w, j.d, j.blocked, j.walls, j.start, j.model]));
+  assert.equal(c.blockedSet.size, j.blocked.length);
 });

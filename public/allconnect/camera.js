@@ -162,17 +162,16 @@ const CAM={
   backToCam(){this.mode='cam';this.draw();this.start()},
   refreshGallery(){if(this.mode==='gallery')this.drawGallery(true);else if(this.mode==='view')this.drawViewer()},
   drawGallery(keep){const L=this.list();
-    PH.$a().innerHTML=`<div class="cam gal"><div class="cam-top"><button class="cam-b" onclick="CAM.backToCam()" aria-label="Back to camera">‹</button><h3>Gallery</h3><span class="cam-sp"></span><small>${L.length} item${L.length===1?'':'s'}</small></div>
-      <div class="gal-body">${L.length?`<div class="gal-grid">${L.map((p,i)=>`<button class="gi" onclick="CAM.view(${i})"><img loading="lazy" src="${esc(p.thumb||p.url)}" alt="">${p.video?'<b class="gvb"><i class="fa-solid fa-play"></i></b>':''}${p.local?`<i class="${p.state==='fail'?'bad':'spin'}">${p.state==='fail'?'!':''}</i>`:''}</button>`).join('')}</div>`:
-      `<p class="empty" style="color:#9aa0b4">${this.loaded?'Nothing here yet. Photos you take and videos you upload appear here.':'Loading…'}</p>`}</div></div>`},
+    PH.$a().innerHTML=`<div class="cam gal"><div class="cam-top"><button class="cam-b" onclick="CAM.backToCam()" aria-label="Back to camera">‹</button><h3>Gallery</h3><span class="cam-sp"></span><small>${L.length} photo${L.length===1?'':'s'}</small></div>
+      <div class="gal-body">${L.length?`<div class="gal-grid">${L.map((p,i)=>`<button class="gi" onclick="CAM.view(${i})"><img loading="lazy" src="${esc(p.thumb||p.url)}" alt="">${p.local?`<i class="${p.state==='fail'?'bad':'spin'}">${p.state==='fail'?'!':''}</i>`:''}</button>`).join('')}</div>`:
+      `<p class="empty" style="color:#9aa0b4">${this.loaded?'No photos yet. Take one and it appears here.':'Loading…'}</p>`}</div></div>`},
   view(i){this.mode='view';this.idx=i;this.drawViewer()},
   drawViewer(){const L=this.list();if(!L.length)return this.gallery();this.idx=Math.max(0,Math.min(this.idx,L.length-1));const p=L[this.idx];
     const acts=p.local?`${p.state==='fail'?`<button class="pbtn grn" onclick="CAM.retry('${p.id}')">Retry upload</button>`:'<span class="cam-note">Uploading…</span>'}<button class="pbtn" onclick="CAM.saveLocal('${p.id}')">Save to device</button><button class="pbtn" onclick="CAM.discard('${p.id}')">Discard</button>`:
-      `${p.video?'':`<button class="pbtn blu" onclick="CAM.share(${this.idx})">${navigator.share?'Share':'Copy link'}</button><button class="pbtn" onclick="CAM.download(${this.idx})">Download</button>`}<button class="pbtn red" onclick="CAM.askDel(${this.idx})">Delete</button>`;
+      `<button class="pbtn blu" onclick="CAM.share(${this.idx})">${navigator.share?'Share':'Copy link'}</button><button class="pbtn" onclick="CAM.download(${this.idx})">Download</button><button class="pbtn red" onclick="CAM.askDel(${this.idx})">Delete</button>`;
     PH.$a().innerHTML=`<div class="cam gal"><div class="cam-top"><button class="cam-b" onclick="CAM.gallery()" aria-label="Back to gallery">‹</button><span class="cam-sp"></span><small>${this.idx+1} / ${L.length}</small></div>
-      <div class="vwr"><button class="vnav l" onclick="CAM.view(${this.idx-1})" ${this.idx?'':'disabled'} aria-label="Previous">‹</button>${p.video?`<video id="cam-vid" data-src="${esc(p.url)}" poster="${esc(p.medium||p.thumb||'')}" controls playsinline autoplay></video>`:`<img src="${esc(p.url)}" alt="Photo">`}<button class="vnav r" onclick="CAM.view(${this.idx+1})" ${this.idx<L.length-1?'':'disabled'} aria-label="Next">›</button></div>
-      ${p.err?`<p class="cam-err">${esc(p.err)}</p>`:''}<div class="vact">${acts}</div></div>`;
-    if(p.video&&typeof RL!=='undefined'){const v=document.getElementById('cam-vid');if(v)RL.attach(v)}},
+      <div class="vwr"><button class="vnav l" onclick="CAM.view(${this.idx-1})" ${this.idx?'':'disabled'} aria-label="Previous">‹</button><img src="${esc(p.url)}" alt="Photo"><button class="vnav r" onclick="CAM.view(${this.idx+1})" ${this.idx<L.length-1?'':'disabled'} aria-label="Next">›</button></div>
+      ${p.err?`<p class="cam-err">${esc(p.err)}</p>`:''}<div class="vact">${acts}</div></div>`},
   retry(id){const it=this.pending.find(x=>x.id===id);if(it)this.upload(it)},
   discard(id){this.pending=this.pending.filter(x=>x.id!==id);this.drawThumb();this.gallery()},
   saveLocal(id){const it=this.pending.find(x=>x.id===id);if(!it)return;const a=document.createElement('a');a.href=it.data;a.download='allconnect-photo.jpg';document.body.appendChild(a);a.click();a.remove()},
@@ -182,8 +181,8 @@ const CAM={
   async download(i){const p=this.list()[i];if(!p)return;
     try{const r=await fetch(p.url,{mode:'cors'}),b=await r.blob(),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='allconnect-photo.jpg';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)}
     catch(e){window.open(p.url,'_blank','noopener')}},
-  askDel(i){const p=this.list()[i];if(!p)return;PH.sheet(`<h3>Delete this ${p.video?'video':'photo'}?</h3><p class="hint2">${p.video?'It is removed from your gallery and from every reel or post that uses it. Deleting a reel from its post alone keeps the video here.':'It is removed from your gallery. This cannot be undone.'}</p><button class="fopt red out" onclick="CAM.del('${p.id}')"><span>Delete ${p.video?'video':'photo'}</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
-  async del(id){PH.closeSheet();try{await NET.api('/api/ac/photos/'+id,{method:'DELETE'});this.photos=this.photos.filter(p=>p.id!==id);toast('Deleted');if(typeof GIST!=='undefined'){Object.values(GIST.F).forEach(f=>f.stale=true);GIST.cache.clear();if(typeof RL!=='undefined')Object.values(RL.L).forEach(F=>{F.p=[];F.ok=false})}this.drawThumb();this.idx=Math.max(0,this.idx-1);this.list().length?this.view(this.idx):this.gallery()}catch(e){toast(e.message)}}
+  askDel(i){const p=this.list()[i];if(!p)return;PH.sheet(`<h3>Delete this photo?</h3><p class="hint2">It is removed from your gallery. This cannot be undone.</p><button class="fopt red out" onclick="CAM.del('${p.id}')"><span>Delete photo</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
+  async del(id){PH.closeSheet();try{await NET.api('/api/ac/photos/'+id,{method:'DELETE'});this.photos=this.photos.filter(p=>p.id!==id);toast('Photo deleted');this.drawThumb();this.idx=Math.max(0,this.idx-1);this.list().length?this.view(this.idx):this.gallery()}catch(e){toast(e.message)}}
 };
 /* make sure the camera always switches off when the phone app closes or the tab is hidden */
 (function(){const close=PH.close;PH.close=function(){if(PH.view==='camera')CAM.teardown();return close.apply(this,arguments)};

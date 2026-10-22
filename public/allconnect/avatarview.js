@@ -21,61 +21,96 @@ window.AvatarView = {
     if (!window.ROOM3D || !window.ROOM3D.load) return Promise.resolve(false);
     return window.ROOM3D.load().then(() => true).catch(() => false);
   },
-  supported() { return this.canUpgrade() && !!window.THREE; },   // kept for anything that only wants a synchronous yes/no once THREE is already loaded
-
+  supported() { return this.canUpgrade() && !!window.THREE; }, // kept for anything that only wants a synchronous yes/no once THREE is already loaded
+  
   mount(cv, gender, o) {
     if (!this.supported()) return null;
     o = o || {};
-    let R; try { R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { return null; }
-    const AV = Object.create(window.ROOM3D);                    // borrows all of ROOM3D's avatar methods; none of its room state
-    AV.on = true;                                                // own property, shadowing the real house's on/off — setLook/setGender gate on `this.on` and must see this one, not the house's
-    AV.R = R; R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    let R;
+    try { R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); } catch (e) { return null; }
+    const AV = Object.create(window.ROOM3D); // borrows all of ROOM3D's avatar methods; none of its room state
+    AV.on = true; // own property, shadowing the real house's on/off — setLook/setGender gate on `this.on` and must see this one, not the house's
+    AV.R = R;
+    R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     AV.scene = new THREE.Scene();
     AV.cam = new THREE.PerspectiveCamera(28, (cv.clientWidth || 1) / (cv.clientHeight || 1), .1, 30);
     AV.scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a60, .9));
-    const sun = new THREE.DirectionalLight(0xfff0d0, .6); sun.position.set(2, 4, 3); AV.scene.add(sun);
-    AV.pose = {}; AV.tp = {}; AV.ph = 0; AV.tt = 0; AV.spin = 0; AV.dn = 0;
+    const sun = new THREE.DirectionalLight(0xfff0d0, .6);
+    sun.position.set(2, 4, 3);
+    AV.scene.add(sun);
+    AV.pose = {};
+    AV.tp = {};
+    AV.ph = 0;
+    AV.tt = 0;
+    AV.spin = 0;
+    AV.dn = 0;
     AV.buildAvatar(gender, o.render || null);
-    AV.avatar.position.set(0, 0, 0);   // buildAvatar defaults a brand-new avatar to the house's spawn point (-1,0,1.2); this view's orbit camera circles the origin, so recenter here or the model swings toward/away from camera as it turns — looking like it's scaling, with legs clipping out of frame
     AV.setExt(o.ext || {});
     if (o.pose) AV.setPose(o.pose);
-
-    let az = 0, pol = 1.4, dist = 4.4, ty = .86, dragging = false, lastX = 0, on = true, last = performance.now(), raf, walking = false;
+    
+    let az = 0,
+      pol = 1.4,
+      dist = 4.4,
+      ty = .86,
+      dragging = false,
+      lastX = 0,
+      on = true,
+      last = performance.now(),
+      raf, walking = false;
     const resize = () => {
-      const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2); cv.width = w * dpr; cv.height = h * dpr;
-      R.setSize(w, h, false); AV.cam.aspect = w / h; AV.cam.updateProjectionMatrix();
+      const w = cv.clientWidth,
+        h = cv.clientHeight;
+      if (!w || !h) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = w * dpr;
+      cv.height = h * dpr;
+      R.setSize(w, h, false);
+      AV.cam.aspect = w / h;
+      AV.cam.updateProjectionMatrix();
     };
-    resize(); window.addEventListener('resize', resize);
+    resize();
+    window.addEventListener('resize', resize);
     cv.style.touchAction = 'none';
-    const down = e => { dragging = true; lastX = e.clientX; try { cv.setPointerCapture(e.pointerId); } catch (x) { } if (o.onTouch) o.onTouch(); };
-    const drag = e => { if (!dragging) return; az -= (e.clientX - lastX) * .012; lastX = e.clientX; };
+    const down = e => { dragging = true;
+      lastX = e.clientX; try { cv.setPointerCapture(e.pointerId); } catch (x) {} if (o.onTouch) o.onTouch(); };
+    const drag = e => { if (!dragging) return;
+      az -= (e.clientX - lastX) * .012;
+      lastX = e.clientX; };
     const up = () => dragging = false;
-    cv.addEventListener('pointerdown', down); cv.addEventListener('pointermove', drag);
-    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-
+    cv.addEventListener('pointerdown', down);
+    cv.addEventListener('pointermove', drag);
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
+    
     const tick = now => {
-      if (!on) return; raf = requestAnimationFrame(tick);
+      if (!on) return;
+      raf = requestAnimationFrame(tick);
       if (!cv.isConnected) { on = false; return; }
-      const dt = Math.min(.05, (now - last) / 1000 || .016); last = now;
-      if (!dragging && o.turn !== false && !(AV.ext && AV.ext.reduce)) az += dt * .35;   // auto-turn, like the preview this replaces; drag always overrides
+      const dt = Math.min(.05, (now - last) / 1000 || .016);
+      last = now;
+      if (!dragging && o.turn !== false && !(AV.ext && AV.ext.reduce)) az += dt * .35; // auto-turn, like the preview this replaces; drag always overrides
       const sp = Math.sin(pol);
-      AV.cam.position.set(dist * sp * Math.sin(az), ty + dist * Math.cos(pol), dist * sp * Math.cos(az));   // far enough back that the whole 1.65-tall model (hats included) sits inside the card from every angle
+      AV.cam.position.set(dist * sp * Math.sin(az), ty + dist * Math.cos(pol), dist * sp * Math.cos(az)); // far enough back that the whole 1.65-tall model (hats included) sits inside the card from every angle
       AV.cam.lookAt(0, ty, 0);
       AV.animate(now / 1000, dt, walking);
       R.render(AV.scene, AV.cam);
     };
     raf = requestAnimationFrame(tick);
-
+    
     return {
       av: AV,
       stop() {
-        on = false; cancelAnimationFrame(raf); window.removeEventListener('resize', resize);
-        cv.removeEventListener('pointerdown', down); cv.removeEventListener('pointermove', drag);
-        cv.removeEventListener('pointerup', up); cv.removeEventListener('pointercancel', up);
-        try { R.dispose(); } catch (e) { }
+        on = false;
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', resize);
+        cv.removeEventListener('pointerdown', down);
+        cv.removeEventListener('pointermove', drag);
+        cv.removeEventListener('pointerup', up);
+        cv.removeEventListener('pointercancel', up);
+        try { R.dispose(); } catch (e) {}
       },
-      state(s) { walking = s === 'walk'; if (s === 'dance' || s === 'wave') AV.emote(s); else if (!walking) AV.emote(null); },
+      state(s) { walking = s === 'walk'; if (s === 'dance' || s === 'wave') AV.emote(s);
+        else if (!walking) AV.emote(null); },
       look(r) { AV.setLook(r); },
       ext(e) { AV.setExt(e); },
       pose(p) { AV.setPose(p); }

@@ -790,7 +790,7 @@ function initCharacter() { paintPortraits() }
    It is asked once; after that it is changed in Phone → Settings → Avatar → Style (Model 1 / Model 2). */
 function charPickerHtml() {
   const g = S.gender || '';
-  return `<div class="chpk" id="gp"><p>Choose your character</p><div class="gpr">
+  return `<div class="gp" id="gp"><p>Choose your character</p><div class="gpr">
    <button type="button" id="gpM" class="${g === 'male' ? 'on' : ''}" onclick="pickChar('male')"><canvas id="gpMc" width="220" height="280"></canvas><span>Male</span></button>
    <button type="button" id="gpF" class="${g === 'female' ? 'on' : ''}" onclick="pickChar('female')"><canvas id="gpFc" width="220" height="280"></canvas><span>Female</span></button></div>
    <small class="gpnote">You pick this once. Change it any time in Settings → Avatar.</small></div>`

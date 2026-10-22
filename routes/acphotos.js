@@ -6,8 +6,6 @@ const mongoose = require('mongoose');
 const ACPhoto = require('../models/ACPhoto');
 const ACPhotoBlob = require('../models/ACPhotoBlob');
 const ensureAuth = require('../middleware/auth');
-const ACVideo = require('../models/ACVideo');
-const { muxOn, mux, syncPending, playback } = require('../utils/mux');
 
 const router = express.Router();
 
@@ -63,12 +61,8 @@ router.use(ensureAuth);
 
 router.get('/', async (req, res, next) => {
   try {
-    const uid = String(req.user.id);
-    await syncPending(uid).catch(() => {});
-    const [rows, vids] = await Promise.all([ACPhoto.find({ user: uid }).sort({ createdAt: -1 }).limit(MAX_LIBRARY).lean(), ACVideo.find({ user: uid, status: { $ne: 'pending' } }).sort({ createdAt: -1 }).limit(100).lean()]);
-    const videos = vids.map((v) => { const pb = playback({ mux: { playbackId: v.playbackId, signed: v.signed }, url: v.url, poster: { url: v.poster, thumb: v.thumb } }); return { id: String(v._id), video: true, url: pb.url, thumb: pb.poster, medium: pb.poster, createdAt: v.createdAt, dur: v.dur || 0, assetId: v.assetId }; });
-    const all = rows.map(pub).concat(videos).sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
-    res.json({ photos: all, configured: true });
+    const rows = await ACPhoto.find({ user: String(req.user.id) }).sort({ createdAt: -1 }).limit(MAX_LIBRARY).lean();
+    res.json({ photos: rows.map(pub), configured: true });
   } catch (e) { next(e); }
 });
 
@@ -132,13 +126,6 @@ router.post('/chat', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!/^[a-f\d]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid photo.' });
-    // a video in the gallery: delete it from Mux and remove every reel/post that used it
-    const v = await ACVideo.findOneAndDelete({ _id: req.params.id, user: String(req.user.id) });
-    if (v) {
-      const removedPosts = await require('./acgist').removeVideoPosts(v.assetId).catch(() => 0);
-      if (muxOn()) mux('DELETE', '/video/v1/assets/' + v.assetId).catch((e) => console.error('[mux delete]', e.message));
-      return res.json({ ok: true, removedPosts });
-    }
     const p = await ACPhoto.findOneAndDelete({ _id: req.params.id, user: String(req.user.id) });
     if (!p) return res.status(404).json({ message: 'Photo not found.' });
     if (p.store === 'db') await ACPhotoBlob.deleteOne({ _id: p.imgbbId }).catch(() => {});

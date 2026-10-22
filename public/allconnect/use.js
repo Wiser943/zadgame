@@ -26,20 +26,10 @@ const USE = {
     cooker: [{ id: 'cook', label: 'Cook', sec: 15, pose: 'stand', fx: [[0, .25]], doing: 'Cooking…', done: 'Smells great 🍲' }],
     fridge: [{ id: 'snack', label: 'Grab a snack', sec: 6, pose: 'stand', fx: [[0, .12], [2, .03]], doing: 'Snacking…', done: 'Tasty 😋' }],
     cooler: [{ id: 'eat', label: 'Eat jollof', sec: 8, pose: 'stand', fx: [[0, .4]], doing: 'Eating…', done: 'Yum! Ate jollof 🍛' }],
-    counter: [
-      { id: 'serve', label: 'Serve customers', sec: 12, pose: 'stand', fx: [[2, .08], [3, .12]], doing: 'Serving customers…', done: 'Business is booming 🛍️' },
-      { id: 'till', label: 'Count the till', sec: 8, pose: 'stand', fx: [[2, .04]], doing: 'Counting the till…', done: 'All adds up' }
-    ],
-    shelves: [
-      { id: 'tidy', label: 'Tidy the shelves', sec: 10, pose: 'stand', fx: [[2, .05]], doing: 'Tidying the shelves…', done: 'Looking sharp' },
-      { id: 'restock', label: 'Restock', sec: 14, pose: 'stand', fx: [[3, .06], [2, .03]], doing: 'Restocking…', done: 'Fully stocked' }
-    ],
-    stock: [{ id: 'check', label: 'Check the stock', sec: 8, pose: 'stand', fx: [[2, .03]], doing: 'Checking the stock…', done: 'Stock counted' }],
     table: [{ id: 'meal', label: 'Have a meal', sec: 12, pose: 'stand', fx: [[0, .35]], doing: 'Eating…', done: 'Yum! Ate jollof 🍛' }]
   },
-  HINT: { bed: 'Rest or freshen up', chair: 'Take a seat', stool: 'Take a seat', sofa: 'Take a seat', armchair: 'Take a seat', toilet: 'Nature calls', shower: 'Freshen up', bucket: 'Freshen up', cooker: 'Make something to eat', fridge: 'See what is inside', cooler: 'Something to eat', table: 'Time to eat', counter: 'Your shop', shelves: 'Your goods', stock: 'Storeroom' },
-  find(id) { return (S.items || []).find(i => i.id === id) || (window.ROOM3D && ROOM3D.fixture ? ROOM3D.fixture(id) : null) },
-  kindOf(it) { if (it.fixture) return it.kind; const D = window.FURN && FURN.ITEMS[it.name]; const k = D && D.kind; return k === 'armchair' ? 'sofa' : k === 'stool' ? 'chair' : k },
+  HINT: { bed: 'Rest or freshen up', chair: 'Take a seat', stool: 'Take a seat', sofa: 'Take a seat', armchair: 'Take a seat', toilet: 'Nature calls', shower: 'Freshen up', bucket: 'Freshen up', cooker: 'Make something to eat', fridge: 'See what is inside', cooler: 'Something to eat', table: 'Time to eat' },
+  kindOf(it) { const D = window.FURN && FURN.ITEMS[it.name]; const k = D && D.kind; return k === 'armchair' ? 'sofa' : k === 'stool' ? 'chair' : k },
   actsFor(it) { return this.ACTS[this.kindOf(it)] || [] },
   el: null, bar: null, timer: 0, cur: null,
   mount() {
@@ -50,15 +40,15 @@ const USE = {
   esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) },
   /* open the sheet for a tapped item; returns false when there is nothing to do with it (the caller keeps its old behaviour) */
   open(id) {
-    const it = this.find(id); if (!it) return false; const acts = this.actsFor(it); if (!acts.length) return false;
+    const it = (S.items || []).find(i => i.id === id); if (!it) return false; const acts = this.actsFor(it); if (!acts.length) return false;
     this.mount(); const k = this.kindOf(it);
-    this.el.innerHTML = `<div class="sheet usesheet"><h2>${this.esc(it.name)}<small onclick="USE.close()">✕</small></h2><p class="usesub">${this.esc(this.HINT[(!it.fixture && window.FURN && FURN.ITEMS[it.name] && FURN.ITEMS[it.name].kind) || k] || '')}</p>` +
+    this.el.innerHTML = `<div class="sheet usesheet"><h2>${this.esc(it.name)}<small onclick="USE.close()">✕</small></h2><p class="usesub">${this.esc(this.HINT[window.FURN && FURN.ITEMS[it.name] && FURN.ITEMS[it.name].kind] || this.HINT[k] || '')}</p>` +
       `<div class="uacts">${acts.map(a => `<button class="uact" onclick="USE.run('${this.esc(id)}','${a.id}')"><span class="u1"><b>${this.esc(a.label)}</b>${a.sec ? `<i>${a.sec} s</i>` : ''}</span><span class="u2">${a.style ? this.esc(a.hint || '') : 'Free'}</span><span class="u3">${(a.fx || []).map(f => `<em>${this.ICON[f[0]]} +${Math.round(f[1] * 100)}</em>`).join('')}</span></button>`).join('')}</div></div>`;
     this.el.style.display = 'block'; return true
   },
   close() { if (this.el) this.el.style.display = 'none' },
   run(id, actId) {
-    const it = this.find(id), act = it && this.actsFor(it).find(a => a.id === actId); this.close(); if (!it || !act) return;
+    const it = (S.items || []).find(i => i.id === id), act = it && this.actsFor(it).find(a => a.id === actId); this.close(); if (!it || !act) return;
     if (act.style) { if (window.STYLE && STYLE.open) STYLE.open(); return }
     this.stop(true);
     const cb = { done: (frac, cancelled) => this.finish(act, frac, cancelled), fail: m => { if (typeof toast === 'function') toast(m) } };

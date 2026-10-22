@@ -3,8 +3,7 @@ const HOMES = {
   'mainland_room': { name: 'Mainland Room', description: 'A simple private room to make your own.', mode: 'rent', rent: 25000, rentDays: 7, paint: '#c7a17a', max: 1 },
   'self_contained': { name: 'Self-Contained', description: 'Your own compact space with room to furnish.', mode: 'buy', price: 350000, paint: '#d9a93a', max: 1 },
   'mini_flat': { name: 'Mini Flat', description: 'Extra space for a more comfortable setup.', mode: 'buy', price: 900000, paint: '#8eb7c8', max: 1 },
-  'family_house': { name: 'Family House', description: 'A real multi-room house: bedrooms, kitchen, bathroom and a big living room.', mode: 'buy', price: 4500000, paint: '#e6d9c0', max: 1, layout: 'family_house', layoutNote: 'Full house plan with separate rooms (fixed size)' },
-  'market_shop': { name: 'Market Shop', description: 'Your own shop: a counter, shelves of goods and a stock corner, with the shop building next door. Furnish the rest.', mode: 'buy', price: 3200000, paint: '#efe3c8', max: 1, layout: 'market_shop', layoutNote: 'Shop floor with a counter and shelves (fixed size)' },
+  'family_house': { name: 'Family House', description: 'A real multi-room house: bedrooms, kitchen, bathroom and a big living room.', mode: 'buy', price: 4500000, paint: '#e6d9c0', max: 1, layout: 'family_house' },
   'two_bedroom': { name: 'Two-Bedroom Apartment', description: 'A larger home for future social gatherings.', mode: 'buy', price: 2200000, paint: '#9a8ac7', max: 1 }
 };
 // Expansions: buy extra space for a home you OWN (rentals can't be expanded). Each step grows the furnishable floor.

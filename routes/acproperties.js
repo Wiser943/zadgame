@@ -57,15 +57,10 @@ router.post('/acquire', async (req, res, next) => {
         }
       }]
     };
-    // No runValidators here: on a $push, Mongoose validates the WHOLE ac.properties array, not just the new
-    // entry — so one stray legacy record (e.g. from earlier testing) would block every future purchase with a
-    // CastError, no matter what's being bought. The object above is built from known-good, already-typed values
-    // (a crypto id, a type checked by isHome(), literal strings, Date.now(), the catalogue's own paint), so it
-    // doesn't need re-validating.
     const u = await User.findOneAndUpdate(
       filter,
       { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     if (!u) {

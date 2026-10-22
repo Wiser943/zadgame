@@ -7,32 +7,6 @@
 (function () {
   'use strict';
   const EMO = ['👍', '❤️', '😂', '😮', '😢', '🙏'], MORE = ['🔥', '👏', '🎉', '😍', '😭', '🤝'];
-  /* Line icons that replace the emoji in the long-press menu and on reaction badges. The server still stores the emoji
-     (that is what a reaction IS); only what is drawn changes. Each icon has an accent colour. */
-  const ICON = {
-    "👍": ["#2f6fdb", "<path d=\"M7 10v12\"/><path d=\"M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z\"/>"],
-    "❤️": ["#e5314b", "<path fill=\"currentColor\" d=\"M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\"/>"],
-    "😂": ["#e8a500", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M18 13a6 6 0 0 1-6 5 6 6 0 0 1-6-5h12Z\"/><path d=\"M9 9h.01M15 9h.01\"/>"],
-    "😮": ["#e8a500", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"16\" r=\"2\"/><path d=\"M9 9h.01M15 9h.01\"/>"],
-    "😢": ["#4a86d6", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M16 16s-1.5-2-4-2-4 2-4 2\"/><path d=\"M9 9h.01M15 9h.01\"/><path d=\"M8.2 12.2c-.5 1.2-.5 2 0 2.6.5-.6.5-1.4 0-2.6Z\" fill=\"currentColor\"/>"],
-    "🙏": ["#c47f1a", "<path d=\"M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2\"/><path d=\"M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2\"/><path d=\"M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8\"/><path d=\"M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15\"/>"],
-    "🔥": ["#f26b1d", "<path fill=\"currentColor\" d=\"M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z\"/>"],
-    "👏": ["#d99a1c", "<path d=\"M8.5 20.5 4.2 15.8a1.8 1.8 0 0 1 0-2.5l.4-.4a1.8 1.8 0 0 1 2.5 0l1.5 1.5\"/><path d=\"M8 14.2 5.3 11.5a1.8 1.8 0 0 1 0-2.5 1.8 1.8 0 0 1 2.5 0L11 12.2\"/><path d=\"M11 12.2 8.9 10a1.8 1.8 0 0 1 0-2.5 1.8 1.8 0 0 1 2.5 0l3.9 4\"/><path d=\"M15.3 11.5 17 9.8a1.8 1.8 0 0 1 2.5 2.5l-5.6 7.2a4 4 0 0 1-5.4.9\"/><path d=\"M15 3.2 16 5M19.5 5 18 6.3M21 9.5h-1.8\"/>"],
-    "🎉": ["#8b4be0", "<path d=\"M5.8 11.3 2 22l10.7-3.79\"/><path d=\"M4 3h.01M22 8h.01M15 2h.01M22 20h.01\"/><path d=\"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10\"/><path d=\"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11-.11.7-.72 1.22-1.43 1.22H17\"/><path d=\"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7\"/><path d=\"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z\"/>"],
-    "😍": ["#e5314b", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M8 14s1.5 2 4 2 4-2 4-2\"/><path fill=\"currentColor\" stroke=\"none\" d=\"M8.6 10.8c-1.4-1-2.1-1.8-2.1-2.7 0-.8.6-1.4 1.3-1.4.5 0 .8.2 .8.6.0-.4.3-.6.8-.6.7 0 1.3.6 1.3 1.4 0 .9-.7 1.7-2.1 2.7Z\"/><path fill=\"currentColor\" stroke=\"none\" d=\"M15.4 10.8c-1.4-1-2.1-1.8-2.1-2.7 0-.8.6-1.4 1.3-1.4.5 0 .8.2.8.6 0-.4.3-.6.8-.6.7 0 1.3.6 1.3 1.4 0 .9-.7 1.7-2.1 2.7Z\"/>"],
-    "😭": ["#4a86d6", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M16 17s-1.5-2-4-2-4 2-4 2\"/><path d=\"M8 9v4M16 9v4\"/><path d=\"M9 9h.01M15 9h.01\"/>"],
-    "🤝": ["#1f9d6b", "<path d=\"m11 17 2 2a1 1 0 1 0 3-3\"/><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.55-2.55a5.8 5.8 0 0 1 7.2-.8L21 7\"/><path d=\"m21 3 1 11h-2\"/><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\"/><path d=\"M3 4h8\"/>"],
-    "reply": ["#5b6477", "<path d=\"M9 14 4 9l5-5\"/><path d=\"M20 20v-7a4 4 0 0 0-4-4H4\"/>"],
-    "forward": ["#5b6477", "<path d=\"m15 14 5-5-5-5\"/><path d=\"M4 20v-7a4 4 0 0 1 4-4h12\"/>"],
-    "copy": ["#5b6477", "<rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/>"],
-    "edit": ["#5b6477", "<path d=\"M12 20h9\"/><path d=\"M16.38 3.62a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z\"/>"],
-    "trash": ["#d33a3f", "<path d=\"M3 6h18\"/><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\"/><path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/><path d=\"M10 11v6M14 11v6\"/>"],
-    "plus": ["#5b6477", "<path d=\"M12 5v14M5 12h14\"/>"],
-    "ban": ["#8a90a2", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m4.9 4.9 14.2 14.2\"/>"],
-    "other": ["#e8a500", "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M8 14s1.5 2 4 2 4-2 4-2\"/><path d=\"M9 9h.01M15 9h.01\"/>"]
-  };
-  const NAMES = { '👍': 'Like', '❤️': 'Love', '😂': 'Haha', '😮': 'Wow', '😢': 'Sad', '🙏': 'Thanks', '🔥': 'Fire', '👏': 'Applause', '🎉': 'Celebrate', '😍': 'Adore', '😭': 'Crying', '🤝': 'Deal' };
-  const cxi = (k, cls) => { const d = ICON[k] || ICON.other; return `<svg class="cxi ${cls || ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="color:${d[0]}" aria-hidden="true">${d[1]}</svg>` };
   const EDIT_MS = 15 * 60 * 1000, DEL_MS = 48 * 3600 * 1000, LONG_MS = 450, PHOTO = '📷 Photo';
   const ME = () => NET.user.id;
   const isG = () => PH.view === 'group';
@@ -65,7 +39,7 @@
     rx(m) {
       const rs = m.reactions || []; if (!rs.length) return '';
       const by = {}; rs.forEach(r => { (by[r.e] = by[r.e] || []).push(r.u) });
-      return `<div class="rxs">${Object.keys(by).map(e => `<button class="rx ${by[e].includes(ME()) ? 'on' : ''}" onclick="event.stopPropagation();CHATX.react('${m.id}','${e}')" aria-label="${NAMES[e] || 'Reaction'}">${cxi(e)}${by[e].length > 1 ? `<i>${by[e].length}</i>` : ''}</button>`).join('')}</div>`;
+      return `<div class="rxs">${Object.keys(by).map(e => `<button class="rx ${by[e].includes(ME()) ? 'on' : ''}" onclick="event.stopPropagation();CHATX.react('${m.id}','${e}')">${e}${by[e].length > 1 ? `<i>${by[e].length}</i>` : ''}</button>`).join('')}</div>`;
     },
     deletedBubble(m, mine) {
       return `<div class="msg ${mine ? 'me' : 'th'}" data-id="${m.id}"><div class="mb gdel">🚫 ${mine ? 'You deleted this message' : 'This message was deleted'}</div><small>${PH.time(m.at)}</small></div>`;
@@ -94,14 +68,14 @@
       const me = ME(), mine = m.from === me, del = !!m.deleted, canType = !!$('cinput');
       const canEdit = mine && !del && !!m.text && Date.now() - new Date(m.at).getTime() <= EDIT_MS && canType;
       const mr = myReaction(m);
-      const act = (ic, txt, fn, red) => `<button class="${red ? 'red' : ''}" onclick="CHATX.closeMenu();${fn}"><span>${cxi(ic)}</span>${txt}</button>`;
-      const acts = (del ? '' : (canType ? act('reply', 'Reply', `PH.setReply('${id}')`) : '') + act('forward', 'Forward', `CHATX.fwd('${id}')`) + (m.text ? act('copy', 'Copy', `CHATX.copy('${id}')`) : '') + (canEdit ? act('edit', 'Edit', `CHATX.startEdit('${id}')`) : '')) + act('trash', 'Delete', `CHATX.delAsk('${id}')`, true);
+      const act = (ico, txt, fn, red) => `<button class="${red ? 'red' : ''}" onclick="CHATX.closeMenu();${fn}"><span>${ico}</span>${txt}</button>`;
+      const acts = (del ? '' : (canType ? act('↩️', 'Reply', `PH.setReply('${id}')`) : '') + act('↪️', 'Forward', `CHATX.fwd('${id}')`) + (m.text ? act('📋', 'Copy', `CHATX.copy('${id}')`) : '') + (canEdit ? act('✏️', 'Edit', `CHATX.startEdit('${id}')`) : '')) + act('🗑️', 'Delete', `CHATX.delAsk('${id}')`, true);
       const o = document.createElement('div'); o.className = 'cxm';
       o.onclick = e => { if (e.target === o) CHATX.closeMenu() };
       o.innerHTML = `<div class="cxwrap ${mine ? 'me' : 'th'}">
-        ${del ? '' : `<div class="cxbar">${EMO.map(e => `<button class="${mr === e ? 'on' : ''}" aria-label="${NAMES[e] || 'React'}" onclick="CHATX.react('${id}','${e}')">${cxi(e)}</button>`).join('')}<button class="more" aria-label="More reactions" onclick="this.parentNode.nextElementSibling.classList.toggle('open')">${cxi('plus')}</button></div>
-        <div class="cxbar cxbar2">${MORE.map(e => `<button class="${mr === e ? 'on' : ''}" aria-label="${NAMES[e] || 'React'}" onclick="CHATX.react('${id}','${e}')">${cxi(e)}</button>`).join('')}</div>`}
-        <div class="cxprev msg ${mine ? 'me' : 'th'}"><div class="mb ${del ? 'gdel' : ''}">${del ? cxi('ban', 'sm') + ' This message was deleted' : CHATX.inner(m, true)}</div></div>
+        ${del ? '' : `<div class="cxbar">${EMO.map(e => `<button class="${mr === e ? 'on' : ''}" onclick="CHATX.react('${id}','${e}')">${e}</button>`).join('')}<button class="more" aria-label="More reactions" onclick="this.parentNode.nextElementSibling.classList.toggle('open')">＋</button></div>
+        <div class="cxbar cxbar2">${MORE.map(e => `<button class="${mr === e ? 'on' : ''}" onclick="CHATX.react('${id}','${e}')">${e}</button>`).join('')}</div>`}
+        <div class="cxprev msg ${mine ? 'me' : 'th'}"><div class="mb ${del ? 'gdel' : ''}">${del ? '🚫 This message was deleted' : CHATX.inner(m, true)}</div></div>
         <div class="cxact">${acts}</div></div>`;
       PH.$a().appendChild(o);
     },
