@@ -142,3 +142,13 @@ html .sg-dark .songify-retry{background:#1ed760;color:#000}
 .npq-r span{flex:1;min-width:0}.npq-r b,.npq-r small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.npq-r b{font-size:13px}.npq-r small{font-size:11.5px;color:#a7a7a7;margin-top:2px}
 .npq-r.on b,.npq-r.on i{color:#1ed760}
 @media (max-height:700px){.np-disc{width:min(54%,210px)}.np-stage{padding:8px 0}.np-tt b{font-size:19px}.np-ctl .np-pp{width:58px;height:58px}}
+
+/* a Songify track inside a P-Gist post */
+.gsong{display:flex;align-items:center;gap:11px;margin:8px 0;padding:9px 10px;border-radius:16px;background:linear-gradient(135deg,#15142d,#5b21b6 62%,#f15a29);color:#fff;cursor:pointer;box-shadow:0 6px 16px rgba(76,29,149,.22)}
+.gsong img{width:52px;height:52px;border-radius:12px;object-fit:cover;flex:none;background:#000}
+.gsong>div{flex:1;min-width:0;text-align:left}
+.gsong b,.gsong small,.gsong em{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gsong b{font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif}.gsong small{font-size:12px;opacity:.8;margin-top:1px}
+.gsong em{font-style:normal;font-size:11px;font-weight:700;color:#d9c8ff;margin-top:4px}
+.gsong .gsp,.gsong .gsx{flex:none;width:36px;height:36px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(255,255,255,.18);color:#fff;font-size:13px}
+.gsong:active{filter:brightness(.92)}

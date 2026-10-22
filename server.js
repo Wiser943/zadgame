@@ -83,6 +83,7 @@ async function main() {
     next();
   });
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
+  app.use('/api/ac/gist/mux-webhook', express.raw({ type: '*/*', limit: '1mb' })); // Mux webhooks must reach the signature check untouched
   app.use('/api/ac/voice', express.json({ limit: '1.4mb' })); // voice notes arrive as base64 JSON
   app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
@@ -236,6 +237,7 @@ async function main() {
   setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
+  require('./utils/mux').startSweep();   // tidies uploads that never finished (only when Mux is configured)
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);
   });

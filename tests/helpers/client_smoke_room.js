@@ -34,3 +34,12 @@ const L=ctx.LAYOUTS.family_house; SS('S.layout=LAYOUTS.family_house'); R.layout=
 R.avatar.position.set(R.cc(L.start[0]),0,R.cc(L.start[1])); R.path=[]; R.act=null;
 const okCell=(()=>{ for(let x=0;x<L.w;x++)for(let z=0;z<L.d;z++){ if(!L.blockedSet.has(x+','+z)) { return true } } })();
 ok(okCell,'layout has walkable cells');
+
+// ---- Market Shop: tap the built-in counter
+const M=ctx.LAYOUTS.market_shop; SS('S.layout=LAYOUTS.market_shop; S.items=[]'); R.layout=M; R.gw=M.w; R.gd=M.d; R.act=null; R.path=[];
+R.avatar.position.set(R.cc(M.start[0]),0,R.cc(M.start[1]));
+const fxc=R.fixture('fx:counter'); ok(fxc&&fxc.fixture&&fxc.w===4&&fxc.kind==='counter','shop counter is a use-able fixture');
+res={}; R.useItem(fxc,{pose:'stand',sec:12},cb); ok(R.path.length>0||typeof R.onArrive==='function','avatar walks toward the counter');
+R.path=[]; const fz=R.onArrive; R.onArrive=null; if(fz) fz(); ok(R.act&&R.act.kind==='stand'&&R.act.item==='fx:counter','arrives and starts serving');
+R.endAct(false); ok(res.f===1,'finishing the shift reports full progress');
+ok(R.fixture('fx:nothing')===null,'unknown fixture id -> null');

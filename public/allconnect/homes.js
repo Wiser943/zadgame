@@ -32,7 +32,7 @@ const HOMES = {
     const target = document.getElementById('homesList'), d = this.data;
     if (!target || !d) return;
     const own = d.properties || [], active = S.activePropertyId, rows = [];
-    if (this.errorMessage) rows.push(`<div class="home-error" role="alert"><b>Home transaction failed</b><p>${this.esc(this.errorMessage)}</p><button onclick="HOMES.load()">Refresh homes</button></div>`);
+    if (this.errorMessage) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Couldn't complete that</b><p>${this.esc(this.errorMessage)}</p></div><button onclick="HOMES.load()">Try again</button></div>`);
     rows.push(`<div class="home-card"><div class="home-emoji">🛏️</div><div class="home-copy"><b>Starter Room</b><p>Your original AllConnect room and furniture are preserved.</p><small>Always available · Existing furniture</small></div><div class="home-actions"><button class="${!active ? 'secondary' : ''}" onclick="HOMES.enter('')">${!active ? 'Current home' : 'Enter'}</button></div></div>`);
     for (const h of d.catalogue || []) {
       const p = own.find(x => x.type === h.id && !(x.tenure === 'rent' && x.leaseExpiresAt && new Date(x.leaseExpiresAt) <= new Date()));
@@ -50,7 +50,7 @@ const HOMES = {
     return { level: n.level, name: n.name, grid: n.grid, description: n.description, cost: Math.max(1000, Math.round((h.price * n.share) / 1000) * 1000) };
   },
   layoutLine(p, h) {
-    if (h && h.layout) return '<p>Layout · full house plan with separate rooms (fixed size)</p>';
+    if (h && h.layout) return `<p>Layout · ${this.esc(h.layoutNote || 'Fixed floor plan')}</p>`;
     const g = homeGrid(p), n = this.next(p, h);
     return `<p>Layout · ${g}×${g} cells${(Number(p.level) | 0) ? ' (expanded)' : ''}${n ? ` · next: ${this.esc(n.name)} (${n.grid}×${n.grid})` : (h.mode === 'buy' ? ' · fully expanded' : '')}</p>`;
   },
