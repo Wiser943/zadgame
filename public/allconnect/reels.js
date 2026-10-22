@@ -108,7 +108,7 @@ const RL = {
   },
   /* ---------- the reels screen ---------- */
   show(startId) {
-    this.stop(); this.cfg().catch(() => {}); this.start = startId || ''; GIST.set('reels', this.start); PH.view = 'gist';
+    this.stop(); this.cfg().catch(() => {}); this.start = startId || ''; this.openId = this.start; GIST.set('reels', this.start); PH.view = 'gist';
     const tabs = [['foryou', 'For you'], ['following', 'Following']];
     PH.shell('Reels', 'GIST.back()', `<div class="abody rlb" id="ab"><div class="rl-top"><button class="rl-back" onclick="GIST.back()" aria-label="Back"><i class="fa-solid fa-chevron-left"></i></button><div class="rl-tabs">${tabs.map(t => `<button class="${this.tab === t[0] ? 'on' : ''}" onclick="RL.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div><span class="rl-sp"></span></div><div class="rl-feed" id="rlf"></div></div>`);
     const F = this.List(), first = startId && GIST.cache.get(startId); if (first) this.compatPost(first);
@@ -134,7 +134,12 @@ const RL = {
       if (tab !== this.tab) return;
       r.posts = (r.posts || []).map(p => this.compatPost(p));
       GIST.put(r.posts);
-      if (first) { const keep = F.p.filter(x => x.id === this.start && !r.posts.some(y => y.id === x.id)); F.p = keep.concat(r.posts) }
+      if (first) {
+        const keep = F.p.filter(x => x.id === this.openId && !r.posts.some(y => y.id === x.id));
+        F.p = keep.concat(r.posts);
+        if (this.openId) this.start = this.openId;
+        this.openId = '';
+      }
       else F.p = F.p.concat(r.posts.filter(x => !F.p.some(y => y.id === x.id)));
       F.more = r.more; F.ok = true; F.next = r.next || 0;
       if (first) this.draw(); else this.append(r.posts)
@@ -148,18 +153,19 @@ const RL = {
     p = this.compatPost(p);
     const a = p.author, em = p.myRx ? RXE[p.myRx] : '';
     const fol = !p.mine ? `<button class="rl-fol ${a.following ? 'on' : ''}" data-a="${a.id}" onclick="event.stopPropagation();RL.follow('${a.id}')">${a.following ? 'Following' : 'Follow'}</button>` : '';
-    return `<section class="rl-card" data-id="${p.id}" data-i="${i}"><video class="rl-v" playsinline webkit-playsinline loop preload="none" ${p.video && p.video.poster ? `poster="${esc(this.src(p.video.poster))}"` : ''} data-src="${esc(p.video && p.video.kind === 'mux' ? p.video.url : this.src(p.video && p.video.url || ''))}" ${this.muted ? 'muted' : ''}></video>
+    return `<section class="rl-card" data-id="${p.id}" data-i="${i}" tabindex="0" role="group" aria-label="Reel ${i + 1} by ${esc(a.displayName || a.username || 'creator')}. Press Space to play or pause; use arrow keys to move between Reels."><video class="rl-v" playsinline webkit-playsinline loop preload="none" ${p.video && p.video.poster ? `poster="${esc(this.src(p.video.poster))}"` : ''} data-src="${esc(p.video && p.video.kind === 'mux' ? p.video.url : this.src(p.video && p.video.url || ''))}" ${this.muted ? 'muted' : ''}></video>
       <div class="rl-wash"></div><span class="rl-no">${String(i + 1).padStart(2, '0')}</span><div class="rl-pz"><i class="fa-solid fa-play"></i></div><div class="rl-burst"></div>
       ${p.video.cc ? `<button class="rl-cc ${this.ccOn ? 'on' : ''}" onclick="event.stopPropagation();RL.cc()" aria-label="Captions">CC</button>` : ''}
       <button class="rl-snd" onclick="event.stopPropagation();RL.snd()" aria-label="Sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i></button>
       <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
       ${p.text ? `<div class="rl-cap">${GIST.txt(p.text)}</div>` : ''}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
       <div class="rl-act"><button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
-      <div class="rl-actions-menu" role="menu"><button class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
-      <button data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
-      <button data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><i class="fa-solid fa-share"></i><em>${this.fmt(p.shares) || 'Share'}</em></button>
-      <button data-action="sound" onclick="event.stopPropagation();RL.action('${p.id}','sound')" aria-label="Toggle sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i><em>${this.muted ? 'Unmute' : 'Mute'}</em></button>
-      <button data-action="options" onclick="event.stopPropagation();RL.action('${p.id}','options')" aria-label="More post options"><i class="fa-solid fa-ellipsis"></i><em>Post options</em></button></div></div>
+      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
+      <button role="menuitem" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
+      <button role="menuitem" data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><i class="fa-solid fa-share"></i><em>${this.fmt(p.shares) || 'Share'}</em></button>
+      <button role="menuitem" data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i><em>${p.saved ? 'Saved' : 'Save Reel'}</em></button>
+      <button role="menuitem" data-action="sound" onclick="event.stopPropagation();RL.action('${p.id}','sound')" aria-label="Toggle sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i><em>${this.muted ? 'Unmute' : 'Mute'}</em></button>
+      <button role="menuitem" data-action="options" onclick="event.stopPropagation();RL.action('${p.id}','options')" aria-label="More post options"><i class="fa-solid fa-ellipsis"></i><em>Post options</em></button></div></div>
       <div class="rl-bar"><i></i></div></section>`
   },
   draw() {
@@ -168,7 +174,8 @@ const RL = {
     const av = PH.$a(); if (av) av.classList.toggle('rlfull', !!F.p.length);
     if (!F.p.length) { f.innerHTML = F.ok ? this.empty() : '<div class="rl-empty"><span class="rl-spin"></span><p>Finding your next reel…</p></div>'; return }
     f.innerHTML = F.p.map((p, i) => this.card(p, i)).join(''); this.bind(f);
-    let at = Math.max(0, F.p.findIndex(p => p.id === this.start)); this.start = '';
+    const target = this.start || this.openId;
+    let at = Math.max(0, F.p.findIndex(p => p.id === target)); this.start = '';
     requestAnimationFrame(() => { this.fit(); f.scrollTop = at * f.clientHeight; this.observe(); this.cur(at) })
   },
   append(posts) {
@@ -185,6 +192,15 @@ const RL = {
       const t = e.target.closest('[data-tag],[data-u]'); if (t) return;
       if (this.tapT) { clearTimeout(this.tapT); this.tapT = 0; this.dbl(c, e); return }
       this.tapT = setTimeout(() => { this.tapT = 0; this.toggle(c) }, 260)
+    });
+    f.addEventListener('keydown', e => {
+      const c = e.target.closest('.rl-card'); if (!c) return;
+      if (e.key === 'Escape') { c.classList.remove('actions-open'); const b = c.querySelector('.rl-more-btn'); if (b) { b.setAttribute('aria-expanded', 'false'); b.focus() } return }
+      if (e.target.closest('button,a,input,textarea')) return;
+      const idx = Number(c.dataset.i);
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.toggle(c) }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); const n = f.querySelector(`.rl-card[data-i="${idx + 1}"]`); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); const n = f.querySelector(`.rl-card[data-i="${idx - 1}"]`); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
     });
     f.addEventListener('loadedmetadata', e => { const v = e.target; if (v.classList && v.classList.contains('rl-v')) v.classList.toggle('fit', v.videoWidth > v.videoHeight * 1.05) }, true);
     window.addEventListener('resize', () => this.fit())
@@ -239,6 +255,7 @@ const RL = {
     if (kind === 'like') GIST.react(id, 'like');
     else if (kind === 'comments') this.comments(id);
     else if (kind === 'share') GIST.shareSheet(id);
+    else if (kind === 'save') GIST.toggleSaved(id);
     else if (kind === 'sound') this.snd();
     else if (kind === 'options') GIST.menu(id)
   },
@@ -246,7 +263,7 @@ const RL = {
     const p = GIST.cache.get(id); if (!p) return;
     document.querySelectorAll(`.rl-card[data-id="${id}"]`).forEach(c => {
       const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
-      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'); if (m) m.textContent = this.fmt(p.comments) || 'Comments'; if (s) s.textContent = this.fmt(p.shares) || 'Share'
+      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comments'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save Reel'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
     })
   },
   follow(aid) {
@@ -259,21 +276,40 @@ const RL = {
   comments(id) { this.stop(); GIST.nav('post', id) },
   removed(id) { Object.values(this.L).forEach(F => { F.p = F.p.filter(x => x.id !== id) }); this.start = ''; this.draw() },
   stop() { this.flushWatch(); if (this.obs) { this.obs.disconnect(); this.obs = null } clearTimeout(this.tapT); this.tapT = 0; document.querySelectorAll('.rl-v,.gvid video').forEach(v => { try { v.pause() } catch (e) { } }) },
-  openFrom(id) { GIST.nav('reels', id) },
+  async openFrom(id) {
+    if (!GIST.cache.has(id)) {
+      try { const r = await GIST.api('/posts/' + encodeURIComponent(id)); if (r && r.post) GIST.put([this.compatPost(r.post)]) }
+      catch (e) { /* Continue with the feed; the server may still return the clip in its Reel page. */ }
+    }
+    GIST.nav('reels', id)
+  },
 
   /* ---------- posting a reel (called from the gist composer) ---------- */
   cfg() {
     if (this._cfg) return Promise.resolve(this._cfg);
     const oldApi = async () => { try { return await this.legacyConfig() } catch (e) { if (e && e.status === 404) return null; throw e } };
+    const normalize = c => {
+      if (!c || typeof c !== 'object') return null;
+      const mux = typeof c.mux === 'boolean' ? c.mux : typeof c.enabled === 'boolean' ? c.enabled : typeof c.videoEnabled === 'boolean' ? c.videoEnabled : typeof c.uploadsEnabled === 'boolean' ? c.uploadsEnabled : null;
+      if (mux === null) return null;
+      return { ...c, mux, maxMB: Number(c.maxMB || c.maxSizeMB || 500), maxSec: Number(c.maxSec || c.maxDurationSec || 600) };
+    };
     return GIST.api('/reels/config').then(async c => {
-      if (!c || typeof c.mux !== 'boolean') throw new Error('The server returned an invalid video configuration.');
-      if (!c.mux) { const old = await oldApi(); if (old) return old }
-      this._legacyApi = false; this._cfg = c; return c
+      const conf = normalize(c);
+      if (!conf) {
+        const old = await oldApi(); if (old) return old;
+        // Configuration endpoints from early deployments used several shapes. Let the actual
+        // upload route provide the precise failure instead of blocking the picker here.
+        this._legacyApi = false; this._cfg = { mux: true, maxMB: 500, maxSec: 600, configUnknown: true }; return this._cfg
+      }
+      if (!conf.mux) { const old = await oldApi(); if (old) return old }
+      this._legacyApi = false; this._cfg = conf; return conf
     }).catch(async e => {
       if (e && e.status === 404) {
         const old = await oldApi();
         if (old) return old;
-        throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.');
+        // Some earlier builds had the upload route but no config endpoint.
+        this._legacyApi = false; this._cfg = { mux: true, maxMB: 500, maxSec: 600, configUnknown: true }; return this._cfg
       }
       throw e
     })
@@ -356,7 +392,7 @@ const RL = {
     } catch (e) { return file }
   },
   finishPublish(post, V) {
-    post = this.compatPost(post); URL.revokeObjectURL(V.url); GIST.C = null; GIST.put([post]); GIST.cache.set(post.id, post); GIST.afterPost(post, '');
+    post = this.compatPost(post); URL.revokeObjectURL(V.url); GIST.clearDraft(); GIST.C = null; GIST.put([post]); GIST.cache.set(post.id, post); GIST.afterPost(post, '');
     this.L.foryou.p = [post, ...this.L.foryou.p.filter(p => p.id !== post.id)]; this.L.foryou.ok = true; this.tab = 'foryou'; GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast('Reel posted ✓'); this.show(post.id)
   },
   async publishLegacy(C, V, set) {

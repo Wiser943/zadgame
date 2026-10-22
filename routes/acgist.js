@@ -3,7 +3,7 @@ const express = require('express');
 const User = require('../models/User');
 const ACPhoto = require('../models/ACPhoto');
 const { Report, Friendship } = require('../models/Social');
-const { GistPost, GistLike, GistComment, GistCommentLike, GistVote, GistFollow } = require('../models/Gist');
+const { GistPost, GistLike, GistComment, GistCommentLike, GistVote, GistFollow, GistSave, GistMute } = require('../models/Gist');
 const registry = require('../games/registry');
 const ensureAuth = require('../middleware/auth');
 const { normalizeUsername } = require('../utils/allconnect');
@@ -84,13 +84,19 @@ async function blockedSet(uid) {
   const rows = await Friendship.find({ status: 'blocked', $or: [{ requester: uid }, { recipient: uid }] }).select('requester recipient').lean();
   return [...new Set(rows.map((r) => (r.requester === uid ? r.recipient : r.requester)))];
 }
+async function mutedSet(uid) {
+  const rows = await GistMute.find({ user: uid }).select('muted').lean();
+  return rows.map((r) => r.muted);
+}
 
 /* ---- notifications (de-duplicated so likes/unlikes can't spam someone) ---- */
 const recent = new Map();
 function ping(req, to, text, { icon = '🗣️', ref = '', key = '' } = {}) {
   to = String(to || ''); if (!to || to === me(req)) return;
   if (key) { const k = to + '|' + key, now = Date.now(); if (now - (recent.get(k) || 0) < 10 * 60 * 1000) return; recent.set(k, now); if (recent.size > 5000) recent.clear(); }
-  notify(req.app.get('io'), to, { icon, text, kind: 'gist', ref, from: me(req) }).catch(() => {});
+  GistMute.exists({ user: to, muted: me(req) }).then((muted) => {
+    if (!muted) return notify(req.app.get('io'), to, { icon, text, kind: 'gist', ref, from: me(req) });
+  }).catch(() => {});
 }
 
 /* ---- text parsing: #hashtags and @mentions ---- */
@@ -114,11 +120,13 @@ async function hydrate(posts, uid) {
   const users = authorIds.length ? await User.find({ _id: { $in: authorIds } }).select(USER_FIELDS).lean() : [];
   const uMap = new Map(users.map((u) => [String(u._id), u]));
   const allIds = posts.map((p) => String(p._id)).concat(origs.map((o) => String(o._id)));
-  const [likes, votes] = await Promise.all([
+  const [likes, votes, saved] = await Promise.all([
     GistLike.find({ user: uid, post: { $in: allIds } }).select('post type').lean(),
-    GistVote.find({ user: uid, post: { $in: allIds } }).select('post option').lean()]);
+    GistVote.find({ user: uid, post: { $in: allIds } }).select('post option').lean(),
+    GistSave.find({ user: uid, post: { $in: allIds } }).select('post').lean()]);
   const liked = new Map(likes.map((l) => [l.post, l.type || 'like']));
   const voted = new Map(votes.map((v) => [v.post, v.option]));
+  const savedIds = new Set(saved.map((v) => v.post));
   const shape = (p, withShared) => {
     const id = String(p._id), o = {
       id, author: pubUser(uMap.get(p.author)), mine: p.author === uid, text: p.text || '', images: p.images || [],
@@ -129,7 +137,7 @@ async function hydrate(posts, uid) {
       video: normalizeVideo(p.video, playback), views: p.views || 0,
       tags: p.tags || [], pinned: !!p.pinned, edited: !!p.editedAt,
       likes: Math.max(0, p.likes || 0), rx: p.rx || {}, comments: Math.max(0, p.comments || 0), shares: Math.max(0, p.shares || 0),
-      myRx: liked.get(id) || '', liked: liked.has(id), createdAt: p.createdAt,
+      myRx: liked.get(id) || '', liked: liked.has(id), saved: savedIds.has(id), createdAt: p.createdAt,
     };
     if (p.poll && p.poll.options && p.poll.options.length) {
       const total = p.poll.options.reduce((a, x) => a + (x.votes || 0), 0);
@@ -152,13 +160,19 @@ async function page(filter, req, uid, extra = {}, size = PAGE) {
 /* ---------- feed: latest | trending | following | me (+ ?tag=) ---------- */
 router.get('/feed', async (req, res, next) => {
   try {
-    const uid = me(req), blocked = await blockedSet(uid), tab = String(req.query.tab || 'latest');
+    const uid = me(req), blocked = await blockedSet(uid), muted = await mutedSet(uid), hiddenUsers = [...new Set([...blocked, ...muted])], tab = String(req.query.tab || 'latest'), clipTab = tab === 'clips' || tab === 'clips-following';
     const filter = {};
-    if (tab === 'following') {
+    if (tab === 'following' || tab === 'clips-following') {
       const f = await GistFollow.find({ follower: uid }).select('following').lean();
-      filter.author = { $in: f.map((x) => x.following).concat(uid).filter((id) => !blocked.includes(id)) };
+      filter.author = { $in: f.map((x) => x.following).concat(uid).filter((id) => !hiddenUsers.includes(id)) };
     } else if (tab === 'me') filter.author = uid;
-    else if (blocked.length) filter.author = { $nin: blocked };
+    else if (hiddenUsers.length) filter.author = { $nin: hiddenUsers };
+    if (clipTab) filter.$or = [
+      { 'video.url': { $exists: true, $ne: '' } },
+      { 'video.playbackId': { $exists: true, $ne: '' } },
+      { 'video.playbackUrl': { $exists: true, $ne: '' } },
+      { 'video.mux.playbackId': { $exists: true, $ne: '' } },
+    ];
     const tag = String(req.query.tag || '').toLowerCase().replace(/^#/, '');
     if (tag) filter.tags = tag;
     if (tab === 'trending' && !tag) {
@@ -174,10 +188,44 @@ router.get('/feed', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/* ---------- social search: creator handles/names, captions, and hashtags ---------- */
+router.get('/search', limit('search', 60, 60000), async (req, res, next) => {
+  try {
+    const uid = me(req), q = String(req.query.q || '').trim().slice(0, 60);
+    if (q.length < 2) return res.json({ query: q, people: [], posts: [] });
+    const hidden = [...new Set([...(await blockedSet(uid)), ...(await mutedSet(uid))])];
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), tagQuery = q.replace(/^#/, '').toLowerCase();
+    const userFilter = { $or: [{ acUsername: rx }, { displayName: rx }] };
+    if (hidden.length) userFilter._id = { $nin: hidden };
+    const postFilter = { hidden: { $ne: true }, $or: [{ $text: { $search: q } }, { tags: tagQuery }] };
+    if (hidden.length) postFilter.author = { $nin: hidden };
+    const [people, rows] = await Promise.all([
+      User.find(userFilter).select(USER_FIELDS).limit(8).lean(),
+      GistPost.find(postFilter).sort({ createdAt: -1 }).limit(12).lean(),
+    ]);
+    const follows = new Set((await GistFollow.find({ follower: uid, following: { $in: people.map((u) => String(u._id)) } }).select('following').lean()).map((x) => x.following));
+    res.json({ query: q, people: people.map((u) => ({ ...pubUser(u), isMe: String(u._id) === uid, isFollowing: follows.has(String(u._id)) })), posts: await hydrate(rows, uid) });
+  } catch (e) { next(e); }
+});
+
+/* ---------- private saved posts ---------- */
+router.get('/saved', async (req, res, next) => {
+  try {
+    const uid = me(req), q = { user: uid };
+    if (req.query.before && !isNaN(Date.parse(req.query.before))) q.createdAt = { $lt: new Date(req.query.before) };
+    const rows = await GistSave.find(q).sort({ createdAt: -1 }).limit(PAGE + 1).lean();
+    const more = rows.length > PAGE, savedRows = rows.slice(0, PAGE), ids = savedRows.map((x) => x.post);
+    const posts = await GistPost.find({ _id: { $in: ids } }).lean(), map = new Map(posts.map((p) => [String(p._id), p]));
+    const ordered = ids.map((id) => map.get(id)).filter(Boolean);
+    res.json({ posts: await hydrate(ordered, uid), more, next: savedRows.length ? savedRows[savedRows.length - 1].createdAt : null });
+  } catch (e) { next(e); }
+});
+
 router.get('/trending', async (req, res, next) => {
   try {
-    const since = new Date(Date.now() - 48 * 3600000);
-    const rows = await GistPost.aggregate([{ $match: { createdAt: { $gte: since }, 'tags.0': { $exists: true } } }, { $unwind: '$tags' },
+    const since = new Date(Date.now() - 48 * 3600000), hidden = [...new Set([...(await blockedSet(me(req))), ...(await mutedSet(me(req)))])];
+    const match = { createdAt: { $gte: since }, 'tags.0': { $exists: true } }; if (hidden.length) match.author = { $nin: hidden };
+    const rows = await GistPost.aggregate([{ $match: match }, { $unwind: '$tags' },
       { $group: { _id: '$tags', n: { $sum: 1 }, last: { $max: '$createdAt' } } }, { $sort: { n: -1, last: -1 } }, { $limit: 10 }]);
     res.json({ tags: rows.map((r) => ({ tag: r._id, count: r.n })) });
   } catch (e) { next(e); }
@@ -263,6 +311,17 @@ router.get('/posts/:id', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.post('/posts/:id/save', limit('save', 60, 60000), async (req, res, next) => {
+  try {
+    const uid = me(req), id = req.params.id;
+    if (!isId(id) || !(await GistPost.exists({ _id: id }))) return bad(res, 'Post not found.', 404);
+    const saved = await GistSave.findOne({ user: uid, post: id }).lean();
+    if (saved) { await GistSave.deleteOne({ _id: saved._id }); return res.json({ saved: false }); }
+    try { await GistSave.create({ user: uid, post: id }); } catch (e) { if (e.code !== 11000) throw e; }
+    res.json({ saved: true });
+  } catch (e) { next(e); }
+});
+
 router.put('/posts/:id', limit('edit', 20, 60000), async (req, res, next) => {
   try {
     const uid = me(req); if (!isId(req.params.id)) return bad(res, 'Invalid post.');
@@ -286,7 +345,7 @@ router.delete('/posts/:id', async (req, res, next) => {
     if (!p) return bad(res, 'Post not found.', 404);
     const id = String(p._id);
     const cids = (await GistComment.find({ post: id }).select('_id').lean()).map((c) => String(c._id));
-    await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
+    await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistSave.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
     if (p.sharedFrom) await GistPost.updateOne({ _id: p.sharedFrom, shares: { $gt: 0 } }, { $inc: { shares: -1 } });
     if (p.video && p.video.fileId) await reelstore.remove(p.video.fileId);
     res.json({ ok: true });
@@ -383,8 +442,13 @@ function reelScore(p, follows) {
 }
 router.get('/reels', async (req, res, next) => {
   try {
-    const uid = me(req), blocked = await blockedSet(uid), tab = req.query.tab === 'following' ? 'following' : 'foryou';
-    const filter = { $or: [{ 'video.url': { $exists: true, $ne: '' } }, { 'video.playbackId': { $exists: true, $ne: '' } }, { 'video.mux.playbackId': { $exists: true, $ne: '' } }] };
+    const uid = me(req), blocked = [...new Set([...(await blockedSet(uid)), ...(await mutedSet(uid))])], tab = req.query.tab === 'following' ? 'following' : 'foryou';
+    const filter = { $or: [
+      { 'video.url': { $exists: true, $ne: '' } },
+      { 'video.playbackId': { $exists: true, $ne: '' } },
+      { 'video.playbackUrl': { $exists: true, $ne: '' } },
+      { 'video.mux.playbackId': { $exists: true, $ne: '' } },
+    ] };
     const f = await GistFollow.find({ follower: uid }).select('following').lean(), follows = new Set(f.map((x) => x.following));
     if (tab === 'following') filter.author = { $in: [...follows].filter((id) => !blocked.includes(id)) };
     else if (blocked.length) filter.author = { $nin: blocked };
@@ -527,7 +591,7 @@ router.get('/profile/:key', async (req, res, next) => {
     const s = u.stats || {};
     const played = s.gamesPlayed || 0;
     res.json({
-      user: { ...pubUser(u), bio: u.bio || '', cover: u.cover || '' }, isMe: id === uid, isFollowing: !!isFollowing, followers, following, postsCount,
+      user: { ...pubUser(u), bio: u.bio || '', cover: u.cover || '' }, isMe: id === uid, isFollowing: !!isFollowing, isMuted: id !== uid && !!(await GistMute.exists({ user: uid, muted: id })), followers, following, postsCount,
       relation: id === uid ? 'me' : iBlocked ? 'blocked' : !rel ? 'none' : rel.status === 'accepted' ? 'friend' : (rel.requester === uid ? 'sent' : 'received'),
       online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id),
       game: { played, wins: s.wins || 0, losses: s.losses || 0, draws: s.draws || 0, winRate: played ? Math.round(((s.wins || 0) / played) * 100) : 0, level: u.level || 1, bestStreak: u.bestStreak || 0, tournamentWins: u.tournamentWins || 0, rating: u.rating || 1000, since: u.createdAt },
@@ -569,6 +633,19 @@ router.post('/follow/:key', limit('follow', 40, 60000), async (req, res, next) =
     try { await GistFollow.create({ follower: uid, following: id }); following = true; ping(req, id, `${label(req.user)} started following you`, { icon: '➕', ref: 'u:' + uid, key: 'fl:' + uid }); }
     catch (e) { if (e.code !== 11000) throw e; await GistFollow.deleteOne({ follower: uid, following: id }); following = false; }
     res.json({ following, followers: await GistFollow.countDocuments({ following: id }) });
+  } catch (e) { next(e); }
+});
+
+router.post('/mute/:key', limit('mute', 40, 60000), async (req, res, next) => {
+  try {
+    const uid = me(req), u = await findUser(req.params.key === 'me' ? uid : req.params.key);
+    if (!u) return bad(res, 'Player not found.', 404);
+    const id = String(u._id); if (id === uid) return bad(res, 'You cannot mute yourself.');
+    const was = await GistMute.findOne({ user: uid, muted: id }).lean();
+    const shouldMute = typeof req.body?.muted === 'boolean' ? req.body.muted : !was;
+    if (shouldMute && !was) { try { await GistMute.create({ user: uid, muted: id }); } catch (e) { if (e.code !== 11000) throw e; } }
+    else if (!shouldMute && was) await GistMute.deleteOne({ _id: was._id });
+    res.json({ muted: shouldMute });
   } catch (e) { next(e); }
 });
 
@@ -618,7 +695,7 @@ router.removeVideoPosts = async function removeVideoPosts(assetId) {
   const posts = await GistPost.find({ $or: [{ 'video.mux.assetId': String(assetId) }, { 'video.assetId': String(assetId) }] }).select('_id sharedFrom').lean();
   for (const p of posts) {
     const id = String(p._id), cids = (await GistComment.find({ post: id }).select('_id').lean()).map((c) => String(c._id));
-    await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
+    await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistSave.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
   }
   if (posts.length) await GistPost.deleteMany({ _id: { $in: posts.map((p) => p._id) } });
   return posts.length;

@@ -31,6 +31,7 @@ const GistPostSchema = new Schema({
 GistPostSchema.index({ author: 1, createdAt: -1 });
 GistPostSchema.index({ 'images.url': 1 });
 GistPostSchema.index({ tags: 1, createdAt: -1 });
+GistPostSchema.index({ text: 'text' }, { name: 'gist_text_search' });
 GistPostSchema.index({ 'video.url': 1, createdAt: -1 }, { sparse: true });
 GistPostSchema.index({ 'video.playbackId': 1 }, { sparse: true });
 
@@ -56,6 +57,13 @@ const GistFollowSchema = new Schema({ follower: String, following: String, creat
 GistFollowSchema.index({ follower: 1, following: 1 }, { unique: true });
 GistFollowSchema.index({ following: 1, createdAt: -1 });
 
+const GistSaveSchema = new Schema({ user: { type: String, index: true }, post: { type: String, index: true }, createdAt: { type: Date, default: Date.now } });
+GistSaveSchema.index({ user: 1, post: 1 }, { unique: true });
+GistSaveSchema.index({ user: 1, createdAt: -1 });
+
+const GistMuteSchema = new Schema({ user: { type: String, index: true }, muted: { type: String, index: true }, createdAt: { type: Date, default: Date.now } });
+GistMuteSchema.index({ user: 1, muted: 1 }, { unique: true });
+
 module.exports = {
   GistPost: mongoose.model('GistPost', GistPostSchema),
   GistLike: mongoose.model('GistLike', GistLikeSchema),
@@ -63,4 +71,6 @@ module.exports = {
   GistCommentLike: mongoose.model('GistCommentLike', GistCommentLikeSchema),
   GistVote: mongoose.model('GistVote', GistVoteSchema),
   GistFollow: mongoose.model('GistFollow', GistFollowSchema),
+  GistSave: mongoose.model('GistSave', GistSaveSchema),
+  GistMute: mongoose.model('GistMute', GistMuteSchema),
 };
