@@ -261,3 +261,26 @@
 
 #appview.pgist-social .rl-tabs button.on{background:#fff;color:#262626}
 :where(html[data-theme="dark"]) #appview.pgist-social .rl-tabs button.on{background:#fff;color:#262626}
+
+
+/* Active Reels use the whole phone display; hide the P-Gist dock while a reel is on screen. */
+#appview.rlmode.rlfull .tkdock{display:none!important}
+#appview.rlmode.rlfull{top:0;bottom:0;padding:0!important}
+#appview.rlmode.rlfull .abody.rlb{padding:0!important;min-height:0;flex:1}
+#appview.rlmode.rlfull .rl-feed{height:100%;scrollbar-width:none}
+#appview.rlmode.rlfull .rl-top{padding-top:max(50px,calc(env(safe-area-inset-top) + 14px))}
+#appview.rlmode.rlfull .rl-info{bottom:calc(env(safe-area-inset-bottom) + 30px)}
+#appview.rlmode.rlfull .rl-act{bottom:calc(env(safe-area-inset-bottom) + 28px);z-index:7}
+#appview.rlmode.rlfull .rl-bar{bottom:calc(env(safe-area-inset-bottom) + 8px)}
+
+/* Keep the reel surface uncluttered: like, comments, share and sound live under the ellipsis. */
+#appview.pgist-social .rl-act{z-index:7}
+#appview.pgist-social .rl-act .rl-actions-menu{display:none;position:absolute;right:51px;bottom:0;width:178px;max-width:calc(100vw - 110px);padding:5px;border:1px solid rgba(255,255,255,.18);border-radius:14px;background:rgba(18,19,22,.88);box-shadow:0 12px 35px rgba(0,0,0,.38);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+#appview.pgist-social .rl-card.actions-open .rl-actions-menu{display:flex;flex-direction:column;gap:1px}
+#appview.pgist-social .rl-actions-menu button{width:100%;min-height:39px;display:flex;flex-direction:row;justify-content:flex-start;align-items:center;gap:10px;padding:7px 9px;border:0;border-radius:9px;background:transparent;color:#fff;text-shadow:none;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#appview.pgist-social .rl-actions-menu button>i{width:18px;flex:none;text-align:center;font-size:15px}
+#appview.pgist-social .rl-actions-menu button em{margin-left:auto;color:#d1d1d1;font:500 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-shadow:none}
+#appview.pgist-social .rl-actions-menu button .rl-like-ico{width:19px;height:19px;display:grid;place-items:center;flex:none;background:none;color:#fff;font-size:17px}
+#appview.pgist-social .rl-actions-menu button .rl-like-ico i{font-size:16px}
+#appview.pgist-social .rl-actions-menu button.lk.on .rl-like-ico{color:#ff3040}
+#appview.pgist-social .rl-actions-menu button:active{background:rgba(255,255,255,.12)}

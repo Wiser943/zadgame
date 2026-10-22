@@ -13,7 +13,7 @@ const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
 const reelstore = require('../utils/reelstore');
 
-const { muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
+const { muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
 const ACVideo = require('../models/ACVideo');
 const { normalizeVideo } = require('../utils/gistVideo');
 
@@ -335,12 +335,15 @@ router.post('/posts/:id/like', limit('like', 90, 60000), (req, res, next) => rea
 router.post('/posts/:id/react', limit('like', 90, 60000), (req, res, next) => react(req, res, next, String((req.body && req.body.type) || 'like')));
 
 /* ---------- reels: upload a clip, vertical feed, view counter ---------- */
-router.get('/reels/config', (req, res) => res.json({ mux: muxOn(), maxMB: 200, maxSec: MUX_MAX_SEC, dataKey: menv('MUX_DATA_ENV_KEY'), captions: menv('MUX_CAPTIONS') === 'true', signed: signingOn() }));
+router.get('/reels/config', (req, res) => {
+  const missing = ['MUX_TOKEN_ID', 'MUX_TOKEN_SECRET'].filter((key) => !menv(key));
+  res.json({ mux: !missing.length, missing, maxMB: MUX_MAX_MB, maxSec: MUX_MAX_SEC, dataKey: menv('MUX_DATA_ENV_KEY'), captions: menv('MUX_CAPTIONS') === 'true', signed: signingOn(), playbackPolicy: 'public' });
+});
 
 /* Mux direct upload: the phone sends the file straight to Mux (it never passes through our server), then we poll (or Mux calls our webhook) until it is ready. */
 router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, next) => {
   try {
-    if (!muxOn()) return bad(res, 'Video storage is not set up yet.', 503);
+    if (!muxOn()) return bad(res, 'Video storage is not configured on the server. Add MUX_TOKEN_ID and MUX_TOKEN_SECRET to the hosting environment, then restart the app.', 503);
     const uid = me(req);
     if (await ACVideo.countDocuments({ user: uid }) >= reelstore.MAX_PER_USER) return bad(res, `Your gallery has ${reelstore.MAX_PER_USER} videos already. Delete an old one to upload a new one.`, 409);
     if (await ACVideo.countDocuments({ user: uid, createdAt: { $gte: new Date(Date.now() - 86400000) } }) >= DAILY_UPLOADS) return bad(res, `You can upload ${DAILY_UPLOADS} videos a day. Try again tomorrow.`, 429);
@@ -352,7 +355,7 @@ router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, 
 });
 router.get('/reels/mux-status/:uploadId', async (req, res, next) => {
   try {
-    if (!muxOn()) return bad(res, 'Video storage is not set up yet.', 503);
+    if (!muxOn()) return bad(res, 'Video storage is not configured on the server. Add MUX_TOKEN_ID and MUX_TOKEN_SECRET to the hosting environment, then restart the app.', 503);
     if (!/^[A-Za-z0-9]{10,80}$/.test(req.params.uploadId)) return bad(res, 'Invalid upload.');
     const u = await mux('GET', '/video/v1/uploads/' + req.params.uploadId);
     if (u.status === 'errored' || u.status === 'cancelled' || u.status === 'timed_out') return res.json({ error: 'The upload did not finish. Please try again.' });

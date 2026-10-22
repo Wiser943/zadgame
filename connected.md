@@ -61,9 +61,9 @@ GOOGLE_CLIENT_SECRET=<from step 2>
 
 ### P-Gist video uploads and Reels
 
-To enable video uploads, add `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` to the server's environment in your hosting dashboard. Keep both values server-side; never put them in browser JavaScript. The selected video file uploads directly from the browser to Mux with a signed upload URL—your Node server handles authorization and processing status, not the video bytes. The upload route sets Mux CORS from the browser request's `Origin`, so serve P-Gist from its normal public site origin; `CLIENT_URL` should also match that public app URL.
+To enable video uploads, add `MUX_TOKEN_ID` and `MUX_TOKEN_SECRET` to the server's environment in your hosting dashboard, then restart the server. Keep both values server-side; never put them in browser JavaScript. If either is absent, P-Gist reports the missing key names in the app. The selected video file uploads directly from the browser to Mux with a signed upload URL—your Node server handles authorization and processing status, not the video bytes. New Reels use public Mux playback, matching the earlier working P-Gist version; the default limit is 500 MB and 10 minutes. The upload route sets Mux CORS from the browser request's `Origin`, so serve P-Gist from its normal public site origin; `CLIENT_URL` should also match that public app URL.
 
-Deploy the matching full project source, including `routes/acgist.js`, `models/Gist.js`, `utils/mux.js`, and the P-Gist files under `public/allconnect/`. A frontend-only update against an older server can show an API/configuration error because the video route contract changed. Posts created with the earlier P-Gist `playbackId`/`duration` schema are supported by this version and do not need a database migration.
+Deploy the matching full project source, including `routes/acgist.js`, `models/Gist.js`, `utils/mux.js`, and the P-Gist files under `public/allconnect/`. The Reels client also falls back to the previous `/videos/uploads` and `/feed?tab=clips` API contract when that older backend is still deployed, while supporting the earlier `playbackId`/`playbackUrl` post shape. Posts created with that earlier schema do not need a database migration. A frontend-only update against a backend missing both API contracts still needs the matching server routes deployed.
 
 ## 5. Run it
 

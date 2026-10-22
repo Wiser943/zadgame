@@ -36,3 +36,21 @@ test('webhook signature check accepts good and rejects bad or old', () => {
   assert.ok(!m.verifyWebhook(raw, `t=${t - 4000},v1=${v1}`, secret));
   assert.ok(!m.verifyWebhook(raw, 'garbage', secret));
 });
+
+test('new uploads keep public playback even when optional signing keys are configured', async () => {
+  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const pem = privateKey.export({ type: 'pkcs1', format: 'pem' });
+  const priorFetch = global.fetch; let body;
+  global.fetch = async (url, opts) => {
+    body = JSON.parse(opts.body);
+    return { ok: true, json: async () => ({ data: { id: 'upload123456', url: 'https://mux.example/upload' } }) };
+  };
+  try {
+    const m = load({ MUX_TOKEN_ID: 'token', MUX_TOKEN_SECRET: 'secret', MUX_SIGNING_KEY_ID: 'kid1', MUX_SIGNING_PRIVATE_KEY: Buffer.from(pem).toString('base64') });
+    const result = await m.createUpload('user123', 'https://app.example');
+    assert.strictEqual(result.d.id, 'upload123456');
+    assert.deepStrictEqual(body.new_asset_settings.playback_policy, ['public']);
+    assert.strictEqual(m.MUX_MAX_MB, 500);
+    assert.strictEqual(m.MUX_MAX_SEC, 600);
+  } finally { global.fetch = priorFetch }
+});

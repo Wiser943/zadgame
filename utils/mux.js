@@ -1,6 +1,6 @@
 // Mux (video storage + streaming). Set MUX_TOKEN_ID and MUX_TOKEN_SECRET on the server. Videos go from the phone straight to Mux.
 // Optional extras (all server env vars):
-//   MUX_SIGNING_KEY_ID + MUX_SIGNING_PRIVATE_KEY  -> signed playback (links expire, no hotlinking)
+//   MUX_SIGNING_KEY_ID + MUX_SIGNING_PRIVATE_KEY  -> playback for existing signed assets (new Reels are public)
 //   MUX_WEBHOOK_SECRET                            -> Mux tells us when a video is ready (instead of only polling)
 //   MUX_DATA_ENV_KEY                              -> Mux Data playback quality monitoring (public key, sent to the browser)
 //   MUX_CAPTIONS=true                             -> auto-generated English captions (billed by Mux per minute)
@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const env = (n) => String(process.env[n] || '').trim();
 const muxKeys = () => ({ id: env('MUX_TOKEN_ID'), sec: env('MUX_TOKEN_SECRET') });
 const muxOn = () => { const k = muxKeys(); return !!(k.id && k.sec); };
-const MUX_MAX_MB = 200, MUX_MAX_SEC = 180, DAILY_UPLOADS = 10;
+const MUX_MAX_MB = 500, MUX_MAX_SEC = 600, DAILY_UPLOADS = 10;
 
 async function mux(method, path, body) {
   const k = muxKeys(), ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
@@ -52,7 +52,10 @@ function muxVideo(a) {
 
 /* settings for a new direct upload, cheapest sensible defaults first; mux.js retries with the bare minimum if Mux rejects an option */
 async function createUpload(uid, origin) {
-  const policy = signingOn() ? 'signed' : 'public', cc = env('MUX_CAPTIONS') === 'true';
+  // Match the known-working P-Gist uploader: public playback avoids signed-token configuration
+  // turning an otherwise successful upload into an unplayable Reel. Existing signed assets still
+  // use playback() above, but all newly uploaded Reels are public.
+  const policy = 'public', cc = env('MUX_CAPTIONS') === 'true';
   const full = { playback_policy: [policy], passthrough: String(uid), video_quality: 'basic', max_resolution_tier: '1080p' };
   if (cc) full.input = [{ generated_subtitles: [{ language_code: 'en', name: 'English (auto)' }] }];
   try { return { d: await mux('POST', '/video/v1/uploads', { cors_origin: origin, new_asset_settings: full }), cc }; }

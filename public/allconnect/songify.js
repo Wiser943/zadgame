@@ -271,8 +271,23 @@ const SONGIFY = {
   /* a song someone shared in P-Gist: jump into Songify and play it (opens the full player) */
   openSong(song) {
     if (!song || !song.streamUrl) return;
-    nav('phone'); this.open();
+    // P-Gist and Songify live inside the same phone page. Calling nav('phone') when already
+    // there is a toggle that closes the phone, so only navigate in from another app/page.
+    if (typeof RL !== 'undefined' && RL.stop) RL.stop();
+    if (typeof S === 'undefined' || S.page !== 'phone') nav('phone');
+    this.open();
     this.listName = 'results'; this.queue = [song]; this.np = true; this._fb = song; this.start(song);
+  },
+  async openSharedTrack(song) {
+    if (!song || typeof song !== 'object') return this.setStatus('This shared song link is invalid.', true);
+    if (typeof RL !== 'undefined' && RL.stop) RL.stop();
+    if (typeof S === 'undefined' || S.page !== 'phone') nav('phone');
+    this.open();
+    const track = { title: String(song.title || 'Song').slice(0, 120), artist: String(song.artist || '').slice(0, 120), albumArt: String(song.albumArt || '').slice(0, 1000), streamUrl: String(song.streamUrl || '') };
+    this.listName = 'results'; this.queue = []; this.np = true; this._fb = track;
+    if (track.streamUrl) { this.queue = [track]; this.start(track); return }
+    this.setStatus('Finding the shared track…');
+    await this.refetch(track);
   },
   /* the shared stream link no longer works: look the track up again by name and play the best match */
   async refetch(song) {
