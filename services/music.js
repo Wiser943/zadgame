@@ -2,6 +2,9 @@
 
 const JIOSAAVN_SEARCH_URL = process.env.JIOSAAVN_SEARCH_URL || 'https://saavn.dev/api/search/songs';
 const REQUEST_TIMEOUT_MS = 9000;
+let doFetch = (...args) => fetch(...args);
+const searchCache = new Map();
+const CACHE_MS = 2 * 60 * 1000;
 
 function text(value, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
@@ -49,7 +52,7 @@ async function fetchJson(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal, headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; AllConnect/1.0)', ...(options.headers || {}) } });
+    const response = await doFetch(url, { ...options, signal: controller.signal, headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; AllConnect/1.0)', ...(options.headers || {}) } });
     if (!response.ok) throw new Error(`Provider returned ${response.status}`);
     return await response.json();
   } finally {
@@ -107,24 +110,50 @@ async function searchItunes(query) {
   return (Array.isArray(data?.results) ? data.results : []).map(normalizeItunes).filter(Boolean);
 }
 
+function normalizeYouTube(item) {
+  const id = text(item?.id?.videoId), snippet = item?.snippet || {};
+  const title = text(snippet.title).replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  if (!/^[\w-]{6,20}$/.test(id) || !title) return null;
+  const art = snippet.thumbnails || {};
+  return { title, artist: text(snippet.channelTitle, 'YouTube'), albumArt: firstUrl(art.high || art.medium || art.default), streamUrl: `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`, provider: 'youtube', videoId: id };
+}
+
+async function searchYouTube(query) {
+  const key = String(process.env.YOUTUBE_API_KEY || '').trim();
+  if (!key) return [];
+  const qs = new URLSearchParams({ part: 'snippet', type: 'video', videoCategoryId: '10', videoEmbeddable: 'true', maxResults: '10', q: query, key });
+  const data = await fetchJson(`https://www.googleapis.com/youtube/v3/search?${qs}`);
+  return (Array.isArray(data?.items) ? data.items : []).map(normalizeYouTube).filter(Boolean);
+}
+
 const reason = (error) => (error.name === 'AbortError' ? 'timed out' : error.message);
 
 async function searchMusic(query) {
-  const clean = text(query).replace(/^\.?play\s+/i, '').trim(); // "play rema calm down" works too
+  const clean = text(query).replace(/^\.?play\s+/i, '').trim().slice(0, 120); // "play rema calm down" works too
   if (clean.length < 2) return { provider: null, results: [], errors: ['Enter at least 2 characters to search.'] };
+  const cacheKey = `${!!process.env.YOUTUBE_API_KEY}:${clean.toLowerCase()}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < CACHE_MS) return JSON.parse(JSON.stringify(cached.result));
   const errors = [];
-  const chain = [['audius', 'Audius', searchAudius], ['jiosaavn', 'JioSaavn', searchJioSaavn], ['itunes', 'iTunes preview', searchItunes]];
+  const chain = [...(process.env.YOUTUBE_API_KEY ? [['youtube', 'YouTube', searchYouTube]] : []), ['audius', 'Audius', searchAudius], ['jiosaavn', 'JioSaavn', searchJioSaavn], ['itunes', 'iTunes preview', searchItunes]];
   for (const [id, label, fn] of chain) {
     try {
       const results = await fn(clean);
-      if (results.length) return { provider: id, results, errors };
+      if (results.length) {
+        const result = { provider: id, results, errors };
+        searchCache.set(cacheKey, { at: Date.now(), result });
+        if (searchCache.size > 250) searchCache.delete(searchCache.keys().next().value);
+        return JSON.parse(JSON.stringify(result));
+      }
       errors.push(`${label} had no matches.`);
     } catch (error) {
       console.error(`[music] ${label} failed:`, reason(error), error.cause?.code || '');
       errors.push(`${label} was unavailable (${reason(error)}).`);
     }
   }
-  return { provider: null, results: [], errors };
+  const result = { provider: null, results: [], errors };
+  searchCache.set(cacheKey, { at: Date.now(), result });
+  return result;
 }
 
-module.exports = { searchMusic, normalizeSong, searchJioSaavn, searchAudius, searchItunes, normalizeAudius, normalizeItunes };
+module.exports = { searchMusic, normalizeSong, searchJioSaavn, searchAudius, searchItunes, searchYouTube, normalizeAudius, normalizeItunes, normalizeYouTube, setFetch: (fn) => { doFetch = fn; }, clearCache: () => searchCache.clear() };

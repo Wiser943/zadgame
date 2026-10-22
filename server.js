@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const http = require('http');
 const session = require('express-session');
@@ -49,6 +50,7 @@ const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
 const initSockets = require('./sockets');
 const { loadGameSettings } = require('./config/gameSettings');
+const siteSeo = require('./utils/siteSeo');
 
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) throw new Error('SESSION_SECRET must be at least 32 characters in production.');
@@ -155,8 +157,18 @@ async function main() {
   app.use('/lagosrun/api', (req, res) => res.status(503).json({ ok: false, error: 'offline' }));
   app.get(['/lagosrun', '/lagosrun/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'lagosrun', 'index.html')));
 
+  app.get('/landing.html', (_req, res) => res.redirect(301, '/'));
+  app.get('/allconnect/index.html', (_req, res) => res.redirect(301, '/play'));
+  app.get('/index.html', (_req, res) => res.redirect(301, '/gamehub'));
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
   app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+  app.get('/robots.txt', (_req, res) => res.type('text/plain').send(siteSeo.robots()));
+  app.get('/sitemap.xml', (_req, res) => {
+    const xml = siteSeo.sitemap();
+    if (!xml) return res.status(503).type('text/plain').send('Set PUBLIC_SITE_URL or CLIENT_URL to the public HTTPS origin to enable the sitemap.');
+    res.set('Cache-Control', 'public, max-age=3600').type('application/xml').send(xml);
+  });
 
   // Marketing landing at /. The life-sim is /play. GameHub stays at /gamehub.
   // Old GameHub invite/share links (/?code=..., ?spectate=..., ?h=..., ?by=...) still open GameHub directly.
@@ -165,12 +177,13 @@ async function main() {
   const ALLCONNECT = path.join(__dirname, 'public', 'allconnect', 'index.html');
   app.get('/', (req, res) => {
     const q = req.query || {};
-    if (q.code || q.spectate || q.h || q.by) return res.sendFile(GAMEHUB);
-    res.sendFile(LANDING);
+    if (q.code || q.spectate || q.h || q.by) { res.set('X-Robots-Tag', 'noindex, nofollow'); return res.sendFile(GAMEHUB); }
+    const html = fs.readFileSync(LANDING, 'utf8');
+    res.type('html').send(siteSeo.renderLanding(html));
   });
   // /play is a single-page app: /play/home, /play/map, /play/buy, /play/phone, /play/phone/bank ... all serve the same shell and the client router picks the screen.
-  app.get(['/play', '/play/', '/play/*'], (req, res) => res.sendFile(ALLCONNECT));
-  app.get('/gamehub', (req, res) => res.sendFile(GAMEHUB));
+  app.get(['/play', '/play/', '/play/*'], (req, res) => { res.set('X-Robots-Tag', 'noindex, nofollow'); res.sendFile(ALLCONNECT); });
+  app.get('/gamehub', (req, res) => { res.set('X-Robots-Tag', 'noindex, nofollow'); res.sendFile(GAMEHUB); });
   app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
   app.get('/status', (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
   app.get('/stats', (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));
@@ -178,7 +191,7 @@ async function main() {
   app.get('/developers', (req, res) => res.sendFile(path.join(__dirname, 'public', 'developers.html')));
 
   // GameHub's own client-side routes (/lobby, /shop, /friends ...) fall through to GameHub
-  app.get('*', (req, res) => res.sendFile(GAMEHUB));
+  app.get('*', (req, res) => { res.set('X-Robots-Tag', 'noindex, nofollow'); res.sendFile(GAMEHUB); });
 
   // Central error handler. Without this, any error passed to next(err) (e.g.
   // a DB error inside the Google OAuth verify callback) falls through to

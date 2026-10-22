@@ -1,6 +1,6 @@
 // Pet app: the player's pet cat. State lives here (so it follows the player to any device) and EVERY cost is charged
 // from the main balance (User.ac.cash) with an atomic "only if enough" update, then written to the bank statement.
-// Also here: the daily check-in (the game's only daily reward), milestones, sudden illnesses, friends visiting, pet memory and Gemini answers.
+// Also here: the daily check-in, milestones, sudden illnesses, friends visiting, Pet memory and optional AI answers.
 const express = require('express');
 const User = require('../models/User');
 const ACTxn = require('../models/ACTxn');
@@ -30,7 +30,7 @@ async function loadPet(me) {
   if (hit) await d.save();
   return d;
 }
-const aiInfo = (d, now = Date.now()) => ({ on: !!AI.keyInfo().key, model: AI.models()[0], daily: AI.daily(), left: Math.max(0, AI.daily() - (d.aiDay === P.dayKey(now) ? d.aiCount : 0)) });
+const aiInfo = (d, now = Date.now()) => ({ on: AI.available(), voice: AI.transcribesAudio(), provider: AI.provider(), model: AI.modelName(), daily: AI.daily(), left: Math.max(0, AI.daily() - (d.aiDay === P.dayKey(now) ? d.aiCount : 0)) });
 const full = async (me, d, extra) => {
   const u = await User.findById(me).select('ac.cash').lean();
   const cash = (u && u.ac && u.ac.cash) || 0;
@@ -296,7 +296,7 @@ router.post('/trick', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-/* Answer mode: ask her a question by text or voice note and she answers using Gemini (key stays on the server). Repeat mode only uses this to transcribe a voice note. */
+/* Answer mode uses the built-in Pet Brain, optional OpenAI-compatible API, or explicitly selected legacy Gemini. */
 router.post('/ask', async (req, res, next) => {
   try {
     const me = uid(req), b = req.body || {}, mode = b.mode === 'repeat' ? 'repeat' : 'answer';
@@ -304,7 +304,6 @@ router.post('/ask', async (req, res, next) => {
     if (b.audio && !audio) return bad(res, 400, 'That voice note could not be used.');
     if (!text && !audio) return bad(res, 400, 'Say or type something first.');
     if (mode === 'repeat' && !audio) return bad(res, 400, 'Nothing to look up in repeat mode.');
-    if (!AI.keyInfo().key) return bad(res, 503, 'Answer mode is not set up yet.');
     if (AI.limited(me)) return bad(res, 429, 'Slow down a little, she is thinking.');
     const d = await loadPet(me), now = Date.now(), day = P.dayKey(now);
     if (d.asleep) return bad(res, 409, `${d.name} is asleep.`);
@@ -318,7 +317,7 @@ router.post('/ask', async (req, res, next) => {
       d.love = (d.love || 0) + 1; d.words = (d.words || 0) + 1; if (d.fun < 60) d.fun = P.cl(d.fun + 2); grew = P.gain(d, P.XP.ask, true);
       if (mode === 'answer') { P.bump(d, 'answers'); if (out.remember) d.memory = AI.addMemory(d.memory, out.remember); }
     }
-    res.json(await settle(req, me, d, { heard: out.heard, reply: out.reply, grew, ai: aiInfo(d, now) }));
+    res.json(await settle(req, me, d, { heard: out.heard, reply: out.reply, grew, ai: aiInfo(d, now), notice: out.fallback ? 'The external AI is unavailable; the built-in Pet Brain answered instead.' : '' }));
   } catch (e) { next(e); }
 });
 

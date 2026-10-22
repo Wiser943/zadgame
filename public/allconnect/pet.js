@@ -1,5 +1,5 @@
 /* Pet: a talking pet cat on the AllConnect phone (original character, "Kobo" by default).
-   Two modes: Repeat (she says back what you say, in a squeaky voice) and Answer (Gemini answers your questions, English only). Feed her, take her to the vet, wash, play, dress her up, win ₦ in mini-games.
+   Two modes: Repeat (she says back what you say, in a squeaky voice) and Answer (built-in Pet Brain, or optional server AI, English only). Feed her, take her to the vet, wash, play, dress her up, win ₦ in mini-games.
    Her state lives on the server (routes/acpet.js, rules in utils/acpet.js) so it follows you to any device, and EVERYTHING bought for her is
    charged from your main balance (S.cash). Reuses PH.shell / PH.sheet / CARD / UI.bar / LAGOS.setCash / NET.api / STYLE.mood and the room's wall colour. Everything she says is English. */
 const PET = {
@@ -103,7 +103,6 @@ const PET = {
     const i = this.q('pin'); if (i) i.placeholder = m === 'repeat' ? `Say something and ${n} will repeat it…` : `Ask ${n} anything…`;
   },
   setMode(m) {
-    if (m === 'answer' && this.ai && !this.ai.on) return toast('Answer mode is not set up yet. The game admin needs to add the Gemini key.');
     if (m === this.mode) return; this.mode = m; this.hist = []; try { localStorage.setItem('allconnect:petmode', m) } catch (e) {}
     this.paintMode(); if (!this.p.asleep) this.speak(m === 'answer' ? 'Ask me anything!' : "I'll repeat everything you say!");
   },
@@ -191,7 +190,7 @@ const PET = {
   say(text) { if (!this.speaking) this.speak(text) },
   /* free actions are saved on the server too, but never more than once every 1.5 seconds */
   act(a) { const n = Date.now(); if (n - this.lastAct < 1500) return; this.lastAct = n; this.post('act', { a }).then(() => this.paintAll()).catch(() => {}) },
-  /* what the player says or types: repeat mode says it back, answer mode asks Gemini on the server */
+  /* what the player says or types: repeat mode echoes; answer mode uses the selected Pet Brain/provider */
   hear(text) {
     const p = this.p; text = String(text || '').trim().slice(0, 200); if (!text) return;
     if (p.asleep) return toast(`Shh, ${p.name} is sleeping`); if (this.thinking) return;
@@ -206,6 +205,7 @@ const PET = {
     try {
       const m0 = ((this.p && this.p.memory) || []).length, r = await this.post('ask', Object.assign({ mode: 'answer', history: this.hist }, payload));
       if (((this.p.memory || []).length) > m0) toast(`🧠 ${this.p.name} will remember that`);
+      if (r.notice) toast(r.notice);
       if (!r.reply) { this.think(false); return toast("I didn't catch that. Try again!") }
       if (payload.audio && r.heard) toast(`You said: “${r.heard}”`);
       this.hist = this.hist.concat([{ r: 'u', t: r.heard || payload.text || '' }, { r: 'p', t: r.reply }]).slice(-6);
@@ -214,7 +214,7 @@ const PET = {
     } catch (e) { this.think(false); toast(e.message || 'She could not answer right now.') }
   },
   sendInput() { const i = this.q('pin'); if (!i) return; const v = i.value; i.value = ''; this.hear(v) },
-  /* voice: the browser's speech recognition when it has one, otherwise a short voice note that Gemini listens to */
+  /* voice: browser speech recognition when available; recorded notes use the configured server speech provider */
   listen() {
     const p = this.p; if (p.asleep) return toast(`Wake ${p.name} up first`); if (this.thinking) return;
     if (this.rec) { try { this.rec.stop() } catch (e) {} return }
@@ -232,7 +232,7 @@ const PET = {
     const audio = { mime: 'audio/wav', data: b64 }; if (this.mode === 'answer') return this.answer({ audio });
     this.think(true); this.post('ask', { mode: 'repeat', audio }).then(r => { this.think(false); if (r.reply) this.repeat(r.reply); else toast("I didn't hear anything. Try again!") }).catch(e => { this.think(false); toast(e.message) });
   },
-  /* any recording -> 16 kHz mono WAV (the format Gemini accepts everywhere), as base64 */
+  /* any recording -> bounded 16 kHz mono WAV for the server transcription provider, as base64 */
   async wav(blob) {
     const AC = window.AudioContext || window.webkitAudioContext, OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, ctx = new AC();
     const dec = await ctx.decodeAudioData(await blob.arrayBuffer()); ctx.close();
@@ -572,7 +572,7 @@ if (window.VN) VN.cfg.pet = {
   send() { PET.sendInput() },
   canStart() {
     const p = PET.p; if (!p || PET.thinking) return false; if (p.asleep) { toast(`Wake ${p.name} up first`); return false }
-    if (!(PET.ai && PET.ai.on)) { PET.listen(); return false }          // no Gemini key: tap to talk with the browser's speech recognition instead
+    if (!(PET.ai && PET.ai.voice)) { PET.listen(); return false }       // local mode uses browser speech recognition; external providers may transcribe recordings
     return true;
   },
   onStart() { try { speechSynthesis.cancel() } catch (e) {} PET.ear(true) }, onEnd() { PET.ear(false) },
