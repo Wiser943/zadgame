@@ -82,19 +82,25 @@ const GIST = {
     const left = q.ended ? 'Poll ended' : (() => { const ms = new Date(q.endsAt) - Date.now(), h = Math.ceil(ms / 3600000); return h >= 48 ? Math.ceil(h / 24) + ' days left' : h > 1 ? h + ' hours left' : 'Ending soon' })();
     return `<div class="gpoll" data-id="${p.id}">${q.options.map((o, i) => show ? `<div class="gpo res ${q.myVote === i ? 'mine' : ''}"><u style="width:${tot ? Math.round(o.votes / tot * 100) : 0}%"></u><span>${esc(o.text)}${q.myVote === i ? ' ✓' : ''}</span><b>${tot ? Math.round(o.votes / tot * 100) : 0}%</b></div>` : `<button class="gpo" onclick="GIST.vote('${p.id}',${i})"><span>${esc(o.text)}</span></button>`).join('')}<small>${tot} vote${tot === 1 ? '' : 's'} · ${left}</small></div>`
   },
-  rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '❤️'}</span> ${p.likes}` : '' },
+  rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '❤️'}</span>${p.likes} like${p.likes === 1 ? '' : 's'}` : '' },
   card(p, o) {
     o = o || {}; const a = p.author, tmp = String(p.id).startsWith('tmp');
     const who = `<button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${tmp ? 'posting…' : this.ago(p.createdAt)}${p.edited ? ' · edited' : ''}</i></span></button>`;
     let shared = '';
     if (p.shared) shared = p.shared.deleted ? `<div class="gshared gone">This post is no longer available.</div>` : `<div class="gshared" onclick="GIST.nav('post','${p.shared.id}')"><div class="gsh"><b>${esc(p.shared.author.displayName)}${this.vb(p.shared.author)}</b><i>${p.shared.author.username ? '@' + esc(p.shared.author.username) : ''} · ${this.ago(p.shared.createdAt)}</i></div>${p.shared.text ? `<div class="gtx">${this.txt(p.shared.text)}</div>` : ''}${this.imgs(p.shared)}${this.vid(p.shared)}${this.matchcard(p.shared.match, p.shared.id)}${this.electioncard(p.shared.election, p.shared.id)}${this.gamecard(p.shared.game)}${this.songcard(p.shared.song)}</div>`;
-    const em = p.myRx ? RXE[p.myRx] : '🤍';
+    const em = p.myRx ? RXE[p.myRx] : '';
+    // media comes right under the header, edge to edge — text moves below the action row, Instagram-style
+    const media = `${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}`;
+    const caption = p.text ? `<div class="gtx"><b>${esc(a.displayName)}</b> ${this.txt(p.text)}</div>` : '';
+    const vc = (!o.detail && p.comments) ? `<button class="gcmlk" onclick="GIST.nav('post','${p.id}')">View ${p.comments === 1 ? 'the' : 'all ' + p.comments} comment${p.comments === 1 ? '' : 's'}</button>` : '';
     return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
-      ${p.text ? `<div class="gtx">${this.txt(p.text)}</div>` : ''}${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}
+      ${media}
+      <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em ? em : '<i class="fa-regular fa-heart"></i>'}</span></button>
+      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}" aria-label="Comment"><span><i class="fa-regular fa-comment"></i></span></button>
+      <button class="sh" onclick="GIST.shareSheet('${p.id}')" aria-label="Share"><span><i class="fa-regular fa-paper-plane"></i></span></button></div>
       <div class="grs">${this.rxSummary(p)}</div>
-      <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React"><span>${em}</span><em>${p.likes || ''}</em></button>
-      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}"><span><i class="fa-solid fa-comment"></i></span><em>${p.comments || ''}</em></button>
-      <button class="sh" onclick="GIST.shareSheet('${p.id}')"><span><i class="fa-solid fa-retweet"></i></span><em>${p.shares || ''}</em></button></div></article>`
+      ${caption}${vc}
+      </article>`
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
   /* ---------- feed ---------- */
@@ -166,8 +172,9 @@ const GIST = {
   sync(id) {
     const p = this.cache.get(id); if (!p) return;
     document.querySelectorAll(`.gp[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('.lk'); l.classList.toggle('on', !!p.myRx); l.querySelector('span').textContent = p.myRx ? RXE[p.myRx] : '🤍'; l.querySelector('em').textContent = p.likes || '';
-      c.querySelector('.grs').innerHTML = this.rxSummary(p); c.querySelector('.cm em').textContent = p.comments || ''; c.querySelector('.sh em').textContent = p.shares || '';
+      const l = c.querySelector('.lk'); l.classList.toggle('on', !!p.myRx); l.querySelector('span').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-regular fa-heart"></i>';
+      c.querySelector('.grs').innerHTML = this.rxSummary(p);
+      const vc = c.querySelector('.gcmlk'); if (vc) vc.textContent = 'View ' + (p.comments === 1 ? 'the' : 'all ' + p.comments) + ' comment' + (p.comments === 1 ? '' : 's');
       const pl = c.querySelector('.gpoll'); if (pl) pl.outerHTML = this.pollHtml(p)
     }); if (typeof RL !== 'undefined') RL.sync(id)
   },

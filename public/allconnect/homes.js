@@ -32,7 +32,7 @@ const HOMES = {
     const target = document.getElementById('homesList'), d = this.data;
     if (!target || !d) return;
     const own = d.properties || [], active = S.activePropertyId, rows = [];
-    if (this.errorMessage) rows.push(`<div class="home-error" role="alert"><b>Home transaction failed</b><p>${this.esc(this.errorMessage)}</p><button onclick="HOMES.load()">Refresh homes</button></div>`);
+    if (this.errorMessage) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Couldn't complete that</b><p>${this.esc(this.errorMessage)}</p></div><button onclick="HOMES.load()">Try again</button></div>`);
     rows.push(`<div class="home-card"><div class="home-emoji">🛏️</div><div class="home-copy"><b>Starter Room</b><p>Your original AllConnect room and furniture are preserved.</p><small>Always available · Existing furniture</small></div><div class="home-actions"><button class="${!active ? 'secondary' : ''}" onclick="HOMES.enter('')">${!active ? 'Current home' : 'Enter'}</button></div></div>`);
     for (const h of d.catalogue || []) {
       const p = own.find(x => x.type === h.id && !(x.tenure === 'rent' && x.leaseExpiresAt && new Date(x.leaseExpiresAt) <= new Date()));
