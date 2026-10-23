@@ -1,4 +1,4 @@
-// Pet Answer mode. The built-in Pet Brain always works without external keys; OpenAI is optional, and Gemini is legacy/opt-in.
+// Pet Answer mode. The built-in Pet Brain always works without external keys; Gemini is the preferred optional provider.
 // Provider keys stay server-side. Player input remains untrusted and all spoken replies are sanitized.
 'use strict';
 
@@ -19,11 +19,11 @@ let doFetch = (...args) => fetch(...args);
 const setFetch = (fn) => { doFetch = fn; };
 
 function provider() {
-  const requested = String(process.env.PET_AI_PROVIDER || 'auto').trim().toLowerCase();
+  const requested = String(process.env.PET_AI_PROVIDER || 'gemini').trim().toLowerCase();
   if (requested === 'local' || requested === 'rules') return 'local';
   if (requested === 'gemini') return keyInfo().key ? 'gemini' : 'local';
   if (requested === 'openai') return openAIKeyInfo().key ? 'openai' : 'local';
-  return openAIKeyInfo().key ? 'openai' : 'local';
+  return keyInfo().key ? 'gemini' : (openAIKeyInfo().key ? 'openai' : 'local');
 }
 function modelName() {
   const p = provider();
@@ -196,7 +196,14 @@ async function askGemini({ mode, text, audio, pet, history, ctx }) {
 }
 async function ask(input) {
   const p = provider();
-  if (p === 'gemini') return askGemini(input);
+  if (p === 'gemini') {
+    try { return await askGemini(input); }
+    catch (e) {
+      if (input.audio || input.mode === 'repeat' || e?.status === 429 || e?.status === 503) throw e;
+      console.error('[pet-ai] Gemini failed; using built-in Pet Brain', e.status || 'network');
+      return { ...localAnswer(input), fallback: true };
+    }
+  }
   if (p === 'openai') {
     try { return await askOpenAI(input); }
     catch (e) {

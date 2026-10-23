@@ -1,5 +1,6 @@
 // Additional homes reuse the existing AllConnect account, shared wallet and furniture placement rules.
 const express = require('express');
+const { randomUUID } = require('crypto');
 const User = require('../models/User');
 const ensureAuth = require('../middleware/auth');
 const F = require('../utils/furniture');
@@ -80,7 +81,9 @@ router.post('/acquire', async (req, res, next) => {
 
     res.json({ ac: publicAC(u.ac), property: publicHome(property) });
   } catch (e) {
-    next(e);
+    const ref = randomUUID().slice(0, 12);
+    console.error('[home-acquire]', ref, { user: String(req.user?.id || ''), type: String(req.body?.type || ''), name: e?.name, code: e?.code, message: e?.message });
+    return res.status(500).json({ message: 'This home action hit an unexpected server problem. Please try again.', reference: ref });
   }
 });
 // Expand a home you own: more floor to furnish. One conditional update debits the cash and raises the level together.

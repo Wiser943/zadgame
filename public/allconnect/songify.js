@@ -11,12 +11,16 @@ const SONGIFY = {
   load(n) { try { return JSON.parse(localStorage.getItem(this.key(n)) || '[]').slice(0, n === 'recent' ? 12 : 200); } catch { return []; } },
   save(n, v) { try { localStorage.setItem(this.key(n), JSON.stringify(v)); } catch {} },
   lst(name) { return name === 'favs' ? this.favs : name === 'recent' ? this.recent : this.results; },
-  remember(song) { this.recent = [song, ...this.recent.filter((s) => s.streamUrl !== song.streamUrl)].slice(0, 12); this.save('recent', this.recent); },
+  remember(song) {
+    this.recent = [song, ...this.recent.filter((s) => s.streamUrl !== song.streamUrl)].slice(0, 12); this.save('recent', this.recent);
+    if (window.ACFeatures && NET.user) ACFeatures.create('song.recent', song, { key: song.streamUrl || `${song.title}|${song.artist}`, title: song.title }).catch(() => {});
+  },
   isFav(song) { return !!song && this.favs.some((s) => s.streamUrl === song.streamUrl); },
   toggleFav(song) {
     if (!song) return;
     this.favs = this.isFav(song) ? this.favs.filter((s) => s.streamUrl !== song.streamUrl) : [song, ...this.favs];
     this.save('favs', this.favs);
+    if (window.ACFeatures && NET.user && this.isFav(song)) ACFeatures.create('song.favorite', song, { key: song.streamUrl || `${song.title}|${song.artist}`, title: song.title }).catch(() => {});
     this.paint(); this.paintResults();
   },
   favAt(name, i) { this.toggleFav(this.lst(name)[i]); },
@@ -101,6 +105,8 @@ const SONGIFY = {
   /* ----- screen ----- */
   open() {
     this.init(); this.favs = this.load('favs'); this.recent = this.load('recent');
+    if (window.ACFeatures && NET.user) ACFeatures.list('song.favorite').then(r => { const remote = (r.features || []).map(x => x.payload).filter(s => s && s.streamUrl); this.favs = [...remote, ...this.favs.filter(s => !remote.some(x => x.streamUrl === s.streamUrl))].slice(0, 200); this.save('favs', this.favs); this.paintResults(); }).catch(() => {});
+    if (window.ACFeatures && NET.user) ACFeatures.list('song.recent').then(r => { const remote = (r.features || []).map(x => x.payload).filter(s => s && s.streamUrl); this.recent = [...remote, ...this.recent.filter(s => !remote.some(x => x.streamUrl === s.streamUrl))].slice(0, 12); this.save('recent', this.recent); this.paintResults(); }).catch(() => {});
     document.querySelector('.screen')?.classList.add('light');
     PH.view = this.view;
     PH.shell('Songify', 'SONGIFY.close()', '<div class="sg-wrap"><div class="sg-body" id="sg-body"></div><div id="sg-mini"></div><nav class="sg-nav" id="sg-nav"></nav></div>');
