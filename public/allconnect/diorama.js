@@ -31,7 +31,7 @@
 
   /* ---------- the model ---------- */
   function buildWorld(scene) {
-    const mats = {}, anim = { cars: [], boats: [], plane: null, flags: [] };
+    const mats = {}, anim = { cars: [], boats: [], walkers: [], plane: null, flags: [] };
     // Phong instead of flat Lambert shading: the same change that makes the room avatars read as smooth instead
     // of blocky (see room3d.js's MSkin) — a soft specular highlight on every surface instead of flat color.
     const M = c => mats[c] || (mats[c] = new THREE.MeshPhongMaterial({ color: c, shininess: 18, specular: 0x334455 }));
@@ -136,6 +136,18 @@
     const boat = (x, z, c, ph) => { const g = new THREE.Group(); g.position.set(x, .25, z); box(2.2, .5, .9, c, 0, 0, 0, g); box(.8, .6, .7, '#ffffff', -.2, .5, 0, g); put(new THREE.ConeGeometry(.5, .9, 4), M(c), 1.45, .25, 0, g).rotation.z = -Math.PI / 2; scene.add(g); anim.boats.push({ g, ph, x, z }) };
     boat(-6, 9, '#e8505b', 0); boat(14, 6.5, '#16a39a', 2); boat(2, 32, '#f5c518', 4); boat(-24, 12, '#7c5cd6', 1);
 
+    // Small pedestrians make the city read as a place with routines rather than a
+    // collection of buildings. They follow sidewalks and subtly swing their legs.
+    const walker = (x, z, axis, from, to, speed, off, c) => {
+      const g = new THREE.Group();
+      box(.22, .48, .16, c, 0, .1, 0, g); put(new THREE.SphereGeometry(.13, 10, 8), M('#b87955'), 0, .72, 0, g);
+      const l1 = box(.07, .32, .07, '#263044', -.07, -.22, 0, g), l2 = box(.07, .32, .07, '#263044', .07, -.22, 0, g);
+      scene.add(g); anim.walkers.push({ g, l1, l2, axis, fixed: axis === 'x' ? z : x, from, to, speed, off });
+    };
+    walker(-26, -6.9, 'x', -28, -8, 1.2, .1, '#e8505b'); walker(-8, -5.4, 'x', -8, 11, 1.05, .5, '#16a39a');
+    walker(-1.35, -1, 'z', -4, 13, .9, .2, '#f5c518'); walker(-2.65, 13, 'z', 13, -2, 1.15, .7, '#7c5cd6');
+    walker(11, 16.4, 'x', 8, 22, .8, .4, '#e8505b'); walker(-10, 18.4, 'x', -13, -2, .75, .8, '#2f86d6');
+
     return anim;
   }
 
@@ -217,7 +229,8 @@
       const a = this.anim, T = this.time;
       if (a.plane) { const p = ((T + 2) % 9) / 9, x = -29 + p * 24; a.plane.position.set(x, 1.6 + Math.max(0, p - .5) * 14, -17.5); a.plane.rotation.z = Math.max(0, p - .5) * .8; a.plane.rotation.y = 0 }
       a.cars.forEach(o => { const L = Math.abs(o.to - o.from), p = ((T * o.speed / L + o.off) % 1), v = o.from + (o.to - o.from) * p; if (o.axis === 'z') { o.g.position.set(o.fixed, 1.3, v); o.g.rotation.y = o.to > o.from ? Math.PI / 2 : -Math.PI / 2 } else { o.g.position.set(v, 1.3, o.fixed); o.g.rotation.y = o.to > o.from ? 0 : Math.PI } });
-      a.boats.forEach(o => { o.g.position.y = .25 + Math.sin(T * 1.3 + o.ph) * .08; o.g.rotation.z = Math.sin(T * 1.1 + o.ph) * .05; o.g.position.x = o.x + Math.sin(T * .2 + o.ph) * 3 });
+      a.walkers.forEach(o => { const L = Math.abs(o.to - o.from), p = ((T * o.speed / L + o.off) % 1), v = o.from + (o.to - o.from) * p, swing = Math.sin(T * 7 + o.off * 9) * .18; if (o.axis === 'z') { o.g.position.set(o.fixed, 1.3, v); o.g.rotation.y = o.to > o.from ? 0 : Math.PI } else { o.g.position.set(v, 1.3, o.fixed); o.g.rotation.y = o.to > o.from ? Math.PI / 2 : -Math.PI / 2 } o.l1.rotation.x = swing; o.l2.rotation.x = -swing; });
+      a.boats.forEach(o => { o.g.position.y = .25 + Math.sin(T * 1.3 + o.ph) * .08; o.g.rotation.z = Math.sin(T * 1.1 + o.ph) * .05; o.g.position.x = o.x + Math.sin(T * .2 + o.ph) * 3; o.g.rotation.y = Math.sin(T * .16 + o.ph) * .08 });
     },
     render() {
       const c = this.cur, sp = Math.sin(c.pol);

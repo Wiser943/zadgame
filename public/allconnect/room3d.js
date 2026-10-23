@@ -29,9 +29,18 @@ window.ROOM3D = {
     this.sun = new THREE.DirectionalLight(0xfff0d0, 0.5); this.sun.position.set(6, 12, 8); sc.add(this.sun);
     // ground + slab
     this.groundM = this.cyl(10, 0.3, 0x93a05a, 0, -0.45, 0, null, 48); this.ground = this.groundM.material; this.slab = this.box(6.5, 0.3, 6.5, 0xc9a56b, 0, -0.15, 0);
-    // checker floor
-    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.fillStyle = '#a8693a'; g.fillRect(0, 0, 128, 128); g.fillStyle = '#c58a52'; g.fillRect(0, 0, 64, 64); g.fillRect(64, 64, 64, 64);
-    const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(3, 3); tx.anisotropy = 8;
+    // Consistent warm wood floor: the old checkerboard texture made the base floor
+    // visibly clash with the interior model's solid floor sections.
+    const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+    g.fillStyle = '#b9824d'; g.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 256; y += 42) {
+      g.fillStyle = y % 84 ? '#c58d56' : '#b77b48'; g.fillRect(0, y + 1, 256, 40);
+      g.strokeStyle = 'rgba(88,48,24,.22)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, y + 40); g.lineTo(256, y + 40); g.stroke();
+      const offset = (y / 42) % 2 ? 38 : 0;
+      for (let x = offset; x < 256; x += 86) { g.strokeStyle = 'rgba(88,48,24,.18)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y + 2); g.lineTo(x, y + 39); g.stroke(); }
+      g.strokeStyle = 'rgba(255,224,176,.14)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, y + 8); g.lineTo(256, y + 8); g.stroke();
+    }
+    const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(2, 2); tx.anisotropy = 8;
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshLambertMaterial({ map: tx })); this.floor.rotation.x = -Math.PI / 2; sc.add(this.floor);
     // four walls (the ones facing the camera fade away)
     const W = (w, h, d, x, z, out) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: S.paint, transparent: true })); m.position.set(x, h / 2, z); sc.add(m); this.walls.push({ m, out }); return m };

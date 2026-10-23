@@ -145,10 +145,13 @@
         if (room.shellG) room.scene.remove(room.shellG);
         room.R.localClippingEnabled = true;
         const m = L.model, obj = THREE.SkeletonUtils.clone(gl.scene), plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), m.cutY), walls = [];
-        const COL = { mat19: '#cdb48a', mat17: '#53707e', mat21: '#f3efe6' };   // floor, bathroom/kitchen tiles, trim and frames
+        const COL = { mat19: '#b9824d', mat17: '#b9824d', mat21: '#f3efe6' };   // unified wood floor, bathroom/kitchen floor, trim and frames
         obj.traverse(o => {
           if (!o.isMesh) return; const src = o.material, mat = new THREE.MeshLambertMaterial({ color: src.color.clone(), side: THREE.DoubleSide, clippingPlanes: [plane] });
-          if (src.name === 'mat18') { mat.color.set((typeof S !== 'undefined' && S.paint) || '#e6d9c0'); walls.push(mat) } else if (COL[src.name]) mat.color.set(COL[src.name]);
+          if (src.name === 'mat18') { mat.color.set((typeof S !== 'undefined' && S.paint) || '#e6d9c0'); walls.push(mat) } else if (COL[src.name]) {
+            mat.color.set(COL[src.name]);
+            if ((src.name === 'mat19' || src.name === 'mat17') && this.floor && this.floor.material.map) { mat.map = this.floor.material.map.clone(); mat.color.set('#ffffff'); mat.needsUpdate = true; }
+          }
           o.material = mat; o.frustumCulled = false
         });
         const g = new THREE.Group(); g.add(obj); g.scale.setScalar(m.k); g.position.set(m.tx, m.ty, m.tz);

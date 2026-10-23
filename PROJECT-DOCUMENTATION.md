@@ -1,3 +1,76 @@
+# AllConnect Project Documentation
+
+This consolidated document combines the project roadmap, implementation plan, feature notes, research, and outstanding outcomes.
+
+---
+
+## Roadmap Economy And Life Sim
+
+# AllConnect Life-Sim Expansion Roadmap
+
+This build includes the configurable dark-mode control. The following proposed systems are the agreed product scope; they should be shipped incrementally with server-authoritative transactions and tests, not activated as untested placeholder endpoints.
+
+## Shared foundations
+- Keep city events server-authoritative and deterministic per event window.
+- All money-changing actions must use atomic conditional updates and idempotency keys.
+- Every recurring charge must show its amount, due date, reason and transaction record before/after processing.
+- Preserve the existing map renderer and route data unless a feature explicitly requires a map-layer addition.
+- Preserve AllConnect brand accents: blue `#075BFF`, gold `#FFC400`, purple `#9C27F5`, orange `#FF9D00`; use these as accents while neutral dark surfaces follow the user's darkness setting.
+
+## Planned systems
+1. Property lifecycle: maintenance, condition, weather damage, insurance limits, deductibles and claim history.
+2. Living economy: event-based inflation, price index, variable utility tariffs and transparent bill breakdowns.
+3. Vehicle ownership: servicing, fuel, insurance, fines, parking, condition and resale value.
+4. Business operations: demand, operating expenses, staff wages, reputation, promotions and competition.
+5. Player marketplace: listings, escrow-like transaction state, fees, receipts, anti-duplicate sale checks and dispute reporting.
+6. Social reputation: events, parties, invitations, venue access and community achievements.
+7. Developer ecosystem: project dashboard, approved app directory, verified analytics, monetization eligibility and payout history.
+8. City events: power/water outages, flooded road closures, construction, traffic and emergency services.
+9. Banking: savings, loans, repayment schedules and simulated credit scoring.
+10. Progression: careers, skills, achievements, quests and separate leaderboards.
+
+## Rollout order
+Property + weather and economy first; then vehicle/business expenses; then marketplace; then social reputation; then developer marketplace; finally banking and progression polish. Each phase must include migration review, route authorization tests, atomic transaction tests, and browser/mobile smoke tests.
+
+---
+
+## Todo
+
+# AllConnect implementation outcomes
+
+## Cross-app saved feature layer
+
+- Add authenticated persistence for Songify saved searches, playlists, collaborative queues, and play-next items.
+- Add authenticated persistence for P-Gist drafts and scheduled posts without changing the existing feed, follow, upload, or recovery behavior.
+- Add authenticated persistence for Pet care reminders and room activities.
+- Add authenticated persistence for saved city places, guided routes, and city events.
+- Add authenticated persistence for chat/privacy preferences and game invite/rematch metadata.
+- Keep records scoped to their owner and only expose collaborator-visible playlist/queue data.
+
+## Gemini Pet provider and fallback
+
+- Prefer Gemini when `PET_AI_PROVIDER=gemini` or when the default provider mode is used with a Gemini key.
+- Keep provider credentials server-side.
+- Typed Pet answers must fall back to the built-in Pet Brain if Gemini fails.
+- Preserve the existing safe input/reply sanitisation and voice-provider behavior.
+
+## Homes reliability
+
+- Preserve Mainland Room rent at ₦25,000 for 7 days and owned-home pricing from ₦350,000 upward.
+- Reject insufficient balance, duplicate owned homes, and duplicate active rentals with specific safe messages.
+- Return a correlation id for unexpected acquisition failures and log the detailed server-side error without exposing secrets.
+- Preserve atomic debit-and-create behavior.
+
+## Validation and delivery
+
+- Install dependencies and run syntax checks plus the project test suite.
+- Add focused tests for the new feature persistence validation, Gemini provider selection/fallback, and home acquisition error classification.
+- Keep existing GameHub replay, rematch, tournament, spectator, P-Gist follow, Songify official playback, Pet, chat, and venue behavior intact.
+
+---
+
+## Connected
+
 ---
 name: connected
 description: Unified project docs for AllConnect + GameHub (allconnect): setup/run/deploy, architecture, full feature reference, and changelog. Supersedes README.md, ALLCONNECT.md, CHANGES.md, PUSH_NOTIFICATIONS.md (kept as one file so nothing drifts out of sync).
@@ -611,3 +684,55 @@ Phone -> Pet. Files: `public/allconnect/pet.js`, `routes/acpet.js` (mounted at `
 
 ## Voice notes: hold the mic (WhatsApp style)
 `public/allconnect/voice.js`. The round button next to a chat box is a microphone while the box is empty and turns into **send** as soon as you type (pure CSS, `:placeholder-shown`). **Press and hold** the mic: the box becomes a live sound wave with a timer. Release to send, **slide left** to cancel, **slide up** to lock (hands free, then tap send or the bin). A quick tap only shows a hint. Private chats, group chats and the Pet use it: give the button class `sbtn vnmic` and `data-vn="name"`, place it right after the `<input>` inside a `.cin` row, and register `VN.cfg.name = { send(), voice(v) }` (or `blob(blob, seconds)` for the raw recording, plus optional `canStart()`, `onStart()`, `onEnd()`, `max`). The older tap-to-record bar (`VN.record`) is still used for keyboard users.
+
+---
+
+## Gemini Api Research
+
+# Gemini API findings used for Pet Answer mode
+
+- Google currently lists `gemini-3.5-flash-lite` as a stable model and says it is low-latency/cost-effective; its model card confirms structured outputs support. Source: https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite (last updated 2026-07-30).
+- Google says new projects should use current Flash models, including `gemini-3.5-flash-lite` or `gemini-3.8-flash`; 2.5 models are access-limited to users who actively used them previously. Source: https://ai.google.dev/gemini-api/docs/models
+- Google troubleshooting distinguishes invalid/restricted keys, quota/rate limits, request syntax, model availability, and advises not retrying permanent 400/402/403 errors. Source: https://ai.google.dev/gemini-api/docs/troubleshooting
+- Diagnostic limitation: this Sandbox process has no `GEMINI_*` or Google AI environment variables and is not the deployed host, so no real request can validate the user's hosted key. Never print or request the key in chat; use sanitized hosting logs/status only.
+
+---
+
+## Plan
+
+# AllConnect feature rollout plan
+
+## Implementation approach
+
+Reuse the existing AllConnect Node/Express + MongoDB architecture. Preserve the already-working P-Gist feed/follows/drafts, Songify official-provider playback, Pet care/mini-games, Homes/furniture, Lagos map/venues, GameHub matches/tournaments/replays/spectators, and chat/groups/voice foundations. Add a small authenticated feature persistence layer for the missing cross-app capabilities: playlists and collaborative queues, saved searches, scheduled/draft content, care reminders and room activities, saved places and guided routes, city events, game invites/rematch metadata, and social privacy preferences. Keep all data server-authoritative and scoped to the signed-in user or explicit collaborators.
+
+Gemini is the preferred optional external Pet provider. Typed answers fall back to the built-in Pet Brain if Gemini is unavailable; voice transcription remains provider-dependent. No API key is stored in the client.
+
+Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned homes start at ₦350,000. Acquisition error responses will distinguish authentication, insufficient funds, duplicate active home, and unexpected database failures while logging a safe correlation id server-side.
+
+## Project structure
+
+- `models/ACFeature.js`: flexible, indexed persistence for cross-app feature records.
+- `routes/acfeatures.js`: authenticated APIs grouped by feature domain.
+- `routes/acproperties.js`: server-authoritative home acquisition and diagnostics.
+- `utils/acpetai.js`: Gemini-first provider selection and built-in typed-answer fallback.
+- `public/allconnect/feature-pack.js`: small client API helper for existing and future phone-app screens.
+- `server.js`: route registration and static feature helper loading.
+- `plan.md` and `TODO.md`: approved implementation record and acceptance outcomes.
+
+## Design direction
+
+- **Possible styles:** Lagos civic-tech utility (0.07); warm playful mobile life-sim (0.06); dark music-social studio (0.05).
+- **Chosen style:** warm playful mobile life-sim.
+- **Design movement:** soft skeuomorphic phone UI with Lagos street-life energy and familiar app cards.
+- **Core principles:** useful first, warm personality, safe server-authoritative actions, small progressive surfaces.
+- **Color philosophy:** keep the existing warm sand/gold/coral palette; use teal for trust and indigo for saved/planned items.
+- **Layout paradigm:** app-specific screens inside the existing phone shell, with compact sheets for secondary actions.
+- **Signature elements:** rounded pill controls, Lagos-flavoured microcopy, and live result cards.
+- **Interaction philosophy:** every save/action gives a reversible confirmation and refreshable state.
+- **Animation:** short, purposeful transitions only; respect reduced-motion preferences already supported by the app.
+- **Typography:** preserve the existing system and bundled font stack.
+- **Brand essence:** one connected Lagos life with games, music, friends, and a home; playful, social, practical.
+- **Brand voice:** direct, warm, lightly local. Example: “Save it for later.” “Your padi queue is ready.”
+- **Wordmark/logo:** preserve the existing AllConnect mark.
+- **Signature color:** the existing warm gold used for the shared wallet and home UI.
