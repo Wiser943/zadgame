@@ -723,6 +723,7 @@ html[data-theme="dark"] .lgtoggle.on{background:#22b573;color:#fff}
 .hbanner>div{flex:1;min-width:0}.hbanner b{display:block;font-size:14px}.hbanner small{display:block;color:#4b5270;font-size:12px;line-height:1.4;margin-top:1px}.hbanner small i{font-style:normal;font-weight:700}
 .hprot{display:flex;gap:11px;align-items:flex-start;background:#e8efff;color:#0649CC;border-radius:16px;padding:12px 13px;margin:8px 0;font-size:18px}.hprot b{display:block;font-size:13px}.hprot small{display:block;font-size:12px;line-height:1.4;color:#2f6b4c;margin-top:2px}
 .hmore{margin-top:14px;text-align:center}.hmore button{border:0;background:#eef0f7;border-radius:99px;padding:10px 18px;font:700 13px inherit;color:var(--ink);cursor:pointer}
+.hquick{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:14px 0 2px}.hquick button{border:1px solid #e5e8f0;background:#fff;border-radius:14px;padding:9px 4px 8px;color:var(--ink);font:800 17px/1 inherit;cursor:pointer}.hquick button span{display:block;margin-top:5px;font:700 10.5px inherit;color:var(--mut)}.hquick button:active{transform:translateY(1px);background:#f3f4f9}
 .hnow{background:#f3f4f9;border-radius:16px;padding:11px 13px;margin-bottom:6px}.hnow b{display:block;font-size:13.5px}.hnow small{color:var(--mut);font-size:12px}
 .hpath{display:flex;gap:2px;margin:6px 0 4px;overflow-x:auto;padding:4px 0 6px}
 .hnode{flex:1;min-width:54px;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;text-align:center}

@@ -44,6 +44,13 @@ const HUB = {
     el.style.display = ''; const n = m.todo || 0;
     const dot = el.querySelector('.lgdot'); if (dot) dot.remove();
     if (n) el.insertAdjacentHTML('beforeend', `<em class="lgdot">${n}</em>`);
+    const sub = document.getElementById('q4sub');
+    if (sub) {
+      const first = Array.isArray(m.tasks) && m.tasks[0];
+      const hint = !m.hub?.done ? 'Finish your welcome setup' : m.parcel?.claimable ? 'Your welcome parcel is ready' : first?.done ? 'A mission reward is ready to claim' : first?.title || (m.todo ? `${m.todo} things ready for you` : 'See what is happening in the city');
+      sub.textContent = hint;
+      sub.setAttribute('aria-label', hint);
+    }
   },
   startTicker() {
     const sub = document.getElementById('q4sub'); if (!sub) return;
@@ -65,11 +72,15 @@ const HUB = {
     if (m.parcel.claimable) h.push(UI.row({ ic: UI.ic('gift', '#f59e0b', 38), title: `Welcome parcel, day ${m.parcel.day} of ${m.parcel.total}`, sub: 'Free ₦ every day in your first week.', right: `<button class="lgbtn" onclick="event.stopPropagation();HUB.parcel(this)">+${this.fmt(m.parcel.amount)}</button>` }));
     if (ev && ev.bills && ev.bills.count) h.push(UI.row({ ic: UI.ic('bolt', '#e5484d', 38), title: `${ev.bills.count} bill${ev.bills.count > 1 ? 's' : ''} to pay`, sub: ev.bills.overdue ? 'Some are late. Pay to avoid a power cut.' : 'Pay before Sunday night.', right: '<span class="lgbtn">Pay</span>', go: "SHEET.close();LAGOS.open('bills')" }));
     if (ev && ev.daily && ev.daily.claimable) h.push(UI.row({ ic: UI.ic('calendar-check', '#22b573', 38), title: 'Daily bonus is ready', sub: `Day ${ev.daily.streak}. Keep your streak going.`, right: `<span class="lgbtn">Open</span>`, go: "SHEET.close();LAGOS.open('today')" }));
-    const tasks = m.tasks.slice(0, 4);
+    if (ev && ev.title) h.push(UI.row({ ic: UI.ic('cloud-sun', '#0ea5e9', 38), title: `Happening now: ${this.esc(ev.title)}`, sub: this.esc(ev.pidgin || ev.text || 'The city is changing around you.'), right: '<span class="lgbtn">See</span>', go: "SHEET.close();LAGOS.open('today')" }));
+    const tasks = (m.tasks || []).slice(0, 4);
     h.push(`<h4>Your next steps</h4>`);
     h.push(tasks.length ? tasks.map(t => this.missionRow(t)).join('') : `<p class="empty">${NG.say('All beginner missions done. You are a real Naija person now!', 'All beginner missions don finish. You don turn correct Naija person!')}</p>`);
+    const remaining = Math.max(0, Number(m.missions?.total || 0) - Number(m.missions?.done || 0));
+    if (remaining > tasks.length) h.push(`<button class="hlink c" onclick="HUB.view('missions')">See all ${remaining} remaining missions ›</button>`);
     h.push(`<div class="hbanner" style="--c:${th.color}">${UI.ic(th.fa, th.color, 40)}<div><b>${this.esc(th.title)}</b><small>${this.esc(th.text)} <i>Goal: ${this.esc(th.goal)}</i></small></div><button class="lgbtn" onclick="HUB.themeGo('${th.go}')">Go</button></div>`);
     if (m.protection.active) h.push(`<div class="hprot"><span class="fa-solid fa-shield-heart"></span><div><b>New-player protection: ${m.protection.daysLeft} day${m.protection.daysLeft === 1 ? '' : 's'} left</b><small>Transfers up to ${this.fmt(m.protection.transferMax)}, investments up to ${this.fmt(m.protection.investMax)}, no ad booking, and a free Beginner queue in GameHub.</small></div></div>`);
+    h.push(`<div class="hquick" aria-label="Jump back into an app"><button onclick="SHEET.close();PET.open()">🐾<span>Pet</span></button><button onclick="SHEET.close();SONGIFY.open()">🎧<span>Songify</span></button><button onclick="SHEET.close();nav('phone');setTimeout(()=>PH.open('gist'),0)">📣<span>P-Gist</span></button><button onclick="SHEET.close();openHub()">🎮<span>GameHub</span></button></div>`);
     h.push(`<div class="hmore"><button onclick="HUB.menu()"><span class="fa-solid fa-grid-2"></span> More in the city</button></div>`);
     return h.join('');
   },
