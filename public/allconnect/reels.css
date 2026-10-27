@@ -30,11 +30,13 @@
 .rl-fol{border:1.5px solid #fff;background:transparent;color:#fff;border-radius:99px;padding:6px 13px;font:800 12px 'Plus Jakarta Sans',system-ui,sans-serif;flex:none;text-shadow:none}.rl-fol.on{background:rgba(255,255,255,.22);border-color:transparent}
 .rl-cap{font:500 13.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;max-height:5.6em;overflow:hidden;word-break:break-word}.rl-cap a{color:#fff;font-weight:800;text-decoration:none}
 .rl-views{font:600 11.5px system-ui;opacity:.8}
-.rl-act{position:absolute;right:8px;bottom:96px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.rl-act{position:absolute;right:8px;bottom:96px;display:flex;flex-direction:column;gap:10px;align-items:center}
 .rl-act button{border:0;background:none;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;padding:0;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 .rl-act button span{width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;font-size:20px}
-.rl-act button em{font:700 11.5px system-ui;font-style:normal}.rl-act .lk.on span i{color:#ff4d6d}
-.rl-bar{position:absolute;left:0;right:0;bottom:84px;height:3px;background:rgba(255,255,255,.2)}.rl-bar i{display:block;height:100%;width:0;background:#fff}
+.rl-act button em{font:700 11.5px system-ui;font-style:normal;min-height:12px}.rl-act .lk.on span i{color:#ff4d6d}.rl-act .rl-quick.on span{background:rgba(255,77,109,.22)}
+.rl-act .rl-more-btn{margin-top:3px}.rl-act .rl-more-btn span{width:40px;height:40px;font-size:17px}
+.rl-bar{position:absolute;left:0;right:0;bottom:84px;height:5px;background:rgba(255,255,255,.22);cursor:pointer;z-index:6;padding:1px 0}.rl-bar i{display:block;height:100%;width:0;background:#fff;border-radius:3px;pointer-events:none}
+.rl-card.loading::after{content:"";position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px;border:3px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rls .8s linear infinite;pointer-events:none;z-index:2}
 .rl-burst{position:absolute;inset:0;pointer-events:none}.rl-burst i{position:absolute;font-size:86px;color:#ff4d6d;transform:translate(-50%,-50%) scale(.3);opacity:0}.rl-burst i.go{animation:rlb .65s ease-out}
 @keyframes rlb{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}25%{transform:translate(-50%,-50%) scale(1.1);opacity:1}100%{transform:translate(-50%,-80%) scale(1);opacity:0}}
 .rl-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:30px 30px 90px;text-align:center;color:var(--ink)}.rl-empty>i{font-size:44px;color:var(--mut)}.rl-empty h3{margin:0;font:800 18px 'Plus Jakarta Sans',system-ui,sans-serif}.rl-empty p{margin:0;color:var(--mut);font:500 14px system-ui}.rl-empty .btn{width:auto;padding:12px 22px}

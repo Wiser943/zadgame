@@ -118,7 +118,8 @@ const GIST = {
     const left = q.ended ? 'Poll ended' : (() => { const ms = new Date(q.endsAt) - Date.now(), h = Math.ceil(ms / 3600000); return h >= 48 ? Math.ceil(h / 24) + ' days left' : h > 1 ? h + ' hours left' : 'Ending soon' })();
     return `<div class="gpoll" data-id="${p.id}">${q.options.map((o, i) => show ? `<div class="gpo res ${q.myVote === i ? 'mine' : ''}"><u style="width:${tot ? Math.round(o.votes / tot * 100) : 0}%"></u><span>${esc(o.text)}${q.myVote === i ? ' ✓' : ''}</span><b>${tot ? Math.round(o.votes / tot * 100) : 0}%</b></div>` : `<button class="gpo" onclick="GIST.vote('${p.id}',${i})"><span>${esc(o.text)}</span></button>`).join('')}<small>${tot} vote${tot === 1 ? '' : 's'} · ${left}</small></div>`
   },
-  rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '❤️'}</span>${p.likes} like${p.likes === 1 ? '' : 's'}` : '' },
+  fmtCount(n) { n = Number(n) || 0; return n >= 1e9 ? (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'b' : n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'm' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : String(n || '') },
+  rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span class="grx-summary" aria-label="Reactions">${ks.map(k => RXE[k]).join('') || '⚡'}</span>` : '' },
   card(p, o) {
     o = o || {}; const a = p.author, tmp = String(p.id).startsWith('tmp');
     const who = `<button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${tmp ? 'posting…' : this.ago(p.createdAt)}${p.edited ? ' · edited' : ''}</i></span></button>`;
@@ -135,12 +136,12 @@ const GIST = {
     const mine = a.id === this.uid(), fol = !mine && !tmp && !(a.isFollowing || (this.fol && this.fol.has(a.id)));
     const folBtn = fol ? `<button class="gfol" data-uid="${a.id}" onclick="GIST.quickFollow('${a.id}',this)">Follow</button>` : '';
     const nviews = Number(p.views || p.viewCount || 0), chip = (this.imgs(p) || this.vid(p, o.detail)) ? `<span class="gvchip"><i class="fa-regular fa-eye"></i> ${nviews > 999 ? (nviews / 1000).toFixed(1) + 'k' : nviews}</span>` : '';
-    const vc = (!o.detail && p.comments) ? `<button class="gcmlk" onclick="GIST.nav('post','${p.id}')">View ${p.comments === 1 ? 'the' : 'all ' + p.comments} comment${p.comments === 1 ? '' : 's'}</button>` : '';
+    const vc = '';
     return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${folBtn}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
       <div class="gmedia">${chip}${media}</div>
       ${caption}
-      <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React to post" aria-pressed="${!!p.myRx}"><span>${em ? em : '<i class="fa-solid fa-bolt" aria-hidden="true"></i>'}</span><b class="gnum">${p.likes || ''}</b></button>
-      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}" aria-label="${o.detail ? 'Write a comment' : 'View comments'}"><span><i class="fa-regular fa-comment" aria-hidden="true"></i></span><b class="gnum gcn">${p.comments || ''}</b></button>
+      <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React to post${p.likes ? ' · ' + this.fmtCount(p.likes) : ''}" aria-pressed="${!!p.myRx}"><span>${em ? em : '<i class="fa-solid fa-bolt" aria-hidden="true"></i>'}</span><b class="gnum">${this.fmtCount(p.likes)}</b></button>
+      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}" aria-label="${o.detail ? 'Write a comment' : 'View comments'}${p.comments ? ' · ' + this.fmtCount(p.comments) : ''}"><span><i class="fa-regular fa-comment" aria-hidden="true"></i></span><b class="gnum gcn">${this.fmtCount(p.comments)}</b></button>
       <button class="sh" onclick="GIST.shareSheet('${p.id}')" aria-label="Share post"><span><i class="fa-regular fa-paper-plane" aria-hidden="true"></i></span></button></div>
       <div class="grs">${this.rxSummary(p)}</div>
       ${vc}

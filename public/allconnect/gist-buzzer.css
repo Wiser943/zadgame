@@ -231,3 +231,37 @@
   :is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar .gprofile-tabs [role=tab]{font-size:11px;padding-left:3px;padding-right:3px}
   :is(html,html[data-theme]) #appview.pgist-social .gview-toggle button{width:28px;height:27px}
 }
+
+/* The compact rules above are shared for sizing, but their original palette
+   was dark-only. These final theme rules prevent dark surfaces from leaking
+   into Light mode and prevent white controls from leaking into Dark mode. */
+html[data-theme="light"] #appview.pgist-social,
+html[data-theme="light"] #appview.pgist-social .ahw,
+html[data-theme="light"] #appview.pgist-social .ahead,
+html[data-theme="light"] #appview.pgist-social .abody,
+html[data-theme="light"] #appview.pgist-social #gfeed,
+html[data-theme="light"] #appview.pgist-social #gtrend,
+html[data-theme="light"] #appview.pgist-social #gpeople{--pg-bg:#f7f8fb;--pg-surface:#fff;--pg-control:#f1f2f7;--pg-border:#e4e7ee;--pg-text:#161a21;--pg-muted:#697386;background:var(--pg-bg)!important;color:var(--pg-text)}
+html[data-theme="light"] #appview.pgist-social .gtease{background:#fff}
+html[data-theme="light"] #appview.pgist-social .gwhat,
+html[data-theme="light"] #appview.pgist-social .gphoto,
+html[data-theme="light"] #appview.pgist-social .gdiscover form,
+html[data-theme="light"] #appview.pgist-social .gprofile-toolbar .gview-toggle{background:var(--pg-control);color:var(--pg-text)}
+html[data-theme="light"] #appview.pgist-social .gkinds button,
+html[data-theme="light"] #appview.pgist-social .gsaved-link{background:#fff;color:var(--pg-muted);border-color:var(--pg-border)}
+html[data-theme="light"] #appview.pgist-social .gkinds button.on,
+html[data-theme="light"] #appview.pgist-social .gview-toggle button.on{background:var(--pg-accent);color:#12150a}
+html[data-theme="light"] #appview.pgist-social #gfeed .gp{background:#fff;border-bottom-color:var(--pg-border)}
+html[data-theme="light"] #appview.pgist-social .gph b,
+html[data-theme="light"] #appview.pgist-social .gact button{color:var(--pg-text)}
+html[data-theme="light"] #appview.pgist-social .gph i,
+html[data-theme="light"] #appview.pgist-social .gbody,
+html[data-theme="light"] #appview.pgist-social .gread{color:var(--pg-muted)}
+html[data-theme="light"] #appview.pgist-social .tkdock.gicons{background:#fff;border-top-color:var(--pg-border)}
+html[data-theme="light"] #appview.pgist-social .tkdock.gicons button{color:var(--pg-muted)}
+html[data-theme="light"] #appview.pgist-social .tkdock.gicons button.on{color:var(--pg-text)}
+html[data-theme="light"] #appview.pgist-social .gprofile-tile{background:#eef0f5}
+
+html[data-theme="dark"] #appview.pgist-social .ahw>.gtabs .gseg button.on{background:var(--pg-accent);color:#12150a}
+html[data-theme="dark"] #appview.pgist-social .gprofile-tile-text{color:var(--pg-text)}
+html[data-theme="dark"] #appview.pgist-social .gcover{filter:brightness(.78) saturate(.9)}

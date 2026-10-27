@@ -2,7 +2,7 @@
 const RL = {
   tab: 'foryou', L: { foryou: { p: [], more: false, ok: false }, following: { p: [], more: false, ok: false } }, i: 0, muted: true, obs: null, seen: new Set(), busy: false, start: '', tapT: 0, gen: 0,
   src(u) { return window.apiUrl ? window.apiUrl(u) : u },
-  fmt(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K' : String(n || '') },
+  fmt(n) { n = Number(n) || 0; return n >= 1e9 ? (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'b' : n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'm' : n >= 1e3 ? (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'k' : String(n || '') },
   dur(s) { s = Math.round(s || 0); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') },
   /* Mux streams HLS: native HLS where it works, otherwise hls.js; start with the previously working jsDelivr build. */
   hlsLib() { return this._hl || (this._hl = new Promise(resolve => {
@@ -159,7 +159,11 @@ const RL = {
       <button class="rl-snd" onclick="event.stopPropagation();RL.snd()" aria-label="Sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i></button>
       <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
       ${p.text ? `<div class="rl-cap">${GIST.txt(p.text)}</div>` : ''}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
-      <div class="rl-act"><button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
+      <div class="rl-act"><button class="rl-quick lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like${p.likes ? ' · ' + this.fmt(p.likes) : ''}"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes)}</em></button>
+      <button class="rl-quick" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments${p.comments ? ' · ' + this.fmt(p.comments) : ''}"><span><i class="fa-regular fa-comment"></i></span><em>${this.fmt(p.comments)}</em></button>
+      <button class="rl-quick" data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share${p.shares ? ' · ' + this.fmt(p.shares) : ''}"><span><i class="fa-regular fa-paper-plane"></i></span><em>${this.fmt(p.shares)}</em></button>
+      <button class="rl-quick" data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><span><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i></span><em></em></button>
+      <button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
       <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
       <button role="menuitem" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
       <button role="menuitem" data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><i class="fa-solid fa-share"></i><em>${this.fmt(p.shares) || 'Share'}</em></button>
@@ -188,7 +192,7 @@ const RL = {
   bind(f) {
     if (f._b) return; f._b = 1;
     f.addEventListener('click', e => {
-      const c = e.target.closest('.rl-card'); if (!c || e.target.closest('button,a,.rl-who')) return;
+      const c = e.target.closest('.rl-card'); if (!c || e.target.closest('button,a,.rl-who,.rl-bar')) return;
       const t = e.target.closest('[data-tag],[data-u]'); if (t) return;
       if (this.tapT) { clearTimeout(this.tapT); this.tapT = 0; this.dbl(c, e); return }
       this.tapT = setTimeout(() => { this.tapT = 0; this.toggle(c) }, 260)
@@ -203,6 +207,9 @@ const RL = {
       else if (e.key === 'ArrowUp') { e.preventDefault(); const n = f.querySelector(`.rl-card[data-i="${idx - 1}"]`); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
     });
     f.addEventListener('loadedmetadata', e => { const v = e.target; if (v.classList && v.classList.contains('rl-v')) v.classList.toggle('fit', v.videoWidth > v.videoHeight * 1.05) }, true);
+    f.addEventListener('waiting', e => { if (e.target.classList && e.target.classList.contains('rl-v')) e.target.closest('.rl-card')?.classList.add('loading') }, true);
+    f.addEventListener('playing', e => { if (e.target.classList && e.target.classList.contains('rl-v')) e.target.closest('.rl-card')?.classList.remove('loading') }, true);
+    f.addEventListener('click', e => { const bar = e.target.closest('.rl-bar'); if (bar) { e.stopPropagation(); this.seek(e) } });
     window.addEventListener('resize', () => this.fit())
   },
   observe() {
@@ -236,6 +243,7 @@ const RL = {
     try { fetch(this.src('/api/ac/gist/posts/' + w.id + '/watch'), { method: 'POST', keepalive: true, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body }).catch(() => { }) } catch (e) { }
   },
   toggle(c) { const v = c.querySelector('video'); if (v.paused) { v._go = 1; this.playReady(v) } else { v._go = 0; v.pause(); c.classList.add('paused') } },
+  seek(e) { const bar = e.target.closest('.rl-bar'), c = bar && e.target.closest('.rl-card'), v = c && c.querySelector('video'); if (!bar || !v || !v.duration) return; const r = bar.getBoundingClientRect(); v.currentTime = Math.max(0, Math.min(v.duration, (e.clientX - r.left) / r.width * v.duration)); if (v.paused && !c.classList.contains('paused')) this.playReady(v) },
   dbl(c, e) {
     const id = c.dataset.id, p = GIST.cache.get(id); if (p && !p.myRx) GIST.react(id, 'like');
     const b = c.querySelector('.rl-burst'), r = c.getBoundingClientRect(); b.innerHTML = `<i class="fa-solid fa-heart" style="left:${e.clientX - r.left}px;top:${e.clientY - r.top}px"></i>`; const h = b.firstChild; h.getBoundingClientRect(); h.classList.add('go'); setTimeout(() => { b.innerHTML = '' }, 700)
@@ -262,8 +270,8 @@ const RL = {
   sync(id) {
     const p = GIST.cache.get(id); if (!p) return;
     document.querySelectorAll(`.rl-card[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
-      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comments'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save Reel'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
+      c.querySelectorAll('[data-action="like"]').forEach(l => { l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'; l.querySelector('em').textContent = this.fmt(p.likes); l.setAttribute('aria-label', 'Like' + (p.likes ? ' · ' + this.fmt(p.likes) : '')) });
+      c.querySelectorAll('[data-action="comments"] em').forEach(e => { e.textContent = this.fmt(p.comments) }); c.querySelectorAll('[data-action="share"] em').forEach(e => { e.textContent = this.fmt(p.shares) }); c.querySelectorAll('[data-action="save"]').forEach(save => { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = ''; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' })
     })
   },
   follow(aid) {

@@ -2,7 +2,7 @@
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
 const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
-const GP_DEF={theme:'light',night:'off',darkness:100,saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm'};
+const GP_DEF={theme:'light',night:'off',saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,reducedMotion:false,highContrast:false,largeText:false,colorSafe:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm'};
 const GP={
   get(){let st={};try{st=JSON.parse(localStorage.getItem('ghPrefs')||'{}')}catch(e){}
     const o=Object.assign({},GP_DEF,st);if(window.PREFX){o.night=PREFX.night(st);o.saver=PREFX.saver(st)}return o},
@@ -23,14 +23,14 @@ Object.assign(PH,{
   /* segmented choice row (Off / On / Auto style) */
   seg(k,emo,title,desc,opts,cur,hint){return `<div class="segrow" data-seg="${k}"><div class="segt"><span class="sege">${emo}</span><b>${title}</b></div><p class="segd">${desc}</p>
     <div class="seg" role="radiogroup" aria-label="${title}">${opts.map(o=>`<button type="button" role="radio" aria-checked="${o[0]===cur}" class="${o[0]===cur?'on':''}" data-v="${o[0]}" onclick="PH.setSeg('${k}','${o[0]}')">${o[1]}</button>`).join('')}</div>${hint?`<p class="segh" id="segh-${k}">${hint}</p>`:`<p class="segh" id="segh-${k}"></p>`}</div>`},
-  nightHint(p){const m=window.PREFX&&PREFX.night(p||GP.get());return m==='auto'?`Auto: dark from 6:30 pm to 6:30 am, Naija time (${PREFX.nightNow(p)?'on':'off'} now).`:''},
+  nightHint(p){const m=window.PREFX&&PREFX.night(p||GP.get());return m==='auto'?`Auto: follows your device appearance setting (${PREFX.nightNow(p)?'dark':'light'} now).`:''},
   saverHint(p){const m=window.PREFX&&PREFX.saver(p||GP.get());if(m!=='auto')return m==='on'?'On: nothing loads in the background and music stays off.':'';const r=PREFX.saverReason();return `Auto: turns on when battery is low or network is slow (${PREFX.saverNow(p)?'on now'+(r?', '+r:''):'off now'}).`},
   paintDisplayHints(){const a=document.getElementById('segh-night'),b=document.getElementById('segh-saver');if(a)a.textContent=this.nightHint();if(b)b.textContent=this.saverHint()},
   setSeg(k,v){const val=k==='camAuto'?v==='true':v;GP.set(k,val);
     const row=document.querySelector(`.segrow[data-seg="${k}"]`);if(row)row.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
     const h=document.getElementById('segh-'+k);if(h)h.textContent=k==='night'?this.nightHint():k==='saver'?this.saverHint():(val?'On: the map camera swings round to follow the way you walk.':'');
     if(k==='saver'){if(window.BGM)BGM.sync();if(window.refreshMute)refreshMute();const now=PREFX.saverNow();now?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off'),window.warmUp&&warmUp(true))}
-    if(k==='night')toast(PREFX.nightNow()?'🌙 Night mode on':'☀️ Night mode off')},
+    if(k==='night')toast(PREFX.nightNow()?'Dark theme active':'Light theme active')},
   isOn(k,p){return k==='theme'?p.theme==='dark':!!p[k]},
   tgl(k){const p=GP.get(),on=!this.isOn(k,p);GP.set(k,k==='theme'?(on?'dark':'light'):on);
     const el=document.querySelector(`.trow[data-k="${k}"] .sw2`);if(el)el.classList.toggle('on',on);
@@ -46,8 +46,7 @@ Object.assign(PH,{
       <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti"><i class="fa-solid fa-bell"></i></span><span class="tl">Notifications<small class="nsub">Messages and updates, even when the app is closed</small></span><span id="nright">${np==='unsupported'?'<b>Not supported</b>':'<b>…</b>'}</span></div>
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
-      <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
-        <div class="darkness-control"><label for="darkness-level"><span><b>Darkness level</b><small>Choose charcoal, deep black, or pure black.</small></span><strong id="darkness-value">${Math.max(0,Math.min(100,Number(p.darkness)||0))}%</strong></label><input id="darkness-level" type="range" min="0" max="100" step="5" value="${Math.max(0,Math.min(100,Number(p.darkness)||0))}" oninput="PH.setDarkness(this.value)"><div class="darkness-ends"><span>Charcoal</span><span>Pure black</span></div><div class="darkness-preview" id="darkness-preview" aria-label="Darkness preview" style="background:rgb(${Math.round(22*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))},${Math.round(23*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))},${Math.round(31*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))})"></div></div>
+      <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','◐','Theme','Choose the appearance for AllConnect, its apps, and P-Gist.',[['off','Light'],['on','Dark'],['auto','Auto']],p.night,this.nightHint(p))}
         ${this.seg('camAuto','🎥','Camera turns by itself','The camera stays where you leave it. Drag to turn it.',[['false','Off'],['true','On']],String(!!p.camAuto),p.camAuto?'On: the map camera swings round to follow the way you walk.':'')}
         ${this.seg('saver','🔋','Data & battery saver','Uses less data and keeps your phone cool. Naija still looks like Naija.',[['auto','Auto'],['on','On'],['off','Off']],p.saver,this.saverHint(p))}
         ${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}
@@ -62,7 +61,6 @@ Object.assign(PH,{
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},
   setLang(v){GP.set('lang',v);toast(v==='fr'?'Langue changée. Rechargement…':v==='en'?'Language changed. Reloading…':'Language don change. E dey reload…');setTimeout(()=>location.reload(),900)},
-  setDarkness(value){const n=Math.max(0,Math.min(100,Number(value)||0));GP.set('darkness',n);const label=document.getElementById('darkness-value');if(label)label.textContent=n+'%';const input=document.getElementById('darkness-level');if(input)input.value=n;const preview=document.getElementById('darkness-preview');if(preview)preview.style.background=`rgb(${Math.round(22*(1-n/100))},${Math.round(23*(1-n/100))},${Math.round(31*(1-n/100))})`;},
   tglAuto(){const on=!(this.me?this.me.autoPostWins!==false:true);if(this.me)this.me.autoPostWins=on;const el=document.querySelector('.trow[data-k="autoPost"] .sw2');if(el)el.classList.toggle('on',on);
     NET.api('/api/me/profile',{method:'POST',body:{autoPostWins:on}}).catch(e=>{toast(e.message);if(this.me)this.me.autoPostWins=!on;if(el)el.classList.toggle('on',!on)})},
   /* ----- edit profile: ONE screen for photo, cover, name, @username and bio ----- */
