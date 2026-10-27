@@ -149,22 +149,23 @@ const GIST = {
   list(arr) { return arr.map(p => this.card(p)).join('') },
   /* ---------- feed ---------- */
   feed() {
-    this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
+    this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {}, disc = T === 'trending' && !this.tagF, home = !disc && !this.tagF;
     const tabs = [['latest', 'For you'], ['following', 'Following']];
-    const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
-    PH.shell(this.tagF ? '#' + esc(this.tagF) : 'P-Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
-      <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">Share a moment, ${esc((u.displayName || 'player').split(' ')[0])}…</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>
-      <div class="gdiscover"><form role="search" onsubmit="event.preventDefault();GIST.searchOpen($('gsearch').value)"><label class="sr-only" for="gsearch">Search people, posts, or hashtags</label><input id="gsearch" type="search" maxlength="60" placeholder="Search people, posts, #tags" autocomplete="off"><button type="submit" aria-label="Search P-Gist"><i class="fa-solid fa-magnifying-glass"></i></button></form><button class="gsaved-link" onclick="GIST.savedOpen()" aria-label="Saved posts"><i class="fa-regular fa-bookmark"></i><span>Saved</span></button></div>
-      <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div><div id="gpeople">${this.tagF || T !== 'trending' ? '' : this.peopleHtml()}</div>
+    // Home has the For you / Following switch; Discover and tag pages have none (their own header instead)
+    const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : disc ? '' : `<div class="gtabs"><div class="gseg">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div></div>`;
+    const kinds = home ? `<div class="gkinds" id="gkinds">${this.kindsHtml()}</div>` : '';
+    const composer = home ? `<div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">Share a moment, ${esc((u.displayName || 'player').split(' ')[0])}…</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>` : '';
+    const discover = disc ? `<div class="gdiscover"><form role="search" onsubmit="event.preventDefault();GIST.searchOpen($('gsearch').value)"><label class="sr-only" for="gsearch">Search people, posts, or hashtags</label><input id="gsearch" type="search" maxlength="60" placeholder="Search people, posts, #tags" autocomplete="off"><button type="submit" aria-label="Search P-Gist"><i class="fa-solid fa-magnifying-glass"></i></button></form><button class="gsaved-link" onclick="GIST.savedOpen()" aria-label="Saved posts"><i class="fa-regular fa-bookmark"></i><span>Saved</span></button></div>` : '';
+    PH.shell(this.tagF ? '#' + esc(this.tagF) : disc ? 'Discover' : 'P-Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>${composer}${kinds}${discover}
+      <div id="gtrend">${disc ? this.trendHtml() : ''}</div><div id="gpeople">${disc ? this.peopleHtml() : ''}</div>
       <div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`, seg);
-    if (!this.tagF) PH.$a().insertAdjacentHTML('beforeend', this.barHtml());
     this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore()
   },
-  /* bottom bar: Pulse (feed), Discover, Create, Studio (your profile and tools) */
-  barHtml() {
-    const T = this.tab, on = (k) => T === k ? ' on' : '', it = (k, ic, lb, fn) => `<button class="${on(k).trim()}" onclick="${fn}" aria-label="${lb}"><i class="fa-solid ${ic}"></i><span>${lb}</span></button>`;
-    return `<nav class="gbar" aria-label="P-Gist sections">${it('latest', 'fa-house', 'Pulse', "GIST.setTab('latest')")}${it('trending', 'fa-compass', 'Discover', "GIST.setTab('trending')")}${it('reels', 'fa-clapperboard', 'Reels', "GIST.setTab('reels')")}${it('compose', 'fa-plus', 'Create', "GIST.nav('compose')")}${it('me', 'fa-user', 'Studio', "GIST.setTab('me')")}</nav>`;
-  },
+  /* home filter: everything, only written posts, or only reels (video posts) */
+  kind: 'all',
+  kindsHtml() { return [['all', 'All'], ['posts', 'Posts'], ['reels', 'Reels']].map(k => `<button class="${this.kind === k[0] ? 'on' : ''}" onclick="GIST.setKind('${k[0]}')">${k[1]}</button>`).join('') },
+  setKind(k) { if (this.kind === k) return; this.kind = k; const e = $('gkinds'); if (e) e.innerHTML = this.kindsHtml(); const f = $('gfeed'); if (f) { f.innerHTML = this.feedHtml(this.FF()); this.watchMore() } },
+  byKind(list) { return this.tab === 'trending' || this.tagF || this.kind === 'all' ? list : list.filter(p => this.kind === 'reels' ? !!p.video : !p.video) },
   /* Discover: colourful tag cards ("Signals worth following") and "People to know" taken from the posts on screen */
   tagCards() {
     const T = (this.trend || []).slice(0, 4); if (!T.length) return '';
@@ -180,7 +181,7 @@ const GIST = {
   setTab(t) { if (t === 'reels') return RL.show(''); if (this.tab === t && !this.tagF) return; this.tab = t; this.tagF = ''; this.stack = []; this.pending = 0; this.feed() },
   tag(t) { t = String(t).toLowerCase(); this.tagF = t; this.pending = 0; this.stack = [{ fn: 'feed', args: [], scroll: 0 }]; this.cur = null; this.feed() },
   untag() { this.tagF = ''; this.stack = []; this.feed() },
-  trendHtml() { if (this.tab === 'trending' && !this.tagF) return this.tagCards(); return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
+  trendHtml() { if (this.tab === 'trending' && !this.tagF) return this.tagCards(); if (!this.tagF) return ''; return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
   loadTrend() { NET.swr('/api/ac/gist/trending', (d) => { this.trend = d.tags || []; const e = $('gtrend'); if (e && !this.tagF) e.innerHTML = this.trendHtml(); const g = $('gpeople'); if (g && this.tab === 'trending' && !this.tagF) g.innerHTML = this.peopleHtml() }, { ttl: 60000 }).catch(() => { }) },
   searchOpen(q = '') { this.nav('search', String(q || '').trim()) },
   search(q = '') {
@@ -235,7 +236,9 @@ const GIST = {
   },
   feedHtml(F) {
     if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : this.tab === 'following' ? '<p class="empty">Nothing here yet. Follow players to see their gists. Find someone, or open a profile from a post.</p>' : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : '<p class="empty">No gists yet. Be the first to post something! 🎉</p>';
-    return this.list(F.p) + (F.more ? '<button class="gmorebtn" id="gmb" onclick="GIST.loadFeed()">Load more</button>' : '<p class="empty gend">You are all caught up ✨</p>')
+    const shown = this.byKind(F.p);
+    if (!shown.length) return `<p class="empty">${this.kind === 'reels' ? 'No reels in your feed yet.' : 'No posts in your feed yet.'}</p>` + (F.more ? '<button class="gmorebtn" id="gmb" onclick="GIST.loadFeed()">Load more</button>' : '');
+    return this.list(shown) + (F.more ? '<button class="gmorebtn" id="gmb" onclick="GIST.loadFeed()">Load more</button>' : '<p class="empty gend">You are all caught up ✨</p>')
   },
   feedUrl(first) {
     const F = this.FF(), tab = this.tagF ? 'latest' : this.tab; let q = '/feed?tab=' + tab + (this.tagF ? '&tag=' + encodeURIComponent(this.tagF) : '');

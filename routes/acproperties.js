@@ -1,6 +1,7 @@
 // Additional homes reuse the existing AllConnect account, shared wallet and furniture placement rules.
 const express = require('express');
 const { randomUUID } = require('crypto');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const ensureAuth = require('../middleware/auth');
 const F = require('../utils/furniture');
@@ -11,6 +12,16 @@ const router = express.Router();
 router.use(ensureAuth);
 const bad = (res, message, status = 400) => res.status(status).json({ message });
 const activePropertyFilter = (id) => ({ 'ac.properties': { $elemMatch: { id, $or: [{ tenure: 'owned' }, { tenure: 'rent', leaseExpiresAt: { $gt: new Date() } }] } } });
+
+// Raw (driver-level) atomic update. Mongoose casts every filter and then re-hydrates the returned document, and one odd
+// legacy value anywhere inside ac.properties made that step throw a CastError, which the server reported as
+// "That item or player could not be found". These two writes only use values built right here, so they go straight to
+// MongoDB: nothing is cast, and the returned document is plain data.
+const rawUpdate = async (uid, filter, update) => {
+  if (!mongoose.Types.ObjectId.isValid(String(uid))) return null;
+  const r = await User.collection.findOneAndUpdate({ _id: new mongoose.Types.ObjectId(String(uid)), ...filter }, update, { returnDocument: 'after' });
+  return r && Object.prototype.hasOwnProperty.call(r, 'ok') && Object.prototype.hasOwnProperty.call(r, 'value') ? r.value : r;
+};
 const getOwned = async (req) => {
   const u = await ensureAC(req.user.id);
   const p = (u.ac.properties || []).find(x => x.id === String(req.params.id));
@@ -41,10 +52,10 @@ router.post('/acquire', async (req, res, next) => {
       boughtAt: now,
       leaseExpiresAt: home.mode === 'rent' ? new Date(now.getTime() + home.rentDays * 86400000) : null,
       paint: home.paint,
+      level: 0, bedrooms: 0, insured: false, condition: 100, lastWeatherEvent: '',
       items: []
     };
     const filter = {
-      _id: req.user.id,
       'ac.cash': { $gte: price },
       $nor: [{
         'ac.properties': {
@@ -63,11 +74,7 @@ router.post('/acquire', async (req, res, next) => {
     // CastError, no matter what's being bought. The object above is built from known-good, already-typed values
     // (a crypto id, a type checked by isHome(), literal strings, Date.now(), the catalogue's own paint), so it
     // doesn't need re-validating.
-    const u = await User.findOneAndUpdate(
-      filter,
-      { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } },
-      { new: true }
-    );
+    const u = await rawUpdate(req.user.id, filter, { $inc: { 'ac.cash': -price }, $push: { 'ac.properties': property } });
 
     if (!u) {
       const cur = await User.findById(req.user.id).select('ac.cash ac.properties');
@@ -103,11 +110,9 @@ router.post('/:id/expand', async (req, res) => {
     const target = want - base, cost = expansionCost(type, cur, target);
     if (!Number.isSafeInteger(cost) || cost < 1) return bad(res, 'That expansion is not available for this home.', 409);
     const sameSize = cur === 0 ? [{ bedrooms: 0 }, { bedrooms: null }, { bedrooms: { $exists: false } }] : [{ bedrooms: cur }];
-    const u = await User.findOneAndUpdate(
-      { _id: req.user.id, 'ac.cash': { $gte: cost }, 'ac.properties': { $elemMatch: { id: String(req.params.id), tenure: 'owned', $or: sameSize } } },
-      { $inc: { 'ac.cash': -cost }, $set: { 'ac.properties.$.bedrooms': target } },
-      { new: true }
-    );
+    const u = await rawUpdate(req.user.id,
+      { 'ac.cash': { $gte: cost }, 'ac.properties': { $elemMatch: { id: String(req.params.id), tenure: 'owned', $or: sameSize } } },
+      { $inc: { 'ac.cash': -cost }, $set: { 'ac.properties.$.bedrooms': target } });
     if (!u) {
       const now = await User.findById(req.user.id).select('ac.cash ac.properties');
       const p2 = now && (now.ac?.properties || []).find(x => x.id === String(req.params.id));

@@ -1,19 +1,19 @@
 
 /* ===== P-Gist: dark, full-bleed feed (Buzzer style) + Discover cards + bottom bar ===== */
-html .screen.light:has(.pgist-social){background:#0d0f12;--hbg:#0d0f12;color:#f2f4f7}
-html #appview.pgist-social{background:#0d0f12;color:#f2f4f7}
-html #appview.pgist-social .ahw,#appview.pgist-social .ahead{background:#0d0f12;color:#fff;border-color:#1d2126}
-html #appview.pgist-social .ahead h2,#appview.pgist-social .aback{color:#fff}
-html #appview.pgist-social .abody{background:#0d0f12;padding-bottom:84px}
-html #appview.pgist-social .gtabs{display:flex;gap:6px;padding:6px 12px;background:#0d0f12}
-html #appview.pgist-social .gtabs button{flex:0 0 auto;border:0;border-radius:99px;padding:7px 16px;background:#1a1e24;color:#aab2bd;font:700 13px inherit;font-family:inherit}
-html #appview.pgist-social .gtabs button.on{background:#e8f23a;color:#12150a}
-html #appview.pgist-social .gtease,#appview.pgist-social .gdiscover{background:#14181d;border-color:#232830}
-html #appview.pgist-social .gwhat,#appview.pgist-social .gdiscover input{background:#1a1e24;color:#cfd5dd;border-color:#232830}
-html #appview.pgist-social .gp{background:#0d0f12;border:0;border-bottom:8px solid #07080a;border-radius:0;margin:0 0 0;padding:0;color:#f2f4f7}
-html #appview.pgist-social .gtop{padding:12px 14px;gap:8px;align-items:center}
-html #appview.pgist-social .gph b{color:#fff}#appview.pgist-social .gph i{color:#8d96a3}
-html #appview.pgist-social .gmore{color:#8d96a3}
+:is(html,html[data-theme]) .screen.light:has(.pgist-social){background:#0d0f12;--hbg:#0d0f12;color:#f2f4f7}
+:is(html,html[data-theme]) #appview.pgist-social{background:#0d0f12;color:#f2f4f7}
+:is(html,html[data-theme]) #appview.pgist-social .ahw,#appview.pgist-social .ahead{background:#0d0f12;color:#fff;border-color:#1d2126}
+:is(html,html[data-theme]) #appview.pgist-social .ahead h2,#appview.pgist-social .aback{color:#fff}
+:is(html,html[data-theme]) #appview.pgist-social .abody{background:#0d0f12;padding-bottom:84px}
+:is(html,html[data-theme]) #appview.pgist-social .gtabs{display:flex;gap:6px;padding:6px 12px;background:#0d0f12}
+:is(html,html[data-theme]) #appview.pgist-social .gtabs button{flex:0 0 auto;border:0;border-radius:99px;padding:7px 16px;background:#1a1e24;color:#aab2bd;font:700 13px inherit;font-family:inherit}
+:is(html,html[data-theme]) #appview.pgist-social .gtabs button.on{background:#e8f23a;color:#12150a}
+:is(html,html[data-theme]) #appview.pgist-social .gtease,#appview.pgist-social .gdiscover{background:#14181d;border-color:#232830}
+:is(html,html[data-theme]) #appview.pgist-social .gwhat,#appview.pgist-social .gdiscover input{background:#1a1e24;color:#cfd5dd;border-color:#232830}
+:is(html,html[data-theme]) #appview.pgist-social .gp{background:#0d0f12;border:0;border-bottom:8px solid #07080a;border-radius:0;margin:0 0 0;padding:0;color:#f2f4f7}
+:is(html,html[data-theme]) #appview.pgist-social .gtop{padding:12px 14px;gap:8px;align-items:center}
+:is(html,html[data-theme]) #appview.pgist-social .gph b{color:#fff}#appview.pgist-social .gph i{color:#8d96a3}
+:is(html,html[data-theme]) #appview.pgist-social .gmore{color:#8d96a3}
 .gfol{border:0;background:none;color:#f5c518;font:800 14px inherit;font-family:inherit;padding:4px 6px;cursor:pointer}
 .gfol.on{color:#8d96a3}
 .gfol.lime{background:#dcff4f;color:#12150a;border-radius:99px;padding:9px 20px;font-size:14px}.gfol.lime.on{background:#2a3038;color:#aab2bd}
@@ -22,14 +22,14 @@ html #appview.pgist-social .gmore{color:#8d96a3}
 .gheadline{padding:12px 14px 2px}
 .gkick{font:700 11px inherit;font-family:inherit;letter-spacing:.2em;text-transform:uppercase;color:#a8c13a;margin-bottom:6px}
 .gtitle{margin:0;font:800 19px/1.28 Outfit,system-ui,sans-serif;color:#fff;overflow-wrap:anywhere}
-html #appview.pgist-social .gbody{color:#b6bdc8;margin-top:6px;font-size:14px}
+:is(html,html[data-theme]) #appview.pgist-social .gbody{color:#b6bdc8;margin-top:6px;font-size:14px}
 .gread{display:flex;justify-content:space-between;color:#8d96a3;font-size:13px;margin-top:8px}
-html #appview.pgist-social .gact{padding:10px 14px 12px;gap:10px}
-html #appview.pgist-social .gact button{display:inline-flex;align-items:center;gap:7px;background:#1a1e24;color:#e6eaf0;border:0;border-radius:99px;padding:8px 14px;font-weight:700}
-html #appview.pgist-social .gact .sh{margin-left:auto;padding:8px 12px}
-html #appview.pgist-social .gact .lk.on{color:#f5c518}
+:is(html,html[data-theme]) #appview.pgist-social .gact{padding:10px 14px 12px;gap:10px}
+:is(html,html[data-theme]) #appview.pgist-social .gact button{display:inline-flex;align-items:center;gap:7px;background:#1a1e24;color:#e6eaf0;border:0;border-radius:99px;padding:8px 14px;font-weight:700}
+:is(html,html[data-theme]) #appview.pgist-social .gact .sh{margin-left:auto;padding:8px 12px}
+:is(html,html[data-theme]) #appview.pgist-social .gact .lk.on{color:#f5c518}
 .gnum{font:700 14px inherit;font-family:inherit}.gnum:empty{display:none}
-html #appview.pgist-social .grs,#appview.pgist-social .gcmlk{color:#8d96a3;padding:0 14px 8px}
+:is(html,html[data-theme]) #appview.pgist-social .grs,#appview.pgist-social .gcmlk{color:#8d96a3;padding:0 14px 8px}
 /* Discover */
 .gsec{padding:16px 14px 8px}.gsec small{display:block;letter-spacing:.18em;font-weight:700;font-size:11px;color:#8d96a3}.gsec h2{margin:4px 0 0;font:800 24px Outfit,system-ui,sans-serif;color:#fff}
 .gsig{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:6px 14px 8px}
@@ -40,28 +40,56 @@ html #appview.pgist-social .grs,#appview.pgist-social .gcmlk{color:#8d96a3;paddi
 .gppl{display:grid;gap:10px;padding:4px 14px 12px}
 .gpp{display:flex;align-items:center;gap:10px;background:#14181d;border:1px solid #232830;border-radius:20px;padding:10px 12px}
 .gpp .gph{flex:1;min-width:0;text-align:left;background:none;border:0;color:#fff}
-/* bottom bar */
-.gbar{position:absolute;left:0;right:0;bottom:0;z-index:20;display:flex;background:rgba(13,15,18,.96);border-top:1px solid #1d2126;padding:8px 6px calc(10px + env(safe-area-inset-bottom,0px));backdrop-filter:blur(10px)}
-.gbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:#8d96a3;font:700 11px inherit;font-family:inherit;cursor:pointer}
-.gbar button i{font-size:19px}.gbar button.on{color:#fff}.gbar button.on i{color:#dcff4f}
+
 @media (min-width:700px){.gsig{grid-template-columns:repeat(4,1fr)}}
 
 /* beat the older light rules in reels.css / style.css (they use :not(.rlb) and extra classes) */
-html #appview.pgist-social .abody:not(.rlb),html #appview.pgist-social .abody:not(.rlb)>#gfeed,html #appview.pgist-social .abody:not(.rlb)>#gtrend,html #appview.pgist-social .abody:not(.rlb)>#gpeople{background:#0d0f12;color:#f2f4f7}
-html #appview.pgist-social .abody:not(.rlb) .gp,html #appview.pgist-social .abody:not(.rlb)>#gfeed .gp{background:#0d0f12;color:#f2f4f7;border:0;border-bottom:8px solid #07080a;border-radius:0}
-html #appview.pgist-social .abody:not(.rlb) .gtease{background:#14181d;border-color:#232830}
-html #appview.pgist-social .abody:not(.rlb) .gwhat,html #appview.pgist-social .abody:not(.rlb) .gphoto{background:#1a1e24;color:#cfd5dd}
-html #appview.pgist-social .gtabs{background:#0d0f12}
-html #appview.pgist-social .gtabs button{background:#1a1e24;color:#aab2bd}
-html #appview.pgist-social .gtabs button.on{background:#e8f23a;color:#12150a}
-html #appview.pgist-social .gdiscover input,html #appview.pgist-social .gdiscover form{background:#1a1e24;color:#e6eaf0;border-color:#232830}
-html #appview.pgist-social .gtrend span,html #appview.pgist-social .gtrend a{color:#c8d0dc}html #appview.pgist-social .gtrend a{background:#1a1e24}
-html #appview.pgist-social .gtx,html #appview.pgist-social .grs b,html #appview.pgist-social .gph b{color:#fff}
-html #appview.pgist-social .abody:not(.rlb) .gtrend,html #appview.pgist-social .gtrend{background:#0d0f12;border-color:#1d2126}
-html #appview.pgist-social .gdiscover button{background:#1a1e24;color:#e6eaf0;border-color:#232830}
-html #appview.pgist-social .gdiscover{background:#0d0f12}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb),:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb)>#gfeed,:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb)>#gtrend,:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb)>#gpeople{background:#0d0f12;color:#f2f4f7}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb) .gp,:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb)>#gfeed .gp{background:#0d0f12;color:#f2f4f7;border:0;border-bottom:8px solid #07080a;border-radius:0}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb) .gtease{background:#14181d;border-color:#232830}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb) .gwhat,:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb) .gphoto{background:#1a1e24;color:#cfd5dd}
+:is(html,html[data-theme]) #appview.pgist-social .gtabs{background:#0d0f12}
+:is(html,html[data-theme]) #appview.pgist-social .gtabs button{background:#1a1e24;color:#aab2bd}
+:is(html,html[data-theme]) #appview.pgist-social .gtabs button.on{background:#e8f23a;color:#12150a}
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover input,:is(html,html[data-theme]) #appview.pgist-social .gdiscover form{background:#1a1e24;color:#e6eaf0;border-color:#232830}
+:is(html,html[data-theme]) #appview.pgist-social .gtrend span,:is(html,html[data-theme]) #appview.pgist-social .gtrend a{color:#c8d0dc}:is(html,html[data-theme]) #appview.pgist-social .gtrend a{background:#1a1e24}
+:is(html,html[data-theme]) #appview.pgist-social .gtx,:is(html,html[data-theme]) #appview.pgist-social .grs b,:is(html,html[data-theme]) #appview.pgist-social .gph b{color:#fff}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb) .gtrend,:is(html,html[data-theme]) #appview.pgist-social .gtrend{background:#0d0f12;border-color:#1d2126}
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover button{background:#1a1e24;color:#e6eaf0;border-color:#232830}
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover{background:#0d0f12}
 .gsc b{font-size:17px}
 /* the P-Gist bottom bar replaces the older white dock on the feed */
-html #appview.pgist-social:has(.gbar) .tkdock{display:none}
-html #appview.pgist-social .tkdock{background:rgba(13,15,18,.96);border-top:1px solid #1d2126}
-html #appview.pgist-social .tkdock button{color:#8d96a3}html #appview.pgist-social .tkdock button.on{color:#fff}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock{background:rgba(13,15,18,.96);border-top:1px solid #1d2126}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock button{color:#8d96a3}:is(html,html[data-theme]) #appview.pgist-social .tkdock button.on{color:#fff}
+
+
+/* ===== P-Gist round 2: one dark look everywhere, smaller type, icon-only bottom bar, segmented For you / Following ===== */
+:is(html,html[data-theme]) .screen.light:has(.pgist-social) .home{display:none}
+:is(html,html[data-theme]) .screen.light:has(.pgist-social) .sb{color:#fff}
+:is(html,html[data-theme]) .screen.light:has(.pgist-social) .sb *{color:#fff;fill:#fff}
+:is(html,html[data-theme]) #appview.pgist-social,:is(html,html[data-theme]) #appview.pgist-social .ahw,:is(html,html[data-theme]) #appview.pgist-social .ahead{background:#0d0f12!important;border-color:#1d2126}
+:is(html,html[data-theme]) #appview.pgist-social .ahead h2{font-size:18px}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb){zoom:.92;padding-bottom:70px}
+:is(html,html[data-theme]) #appview.pgist-social .gtitle{font-size:17px}
+:is(html,html[data-theme]) #appview.pgist-social .gact button{font-size:13px}
+:is(html,html[data-theme]) #appview.pgist-social .gact button i{font-size:14px}
+:is(html,html[data-theme]) #appview.pgist-social .gsec h2{font-size:21px}
+/* segmented control, same look as the Reels one */
+:is(html,html[data-theme]) #appview.pgist-social .gtabs{display:flex;justify-content:center;padding:6px 12px 8px;border:0;background:#0d0f12}
+.gseg{display:flex;gap:2px;padding:3px;border-radius:99px;border:1px solid #232830;background:#14181d}
+:is(html,html[data-theme]) #appview.pgist-social .gseg button{flex:none;border:0;background:none;color:#aab2bd;border-radius:99px;padding:7px 18px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+:is(html,html[data-theme]) #appview.pgist-social .gseg button.on{background:#fff;color:#12150a}
+:is(html,html[data-theme]) #appview.pgist-social .rl-tabs button.on{background:#fff;color:#12150a}
+/* filter chips: All / Posts / Reels */
+.gkinds{display:flex;gap:6px;padding:8px 14px 4px}
+.gkinds button{border:1px solid #232830;background:#14181d;color:#aab2bd;border-radius:99px;padding:5px 13px;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif}
+.gkinds button.on{background:#e8f23a;border-color:#e8f23a;color:#12150a}
+/* bottom bar: four icons, nothing else */
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons{position:absolute;left:0;right:0;bottom:0;margin:0;height:54px;padding:0 10px;max-width:none;display:flex;align-items:center;justify-content:space-around;background:#0d0f12;border:0;border-top:1px solid #1d2126;border-radius:0;box-shadow:none}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button{flex:1;height:100%;min-width:0;display:flex;align-items:center;justify-content:center;background:none;border:0;color:#8d96a3}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button i{font-size:19px}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button.on{color:#fff}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button.on i{color:#e8f23a}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons .mk{flex:none;width:44px;height:32px;min-width:44px;border-radius:11px;background:#e8f23a;color:#12150a;box-shadow:none}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons .mk i{font-size:16px;color:#12150a}
+@media (min-width:700px){:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons{left:50%;right:auto;transform:translateX(-50%);width:min(520px,100%);border:1px solid #1d2126;border-bottom:0;border-radius:18px 18px 0 0}}

@@ -1267,7 +1267,7 @@
     const stops = PINS.filter(p => p[5] === 'district').slice(0, 7);
     if (!stops.length) { if (g.toast) g.toast('No city stops are available right now.'); return; }
     const state = guidedTour = { i: 0, raf: 0, timer: 0 }, btn = $('mapTourBtn'), label = $('mapTourLabel');
-    if (btn) btn.textContent = '■ Stop tour';
+    if (btn) btn.textContent = '■ Stop tour'; if (g.toggleMapMore) g.toggleMapMore(true);
     const go = () => {
       if (guidedTour !== state || !M.on) return;
       if (state.i >= stops.length) { stopTour(); if (g.toast) g.toast('You have finished the city tour. Explore anywhere on the map.'); return; }

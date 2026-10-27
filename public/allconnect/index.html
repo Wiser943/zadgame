@@ -130,6 +130,7 @@
   <!-- MAP -->
   <div id="map">
    <canvas id="mapCv" aria-label="Map of Lagos. Drag to move, pinch or scroll to zoom, twist with two fingers to rotate."></canvas>
+   <button class="pill mapmore" id="mapMore" onclick="toggleMapMore()" aria-label="More map options" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i></button>
    <button class="pill maplg" onclick="HUB.view('legend')" aria-label="Map legend"><i class="fa-solid fa-circle-info"></i> Legend</button>
    <button class="pill maptour" id="mapTourBtn" onclick="MAP3D.startTour()">🧭 City Tour</button>
    <div class="pill mapTourLabel" id="mapTourLabel" aria-live="polite" style="display:none"></div>

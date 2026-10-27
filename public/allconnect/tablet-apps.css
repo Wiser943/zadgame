@@ -6,7 +6,7 @@
   .screen.light .appview .asheet .shcard{max-width:520px;margin-left:auto;margin-right:auto;width:100%;box-sizing:border-box}
   /* PGist */
   html #appview.pgist-social .abody:not(.rlb){max-width:680px}
-  html #appview.pgist-social .gbar{left:50%;right:auto;transform:translateX(-50%);width:min(560px,100%);border-radius:22px 22px 0 0;border:1px solid #1d2126;border-bottom:0}
+  
   html #appview.pgist-social .gp .gmedia img,html #appview.pgist-social .gp .gmedia video{max-height:60vh;object-fit:cover}
   html #appview.pgist-social .gsig{grid-template-columns:repeat(4,1fr)}
   html #appview.pgist-social .gppl{grid-template-columns:1fr 1fr}
@@ -18,4 +18,3 @@
   html #appview.pgist-social .abody:not(.rlb){max-width:720px}
 }
 /* short landscape tablets: keep the bottom bar compact */
-@media (min-width:700px) and (max-height:620px){html #appview.pgist-social .gbar{padding-top:4px;padding-bottom:6px}.gbar button i{font-size:16px}}

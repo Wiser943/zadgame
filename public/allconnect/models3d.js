@@ -307,7 +307,12 @@
       const V = THREE.Vector3, X = new V(1, 0, 0).applyQuaternion(av.getWorldQuaternion(new THREE.Quaternion())), v = new V(), w = new V(), off = {};
       av.updateMatrixWorld(true); B.Hips.getWorldPosition(v); const hipRel = v.y - av.getWorldPosition(w).y;
       ['L', 'R'].forEach(s => { B['LowerLeg.' + s].getWorldPosition(v); B['Foot.' + s].getWorldPosition(w); off[s] = w.clone().sub(v) });
-      ['L', 'R'].forEach(s => { this.rotW(B['UpperLeg.' + s], X, -Math.PI / 2); this.rotW(B['LowerLeg.' + s], X, Math.PI / 2) });
+      // How far the thighs must slope down so the feet land on the floor (a chair is lower than the character's leg length):
+      // thigh * sin(slope) = (hip height above the floor) - (shin height) ; the shins stay vertical, the feet stay flat.
+      B['UpperLeg.L'].getWorldPosition(v); const uy = v.y - av.getWorldPosition(w).y; B['LowerLeg.L'].getWorldPosition(w); const knee = w.clone(); B['Foot.L'].getWorldPosition(w);
+      const baseY = av.getWorldPosition(new V()).y, thigh = Math.max(.15, knee.distanceTo(v)), shin = Math.max(0, knee.y - w.y), footY = w.y - baseY;
+      const hipJoint = seatTop + .03 - hipRel + uy, slope = Math.asin(Math.max(-.5, Math.min(.85, (hipJoint - footY - shin) / thigh))), ang = Math.PI / 2 - slope;
+      ['L', 'R'].forEach(s => { this.rotW(B['UpperLeg.' + s], X, -ang); this.rotW(B['LowerLeg.' + s], X, ang) });
       ['L', 'R'].forEach(s => { const f = B['Foot.' + s]; B['LowerLeg.' + s].getWorldPosition(v); v.add(off[s]); f.parent.updateWorldMatrix(true, false); f.parent.worldToLocal(v); f.position.copy(v); f.updateMatrixWorld(true) });
       g.root.position.set(0, seatTop + .03 - hipRel, -.05)
     },
@@ -357,7 +362,12 @@
     R.animate = function (t, dt, moving) {
       if (this.glb && this.glb.mixer) { try { return M3D.step(this, t, dt, moving) } catch (e) { console.warn('3D character step failed, using the basic one', e); if (this.glb && this.glb.root && this.glb.root.parent) this.glb.root.parent.remove(this.glb.root); this.glb = null; if (this.avatar) this.avatar.children.forEach(c => { c.visible = true }) } }
       const r0 = anim0.call(this, t, dt, moving), body = this.parts && this.parts.body;     // basic character: just tilt/lower the whole body for the action
-      if (body) { const A = this.act; if (A && A.kind === 'lie') { body.rotation.x = -Math.PI / 2; body.position.set(0, A.h + .25, .95) } else if (A && A.kind === 'sit') { body.rotation.x = 0; body.position.set(0, A.h - .55, 0) } else if (body.rotation.x) { body.rotation.x = 0; body.position.set(0, 0, 0) } }
+      if (body) { const A = this.act; if (A && A.kind === 'lie') { body.rotation.x = -Math.PI / 2; body.position.set(0, A.h + .25, .95) } else if (A && A.kind === 'sit') {
+        // hips on the seat, thighs forward (sloping down just enough), shins straight down, feet flat on the floor
+        const L1 = .36, L2 = .30, hipY = A.h + .03, sl = Math.asin(Math.max(0, Math.min(.9, (hipY - L2 - .08) / L1))), ang = Math.PI / 2 - sl;
+        body.rotation.x = 0; body.position.set(0, hipY - .74, 0);
+        [this.parts.legL, this.parts.legR].forEach((g, i) => { if (g && g.hip) { g.hip.rotation.set(-ang, 0, (i ? 1 : -1) * .06); g.knee.rotation.x = ang } })
+      } else if (body.rotation.x) { body.rotation.x = 0; body.position.set(0, 0, 0) } }
       return r0
     };
   }

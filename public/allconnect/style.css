@@ -1603,3 +1603,26 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 /* items the player can hold and drag (see dragpos.js) */
 .dragpos-on{outline:2px dashed rgba(7,91,255,.7);outline-offset:3px;border-radius:14px;z-index:30!important;touch-action:none}
 
+
+/* ===== Draggable buttons: browser must not scroll/zoom while one is held; quests and pills fit their text ===== */
+[data-dp]{touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.dragpos-on{outline:2px dashed rgba(7,91,255,.75);outline-offset:3px;z-index:60!important;filter:drop-shadow(0 8px 14px rgba(0,0,0,.35))}
+#homeUI{align-items:flex-start}
+#homeUI .quest,#homeUI .clean{width:fit-content;max-width:min(300px,calc(100% - 20px))}
+#homeUI .quest>div{min-width:0}
+#homeUI .quest b,#homeUI .quest span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
+#doorbtn{width:fit-content;max-width:min(260px,calc(100% - 90px))}
+#doorbtn span,#doorbtn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== Map: rarely used buttons fold into one "more" button ===== */
+.mapmore{position:absolute;right:10px;top:calc(142px + var(--sat));z-index:7;width:42px;height:42px;padding:0!important;border:0;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:16px;cursor:pointer}
+#app.onmap .mapmore{display:flex}
+#map:not(.mopen) .maplg,#map:not(.mopen) .walkyaba,#map:not(.mopen) .maptour,#map:not(.mopen) #mttools{display:none!important}
+#map.mopen .mapmore{background:#1b2236;color:#fff}
+#map.mopen .maplg{top:calc(192px + var(--sat))}#map.mopen .walkyaba{top:calc(236px + var(--sat))}#map.mopen .maptour{top:calc(280px + var(--sat))}
+#map.mopen #mttools{display:flex!important;top:calc(242px + var(--sat))}
+/* map: view button and door button move to the left column so nothing sits on the city tabs or the right-hand menu */
+#app.onmap .viewctl{top:calc(142px + var(--sat));right:auto;left:10px}
+#app.onmap #doorbtn{top:calc(192px + var(--sat))}
+#app.onmap #avbtn,#app.onmap #needs{display:none!important}
+#app.onmap .viewctl{align-items:flex-start}

@@ -907,3 +907,6 @@ window.HAPTIC = HAPTIC;
     else if (y < p - 8 && off) { av.classList.remove('hdr-off'); lock = Date.now() + 320 }
   }, true);
 })();
+
+/* map: the rarely used buttons (Tools, weather, Legend, Walk Yaba, City Tour) live behind one button */
+function toggleMapMore(force) { const m = document.getElementById('map'), b = document.getElementById('mapMore'); if (!m) return; const on = typeof force === 'boolean' ? force : !m.classList.contains('mopen'); m.classList.toggle('mopen', on); if (b) { b.setAttribute('aria-expanded', on ? 'true' : 'false'); b.innerHTML = on ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-ellipsis"></i>' } }

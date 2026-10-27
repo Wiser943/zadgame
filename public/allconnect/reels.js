@@ -444,11 +444,14 @@ const RL = {
   PH.close = function () { const a = this.$a(); if (a) a.classList.remove('pgist-social', 'rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };
 })();
 Object.assign(RL, {
+  /* bottom bar: four icons, no text. Home (feed + reels), Discover, Create, Profile (the unified profile) */
   dock(at) {
-    const active = at === 'profile' ? 'me' : at === 'post' ? 'feed' : at, it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}"><i class="fa-solid ${ic}"></i><span>${lb}</span></button>`;
-    return `<nav class="tkdock" aria-label="Gist navigation">${it('feed', 'fa-house', 'Pulse', 'RL.goFeed()')}${it('reels', 'fa-clapperboard', 'Reels', 'RL.goReels()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i></button>${it('me', 'fa-user', 'Studio', 'RL.goMe()')}</nav>`
+    const disc = at === 'feed' && GIST.tab === 'trending' && !GIST.tagF, active = at === 'profile' ? 'me' : disc ? 'disc' : 'home',
+      it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}" aria-label="${lb}"${active === k ? ' aria-current="page"' : ''}><i class="fa-solid ${ic}"></i></button>`;
+    return `<nav class="tkdock gicons" aria-label="Gist navigation">${it('home', 'fa-house', 'Home', 'RL.goFeed()')}${it('disc', 'fa-compass', 'Discover', 'RL.goDiscover()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i></button>${it('me', 'fa-user', 'Profile', 'RL.goMe()')}</nav>`
   },
-  goFeed() { this.stop(); GIST.stack = []; GIST.tab = 'latest'; GIST.tagF = ''; GIST.feed() },
+  goDiscover() { this.stop(); GIST.stack = []; GIST.tab = 'trending'; GIST.tagF = ''; GIST.feed() },
+  goFeed() { this.stop(); GIST.stack = []; if (GIST.tab === 'trending' || GIST.tab === 'me') GIST.tab = 'latest'; GIST.tagF = ''; GIST.feed() },
   goReels() { if (GIST.cur && GIST.cur.fn === 'reels') { const f = this.feedEl(); if (f) f.scrollTo({ top: 0, behavior: 'smooth' }); return } this.stop(); GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; this.show('') },
   goMe() { this.stop(); GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; GIST.nav('profile', 'me') },
   create() { this.stop(); PH.sheet(`<h3>Create</h3><button class="fopt" onclick="PH.closeSheet();GIST.nav('compose','video')"><span><i class="fa-solid fa-clapperboard"></i> Post a reel</span></button><button class="fopt" onclick="PH.closeSheet();GIST.nav('compose')"><span><i class="fa-solid fa-pen-nib"></i> Write a gist</span></button><button class="fopt" onclick="PH.closeSheet();GIST.nav('compose','photos')"><span><i class="fa-solid fa-image"></i> Share photos</span></button>`) },
