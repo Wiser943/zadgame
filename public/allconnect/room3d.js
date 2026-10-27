@@ -309,7 +309,7 @@ window.ROOM3D = {
     const gs = L ? Math.max(1, (Math.max(gw, gd) + 6) / 9) : 1; this.groundM.scale.set(gs, 1, gs); this.groundM.position.set(offX, -.45, offZ);
     if (shell) { if (window.M3D) { M3D.dropFixtures(this); M3D.houseShell(this, L) } }
     else {                                                   // the box room, any size: 6/8/10 square, or the Market Shop's 10 x 8
-      if (window.M3D) { M3D.dropShell(this); L && L.fixtures && L.fixtures.length ? M3D.shopFixtures(this, L) : M3D.dropFixtures(this) }
+      if (window.M3D) { M3D.dropShell(this); if (L && L.rooms && L.rooms.length) M3D.bedroomRooms(this, L); else if (L && L.fixtures && L.fixtures.length) M3D.shopFixtures(this, L); else M3D.dropFixtures(this) }
       const lx = gw + .15, lz = gd + .15, ex = gw - 3 + .075, ez = gd - 3 + .075, geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
       this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(gw, gd); this.floor.position.set(offX, 0, offZ); this.floor.material.map.repeat.set(gw / 2, gd / 2);
       geo(this.slab, gw + .5, .3, gd + .5); this.slab.position.set(offX, -.15, offZ);

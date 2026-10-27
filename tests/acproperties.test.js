@@ -30,24 +30,52 @@ test('public AllConnect state returns safe property fields and furniture without
   assert.equal(Object.hasOwn(out.properties[0].items[0], 'extra'), false);
 });
 
-test('home expansions: bought homes grow 6 -> 8 -> 10 cells with server-defined prices; rentals cannot expand', () => {
-  assert.equal(P.gridFor(0), 6); assert.equal(P.gridFor(1), 8); assert.equal(P.gridFor(2), 10); assert.equal(P.gridFor(99), 10); assert.equal(P.gridFor(-3), 6);
-  assert.equal(P.levelOf({}), 0); assert.equal(P.levelOf({ level: 1 }), 1); assert.equal(P.levelOf({ level: 7 }), 0);
-  assert.equal(P.expansionCost('mainland_room', 0), 0);              // rent-only home
-  assert.equal(P.expansionCost('self_contained', 0), 105000);          // 30% of 350,000
-  assert.equal(P.expansionCost('self_contained', 1), 210000);          // 60% of 350,000
-  assert.equal(P.expansionCost('self_contained', 2), 0);               // already maxed
+test('bedroom expansions: server-defined sizes and prices; rentals and fixed plans cannot expand', () => {
+  assert.equal(P.baseBedrooms('self_contained'), 0); assert.equal(P.baseBedrooms('mini_flat'), 1); assert.equal(P.baseBedrooms('two_bedroom'), 2);
+  assert.equal(P.maxExtra('self_contained'), 5); assert.equal(P.maxExtra('mini_flat'), 4); assert.equal(P.maxExtra('two_bedroom'), 3);
+  assert.equal(P.maxExtra('mainland_room'), 0); assert.equal(P.maxExtra('family_house'), 0); assert.equal(P.maxExtra('market_shop'), 0);
+  assert.equal(P.stepCost('self_contained', 1), 70000);                 // 20% of 350,000
+  assert.equal(P.stepCost('self_contained', 2), 88000);                 // 25%
+  assert.equal(P.expansionCost('self_contained', 0, 2), 158000);        // two steps in one go
+  assert.equal(P.expansionCost('self_contained', 1, 2), 88000);
+  assert.equal(P.expansionCost('self_contained', 2, 2), 0);             // not bigger
+  assert.equal(P.expansionCost('self_contained', 0, 6), 0);             // past the maximum
+  assert.equal(P.expansionCost('mainland_room', 0, 1), 0);
   const pub = P.publicHome({ id: 'h', type: 'mini_flat', tenure: 'owned', items: [] });
-  assert.equal(pub.level, 0); assert.equal(pub.grid, 6); assert.equal(pub.nextExpansion.grid, 8); assert.equal(pub.nextExpansion.cost, 270000);
-  assert.equal(P.publicHome({ id: 'h', type: 'mini_flat', tenure: 'owned', level: 2, items: [] }).nextExpansion, null);
+  assert.equal(pub.bedrooms, 0); assert.equal(pub.totalBedrooms, 1); assert.equal(pub.sizeLabel, '1-Bedroom');
+  assert.deepEqual(pub.expansions.map(o => o.total), [2, 3, 4, 5]); assert.equal(pub.expansions[0].cost, 180000);
+  assert.equal(P.publicHome({ id: 'h', type: 'mini_flat', tenure: 'owned', bedrooms: 4, items: [] }).expansions.length, 0);
+  assert.equal(P.publicHome({ id: 'h', type: 'mainland_room', tenure: 'rent', items: [] }).expansions.length, 0);
+  assert.equal(P.extraOf({ type: 'self_contained', bedrooms: 99 }), 5); assert.equal(P.extraOf({ type: 'self_contained' }), 0);
+  assert.equal(P.extraOf({ type: 'self_contained', bedrooms: -2 }), 0); assert.equal(P.extraOf({ type: 'self_contained', bedrooms: 1.5 }), 0);
 });
 
-test('furniture placement follows the room size of the expanded home', () => {
+test('bedroom floor plans: every room is reachable through its doorway and the 6x6 living area never moves', () => {
+  const B = require('../public/allconnect/bedrooms');
+  assert.equal(B.layout(0), null);
+  for (let k = 1; k <= B.MAX_EXTRA; k++) {
+    const L = B.layout(k), ws = new Set(L.walls), seen = new Set(['2,2']), q = [[2, 2]];
+    assert.equal(L.rooms.length, k); assert.ok(L.w >= 10 && L.d >= 6);
+    while (q.length) { const [x, z] = q.shift(); for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, nz = z + dz, key = nx + ',' + nz; if (nx < 0 || nz < 0 || nx >= L.w || nz >= L.d || ws.has(B.edge(x, z, nx, nz)) || seen.has(key)) continue; seen.add(key); q.push([nx, nz]); } }
+    assert.equal(seen.size, L.w * L.d, k + ' bedrooms: every cell is reachable');
+    for (let x = 0; x < 6; x++) for (let z = 0; z < 6; z++) assert.ok(seen.has(x + ',' + z));
+  }
+  assert.equal(B.layout(99).bedrooms, 5);
+  assert.equal(B.label(0), 'Studio'); assert.equal(B.label(4), '4-Bedroom');
+});
+
+test('furniture placement follows the bedroom plan: bigger floor, and nothing stands across a wall', () => {
   const F = require('../utils/furniture');
-  assert.equal(F.canPlace([], 'Plastic Chair', 7, 7, 0), false);               // default 6x6 room
-  assert.equal(F.canPlace([], 'Plastic Chair', 7, 7, 0, undefined, 8), true);  // level 1: 8x8
-  assert.equal(F.canPlace([], 'Plastic Chair', 8, 8, 0, undefined, 8), false);
-  assert.equal(F.canPlace([], 'Velvet Sofa', 8, 9, 0, undefined, 10), true);
+  assert.equal(F.canPlace([], 'Plastic Chair', 7, 1, 0), false);                    // plain 6x6 room
+  const g = P.gridOf({ type: 'self_contained', bedrooms: 2 });
+  assert.equal(g.w, 10); assert.equal(g.d, 6);
+  assert.equal(F.canPlace([], 'Plastic Chair', 7, 1, 0, undefined, g), true);        // inside Bedroom 1
+  assert.equal(F.canPlace([], 'Foam Mattress', 5, 0, 0, undefined, g), false);       // 2 wide: would straddle the wall at x 5|6 (not a doorway row)
+  assert.equal(F.canPlace([], 'Foam Mattress', 7, 0, 0, undefined, g), true);
+  assert.equal(F.canPlace([], 'Foam Mattress', 7, 2, 90, undefined, g), false);      // 1x2 turned: crosses the Bedroom 1 | Bedroom 2 wall
+  assert.equal(F.canPlace([], 'Plastic Chair', 10, 0, 0, undefined, g), false);      // outside the plan
+  assert.equal(P.gridOf({ type: 'mini_flat' }).w, 10);                               // a Mini Flat comes with its 1 bedroom built
+  assert.equal(P.gridOf({ type: 'self_contained' }), 6);                             // a Studio is the plain room
 });
 
 test('Family House: model-based layout blocks walls/built-ins, cannot be expanded, and furniture respects it', () => {
@@ -55,9 +83,9 @@ test('Family House: model-based layout blocks walls/built-ins, cannot be expande
   assert.ok(P.isHome('family_house'));
   const L = layoutFor('family_house'); assert.equal(L.w, 10); assert.equal(L.d, 14); assert.ok(L.blocked.size > 20 && L.blocked.size < L.w * L.d);
   assert.ok(!L.blocked.has(L.start.join(',')), 'start cell is walkable');
-  assert.equal(P.expansionCost('family_house', 0), 0);
-  assert.equal(P.publicHome({ id: 'h', type: 'family_house', tenure: 'owned', items: [] }).nextExpansion, null);
-  assert.equal(P.gridOf({ type: 'family_house' }).w, 10); assert.equal(P.gridOf({ type: 'mini_flat', level: 1 }), 8);
+  assert.equal(P.maxExtra('family_house'), 0);
+  assert.equal(P.publicHome({ id: 'h', type: 'family_house', tenure: 'owned', items: [] }).expansions.length, 0);
+  assert.equal(P.gridOf({ type: 'family_house' }).w, 10);
   const [bx, bz] = [...L.blocked][0].split(',').map(Number), [sx, sz] = L.start;
   assert.equal(F.canPlace([], 'Plastic Chair', bx, bz, 0, undefined, L), false);          // inside a wall / outside the house
   assert.equal(F.canPlace([], 'Plastic Chair', sx, sz, 0, undefined, L), true);

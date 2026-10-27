@@ -1,5 +1,6 @@
 // Furniture catalogue + room-grid rules shared by the server routes, the tests and (mirrored) the client.
 // The room is a 6x6 grid of cells. An item covers w x d cells (swapped when turned 90/270 degrees).
+const BED = require('../public/allconnect/bedrooms');
 const GRID = 6;
 const SELL_RATE = 0.2;                       // selling pays 20% of the price, always far below buying
 // cat: tab in the catalogue. w,d: footprint in cells. fixed: mounted on a wall/ceiling (no floor cell, no placing).
@@ -54,6 +55,7 @@ const occupied = (items, skipId, grid) => { const s = new Set(grid && typeof gri
 function canPlace(items, name, x, z, rot, skipId, grid = GRID) {
   if (!isItem(name) || ITEMS[name].fixed || !validRot(rot)) return false;
   const [w, d] = footprint(name, rot); if (!inBounds(x, z, w, d, grid)) return false;
+  if (grid && typeof grid === 'object' && grid.noCross && BED.crossesWall(grid.walls, x, z, w, d)) return false;   // bedroom plans: nothing stands across a wall
   const occ = occupied(items, skipId, grid); for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) if (occ.has((x + i) + ',' + (z + j))) return false;
   return true;
 }

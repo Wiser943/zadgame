@@ -109,6 +109,28 @@
 
     /* ---------- the Market Shop's built-in counter, shelves, crates and barrels (tap them to use) ---------- */
     dropFixtures(room) { if (room.fxG && room.scene) { room.scene.remove(room.fxG); room.fxG.traverse(o => { if (o.geometry) o.geometry.dispose() }) } room.fxG = null },
+    /* ---------- bedroom plans (homes with added bedrooms): low partition walls with doorways, tinted bedroom floors, name tags ---------- */
+    bedroomRooms(room, L) {
+      if (!room.scene || !window.THREE) return; this.dropFixtures(room);
+      const g = new THREE.Group(), mats = {}, M = (c, o) => mats[c] || (mats[c] = new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {})));
+      const box = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.position.set(x, y, z); g.add(m); return m };
+      const WALL_H = 1.55, T = .14, wallColor = '#efe6d2', capColor = '#cdbd9c';
+      // every wall edge "ax,az|bx,bz" becomes one slab on the line between the two cells
+      for (const e of L.walls) {
+        const [a, b] = e.split('|').map(t => t.split(',').map(Number));
+        const cx = room.cc(a[0]) + (b[0] - a[0]) / 2, cz = room.cc(a[1]) + (b[1] - a[1]) / 2;
+        if (a[0] !== b[0]) { box(T, WALL_H, 1 + T, wallColor, cx, WALL_H / 2, cz); box(T + .04, .05, 1 + T + .04, capColor, cx, WALL_H + .02, cz) }
+        else { box(1 + T, WALL_H, T, wallColor, cx, WALL_H / 2, cz); box(1 + T + .04, .05, T + .04, capColor, cx, WALL_H + .02, cz) }
+      }
+      // a soft rug-coloured floor and a name tag in each bedroom
+      const tag = (text) => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = 'rgba(27,34,54,.82)'; x.beginPath(); (x.roundRect ? x.roundRect(4, 4, 248, 56, 28) : x.rect(4, 4, 248, 56)); x.fill(); x.fillStyle = '#fff'; x.font = '800 30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 128, 34); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false })); sp.scale.set(1.9, .475, 1); sp.renderOrder = 5; return sp };
+      for (const r of L.rooms || []) {
+        const w = r.x1 - r.x0 + 1, d = r.z1 - r.z0 + 1, cx = room.cc(r.x0) + (w - 1) / 2, cz = room.cc(r.z0) + (d - 1) / 2;
+        const f = new THREE.Mesh(new THREE.PlaneGeometry(w - .1, d - .1), M('#d9c3a0', { transparent: true, opacity: .55 })); f.rotation.x = -Math.PI / 2; f.position.set(cx, .012, cz); g.add(f);
+        const t = tag(r.name); t.position.set(cx, 2.05, cz); g.add(t);
+      }
+      room.scene.add(g); room.fxG = g
+    },
     shopFixtures(room, L) {
       if (!room.scene || !window.THREE) return; this.dropFixtures(room);
       const g = new THREE.Group(), mat = {}, M = c => mat[c] || (mat[c] = new THREE.MeshLambertMaterial({ color: c }));

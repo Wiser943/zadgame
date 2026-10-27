@@ -1579,3 +1579,27 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 
 /* Style app: the two base-model buttons sit side by side */
 .stchips.stpair{flex-wrap:nowrap}.stchips.stpair button{flex:1 1 0;min-width:0;text-align:center;line-height:1.2;padding:8px 6px}
+
+/* ===== Homes: bedroom size picker ===== */
+.size-sheet{display:grid;gap:10px}
+.size-head b{font:800 16px Outfit,system-ui,sans-serif;display:block}.size-head p{margin:4px 0 0;font-size:12px;line-height:1.5;color:var(--mut)}
+.size-list{display:grid;gap:8px}
+.size-opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line,#e1e7ef);background:var(--card,#fff);color:var(--ink);border-radius:16px;padding:11px 13px;font-family:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.size-opt:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(21,32,51,.1)}.size-opt:disabled{opacity:.6;cursor:wait}
+.size-opt.poor{opacity:.72}
+.size-n{width:42px;height:42px;flex:none;border-radius:13px;display:grid;place-items:center;background:#eaf0ff;color:#075bff;font:800 20px Outfit,system-ui,sans-serif}
+.size-t{flex:1;min-width:0}.size-t b{display:block;font-size:14px}.size-t small,.size-c small{display:block;font-size:11px;color:var(--mut);font-weight:600}
+.size-c{font-weight:800;font-size:13.5px;text-align:right;white-space:nowrap}
+.size-back{justify-self:start;border:0;background:none;color:var(--grn,#075bff);font:800 13px 'Plus Jakarta Sans',system-ui,sans-serif;padding:6px 2px;cursor:pointer}
+
+/* ===== Home top bar: two separate pills (balance + add on the left, clock/mood/sound on the right) ===== */
+.hud{background:none;box-shadow:none;border-radius:0;padding:0;gap:8px;pointer-events:none}
+.hud .pill{pointer-events:auto;display:flex;align-items:center;height:46px;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+.hud .hudL{background:var(--pill);padding:0 4px 0 14px;gap:8px;font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer;flex:none}
+.hud .hudR{flex:0 1 auto;min-width:0;padding:0 12px;gap:6px;font-weight:700;font-size:13px;white-space:nowrap;margin-left:auto}
+.hud .hudR .mood{max-width:78px}
+/* the door button and the prompt stack get their own rows so they never sit on top of each other */
+#homeUI{top:calc(148px + var(--sat))}
+/* items the player can hold and drag (see dragpos.js) */
+.dragpos-on{outline:2px dashed rgba(7,91,255,.7);outline-offset:3px;border-radius:14px;z-index:30!important;touch-action:none}
+

@@ -265,9 +265,18 @@
   const inBounds = (x, z, w, d, grid) => { grid = grid || curGrid(); return Number.isInteger(x) && Number.isInteger(z) && x >= 0 && z >= 0 && x + w <= gridW(grid) && z + d <= gridD(grid) };
   const cellsOf = it => { const [w, d] = footprint(it.name, it.rot); const o = []; for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) o.push([it.x + i, it.z + j]); return o };
   const occupied = (items, skipId, grid) => { grid = grid || curGrid(); const s = new Set(grid && typeof grid === 'object' && grid.blockedSet ? grid.blockedSet : []); for (const it of items) { if (it.id === skipId || it.placed === false || !isItem(it.name) || D.ITEMS[it.name].fixed) continue; for (const [a, b] of cellsOf(it)) s.add(a + ',' + b) } return s };
-  const canPlace = (items, n, x, z, rot, skipId, grid) => { grid = grid || curGrid(); if (!isItem(n) || D.ITEMS[n].fixed) return false; const [w, d] = footprint(n, rot); if (!inBounds(x, z, w, d, grid)) return false; const occ = occupied(items, skipId, grid); for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) if (occ.has((x + i) + ',' + (z + j))) return false; return true };
+  const canPlace = (items, n, x, z, rot, skipId, grid) => { grid = grid || curGrid(); if (!isItem(n) || D.ITEMS[n].fixed) return false; const [w, d] = footprint(n, rot); if (!inBounds(x, z, w, d, grid)) return false; if (grid && typeof grid === 'object' && grid.noCross && window.BEDROOMS && BEDROOMS.crossesWall(grid.wallSet, x, z, w, d)) return false; const occ = occupied(items, skipId, grid); for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) if (occ.has((x + i) + ',' + (z + j))) return false; return true };
   const autoPlace = (items, n) => { const G = curGrid(); for (const rot of [0, 90]) { const [w, d] = footprint(n, rot); for (let z = 0; z + d <= gridD(G); z++) for (let x = 0; x + w <= gridW(G); x++) if (canPlace(items, n, x, z, rot, undefined, G)) return { x, z, rot } } return null };
-  window.homeGrid = (p) => [6, 8, 10][(p && Number(p.level)) | 0] || 6;   // furnishable cells per side for a property (level 0/1/2)
-  window.homeLayout = (p) => (p && window.LAYOUTS && window.LAYOUTS[p.type]) || null;   // house-model homes (Family House) have a fixed floor plan
+  window.homeGrid = (p) => 6;   // the plain room is always 6x6 cells; bigger homes come from homeLayout below
+  // A home's floor plan: the fixed plan of a house-model home (Family House, Market Shop), or the bedroom plan of a home
+  // with bedrooms (shared generator in bedrooms.js, the same one the server uses), or null for the plain 6x6 room.
+  window.homeLayout = (p) => {
+    if (!p) return null;
+    if (window.LAYOUTS && window.LAYOUTS[p.type]) return window.LAYOUTS[p.type];
+    const total = Number(p.totalBedrooms) || 0, L = window.BEDROOMS ? BEDROOMS.layout(total) : null;
+    if (!L) return null;
+    if (!L.blockedSet) { L.blockedSet = new Set(L.blocked); L.wallSet = new Set(L.walls) }
+    return L;
+  };
   window.FURN = { ...D, isItem, sellPrice, footprint, inBounds, cellsOf, occupied, canPlace, autoPlace };
 })();

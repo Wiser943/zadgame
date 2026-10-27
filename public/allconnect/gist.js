@@ -127,35 +127,61 @@ const GIST = {
     const em = p.myRx ? RXE[p.myRx] : '';
     // media comes right under the header, edge to edge — text moves below the action row, Instagram-style
     const media = `${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}`;
-    const caption = p.text ? `<div class="gtx"><b>${esc(a.displayName)}</b> ${this.txt(p.text)}</div>` : '';
+    // headline block: first line is the title, first #tag is the small kicker, plus a read-time hint
+    const raw = String(p.text || '').trim(), lines = raw.split(/\n+/), first = (lines[0] || '').trim(), restTxt = lines.slice(1).join('\n').trim();
+    const long = first.length > 110, title = long ? first.slice(0, 107).replace(/\s+\S*$/, '') + '…' : first, remain = long ? first.slice(title.length - 1).trim() + (restTxt ? '\n' + restTxt : '') : restTxt;
+    const kick = ((raw.match(/#([\p{L}\p{N}_]+)/u) || [])[1] || '').replace(/_/g, ' '), mins = Math.max(1, Math.ceil(raw.split(/\s+/).filter(Boolean).length / 180));
+    const caption = raw ? `<div class="gheadline">${kick ? `<div class="gkick">${esc(kick)}</div>` : ''}<h3 class="gtitle">${this.txt(title)}</h3>${remain ? `<div class="gtx gbody">${this.txt(remain)}</div>` : ''}<div class="gread"><span>${mins} minute${mins === 1 ? '' : 's'} read</span></div></div>` : '';
+    const mine = a.id === this.uid(), fol = !mine && !tmp && !(a.isFollowing || (this.fol && this.fol.has(a.id)));
+    const folBtn = fol ? `<button class="gfol" data-uid="${a.id}" onclick="GIST.quickFollow('${a.id}',this)">Follow</button>` : '';
+    const nviews = Number(p.views || p.viewCount || 0), chip = (this.imgs(p) || this.vid(p, o.detail)) ? `<span class="gvchip"><i class="fa-regular fa-eye"></i> ${nviews > 999 ? (nviews / 1000).toFixed(1) + 'k' : nviews}</span>` : '';
     const vc = (!o.detail && p.comments) ? `<button class="gcmlk" onclick="GIST.nav('post','${p.id}')">View ${p.comments === 1 ? 'the' : 'all ' + p.comments} comment${p.comments === 1 ? '' : 's'}</button>` : '';
-    return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
-      ${media}
-      <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React to post" aria-pressed="${!!p.myRx}"><span>${em ? em : '<i class="fa-regular fa-heart" aria-hidden="true"></i>'}</span></button>
-      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}" aria-label="${o.detail ? 'Write a comment' : 'View comments'}"><span><i class="fa-regular fa-comment" aria-hidden="true"></i></span></button>
+    return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${folBtn}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
+      <div class="gmedia">${chip}${media}</div>
+      ${caption}
+      <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React to post" aria-pressed="${!!p.myRx}"><span>${em ? em : '<i class="fa-solid fa-bolt" aria-hidden="true"></i>'}</span><b class="gnum">${p.likes || ''}</b></button>
+      <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}" aria-label="${o.detail ? 'Write a comment' : 'View comments'}"><span><i class="fa-regular fa-comment" aria-hidden="true"></i></span><b class="gnum gcn">${p.comments || ''}</b></button>
       <button class="sh" onclick="GIST.shareSheet('${p.id}')" aria-label="Share post"><span><i class="fa-regular fa-paper-plane" aria-hidden="true"></i></span></button></div>
       <div class="grs">${this.rxSummary(p)}</div>
-      ${caption}${vc}
+      ${vc}
       </article>`
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
   /* ---------- feed ---------- */
   feed() {
     this.set('feed'); PH.view = 'gist'; const T = this.tab, F = this.FF(), u = NET.user || {};
-    const tabs = [['latest', 'Home'], ['trending', 'Explore <i class="fa-solid fa-magnifying-glass"></i>'], ['following', 'Following'], ['me', 'Profile']];
+    const tabs = [['latest', 'For you'], ['following', 'Following']];
     const seg = this.tagF ? `<div class="gtagbar"><b>#${esc(this.tagF)}</b><button onclick="GIST.untag()"><i class="fa-solid fa-xmark"></i> Clear</button></div>` : `<div class="gtabs">${tabs.map(t => `<button class="${T === t[0] ? 'on' : ''}" onclick="GIST.setTab('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
     PH.shell(this.tagF ? '#' + esc(this.tagF) : 'P-Gist', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>
       <div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">Share a moment, ${esc((u.displayName || 'player').split(' ')[0])}…</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>
       <div class="gdiscover"><form role="search" onsubmit="event.preventDefault();GIST.searchOpen($('gsearch').value)"><label class="sr-only" for="gsearch">Search people, posts, or hashtags</label><input id="gsearch" type="search" maxlength="60" placeholder="Search people, posts, #tags" autocomplete="off"><button type="submit" aria-label="Search P-Gist"><i class="fa-solid fa-magnifying-glass"></i></button></form><button class="gsaved-link" onclick="GIST.savedOpen()" aria-label="Saved posts"><i class="fa-regular fa-bookmark"></i><span>Saved</span></button></div>
-      <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div>
+      <div id="gtrend">${this.tagF ? '' : this.trendHtml()}</div><div id="gpeople">${this.tagF || T !== 'trending' ? '' : this.peopleHtml()}</div>
       <div id="gfeed">${F.ok ? this.feedHtml(F) : '<p class="empty">Loading…</p>'}</div></div>`, seg);
+    if (!this.tagF) PH.$a().insertAdjacentHTML('beforeend', this.barHtml());
     this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore()
+  },
+  /* bottom bar: Pulse (feed), Discover, Create, Studio (your profile and tools) */
+  barHtml() {
+    const T = this.tab, on = (k) => T === k ? ' on' : '', it = (k, ic, lb, fn) => `<button class="${on(k).trim()}" onclick="${fn}" aria-label="${lb}"><i class="fa-solid ${ic}"></i><span>${lb}</span></button>`;
+    return `<nav class="gbar" aria-label="P-Gist sections">${it('latest', 'fa-house', 'Pulse', "GIST.setTab('latest')")}${it('trending', 'fa-compass', 'Discover', "GIST.setTab('trending')")}${it('reels', 'fa-clapperboard', 'Reels', "GIST.setTab('reels')")}${it('compose', 'fa-plus', 'Create', "GIST.nav('compose')")}${it('me', 'fa-user', 'Studio', "GIST.setTab('me')")}</nav>`;
+  },
+  /* Discover: colourful tag cards ("Signals worth following") and "People to know" taken from the posts on screen */
+  tagCards() {
+    const T = (this.trend || []).slice(0, 4); if (!T.length) return '';
+    const sub = ['what everyone is saying', 'worth a closer look', 'showing up counts', 'made with care'];
+    return `<div class="gsec"><small>MOVING RIGHT NOW</small><h2>Signals worth following</h2></div><div class="gsig">${T.map((t, i) => `<a class="gsc c${i}" data-tag="${esc(t.tag)}"><em>0${i + 1}</em><i class="fa-solid fa-arrow-up-right-from-square"></i><b>#${esc(t.tag)}</b><span>${sub[i % 4]}</span><strong>${t.count} gist${t.count === 1 ? '' : 's'}</strong></a>`).join('')}</div>`;
+  },
+  peopleHtml() {
+    const F = this.FF(), seen = new Set([this.uid()]), out = [];
+    for (const p of (F.p || [])) { const a = p.author; if (!a || seen.has(a.id) || a.isFollowing || this.fol.has(a.id)) continue; seen.add(a.id); out.push(a); if (out.length >= 5) break }
+    if (!out.length) return '';
+    return `<div class="gsec"><small>CURATED FOR YOU</small><h2>People to know</h2></div><div class="gppl">${out.map(a => `<div class="gpp"><button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}</b><i>${esc(a.displayName)}</i></span></button><button class="gfol lime" data-uid="${a.id}" onclick="GIST.quickFollow('${a.id}',this)">follow</button></div>`).join('')}</div>`;
   },
   setTab(t) { if (t === 'reels') return RL.show(''); if (this.tab === t && !this.tagF) return; this.tab = t; this.tagF = ''; this.stack = []; this.pending = 0; this.feed() },
   tag(t) { t = String(t).toLowerCase(); this.tagF = t; this.pending = 0; this.stack = [{ fn: 'feed', args: [], scroll: 0 }]; this.cur = null; this.feed() },
   untag() { this.tagF = ''; this.stack = []; this.feed() },
-  trendHtml() { return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
-  loadTrend() { NET.swr('/api/ac/gist/trending', (d) => { this.trend = d.tags || []; const e = $('gtrend'); if (e && !this.tagF) e.innerHTML = this.trendHtml() }, { ttl: 60000 }).catch(() => { }) },
+  trendHtml() { if (this.tab === 'trending' && !this.tagF) return this.tagCards(); return this.trend.length ? `<div class="gtrend"><span><i class="fa-solid fa-fire"></i> Trending</span>${this.trend.map(t => `<a data-tag="${esc(t.tag)}">#${esc(t.tag)}<em>${t.count}</em></a>`).join('')}</div>` : '' },
+  loadTrend() { NET.swr('/api/ac/gist/trending', (d) => { this.trend = d.tags || []; const e = $('gtrend'); if (e && !this.tagF) e.innerHTML = this.trendHtml(); const g = $('gpeople'); if (g && this.tab === 'trending' && !this.tagF) g.innerHTML = this.peopleHtml() }, { ttl: 60000 }).catch(() => { }) },
   searchOpen(q = '') { this.nav('search', String(q || '').trim()) },
   search(q = '') {
     q = String(q || '').trim().slice(0, 60); this.set('search', q); PH.shell('Search P-Gist', 'GIST.back()', `<div class="abody" id="ab"><form class="gsearch-page" role="search" onsubmit="event.preventDefault();GIST.searchGo($('gsearch2').value)"><label class="sr-only" for="gsearch2">Search people, posts, or hashtags</label><input id="gsearch2" type="search" maxlength="60" value="${esc(q)}" placeholder="People, captions, #hashtags" autocomplete="off"><button class="btn p" type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i> Search</button></form><div id="gsearch-results"><p class="empty">${q.length >= 2 ? 'Searching…' : 'Enter at least 2 characters to search.'}</p></div></div>`);
@@ -170,6 +196,14 @@ const GIST = {
       this.put(d.posts || []); const people = (d.people || []).map(u => `<div class="gperson"><button class="gph" onclick="GIST.nav('profile','${u.id}')">${PH.av(u)}<span><b>${esc(u.displayName)}${this.vb(u)}</b><i>${u.username ? '@' + esc(u.username) : ''}</i></span></button>${u.isMe ? '<span class="gsearch-note">You</span>' : `<button class="gsearch-follow" aria-pressed="${u.isFollowing}" onclick="GIST.searchFollow('${u.id}',this)">${u.isFollowing ? 'Following' : 'Follow'}</button>`}</div>`).join('');
       r.innerHTML = `${people ? `<section aria-labelledby="gsearch-people"><h3 class="gsection-title" id="gsearch-people">People</h3>${people}</section>` : ''}${d.posts && d.posts.length ? `<section aria-labelledby="gsearch-posts"><h3 class="gsection-title" id="gsearch-posts">Posts</h3>${this.list(d.posts)}</section>` : ''}${!people && !(d.posts || []).length ? `<p class="empty" role="status">No people or posts found for “${esc(q)}”.</p>` : ''}`
     } catch (e) { if (r) r.innerHTML = `<p class="empty" role="alert">${esc(e.message)} <button class="gretry" onclick="GIST.searchGo($('gsearch2').value)">Try again</button></p>` }
+  },
+  fol: new Set(),
+  async quickFollow(id, btn) {
+    if (btn) btn.disabled = true;
+    try { const r = await this.api('/follow/' + encodeURIComponent(id), { method: 'POST' }); if (r.following) this.fol.add(id); else this.fol.delete(id);
+      document.querySelectorAll(`.gfol[data-uid="${id}"]`).forEach(b => { b.textContent = r.following ? 'Following' : 'Follow'; b.classList.toggle('on', !!r.following); b.disabled = false });
+      Object.values(this.F).forEach(f => { f.stale = true }); NET.drop('/api/ac/gist/feed') }
+    catch (e) { if (btn) btn.disabled = false; this.err(e) }
   },
   async searchFollow(id, button) {
     const old = button.textContent; button.disabled = true;
@@ -212,7 +246,7 @@ const GIST = {
     const apply = (r, cached) => {
       this.put(r.posts); const pend = F.p.filter(p => String(p.id).startsWith('tmp'));
       F.p = (first ? pend.concat(r.posts) : F.p.concat(r.posts)).filter((x, i, a) => a.findIndex(y => y.id === x.id) === i); F.more = r.more; F.next = r.next || 0; F.ok = true; F.busy = false;
-      if (this.cur && this.cur.fn === 'feed' && this.key() === k) { const f = $('gfeed'); if (f) { const st = $('ab').scrollTop; f.innerHTML = this.feedHtml(F); if (first && !cached) $('ab').scrollTop = st; this.watchMore() } }
+      if (this.cur && this.cur.fn === 'feed' && this.key() === k) { const f = $('gfeed'); if (f) { const st = $('ab').scrollTop; f.innerHTML = this.feedHtml(F); const gp = $('gpeople'); if (gp && this.tab === 'trending' && !this.tagF) gp.innerHTML = this.peopleHtml(); if (first && !cached) $('ab').scrollTop = st; this.watchMore() } }
     };
     F.busy = true;
     NET.swr(url, apply, { persist: first && !this.tagF && this.tab === 'latest', ttl: first ? 0 : 5000 }).catch(e => {
@@ -252,7 +286,7 @@ const GIST = {
   sync(id) {
     const p = this.cache.get(id); if (!p) return;
     document.querySelectorAll(`.gp[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('.lk'); l.classList.toggle('on', !!p.myRx); l.querySelector('span').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-regular fa-heart"></i>';
+      const l = c.querySelector('.lk'); l.classList.toggle('on', !!p.myRx); l.querySelector('span').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'; const ln = l.querySelector('.gnum'); if (ln) ln.textContent = p.likes || ''; const cn = c.querySelector('.gcn'); if (cn) cn.textContent = p.comments || '';
       c.querySelector('.grs').innerHTML = this.rxSummary(p);
       const vc = c.querySelector('.gcmlk'); if (vc) vc.textContent = 'View ' + (p.comments === 1 ? 'the' : 'all ' + p.comments) + ' comment' + (p.comments === 1 ? '' : 's');
       const pl = c.querySelector('.gpoll'); if (pl) pl.outerHTML = this.pollHtml(p)

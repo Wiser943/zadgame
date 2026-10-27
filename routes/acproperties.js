@@ -6,7 +6,7 @@ const ensureAuth = require('../middleware/auth');
 const F = require('../utils/furniture');
 const { publicAC } = require('../utils/allconnect');
 const { ensureAC } = require('./allconnect');
-const { HOMES, EXPANSIONS, isHome, publicHome, levelOf, gridFor, gridOf, expansionCost, MAX_LEVEL } = require('../utils/acproperties');
+const { HOMES, isHome, publicHome, gridOf, extraOf, baseBedrooms, maxExtra, expansionCost, totalOf } = require('../utils/acproperties');
 const router = express.Router();
 router.use(ensureAuth);
 const bad = (res, message, status = 400) => res.status(status).json({ message });
@@ -19,7 +19,7 @@ const getOwned = async (req) => {
   return { u, p };
 };
 router.get('/', async (req, res, next) => {
-  try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h })), properties: (u.ac.properties || []).map(publicHome), expansions: EXPANSIONS, cash: u.ac.cash }); } catch (e) { next(e); }
+  try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h, baseBedrooms: baseBedrooms(id), maxBedrooms: baseBedrooms(id) + maxExtra(id) })), properties: (u.ac.properties || []).map(publicHome), cash: u.ac.cash }); } catch (e) { next(e); }
 });
 router.post('/acquire', async (req, res, next) => {
   try {
@@ -86,28 +86,42 @@ router.post('/acquire', async (req, res, next) => {
     return res.status(500).json({ message: 'This home action hit an unexpected server problem. Please try again.', reference: ref });
   }
 });
-// Expand a home you own: more floor to furnish. One conditional update debits the cash and raises the level together.
-router.post('/:id/expand', async (req, res, next) => {
+// Add bedrooms to a home you own. Body: { bedrooms: <the TOTAL number of bedrooms you want> }, e.g. 3 for a 3-bedroom.
+// One conditional update takes the cash and records the new size together, so a double tap or two devices can never
+// charge twice. Every failure answers with a short, specific message the app can show as it is.
+router.post('/:id/expand', async (req, res) => {
+  const ref = randomUUID().slice(0, 12);
   try {
     const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404);
-    if (c.p.tenure !== 'owned') return bad(res, 'Only homes you own can be expanded.', 409);
-    const cur = levelOf(c.p); if (cur >= MAX_LEVEL) return bad(res, 'This home is already fully expanded.', 409);
-    const cost = expansionCost(c.p.type, cur); if (!Number.isSafeInteger(cost) || cost < 1) return bad(res, 'This home cannot be expanded.', 409);
-    const lvl = cur === 0 ? { $in: [0, null] } : cur;
+    if (c.p.tenure !== 'owned') return bad(res, 'Only homes you own can get more bedrooms.', 409);
+    const type = c.p.type, cur = extraOf(c.p), base = baseBedrooms(type), top = maxExtra(type);
+    if (!top) return bad(res, 'This home has a fixed floor plan, so it cannot get more bedrooms.', 409);
+    if (cur >= top) return bad(res, `This home already has the most bedrooms it can hold (${base + top}).`, 409);
+    const want = req.body && req.body.bedrooms !== undefined ? Number(req.body.bedrooms) : base + cur + 1;
+    if (!Number.isInteger(want) || want <= base + cur) return bad(res, 'Choose a bigger size than your home has now.');
+    if (want > base + top) return bad(res, `The most bedrooms this home can have is ${base + top}.`);
+    const target = want - base, cost = expansionCost(type, cur, target);
+    if (!Number.isSafeInteger(cost) || cost < 1) return bad(res, 'That expansion is not available for this home.', 409);
+    const sameSize = cur === 0 ? [{ bedrooms: 0 }, { bedrooms: null }, { bedrooms: { $exists: false } }] : [{ bedrooms: cur }];
     const u = await User.findOneAndUpdate(
-      { _id: req.user.id, 'ac.cash': { $gte: cost }, 'ac.properties': { $elemMatch: { id: req.params.id, tenure: 'owned', level: lvl } } },
-      { $inc: { 'ac.cash': -cost }, $set: { 'ac.properties.$[p].level': cur + 1 } },
-      { new: true, arrayFilters: [{ 'p.id': req.params.id, 'p.tenure': 'owned', 'p.level': lvl }] }
+      { _id: req.user.id, 'ac.cash': { $gte: cost }, 'ac.properties': { $elemMatch: { id: String(req.params.id), tenure: 'owned', $or: sameSize } } },
+      { $inc: { 'ac.cash': -cost }, $set: { 'ac.properties.$.bedrooms': target } },
+      { new: true }
     );
     if (!u) {
-      const now = await User.findById(req.user.id).select('ac.cash ac.properties'); const p2 = (now?.ac?.properties || []).find(x => x.id === req.params.id);
+      const now = await User.findById(req.user.id).select('ac.cash ac.properties');
+      const p2 = now && (now.ac?.properties || []).find(x => x.id === String(req.params.id));
       if (!p2) return bad(res, 'Home not found.', 404);
-      if (levelOf(p2) !== cur) return bad(res, 'This home was already expanded. Refresh and check again.', 409);
-      if ((now.ac?.cash || 0) < cost) return bad(res, 'Not enough ₦ for this expansion.', 402);
+      if (extraOf(p2) !== cur) return bad(res, 'This home was already expanded. Refresh to see its new size.', 409);
+      if ((now.ac?.cash || 0) < cost) return bad(res, 'You do not have enough money for this expansion.', 402);
       return bad(res, 'Could not complete the expansion. Please refresh and try again.', 409);
     }
-    res.json({ ac: publicAC(u.ac), property: publicHome((u.ac.properties || []).find(p => p.id === req.params.id)), cost });
-  } catch (e) { next(e); }
+    const prop = (u.ac.properties || []).find(p => p.id === String(req.params.id));
+    res.json({ ac: publicAC(u.ac), property: publicHome(prop), cost, total: totalOf(prop) });
+  } catch (e) {
+    console.error('[home-expand]', ref, { user: String(req.user?.id || ''), home: String(req.params?.id || ''), name: e?.name, code: e?.code, message: e?.message });
+    return res.status(500).json({ message: 'The expansion hit a server problem and you were not charged. Please try again.', reference: ref });
+  }
 });
 // Optional weekly home cover. It protects against simulated severe-weather damage.
 router.post('/:id/insurance', async (req, res, next) => {
