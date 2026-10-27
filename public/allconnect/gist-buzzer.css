@@ -93,3 +93,141 @@
 :is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons .mk{flex:none;width:44px;height:32px;min-width:44px;border-radius:11px;background:#e8f23a;color:#12150a;box-shadow:none}
 :is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons .mk i{font-size:16px;color:#12150a}
 @media (min-width:700px){:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons{left:50%;right:auto;transform:translateX(-50%);width:min(520px,100%);border:1px solid #1d2126;border-bottom:0;border-radius:18px 18px 0 0}}
+
+/* ===== P-Gist final compact header layout =====
+   The For you / Following selector belongs in the header, opposite the title.
+   Keep the final rules here so the older P-Gist experiments above cannot move
+   it back into a separate feed row. */
+:is(html,html[data-theme]) #appview.pgist-social .ahw{position:relative;min-height:64px;border-radius:0;background:#0d0f12!important}
+:is(html,html[data-theme]) #appview.pgist-social .ahead{min-height:64px;padding:6px 12px 8px 14px;padding-right:190px;gap:7px}
+:is(html,html[data-theme]) #appview.pgist-social .ahead h2{font-size:18px;letter-spacing:-.02em}
+:is(html,html[data-theme]) #appview.pgist-social .aback{font-size:27px;padding-right:3px}
+:is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs{position:absolute;top:50%;right:12px;z-index:2;display:block;margin:0;padding:0;background:transparent;border:0;transform:translateY(-50%)}
+:is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs .gseg{gap:1px;padding:2px;border-color:#252a32;background:#171b21;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+:is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs .gseg button{min-height:32px;padding:6px 13px;font-size:12px;line-height:1;white-space:nowrap}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb){zoom:1;padding-bottom:66px}
+:is(html,html[data-theme]) #appview.pgist-social .gtease{padding:9px 12px;gap:8px}
+:is(html,html[data-theme]) #appview.pgist-social .gme .avi{width:36px;height:36px}
+:is(html,html[data-theme]) #appview.pgist-social .gwhat{padding:10px 14px;font-size:13px}
+:is(html,html[data-theme]) #appview.pgist-social .gphoto{width:34px;height:34px;font-size:16px}
+:is(html,html[data-theme]) #appview.pgist-social .gkinds{gap:5px;padding:7px 12px 5px}
+:is(html,html[data-theme]) #appview.pgist-social .gkinds button{padding:5px 12px;font-size:11.5px}
+:is(html,html[data-theme]) #appview.pgist-social .gtop{padding:10px 12px;gap:7px}
+:is(html,html[data-theme]) #appview.pgist-social .gph b{font-size:12.5px}
+:is(html,html[data-theme]) #appview.pgist-social .gph i{font-size:10.5px}
+:is(html,html[data-theme]) #appview.pgist-social .gtitle{font-size:16px;line-height:1.24}
+:is(html,html[data-theme]) #appview.pgist-social .gheadline{padding:10px 12px 2px}
+:is(html,html[data-theme]) #appview.pgist-social .gtx{padding:0 12px;font-size:13px}
+:is(html,html[data-theme]) #appview.pgist-social .gact{gap:8px;padding:8px 12px 10px}
+:is(html,html[data-theme]) #appview.pgist-social .gact button{padding:7px 12px;font-size:12px}
+:is(html,html[data-theme]) #appview.pgist-social #gfeed .gp{border-bottom:5px solid #07080a}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons{height:52px}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button i{font-size:18px}
+
+@media (max-width:430px){
+  :is(html,html[data-theme]) #appview.pgist-social .ahead{padding-right:166px}
+  :is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs{right:9px}
+  :is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs .gseg button{padding-left:10px;padding-right:10px;font-size:11.5px}
+}
+
+/* ===== P-Gist unified visual system =====
+   Final ownership rules for the social screen. These intentionally use one
+   compact palette and one spacing rhythm instead of mixing the old light,
+   Buzzer, and Instagram experiments. */
+:is(html,html[data-theme]) #appview.pgist-social{
+  --pg-bg:#0d0f12;
+  --pg-surface:#14181d;
+  --pg-control:#1a1e24;
+  --pg-border:#252a32;
+  --pg-text:#f2f4f7;
+  --pg-muted:#9aa3af;
+  --pg-accent:#e8f23a;
+  background:var(--pg-bg)!important;
+  color:var(--pg-text);
+}
+:is(html,html[data-theme]) #appview.pgist-social .ahw,
+:is(html,html[data-theme]) #appview.pgist-social .ahead,
+:is(html,html[data-theme]) #appview.pgist-social .abody,
+:is(html,html[data-theme]) #appview.pgist-social #gfeed,
+:is(html,html[data-theme]) #appview.pgist-social #gtrend,
+:is(html,html[data-theme]) #appview.pgist-social #gpeople{background:var(--pg-bg)!important;color:var(--pg-text)}
+
+/* Header and selector: the selector is in .ahw, opposite the title. */
+:is(html,html[data-theme]) #appview.pgist-social .ahw{min-height:64px;border-bottom:1px solid var(--pg-border)!important;border-radius:0}
+:is(html,html[data-theme]) #appview.pgist-social .ahead{min-height:64px;border:0!important}
+:is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs .gseg{border:1px solid var(--pg-border);background:var(--pg-surface);box-shadow:none}
+:is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs .gseg button{min-width:68px;background:transparent;color:var(--pg-muted);font-weight:700}
+:is(html,html[data-theme]) #appview.pgist-social .ahw>.gtabs .gseg button.on{background:#fff;color:#12150a}
+
+/* One shared horizontal rhythm for the feed controls. */
+:is(html,html[data-theme]) #appview.pgist-social .gtease,
+:is(html,html[data-theme]) #appview.pgist-social .gkinds,
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover{padding-left:12px;padding-right:12px}
+:is(html,html[data-theme]) #appview.pgist-social .gtease{margin:0;border-bottom:1px solid var(--pg-border);background:var(--pg-surface);padding-top:8px;padding-bottom:8px}
+:is(html,html[data-theme]) #appview.pgist-social .gwhat{background:var(--pg-control);border:1px solid var(--pg-border);color:#c7ced8}
+:is(html,html[data-theme]) #appview.pgist-social .gphoto{background:var(--pg-control);color:var(--pg-text)}
+:is(html,html[data-theme]) #appview.pgist-social .gkinds{align-items:center;gap:6px;padding-top:7px;padding-bottom:7px;border-bottom:1px solid var(--pg-border)}
+:is(html,html[data-theme]) #appview.pgist-social .gkinds button{background:var(--pg-surface);border-color:var(--pg-border);color:var(--pg-muted);min-height:30px}
+:is(html,html[data-theme]) #appview.pgist-social .gkinds button.on{background:var(--pg-accent);border-color:var(--pg-accent);color:#12150a}
+
+/* Discovery row: search is the primary control, Saved is secondary. */
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover{display:flex;align-items:center;gap:8px;padding-top:8px;padding-bottom:8px;border-bottom:1px solid var(--pg-border);background:var(--pg-bg)}
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover form{display:flex;align-items:center;flex:1;min-width:0;margin:0;border:1px solid var(--pg-border);border-radius:18px;overflow:hidden;background:var(--pg-control)}
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover input{min-width:0;flex:1;border:0;background:transparent;padding:9px 12px;color:var(--pg-text);font-size:13px}
+:is(html,html[data-theme]) #appview.pgist-social .gdiscover form button{width:38px;height:36px;border:0;background:transparent;color:var(--pg-text)}
+:is(html,html[data-theme]) #appview.pgist-social .gsaved-link{display:inline-flex;align-items:center;gap:6px;flex:none;min-height:36px;padding:0 12px;border:1px solid var(--pg-border);border-radius:18px;background:var(--pg-surface);color:var(--pg-text);font-size:12px;font-weight:700}
+
+/* Feed cards: readable author row, restrained typography, and a single hairline separator. */
+:is(html,html[data-theme]) #appview.pgist-social #gfeed .gp{margin:0 0 8px;border:0;border-bottom:1px solid var(--pg-border);background:var(--pg-bg);border-radius:0;overflow:hidden}
+:is(html,html[data-theme]) #appview.pgist-social .gtop{min-height:50px;padding:9px 12px}
+:is(html,html[data-theme]) #appview.pgist-social .gph b{font-size:12.5px;color:var(--pg-text)}
+:is(html,html[data-theme]) #appview.pgist-social .gph i{font-size:10.5px;color:var(--pg-muted)}
+:is(html,html[data-theme]) #appview.pgist-social .gmore{color:var(--pg-muted);font-size:17px}
+:is(html,html[data-theme]) #appview.pgist-social .gheadline{padding:9px 12px 1px}
+:is(html,html[data-theme]) #appview.pgist-social .gtitle{font-size:16px;line-height:1.25}
+:is(html,html[data-theme]) #appview.pgist-social .gbody{font-size:13px;line-height:1.4;color:#bbc3ce}
+:is(html,html[data-theme]) #appview.pgist-social .gread{font-size:11.5px;margin-top:6px;color:var(--pg-muted)}
+:is(html,html[data-theme]) #appview.pgist-social .gact{display:flex;align-items:center;gap:6px;padding:7px 12px 9px}
+:is(html,html[data-theme]) #appview.pgist-social .gact button{background:transparent;color:#d8dee7;border:0;border-radius:8px;padding:7px 8px;font-size:11.5px}
+:is(html,html[data-theme]) #appview.pgist-social .gact button:hover{background:var(--pg-control)}
+:is(html,html[data-theme]) #appview.pgist-social .gact .sh{margin-left:auto}
+
+/* Keep media prominent but prevent oversized text and cards from taking over. */
+:is(html,html[data-theme]) #appview.pgist-social .gvid{max-height:min(64vh,560px);border-radius:0}
+:is(html,html[data-theme]) #appview.pgist-social .gvid .gvp{width:48px;height:48px}
+:is(html,html[data-theme]) #appview.pgist-social .gmedia img,
+:is(html,html[data-theme]) #appview.pgist-social .gmedia video{max-width:100%}
+
+/* Stable bottom dock: it is a flex item below the scrolling body, not an overlay. */
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons{position:relative;left:auto;right:auto;bottom:auto;transform:none;width:auto;max-width:none;flex:none;height:58px;margin:0;padding:4px 10px max(4px,env(safe-area-inset-bottom));background:rgba(13,15,18,.98);border:0;border-top:1px solid var(--pg-border);border-radius:0;box-shadow:none;gap:4px}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button{height:48px;min-width:0;padding:3px 4px;gap:2px;color:var(--pg-muted);font:700 10px 'Plus Jakarta Sans',system-ui,sans-serif}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button span{display:block;line-height:1}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button i{font-size:17px;line-height:1}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button.on{color:#fff}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons button.on i{color:var(--pg-accent)}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons .mk{width:52px;height:42px;min-width:52px;margin:0 4px;border-radius:13px;background:var(--pg-accent);color:#12150a;box-shadow:none}
+:is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons .mk i{font-size:17px;color:#12150a}
+:is(html,html[data-theme]) #appview.pgist-social .abody:not(.rlb){padding-bottom:14px}
+
+@media (min-width:700px){
+  :is(html,html[data-theme]) #appview.pgist-social .tkdock.gicons{width:min(640px,100%);margin-left:auto;margin-right:auto;border-left:1px solid var(--pg-border);border-right:1px solid var(--pg-border)}
+  :is(html,html[data-theme]) #appview.pgist-social #gfeed .gp{max-width:640px;margin-left:auto;margin-right:auto}
+}
+
+/* Profile layout switch: content tabs stay on the left; the two view icons stay
+   on the right so Grid/List is discoverable without adding another full row. */
+:is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar{display:flex;align-items:center;gap:8px;margin:10px 12px 2px;border-top:1px solid var(--pg-border);border-bottom:1px solid var(--pg-border)}
+:is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar .gprofile-tabs{flex:1;min-width:0;margin:0;border:0}
+:is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar .gprofile-tabs [role=tab]{padding:10px 5px;font-size:12px}
+:is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar .gview-toggle{display:flex;align-items:center;gap:2px;flex:none;padding:2px;border:1px solid var(--pg-border);border-radius:9px;background:var(--pg-surface)}
+:is(html,html[data-theme]) #appview.pgist-social .gview-toggle button{display:grid;place-items:center;width:30px;height:28px;border:0;border-radius:6px;background:transparent;color:var(--pg-muted);font-size:13px}
+:is(html,html[data-theme]) #appview.pgist-social .gview-toggle button.on{background:var(--pg-accent);color:#12150a}
+:is(html,html[data-theme]) #appview.pgist-social .gview-toggle button:focus-visible{outline:2px solid #fff;outline-offset:1px}
+:is(html,html[data-theme]) #appview.pgist-social .gprofile-grid{gap:3px;padding:3px 12px 12px}
+:is(html,html[data-theme]) #appview.pgist-social .gprofile-tile{background:var(--pg-surface)}
+
+@media (max-width:430px){
+  :is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar{margin-left:10px;margin-right:10px;gap:5px}
+  :is(html,html[data-theme]) #appview.pgist-social .gprofile-toolbar .gprofile-tabs [role=tab]{font-size:11px;padding-left:3px;padding-right:3px}
+  :is(html,html[data-theme]) #appview.pgist-social .gview-toggle button{width:28px;height:27px}
+}

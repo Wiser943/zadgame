@@ -444,11 +444,11 @@ const RL = {
   PH.close = function () { const a = this.$a(); if (a) a.classList.remove('pgist-social', 'rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };
 })();
 Object.assign(RL, {
-  /* bottom bar: four icons, no text. Home (feed + reels), Discover, Create, Profile (the unified profile) */
+  /* bottom bar: compact labeled navigation. Home (feed + reels), Discover, Create, Profile. */
   dock(at) {
     const disc = at === 'feed' && GIST.tab === 'trending' && !GIST.tagF, active = at === 'profile' ? 'me' : disc ? 'disc' : 'home',
-      it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}" aria-label="${lb}"${active === k ? ' aria-current="page"' : ''}><i class="fa-solid ${ic}"></i></button>`;
-    return `<nav class="tkdock gicons" aria-label="Gist navigation">${it('home', 'fa-house', 'Home', 'RL.goFeed()')}${it('disc', 'fa-compass', 'Discover', 'RL.goDiscover()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i></button>${it('me', 'fa-user', 'Profile', 'RL.goMe()')}</nav>`
+      it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}" aria-label="${lb}"${active === k ? ' aria-current="page"' : ''}><i class="fa-solid ${ic}"></i><span>${lb}</span></button>`;
+    return `<nav class="tkdock gicons" aria-label="Gist navigation">${it('home', 'fa-house', 'Pulse', 'RL.goFeed()')}${it('disc', 'fa-compass', 'Discover', 'RL.goDiscover()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i><span>Create</span></button>${it('me', 'fa-user', 'Studio', 'RL.goMe()')}</nav>`
   },
   goDiscover() { this.stop(); GIST.stack = []; GIST.tab = 'trending'; GIST.tagF = ''; GIST.feed() },
   goFeed() { this.stop(); GIST.stack = []; if (GIST.tab === 'trending' || GIST.tab === 'me') GIST.tab = 'latest'; GIST.tagF = ''; GIST.feed() },
