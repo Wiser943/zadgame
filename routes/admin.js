@@ -97,6 +97,19 @@ router.post('/ac/socials', async (req, res, next) => {
 });
 
 
+// Elections: only the admin (the "electoral commission") decides when an election happens.
+router.get('/ac/elections', ensureAdmin, async (req, res, next) => {
+  try { res.json(await require('../services/govService').listRounds()); } catch (e) { next(e); }
+});
+router.post('/ac/elections', ensureAdmin, async (req, res, next) => {
+  try { const b = req.body || {}; res.json(await require('../services/govService').scheduleRound(req.app.get('io'), { start: b.start, shortlistAt: b.shortlistAt, end: b.end })); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+router.post('/ac/elections/:n/cancel', ensureAdmin, async (req, res, next) => {
+  try { res.json(await require('../services/govService').cancelRound(req.params.n)); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+
 // Daily gem hunt settings (on/off, clue, hint, place, prize tiers)
 router.get('/ac/gem', async (req, res, next) => {
   try { const G = require('../utils/acgem'); res.json({ config: await G.getConfig(), places: G.PLACES }); } catch (e) { next(e); }

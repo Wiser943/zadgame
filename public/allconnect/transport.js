@@ -47,6 +47,7 @@ const TR = {
   stop() { clearInterval(this.timer); this.timer = null; if (this.g) { clearTimeout(this.g.t); clearInterval(this.g.i); this.g = null } },
   /* keeps live numbers (route earnings, parking, rental) fresh while the sheet is open */
   async tick() {
+    if (SHEET.isOpen('trplay')) return;   /* a quiz / reaction game is running: never tear its state down */
     if (!SHEET.isOpen('transport') && !SHEET.isOpen('trveh')) return this.stop();
     if (this.busy || this.g) return; try { await this.load(); SHEET.paint() } catch (e) {}
   },
@@ -192,8 +193,11 @@ const TR = {
       + UI.row({ ic: UI.ic('signs-post', '#3b82f6'), title: 'Road-sign quiz', sub: `${c.quiz.signs.count} signs, ${this.money(c.quiz.signs.pay)} each and ${this.money(c.quiz.signs.perfect)} for a perfect round · ${T.signsLeft} left today.`, right: this.btn('Play', "TR.quiz('signs')", { off: T.signsLeft <= 0 }) });
     return h + '<p class="lgnote">Rewards are capped every day. A perfect round also earns public-transport reputation.</p>';
   },
-  playSheet(title, onStart) {
-    SHEET.open({ id: 'trplay', title, back: "TR.leave()", onClose: () => this.stop(), body: () => '<div id="trg" class="trg"></div>', after: () => { if (!this.g || !this.g.started) { this.g = this.g || {}; this.g.started = true; onStart() } } });
+  playSheet(title, onStart, redraw) {
+    SHEET.open({ id: 'trplay', title, back: "TR.leave()", onClose: () => this.stop(), body: () => '<div id="trg" class="trg"></div>', after: () => {
+      if (!this.g || !this.g.started) { this.g = this.g || {}; this.g.started = true; onStart() }
+      else if (redraw) { const e = document.getElementById('trg'); if (e && !e.firstChild) redraw() }   /* sheet was repainted: put the question back */
+    } });
   },
   leave() { this.stop(); this.open('drive') },
   g$(h) { const e = document.getElementById('trg'); if (e) e.innerHTML = h },
@@ -204,14 +208,14 @@ const TR = {
     let r; try { r = await this.api('quiz/start', { kind }); this.cash(r.cash) } catch (e) { this.busy = false; return toast(e.message) }
     this.busy = false;
     this.g = { kind, token: r.token, qs: r.questions, i: 0, a: [] };
-    this.playSheet(kind === 'licence' ? 'Driving theory test' : 'Road-sign quiz', () => this.qDraw());
+    this.playSheet(kind === 'licence' ? 'Driving theory test' : 'Road-sign quiz', () => this.qDraw(), () => this.qDraw());
   },
   qDraw() {
     const g = this.g; if (!g) return; const q = g.qs[g.i];
     this.g$(`<div class="trprog"><small>Question ${g.i + 1} of ${g.qs.length}</small>${this.bar(((g.i) / g.qs.length) * 100, '#3b82f6')}</div>${q.sign ? `<div class="trsign">${q.sign}</div>` : ''}<h3 class="trq">${this.esc(q.q)}</h3>${q.opts.map((o, n) => `<button class="tropt" onclick="TR.qPick(${n})">${this.esc(o)}</button>`).join('')}`);
   },
   async qPick(n) {
-    const g = this.g; if (!g || g.lock) return; g.a.push(n); g.i++;
+    const g = this.g; if (!g || g.lock || g.picking) return; g.picking = true; setTimeout(() => { g.picking = false }, 250); g.a.push(n); g.i++;
     if (g.i < g.qs.length) return this.qDraw();
     g.lock = true; this.g$('<p class="empty">Marking…</p>');
     try {

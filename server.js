@@ -179,13 +179,18 @@ async function main() {
   const ALLCONNECT = path.join(__dirname, 'public', 'allconnect', 'index.html');
   app.get('/', (req, res) => {
     const q = req.query || {};
-    if (q.code || q.spectate || q.h || q.by) { res.set('X-Robots-Tag', 'noindex, nofollow'); return res.sendFile(GAMEHUB); }
+    if (q.code || q.spectate || q.h || q.by) return sendWithPreview(GAMEHUB)(req, res);
     const html = fs.readFileSync(LANDING, 'utf8');
-    res.type('html').send(siteSeo.renderLanding(html));
+    res.type('html').send(siteSeo.renderLanding(html, siteSeo.publicOrigin() || siteSeo.requestOrigin(req)));
   });
   // /play is a single-page app: /play/home, /play/map, /play/buy, /play/phone, /play/phone/bank ... all serve the same shell and the client router picks the screen.
-  app.get(['/play', '/play/', '/play/*'], (req, res) => { res.set('X-Robots-Tag', 'noindex, nofollow'); res.sendFile(ALLCONNECT); });
-  app.get('/gamehub', (req, res) => { res.set('X-Robots-Tag', 'noindex, nofollow'); res.sendFile(GAMEHUB); });
+  const sendWithPreview = (file) => (req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    const o = siteSeo.publicOrigin() || siteSeo.requestOrigin(req);
+    res.type('html').send(String(fs.readFileSync(file, 'utf8')).replace('<!--PUBLIC_SEO_ORIGIN-->', siteSeo.metadataTags(o, '/').replace(/\n\s*<link rel="canonical"[^\n]*/, '')));
+  };
+  app.get(['/play', '/play/', '/play/*'], sendWithPreview(ALLCONNECT));
+  app.get('/gamehub', sendWithPreview(GAMEHUB));
   app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
   app.get('/status', (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
   app.get('/stats', (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));

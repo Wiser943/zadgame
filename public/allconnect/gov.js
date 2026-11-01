@@ -1,4 +1,4 @@
-/* State House (Phone -> State House): elections for Governor, Commissioner and President every 14 days,
+/* State House (Phone -> State House): elections for Governor, Commissioner and President (called by the admin),
    plus the policies and announcements of whoever wins. Built on the shared SHEET (tabs) from ui.js, the same rows / buttons
    as Lagos Life, and PH.av for avatars. All rules and numbers come from the server (routes/acgov.js, utils/acgov.js);
    this file only draws them. */
@@ -48,7 +48,7 @@ const GOV = {
     const D = this.D; if (!D) return '<p class="empty">Loading…</p>';
     const o = D.offices[t] || D.offices.governor;
     return this.holder(o) + this.race(o) + this.policies(o) + this.announcements(o) +
-      `<p class="lgnote">A new election round starts every 14 days (Monday). The campaign runs for 10 days, then the ${D.shortlistSize} candidates with the most backers go on the ballot and everyone votes for 4 days. The winner holds office for the next round. Filing fees are refunded to anyone who does not make the ballot, and to the winner, who also gets a term allowance. Policy prices apply straight away, except bills, which use the policy in place on the Monday they are issued.</p>`;
+      `<p class="lgnote">Elections are called by the Electoral Commission, like INEC: only it sets when an election opens and closes, and between elections you wait for the next one. Each election has a campaign period, then the ${D.shortlistSize} candidates with the most backers go on the ballot and everyone votes. The winner takes office when the polls close and stays until a later election replaces them. Filing fees are refunded to anyone who does not make the ballot, and to the winner, who also gets a term allowance. Policy prices apply straight away, except bills, which use the policy in place on the Monday they are issued.</p>`;
   },
 
   /* the sitting officeholder (blue card like the other Lagos Life cards) */
@@ -64,6 +64,11 @@ const GOV = {
   /* the election: campaign (file + back candidates) or voting (the ballot) */
   race(o) {
     const D = this.D, e = o.election, c = D.cycle, voting = e.phase === 'voting';
+    if (e.phase === 'none') {
+      const nx = c.next, when = nx ? new Date(nx.start + 3600000).toISOString().replace('T', ' ').slice(0, 16) + ' (Lagos time)' : '';
+      return `<div class="gvph"><h4>Next election</h4><span>${nx ? 'Opens in ' + this.left(nx.start) : 'Date not announced'}</span></div>`
+        + `<p class="empty">${nx ? 'No election is on right now. Filing and voting open on ' + when + '.' : 'No election is on right now. The Electoral Commission has not announced the next election date yet. Check back later.'}</p>`;
+    }
     const head = `<div class="gvph"><h4>Next election</h4><span>${voting ? 'Polls close in ' + this.left(c.end) : 'Ballot set in ' + this.left(c.shortlistAt)}</span></div>`;
     let box = '';
     if (!voting && !e.iRun) box = this.fileBox(o);

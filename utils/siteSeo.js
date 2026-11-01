@@ -15,10 +15,18 @@ function xmlEscape(value) {
   return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-function metadataTags(origin) {
+function requestOrigin(req) {
+  if (!req) return '';
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  return /^[a-z0-9.-]+(:\d+)?$/i.test(host) ? `${proto}://${host}` : '';
+}
+
+// Social crawlers (WhatsApp, Telegram, X) only accept ABSOLUTE image URLs, and need >= 300px to show a proper logo card.
+function metadataTags(origin, path = '/') {
   if (!origin) return '';
-  const root = `${origin}/`;
-  return `\n  <link rel="canonical" href="${root}">\n  <meta property="og:url" content="${root}">\n  <meta property="og:image" content="${origin}/icon-192.png">\n  <meta name="twitter:image" content="${origin}/icon-192.png">`;
+  const url = origin + path, img = `${origin}/logo-512.png`;
+  return `\n  <link rel="canonical" href="${url}">\n  <meta property="og:url" content="${url}">\n  <meta property="og:image" content="${img}">\n  <meta property="og:image:secure_url" content="${img}">\n  <meta property="og:image:type" content="image/png">\n  <meta property="og:image:width" content="512">\n  <meta property="og:image:height" content="512">\n  <meta property="og:image:alt" content="AllConnect logo">\n  <meta name="twitter:image" content="${img}">`;
 }
 
 function renderLanding(html, origin = publicOrigin()) {
@@ -36,4 +44,4 @@ function robots(origin = publicOrigin()) {
   return `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin\n${origin ? `Sitemap: ${origin}/sitemap.xml\n` : ''}`;
 }
 
-module.exports = { publicOrigin, metadataTags, renderLanding, sitemap, robots };
+module.exports = { requestOrigin, publicOrigin, metadataTags, renderLanding, sitemap, robots };

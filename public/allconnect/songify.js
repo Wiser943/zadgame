@@ -41,7 +41,7 @@ const SONGIFY = {
       this.setStatus('This track could not be streamed. Try another source or choose a different result.', true); if (typeof toast === 'function') toast('Songify could not play this track.'); this.busy = false; this.repaint();
     });
   },
-  repaint() { this.paint(); this.paintMini(); this.paintIsland(); },
+  repaint() { this.paint(); this.paintMini(); this.paintIsland(); this.placeYT(); },
   youtubeId(song) {
     if (!song) return '';
     const id = String(song.videoId || '').trim();
@@ -50,8 +50,37 @@ const SONGIFY = {
     return m ? m[1] : '';
   },
   isPlaying() { return this.youtubeId(this.current) ? !!this.ytPlaying : !!(this.audio && !this.audio.paused); },
+  /* The YouTube player lives in ONE persistent box (#sg-yt) that is never moved or re-created while the same video plays
+     (moving an iframe reloads it and stops the music). The Now Playing screen just lays it over its video slot; when you
+     minimise or open another app it becomes a small floating player that keeps playing. It stays visible (YouTube requires it). */
+  ytHost() {
+    const sc = document.querySelector('.screen'); if (!sc) return null;
+    let h = document.getElementById('sg-yt');
+    if (!h) { h = document.createElement('div'); h.id = 'sg-yt'; h.className = 'sg-yt float'; h.hidden = true;
+      h.innerHTML = '<button class="sgy-b sgy-x" onclick="SONGIFY.stop()" aria-label="Close player"><i class="fa-solid fa-xmark"></i></button><button class="sgy-b sgy-o" onclick="SONGIFY.openNP()" aria-label="Open player"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>';
+      sc.appendChild(h); this._ytId = ''; }
+    return h;
+  },
+  placeYT() {
+    const h = this.ytHost(); if (!h) return;
+    const yt = this.current && this.youtubeId(this.current);
+    if (!yt) { h.hidden = true; const f = h.querySelector('iframe'); if (f) f.remove(); this._ytId = ''; return; }
+    if (this._ytId !== yt) {
+      const old = h.querySelector('iframe'); if (old) old.remove();
+      const f = document.createElement('iframe'); f.className = 'songify-youtube'; f.title = 'Play ' + (this.current.title || 'song') + ' on YouTube';
+      f.src = `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&playsinline=1&controls=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+      f.allow = 'autoplay; encrypted-media; picture-in-picture; web-share'; f.referrerPolicy = 'strict-origin-when-cross-origin'; f.setAttribute('allowfullscreen', '');
+      h.insertBefore(f, h.firstChild); this._ytId = yt;
+    }
+    h.hidden = false;
+    const sc = document.querySelector('.screen'), slot = this.np && this.alive() ? document.querySelector('#sg-np .np-youtube') : null;
+    if (slot && sc) {
+      const a = sc.getBoundingClientRect(), b = slot.getBoundingClientRect();
+      h.className = 'sg-yt full'; h.style.cssText = `left:${b.left - a.left}px;top:${b.top - a.top}px;width:${b.width}px;height:${b.height}px`;
+    } else { h.className = 'sg-yt float'; h.style.cssText = ''; }
+  },
   ytCommand(func) {
-    const frame = document.querySelector('#sg-np iframe.songify-youtube');
+    const frame = document.querySelector('#sg-yt iframe.songify-youtube');
     if (frame && frame.contentWindow) frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: [] }), 'https://www.youtube-nocookie.com');
   },
   /* is the Songify screen the one on show? */
@@ -73,11 +102,11 @@ const SONGIFY = {
     }
     this.repaint(); this.paintResults();
   },
-  stop() { this.ytCommand('stopVideo'); this.ytPlaying = false; if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.np = false; this.repaint(); this.paintResults(); },
+  stop() { this.ytCommand('stopVideo'); this.ytPlaying = false; if (this.audio) { this.audio.pause(); this.audio.removeAttribute('src'); this.audio.load(); } this.current = null; this.queue = []; this.np = false; this.placeYT(); this.repaint(); this.paintResults(); },
   toggle() {
     if (!this.current) return;
     if (this.youtubeId(this.current)) {
-      if (!document.querySelector('#sg-np iframe.songify-youtube') && this.alive()) { this.np = true; this.ytPlaying = true; this.paint(); return; }
+      if (!document.querySelector('#sg-yt iframe.songify-youtube')) { this.ytPlaying = true; this.placeYT(); this.repaint(); return; }
       this.ytPlaying = !this.ytPlaying; this.ytCommand(this.ytPlaying ? 'playVideo' : 'pauseVideo'); this.repaint(); return;
     }
     this.audio.paused ? this.audio.play().catch(() => {}) : this.audio.pause();
@@ -112,7 +141,7 @@ const SONGIFY = {
     PH.shell('Songify', 'SONGIFY.close()', '<div class="sg-wrap"><div class="sg-body" id="sg-body"></div><div id="sg-mini"></div><nav class="sg-nav" id="sg-nav"></nav></div>');
     this.draw();
   },
-  close() { if (this.youtubeId(this.current)) this.stop(); else this.closeNP(true); document.querySelector('.screen')?.classList.remove('sg-dark'); PH.close(); },
+  close() { this.closeNP(true); document.querySelector('.screen')?.classList.remove('sg-dark'); PH.close(); },
   setTab(t) { this.tab = t; this.draw(); },
   navHtml() {
     return [['home', 'fa-house', 'Home'], ['favs', 'fa-heart', 'Favorites'], ['recent', 'fa-clock-rotate-left', 'Recent']]
@@ -220,7 +249,7 @@ const SONGIFY = {
   setTone() { const el = document.getElementById('sg-np'); if (el && this.current) el.style.setProperty('--np', this.colour(this.current)); },
   listLabel() { return this.listName === 'favs' ? 'Favorites' : this.listName === 'recent' ? 'Recently played' : (this.searched ? 'Search results' : 'Trending now'); },
   openNP() { if (!this.current) return; this.np = true; this.paint(); },
-  closeNP(quiet) { if (this.youtubeId(this.current)) { this.ytCommand('pauseVideo'); this.ytPlaying = false; } this.np = false; this.npQueue = false; this.npKey = ''; const el = document.getElementById('sg-np'); if (el) el.remove(); document.querySelector('.screen')?.classList.remove('sg-npon'); if (!quiet) this.paint(); },
+  closeNP(quiet) { this.np = false; this.npQueue = false; this.npKey = ''; const el = document.getElementById('sg-np'); if (el) el.remove(); document.querySelector('.screen')?.classList.remove('sg-npon'); this.placeYT(); if (!quiet) this.paint(); },
   toggleQueue() { this.npQueue = !this.npQueue; this.paintNP(); },
   playQ(i) { const s = this.queue[i]; if (s) this.start(s); },
   paintSgMini() {
@@ -235,7 +264,7 @@ const SONGIFY = {
   },
   npHtml(s) {
     const yt = this.youtubeId(s), stage = yt
-      ? `<div class="np-youtube"><iframe class="songify-youtube" title="Play ${esc(s.title)} on YouTube" src="https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&amp;playsinline=1&amp;controls=1&amp;rel=0&amp;enablejsapi=1&amp;origin=${encodeURIComponent(location.origin)}" allow="autoplay; encrypted-media; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><p class="np-provider-note">Official YouTube player · use its playback controls</p>`
+      ? `<div class="np-youtube" id="np-ytslot"></div><p class="np-provider-note">Official YouTube player · use its playback controls</p>`
       : `<div class="np-stage"><div class="np-disc"><img class="np-art" src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"></div></div>`;
     const controls = yt ? `<div class="np-ctl np-yt-ctl"><button onclick="SONGIFY.prev()" aria-label="Previous result"><i class="fa-solid fa-backward-step"></i></button><button onclick="SONGIFY.next()" aria-label="Next result"><i class="fa-solid fa-forward-step"></i></button></div>` : `<input id="songify-progress" class="np-range" type="range" min="0" max="100" step="0.1" value="0" oninput="SONGIFY.seek(this.value)" aria-label="Track progress">
       <div class="np-times"><small id="songify-now">0:00</small><small id="songify-total">0:00</small></div>
@@ -252,12 +281,12 @@ const SONGIFY = {
   paintNP() {
     const sc = document.querySelector('.screen'); if (!sc) return;
     let el = document.getElementById('sg-np');
-    if (!this.np || !this.current || !this.alive()) { if (el) el.remove(); sc.classList.remove('sg-npon'); this.npKey = ''; return; }
+    if (!this.np || !this.current || !this.alive()) { if (el) el.remove(); sc.classList.remove('sg-npon'); this.npKey = ''; this.placeYT(); return; }
     const s = this.current, paused = !this.isPlaying(), fav = this.isFav(s);
     if (!el) { el = document.createElement('div'); el.id = 'sg-np'; el.className = 'sg-np'; sc.appendChild(el); this.npKey = ''; requestAnimationFrame(() => el.classList.add('on')); }
     sc.classList.add('sg-npon');
     if (this.npKey !== s.streamUrl) { this.npKey = s.streamUrl; el.innerHTML = this.npHtml(s); this.tone(s); }
-    this.setTone();
+    this.setTone(); this.placeYT(); clearTimeout(this._ytT); this._ytT = setTimeout(() => this.placeYT(), 380); if (!el._ytScroll) { el._ytScroll = 1; el.addEventListener('scroll', () => this.placeYT(), { passive: true }); }
     /* only flip the small bits so the record keeps turning smoothly */
     el.classList.toggle('paused', paused); el.classList.toggle('qopen', this.npQueue);
     const q = (c) => el.querySelector(c);
@@ -367,7 +396,7 @@ SONGIFY.init();
   PH.shell = function () {
     const sc = document.querySelector('.screen');
     if (sc) sc.classList.toggle('sg-dark', this.view === 'songify');
-    if (this.view !== 'songify') { if (SONGIFY.youtubeId(SONGIFY.current)) SONGIFY.stop(); else SONGIFY.closeNP(true); }
+    if (this.view !== 'songify') SONGIFY.closeNP(true);
     return PH._sgShell.apply(this, arguments);
   };
 })();

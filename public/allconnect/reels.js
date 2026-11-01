@@ -160,7 +160,7 @@ const RL = {
       <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
       ${p.text ? `<div class="rl-cap">${GIST.txt(p.text)}</div>` : ''}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
       <div class="rl-act"><button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
-      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
+      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
       <button role="menuitem" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
       <button role="menuitem" data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><i class="fa-solid fa-share"></i><em>${this.fmt(p.shares) || 'Share'}</em></button>
       <button role="menuitem" data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i><em>${p.saved ? 'Saved' : 'Save Reel'}</em></button>
@@ -238,7 +238,7 @@ const RL = {
   toggle(c) { const v = c.querySelector('video'); if (v.paused) { v._go = 1; this.playReady(v) } else { v._go = 0; v.pause(); c.classList.add('paused') } },
   dbl(c, e) {
     const id = c.dataset.id, p = GIST.cache.get(id); if (p && !p.myRx) GIST.react(id, 'like');
-    const b = c.querySelector('.rl-burst'), r = c.getBoundingClientRect(); b.innerHTML = `<i class="fa-solid fa-heart" style="left:${e.clientX - r.left}px;top:${e.clientY - r.top}px"></i>`; const h = b.firstChild; h.getBoundingClientRect(); h.classList.add('go'); setTimeout(() => { b.innerHTML = '' }, 700)
+    const b = c.querySelector('.rl-burst'), r = c.getBoundingClientRect(); b.innerHTML = `<i class="fa-solid fa-bolt" style="left:${e.clientX - r.left}px;top:${e.clientY - r.top}px"></i>`; const h = b.firstChild; h.getBoundingClientRect(); h.classList.add('go'); setTimeout(() => { b.innerHTML = '' }, 700)
   },
   snd() { this.muted = !this.muted; document.querySelectorAll('.rl-v').forEach(v => { v.muted = this.muted }); this.sndIcons(); const v = this.feedEl() && this.feedEl().querySelectorAll('.rl-v')[this.i]; if (v && v.paused && !v.closest('.rl-card').classList.contains('paused')) this.playReady(v) },
   sndIcons() {
@@ -262,7 +262,7 @@ const RL = {
   sync(id) {
     const p = GIST.cache.get(id); if (!p) return;
     document.querySelectorAll(`.rl-card[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-heart"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
+      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
       const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comments'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save Reel'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
     })
   },
@@ -438,7 +438,7 @@ const RL = {
     const r = shell.apply(this, arguments), a = this.$a(), old = a.querySelector('.tkdock'); if (old) old.remove();
     const gist = this.view === 'gist', reels = gist && GIST.cur && GIST.cur.fn === 'reels';
     a.classList.toggle('pgist-social', gist); a.classList.toggle('rlmode', !!reels); a.classList.remove('rlfull');
-    if (gist && GIST.cur && ['feed', 'reels', 'profile', 'post'].includes(GIST.cur.fn)) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
+    if (gist && GIST.cur && ['feed', 'reels', 'profile'].includes(GIST.cur.fn)) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
     return r
   };
   PH.close = function () { const a = this.$a(); if (a) a.classList.remove('pgist-social', 'rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };

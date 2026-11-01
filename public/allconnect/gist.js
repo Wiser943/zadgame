@@ -3,7 +3,7 @@
    polls, pinned post, comment replies + comment likes, photo carousel, match-win cards, live "new gists" pill, and the ONE
    unified profile (cover, bio, verified tick, game stats, follow / message). Everything optimistic: the UI never waits on the server.
    API: /api/ac/gist/* */
-const RXE = { like: '❤️', laugh: '😂', fire: '🔥', sad: '😢', wow: '😮' };
+const RXE = { like: '⚡', laugh: '😂', fire: '🔥', sad: '😢', wow: '😮' };
 const GIST = {
   tab: 'latest', tagF: '', F: {}, trend: [], pending: 0, stack: [], cur: null, ret: null, cache: new Map(), C: null, pf: null, cm: null, replyTo: null,
   pk: { tab: 'mine', mine: null, plat: null, busy: false }, games: null, ready: false,
@@ -111,14 +111,14 @@ const GIST = {
     const btns = e.kind === 'result' ? `<button onclick="GIST.react('${id}','fire')"><i class="fa-solid fa-fire"></i> Congratulate</button>` : '';
     return `<div class="gelect" style="--c:${esc(e.color)}"><div class="get"><span>${e.icon} ${head}</span></div>${mid}<div class="gmb">${btns}<button onclick="window.GOV&&GOV.open('${esc(e.office)}')"><i class="fa-solid fa-landmark"></i> State House</button></div></div>`;
   },
-  matchcard(m, id) { if (!m) return ''; return `<div class="gmatch"><div class="gmt"><span><i class="fa-solid fa-trophy"></i> VICTORY</span><b>${esc(m.name)}</b></div><div class="gms">${m.score ? esc(m.score) : 'Won!'}</div><div class="gmo">${m.opponent ? 'vs <b>' + esc(m.opponent) + '</b>' : 'Match win'}</div><div class="gmb"><button onclick="GIST.react('${id}','fire')"><i class="fa-solid fa-fire"></i> Cheer</button><button onclick="GIST.play('')"><i class="fa-solid fa-gamepad"></i> Play ${esc(m.name)}</button></div></div>` },
+  matchcard(m, id) { if (!m) return ''; return `<div class="gmatch"><div class="gmt"><span><i class="fa-solid fa-trophy"></i> VICTORY</span><b>${esc(m.name)}</b></div><div class="gms">${m.score ? esc(m.score) : 'Won!'}</div><div class="gmo">${m.opponent ? 'vs <b>' + esc(m.opponent) + '</b>' : 'Match win'}</div><div class="gmb"><button onclick="GIST.react('${id}','fire')"><i class="fa-solid fa-fire"></i> Cheer</button><button onclick="GIST.play('')"><i class="fa-solid fa-gamepad"></i> Play</button></div></div>` },
   pollHtml(p) {
     const q = p.poll; if (!q) return '';
     const show = q.myVote >= 0 || q.ended, tot = q.total || 0;
     const left = q.ended ? 'Poll ended' : (() => { const ms = new Date(q.endsAt) - Date.now(), h = Math.ceil(ms / 3600000); return h >= 48 ? Math.ceil(h / 24) + ' days left' : h > 1 ? h + ' hours left' : 'Ending soon' })();
     return `<div class="gpoll" data-id="${p.id}">${q.options.map((o, i) => show ? `<div class="gpo res ${q.myVote === i ? 'mine' : ''}"><u style="width:${tot ? Math.round(o.votes / tot * 100) : 0}%"></u><span>${esc(o.text)}${q.myVote === i ? ' ✓' : ''}</span><b>${tot ? Math.round(o.votes / tot * 100) : 0}%</b></div>` : `<button class="gpo" onclick="GIST.vote('${p.id}',${i})"><span>${esc(o.text)}</span></button>`).join('')}<small>${tot} vote${tot === 1 ? '' : 's'} · ${left}</small></div>`
   },
-  rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '❤️'}</span>${p.likes} like${p.likes === 1 ? '' : 's'}` : '' },
+  rxSummary(p) { const ks = Object.keys(RXE).filter(k => (p.rx || {})[k] > 0).sort((a, b) => p.rx[b] - p.rx[a]).slice(0, 3); return p.likes > 0 ? `<span>${ks.map(k => RXE[k]).join('') || '⚡'}</span>${p.likes} like${p.likes === 1 ? '' : 's'}` : '' },
   card(p, o) {
     o = o || {}; const a = p.author, tmp = String(p.id).startsWith('tmp');
     const who = `<button class="gph" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span><b>${esc(a.displayName)}${this.vb(a)}</b><i>${a.username ? '@' + esc(a.username) + ' · ' : ''}${tmp ? 'posting…' : this.ago(p.createdAt)}${p.edited ? ' · edited' : ''}</i></span></button>`;
@@ -339,16 +339,16 @@ const GIST = {
   post(id) {
     this.set('post', id); this.replyTo = null; const have = this.cache.get(id);
     const draw = p => { if (!this.cur || this.cur.fn !== 'post' || this.cur.args[0] !== id) return;
-      PH.shell('P-Gist', 'GIST.back()', `<div class="abody" id="ab">${this.card(p, { detail: 1 })}<div class="lab2">COMMENTS</div><div id="gcm" role="log" aria-live="polite" aria-relevant="additions text"><p class="empty">Loading…</p></div></div>
+      PH.shell('P-Gist', 'GIST.back()', `<div class="abody" id="ab">${this.card(p, { detail: 1 })}<div class="lab2">COMMENTS</div><div id="gcm" role="log" aria-live="polite" aria-relevant="additions text">${this.cmSkeleton()}</div></div>
         <div id="grep"></div><div class="gcin"><label class="sr-only" for="gc_in">Write a comment</label><input id="gc_in" placeholder="Write a comment…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')GIST.send('${id}')"><button onclick="GIST.send('${id}')" aria-label="Send comment"><i class="fa-solid fa-paper-plane"></i></button></div>`);
       this.loadComments(id) };
-    if (have && !have.deleted) draw(have); else PH.shell('P-Gist', 'GIST.back()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
+    if (have && !have.deleted) draw(have); else PH.shell('P-Gist', 'GIST.back()', `<div class="abody" id="ab">${this.skeleton()}</div>`);
     this.api('/posts/' + id).then(r => { this.put([r.post]); this.cache.set(id, r.post); if (!have) draw(r.post); else this.sync(id) }).catch(e => { if (!have) { const ab = $('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>` } })
   },
   cmOne(c, reply) {
     const a = c.author;
     return `<div class="gc ${reply ? 'rep' : ''} ${c.pending ? 'pending' : ''}" data-c="${c.id}"><button class="gph sm" onclick="GIST.nav('profile','${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}</button><div class="gcb"><b>${esc(a.displayName)}${this.vb(a)}</b><p>${this.txt(c.text)}</p>
-      <small>${c.pending ? 'sending…' : this.ago(c.createdAt)}${c.pending ? '' : ` · <button class="${c.liked ? 'on' : ''}" onclick="GIST.likeComment('${c.id}')">${c.liked ? '❤️' : '🤍'}${c.likes ? ' ' + c.likes : ''}</button> · <button onclick="GIST.reply('${c.parent || c.id}','${esc(a.username || a.displayName).replace(/'/g, '')}')">Reply</button>${c.canDelete ? ` · <button onclick="GIST.delComment('${c.id}')">Delete</button>` : ''}`}</small></div></div>`
+      <small>${c.pending ? 'sending…' : this.ago(c.createdAt)}${c.pending ? '' : ` · <button class="${c.liked ? 'on' : ''}" onclick="GIST.likeComment('${c.id}')">${c.liked ? '⚡' : '<i class="fa-solid fa-bolt gcb-off"></i>'}${c.likes ? ' ' + c.likes : ''}</button> · <button onclick="GIST.reply('${c.parent || c.id}','${esc(a.username || a.displayName).replace(/'/g, '')}')">Reply</button>${c.canDelete ? ` · <button onclick="GIST.delComment('${c.id}')">Delete</button>` : ''}`}</small></div></div>`
   },
   drawComments() {
     const b = $('gcm'); if (!b || !this.cm) return; const L = this.cm.list, top = L.filter(c => !c.parent);
@@ -400,7 +400,7 @@ const GIST = {
       <h4>Requirements <small>${d.metCount}/${d.total}</small></h4><div class="gmcard">${crit}</div>
       <h4>Milestones</h4>${ms}
       <h4>Your stats</h4><div class="gmgrid">${grid.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span>${x[2] ? `<small>${x[2]}</small>` : ''}</div>`).join('')}</div>
-      ${S.top ? `<div class="gmtop"><small>Top gist</small><p>${esc(S.top.text) || 'Photo or poll gist'}</p><span><span class="fa-solid fa-heart"></span> ${n(S.top.likes)} &nbsp; <span class="fa-solid fa-comment"></span> ${n(S.top.comments)}</span></div>` : ''}
+      ${S.top ? `<div class="gmtop"><small>Top gist</small><p>${esc(S.top.text) || 'Photo or poll gist'}</p><span><span class="fa-solid fa-bolt"></span> ${n(S.top.likes)} &nbsp; <span class="fa-solid fa-comment"></span> ${n(S.top.comments)}</span></div>` : ''}
       <h4>Rewards &amp; payouts</h4><div class="gmrw" id="gmrw"><button class="gmrwh" onclick="GIST.rewards()"><span class="gmrwi">💰</span><span class="gmrwt"><b>Rewards and Payouts</b><small>Confirm your details so you are ready when we launch</small></span><span class="gmrwb">E dey come soon</span></button><div id="gmrwf"></div></div>
       <h4>Earnings</h4><div class="gmpay"><span class="fa-solid fa-wallet"></span><div><b>Real-money payouts</b><p>${esc(d.payouts.text)}</p></div></div>
     </div>`;
@@ -442,9 +442,11 @@ const GIST = {
   },
   /* ---------- the ONE profile ---------- */
   profile(key) {
-    this.set('profile', key); PH.shell('Profile', 'GIST.back()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
-    NET.swr('/api/ac/gist/profile/' + encodeURIComponent(key), r => { this.put(r.posts); const mode = this.pf && this.pf.key === key ? this.pf.mode : 'grid'; this.pf = { key, r, posts: r.posts, more: r.more, mode }; this.drawProfile() }, { ttl: 0 }).catch(e => { const ab = $('ab'); if (ab && !this.pf) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>`; else if (ab) this.err(e) })
+    this.set('profile', key); PH.shell('Profile', 'GIST.back()', `<div class="abody" id="ab">${this.profSkeleton()}</div>`);
+    NET.swr('/api/ac/gist/profile/' + encodeURIComponent(key), r => { this.put(r.posts); const mode = this.pf && this.pf.key === key ? this.pf.mode : 'grid'; this.pf = { key, r, posts: r.posts, more: r.more, mode }; this.drawProfile() }, { ttl: 0, persist: true }).catch(e => { const ab = $('ab'); if (ab && !this.pf) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>`; else if (ab) this.err(e) })
   },
+  profSkeleton() { return '<div class="gsk gskp"><i class="gk-cover"></i><i class="gk-av"></i><i class="t" style="width:45%;margin:10px auto 8px"></i><i class="t" style="width:30%;margin:0 auto 14px"></i><div class="gk-stats"><i></i><i></i><i></i></div><div class="gk-grid">' + '<i></i>'.repeat(6) + '</div></div>' },
+  cmSkeleton() { const r = '<div class="gsk gskc"><div class="r"><i class="c"></i><i class="l"></i></div></div>'; return r + r + r },
   drawProfile() {
     const { r, posts, more } = this.pf, u = r.user, g = r.game || {}; if (!this.cur || this.cur.fn !== 'profile') return;
     const hd = document.querySelector('.appview .ahead');

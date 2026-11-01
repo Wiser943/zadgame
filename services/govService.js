@@ -5,6 +5,7 @@ const User = require('../models/User');
 const ACTxn = require('../models/ACTxn');
 const { GistPost, GistFollow } = require('../models/Gist');
 const { ACElection, ACBallot, ACFiling, ACOffice, ACGovAnn } = require('../models/ACGov');
+const ACSetting = require('../models/ACSetting');
 const G = require('../utils/acgov');
 const eco = require('../utils/economy');
 const { notify } = require('../utils/acnotify');
@@ -112,7 +113,35 @@ async function resolveElection(io, n, office, now) {
   for (const c of entries) if (c.user !== win.user) notify(io, c.user, { icon: off.icon, text: `${handle(w)} won the ${off.title} race. Thank you for running. Try again next round!`, kind: 'info' }).catch(() => {});
 }
 
-async function refreshOffices() { G.setOffices(await ACOffice.find().lean()); }
+async function loadSchedule() { const d = await ACSetting.findById('electionSchedule').lean(); G.setRounds((d && d.value && d.value.rounds) || []); }
+async function refreshOffices() { await loadSchedule(); G.setOffices(await ACOffice.find().lean()); }
+const fmtDate = (ms) => new Date(ms + G.HOUR).toISOString().replace('T', ' ').slice(0, 16) + ' (Lagos)';
+const noElection = (c) => fail(409, c.next ? `No election is on right now. The next one opens ${fmtDate(c.next.start)}.` : 'No election is on right now. The Electoral Commission has not announced the next election yet.');
+
+/* ---------- admin: the electoral commission sets when elections happen ---------- */
+async function listRounds() {
+  await loadSchedule(); const now = Date.now();
+  return { now, rounds: G.rounds().filter((r) => r.n > G.LEGACY_LAST).map((r) => ({ ...r, status: now < r.start ? 'upcoming' : now < r.shortlistAt ? 'campaign' : now < r.end ? 'voting' : 'closed' })) };
+}
+async function scheduleRound(io, input, now = Date.now()) {
+  await loadSchedule();
+  const r = { start: Number(input.start), shortlistAt: Number(input.shortlistAt), end: Number(input.end) };
+  const chk = G.checkRound(r, now); if (!chk.ok) throw fail(400, chk.error);
+  const latest = await ACElection.findOne().sort({ cycle: -1 }).select('cycle').lean();
+  const doc = await ACSetting.findById('electionSchedule').lean(), list = (doc && doc.value && doc.value.rounds) || [];
+  const n = Math.max(G.LEGACY_LAST, Math.floor((latest && latest.cycle) || 0), ...list.map((x) => +x.n)) + 1;
+  await ACSetting.findOneAndUpdate({ _id: 'electionSchedule' }, { $set: { value: { rounds: [...list, { n, ...r }] } } }, { upsert: true });
+  await loadSchedule();
+  if (io) notify(io, null, { icon: '🗳️', text: `The next election is set. Candidates can file from ${fmtDate(r.start)}; polls close ${fmtDate(r.end)}.`, kind: 'gov' }).catch(() => {});
+  return listRounds();
+}
+async function cancelRound(n, now = Date.now()) {
+  const doc = await ACSetting.findById('electionSchedule').lean(), list = (doc && doc.value && doc.value.rounds) || [];
+  const r = list.find((x) => +x.n === +n); if (!r) throw fail(404, 'No such election.');
+  if (now >= r.start) throw fail(409, 'That election has already started. It cannot be cancelled.');
+  await ACSetting.updateOne({ _id: 'electionSchedule' }, { $set: { value: { rounds: list.filter((x) => +x.n !== +n) } } });
+  return listRounds();
+}
 
 /* Called every 30 seconds, and (throttled) when anybody opens State House. */
 let lastTick = 0, ticking = null;
@@ -124,7 +153,7 @@ async function tick(io, now = Date.now()) {
       const old = await ACElection.find({ cycle: { $lt: c.n }, resolved: false }).sort({ cycle: 1 }).select('cycle office').lean();
       for (const e of old) if (G.OFFICES[e.office]) await resolveElection(io, e.cycle, e.office, now);
       const made = [];
-      for (const office of G.OFFICE_IDS) { const m = await shortlistIfDue(io, c.n, office, now); if (m && m.count) made.push(G.OFFICES[m.office].title); }
+      if (c.phase !== 'none') for (const office of G.OFFICE_IDS) { const m = await shortlistIfDue(io, c.n, office, now); if (m && m.count) made.push(G.OFFICES[m.office].title); }
       if (made.length) notify(io, null, { icon: '🗳️', text: `Voting is open! The ballot is set for ${made.join(', ')}. Open State House and cast your vote before the round ends.`, kind: 'gov' }).catch(() => {});
       await refreshOffices(); lastTick = Date.now();
     } finally { ticking = null; }
@@ -148,7 +177,7 @@ const cleanText = (s, min, max, what) => {
 
 async function file(io, uid, officeId, sloganRaw, now = Date.now()) {
   const off = G.OFFICES[officeId]; if (!off) throw fail(400, 'Unknown office.');
-  const c = G.cycleOf(now); if (c.phase !== 'campaign') throw fail(409, 'Filing is closed. Voting is on, so wait for the next round.');
+  const c = G.cycleOf(now); if (c.phase === 'none') throw noElection(c); if (c.phase !== 'campaign') throw fail(409, 'Filing is closed. Voting is on, so wait for the next election.');
   const slogan = cleanText(sloganRaw, 3, 80, 'Campaign slogan');
   const { u, f } = await facts(uid, now);
   const el = await getElection(c.n, officeId); if (el.shortlistDone) throw fail(409, 'Filing is closed for this round.');
@@ -167,7 +196,7 @@ async function file(io, uid, officeId, sloganRaw, now = Date.now()) {
 
 async function support(uid, officeId, candidate, now = Date.now()) {
   if (!G.OFFICES[officeId]) throw fail(400, 'Unknown office.');
-  const c = G.cycleOf(now); if (c.phase !== 'campaign') throw fail(409, 'Campaign backing is over. Voting is on.');
+  const c = G.cycleOf(now); if (c.phase === 'none') throw noElection(c); if (c.phase !== 'campaign') throw fail(409, 'Campaign backing is over. Voting is on.');
   const { f } = await facts(uid, now); if (!G.voterOk(f.ageDays)) throw fail(403, 'Your account is too new to back a candidate. Try again tomorrow.');
   const _id = eid(c.n, officeId), key = { cycle: c.n, office: officeId, kind: 'support', user: uid };
   if (!candidate) { await ACBallot.deleteOne(key); return { backed: '' }; }
@@ -179,7 +208,7 @@ async function support(uid, officeId, candidate, now = Date.now()) {
 
 async function vote(uid, officeId, candidate, now = Date.now()) {
   if (!G.OFFICES[officeId]) throw fail(400, 'Unknown office.');
-  const c = G.cycleOf(now); if (c.phase !== 'voting') throw fail(409, 'Voting has not started. The ballot is set when the campaign ends.');
+  const c = G.cycleOf(now); if (c.phase === 'none') throw noElection(c); if (c.phase !== 'voting') throw fail(409, 'Voting has not started. The ballot is set when the campaign ends.');
   const { f } = await facts(uid, now); if (!G.voterOk(f.ageDays)) throw fail(403, 'Your account is too new to vote. Try again tomorrow.');
   candidate = String(candidate || ''); if (candidate === uid) throw fail(400, 'You cannot vote for yourself.');
   const el = await ACElection.findOne({ _id: eid(c.n, officeId), shortlistReady: true, shortlist: candidate }).select('_id').lean(); if (!el) throw fail(404, 'That person is not on the ballot.');
@@ -260,7 +289,7 @@ async function state(uid, query = {}, now = Date.now()) {
       ann: active && o.holder === uid ? { left: Math.max(0, G.ANN_PER_DAY - (o.ann && o.ann.day === lagosDay(now) ? o.ann.count : 0)) } : null
     };
   }
-  return { now, cash: f.cash, voterOk: G.voterOk(f.ageDays), cycle: { n: c.n, start: c.start, end: c.end, shortlistAt: c.shortlistAt, phase: c.phase }, shortlistSize: G.SHORTLIST_SIZE, offices: out };
+  return { now, cash: f.cash, voterOk: G.voterOk(f.ageDays), cycle: { n: c.n, start: c.start, end: c.end, shortlistAt: c.shortlistAt, phase: c.phase, next: c.next ? { start: c.next.start, shortlistAt: c.next.shortlistAt, end: c.next.end } : null }, shortlistSize: G.SHORTLIST_SIZE, offices: out };
 }
 
-module.exports = { tick, progress, refreshOffices, file, support, vote, announce, setPolicy, state, fail };
+module.exports = { tick, progress, refreshOffices, listRounds, scheduleRound, cancelRound, file, support, vote, announce, setPolicy, state, fail };

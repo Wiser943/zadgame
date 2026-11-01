@@ -1,8 +1,8 @@
 // State House: elections for Governor, Commissioner and President, and the policies they set.
 // This file has NO database access, so every rule can be tested on its own (tests/acgov.test.js).
 //
-// One election round = 14 days, always starting Monday 00:00 Lagos time, counted from EPOCH, so every server instance
-// and every player sees the same round at the same moment (same idea as the city events in utils/aclagos.js).
+// Election rounds are scheduled by the admin (see setRounds). The text below describes one round; the old fixed clock
+// (14 days from Monday 00:00 Lagos, counted from EPOCH) only applies to rounds 0-1 and in tests.
 //
 //   day 0  -> day 10 : CAMPAIGN  players pay the filing fee and file to run; everybody can back a candidate
 //   day 10           : the 5 candidates with the most backers go on the ballot (everyone else is refunded)
@@ -69,14 +69,52 @@ const OFFICE_IDS = Object.keys(OFFICES);
 
 const naira = (n) => '₦' + Math.round(n).toLocaleString('en-NG');
 
-/* ----- the 14-day round ----- */
-function cycleBounds(n) { const start = EPOCH + n * CYCLE; return { n, start, end: start + CYCLE, shortlistAt: start + CAMPAIGN }; }
-function cycleOf(now = Date.now()) {
-  const n = Math.floor((now - EPOCH) / CYCLE), b = cycleBounds(n);
-  return { ...b, phase: now < b.shortlistAt ? 'campaign' : 'voting' };
+/* ----- election rounds -----
+   Elections are scheduled by the admin (the "electoral commission"): campaign opens, ballot is set, polls close.
+   Between elections nothing can be filed, backed or voted. Server code calls setRounds() with the saved schedule;
+   until then (and in unit tests) the old fixed 14-day Monday clock is used. Rounds 0..LEGACY_LAST come from that
+   old clock so an election that was already running when this was introduced still finishes normally. */
+const LEGACY_LAST = 1, TERM = 90 * DAY;
+let ROUNDS = null;
+function legacyRound(n) { const start = EPOCH + n * CYCLE; return { n, start, end: start + CYCLE, shortlistAt: start + CAMPAIGN }; }
+function setRounds(list) {
+  ROUNDS = []; for (let n = 0; n <= LEGACY_LAST; n++) ROUNDS.push(legacyRound(n));
+  for (const r of (list || [])) if (+r.n > LEGACY_LAST) ROUNDS.push({ n: +r.n, start: +r.start, shortlistAt: +r.shortlistAt, end: +r.end });
+  ROUNDS.sort((a, b) => a.start - b.start);
 }
-/* The term won in election round n runs for the whole of round n + 1. */
-function termOf(n) { const b = cycleBounds(n + 1); return { since: b.start, until: b.end }; }
+const rounds = () => (ROUNDS ? ROUNDS.map((r) => ({ ...r })) : null);
+function cycleBounds(n) {
+  if (ROUNDS) { const r = ROUNDS.find((x) => x.n === n); if (r) return { ...r }; }
+  return legacyRound(n);
+}
+function cycleOf(now = Date.now()) {
+  if (!ROUNDS) {
+    const n = Math.floor((now - EPOCH) / CYCLE), b = cycleBounds(n);
+    return { ...b, phase: now < b.shortlistAt ? 'campaign' : 'voting', next: null };
+  }
+  const act = ROUNDS.find((r) => now >= r.start && now < r.end), next = ROUNDS.find((r) => r.start > now) || null;
+  if (act) return { ...act, phase: now < act.shortlistAt ? 'campaign' : 'voting', next: next && { ...next } };
+  const past = ROUNDS.filter((r) => r.end <= now).pop();
+  // no election is on: n is a half step after the last finished round, so every finished round counts as "old" and nothing can be filed
+  return { n: (past ? past.n : -1) + 0.5, start: 0, end: 0, shortlistAt: 0, phase: 'none', next: next && { ...next }, last: past ? { ...past } : null };
+}
+/* The term won in election round n starts when that election closes and lasts until replaced (or TERM days). */
+function termOf(n) {
+  if (!ROUNDS) { const b = cycleBounds(n + 1); return { since: b.start, until: b.end }; }
+  const since = cycleBounds(n).end;
+  return { since, until: since + TERM };
+}
+/* Validates an admin-scheduled round. Times are epoch ms. Returns { ok, error }. */
+function checkRound(r, now = Date.now()) {
+  const { start, shortlistAt, end } = r;
+  if (![start, shortlistAt, end].every((x) => Number.isFinite(x))) return { ok: false, error: 'Pick all three dates.' };
+  if (start < now - 60e3) return { ok: false, error: 'The campaign cannot start in the past.' };
+  if (shortlistAt < start + HOUR) return { ok: false, error: 'The ballot must be set at least 1 hour after the campaign opens.' };
+  if (end < shortlistAt + HOUR) return { ok: false, error: 'Polls must stay open at least 1 hour after the ballot is set.' };
+  if (end - start > 60 * DAY) return { ok: false, error: 'An election round cannot be longer than 60 days.' };
+  for (const x of (ROUNDS || [])) if (start < x.end && end > x.start) return { ok: false, error: 'That overlaps another election round.' };
+  return { ok: true };
+}
 
 /* ----- who may run ----- */
 function eligibility(officeId, f) {
@@ -144,6 +182,6 @@ const wonLine = (o, handle) => `${o.icon} ${handle} don win! New ${o.title} of $
 
 module.exports = {
   HOUR, DAY, EPOCH, CYCLE, CAMPAIGN, SHORTLIST_SIZE, MIN_VOTER_DAYS, POLICY_COOLDOWN, ANN_PER_DAY, ANN_GAP, FX_MIN, FX_MAX, TOTAL_MIN, TOTAL_MAX,
-  FX_KEYS, FX_LABEL, OFFICES, OFFICE_IDS, naira, cycleBounds, cycleOf, termOf, eligibility, voterOk, ageDays, shortlist, pickWinner,
+  FX_KEYS, FX_LABEL, OFFICES, OFFICE_IDS, naira, cycleBounds, cycleOf, termOf, setRounds, rounds, checkRound, LEGACY_LAST, eligibility, voterOk, ageDays, shortlist, pickWinner,
   isActive, optionOf, currentOption, activeFx, applyFx, setOffices, activeNow, applyPolicies, describeFx, wonLine
 };

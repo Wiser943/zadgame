@@ -1639,3 +1639,47 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 #appview .homes-list .home-error{display:flex;gap:10px;align-items:flex-start;padding:14px}
 #appview .homes-list .home-error>div{flex:1;min-width:0}
 @media (min-width:700px){#appview .homes-list{grid-template-columns:1fr 1fr}}
+
+/* like / react button: fixed-size icon box so the button never grows when liked; calmer pop */
+.gact button>span:first-child{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;font-size:16px;line-height:1;flex:none;overflow:visible}
+.gact button>span:first-child i{font-size:16px}
+.gact .on span{animation:glike .22s ease-out}
+@keyframes glike{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
+.gcb-off{font-size:.85em;opacity:.45}
+.rl-act button span,.rl-like-ico{flex:none}
+.rl-burst i{font-size:64px!important;color:#ffd21f}
+
+/* Invest screen: stable icon tiles + compact action buttons so text keeps the room */
+.ivrow,.ivpromo,.ivhead{gap:12px;align-items:center}
+.ivhead{align-items:flex-start}
+.ivic,.ivic.big{box-sizing:border-box;flex:0 0 auto;display:grid;place-items:center;overflow:hidden;line-height:1;margin:0;aspect-ratio:1/1}
+.ivic{width:42px;min-width:42px;height:42px;min-height:42px;border-radius:13px;font-size:18px}
+.ivic.big{width:46px;min-width:46px;height:46px;min-height:46px;border-radius:15px;font-size:21px}
+.ivic.emo{font-size:22px}
+.ivic>i{display:block;width:1em;height:1em;line-height:1;text-align:center;font-size:inherit}
+.ivrow .rt,.ivpromo .rt,.ivhead .rt{flex:1 1 0;min-width:0}
+.ivrow .rt b,.ivbiz .rt b,.ivpromo .rt b{font-size:16px;line-height:1.2}
+.ivrow .rt span,.ivbiz .rt span,.ivpromo .rt span{font-size:12px}
+.ivrow .ivbtn,.ivpromo .ivbtn{padding:8px 14px;font-size:13px;line-height:1.2;box-shadow:none;align-self:center;min-width:0}
+.ivrow .ivbtn.grn{box-shadow:0 2px 8px rgba(7,91,255,.2)}
+
+/* Invest screen: one more step down in icon + text size */
+.ivic{width:36px;min-width:36px;height:36px;min-height:36px;border-radius:11px;font-size:15px}
+.ivic.big{width:40px;min-width:40px;height:40px;min-height:40px;border-radius:13px;font-size:18px}
+.ivic.emo{font-size:19px}
+.ivrow .rt b,.ivbiz .rt b,.ivpromo .rt b{font-size:14.5px}
+.ivrow .rt span,.ivbiz .rt span,.ivpromo .rt span{font-size:11.5px;line-height:1.35}
+.ivrow,.ivpromo{padding:10px 12px;gap:10px;border-radius:18px}
+.ivbiz{padding:12px;border-radius:20px}
+.ivrow .ivbtn,.ivpromo .ivbtn{padding:7px 12px;font-size:12.5px}
+.ivbtn.wide{padding:11px 6px;font-size:13px}
+.ivchips b,.ivstat{font-size:13px}
+
+/* Home screen: top bar and bottom nav sit closer to the screen edges */
+.hud{top:calc(3px + var(--sat))}
+.hud .pill{height:42px}
+.nav{bottom:calc(3px + var(--sab));padding:4px;gap:3px}
+.nav button{padding:5px 0 4px}
+.chips{top:calc(50px + var(--sat))}
+#homeUI{top:calc(82px + var(--sat))}
+.needsbar{bottom:calc(64px + var(--sab))}

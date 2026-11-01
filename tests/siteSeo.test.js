@@ -14,7 +14,7 @@ test('landing canonical and social metadata use one absolute canonical root', ()
   const html = seo.renderLanding('<head><!--PUBLIC_SEO_ORIGIN--></head>', 'https://games.example');
   assert.match(html, /rel="canonical" href="https:\/\/games\.example\/"/);
   assert.match(html, /property="og:url" content="https:\/\/games\.example\/"/);
-  assert.match(html, /property="og:image" content="https:\/\/games\.example\/icon-192\.png"/);
+  assert.match(html, /property="og:image" content="https:\/\/games\.example\/logo-512\.png"/);
 });
 
 test('sitemap lists only canonical public landing content and robots points to it', () => {

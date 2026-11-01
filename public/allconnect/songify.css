@@ -37,7 +37,9 @@
 .has-mini .chips{display:none!important}
 /* phone dynamic island with music */
 .island{transition:width .25s,height .25s,border-radius .25s,top .25s}
-.island.music{width:min(190px,46%);height:29px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;justify-content:center;overflow:hidden;background:#000;color:#fff;border-radius:20px;cursor:pointer;padding:0 4px 0 9px}
+.island.music{width:31%;height:29px;top:calc(10px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;justify-content:center;overflow:hidden;background:#000;color:#fff;border-radius:20px;cursor:pointer;padding:0 4px 0 12px}
+/* collapsed = same size as the notch (never touches the clock or signal icons): just the equaliser + pause */
+.island.music:not(.open) .isl-row{justify-content:space-between}.island.music:not(.open) .isl-t{display:none}
 .island .isl-row{display:flex;align-items:center;gap:6px;width:100%;min-width:0}
 .island .isl-art,.island .isl-t span,.island .isl-ctl{display:none}
 .island .isl-t{flex:1;min-width:0}.island .isl-t b{display:block;font:700 10.5px 'Plus Jakarta Sans',system-ui,sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -156,3 +158,12 @@ html .sg-dark .songify-retry{background:#1ed760;color:#000}
 .gsong em{font-style:normal;font-size:11px;font-weight:700;color:#d9c8ff;margin-top:4px}
 .gsong .gsp,.gsong .gsx{flex:none;width:36px;height:36px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(255,255,255,.18);color:#fff;font-size:13px}
 .gsong:active{filter:brightness(.92)}
+
+/* persistent YouTube player: laid over the Now Playing slot, or a small floating player when minimised */
+.sg-yt{position:absolute;z-index:4;background:#000;overflow:hidden}
+.sg-yt iframe{display:block;width:100%;height:100%;border:0}
+.sg-yt.full{border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.sg-yt.full .sgy-b{display:none}
+.sg-yt.float{right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));width:200px;height:200px;border-radius:16px;box-shadow:0 10px 28px rgba(0,0,0,.45);z-index:7}
+.sgy-b{position:absolute;top:6px;z-index:2;width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:11px;display:grid;place-items:center;padding:0}
+.sgy-x{right:6px}.sgy-o{left:6px}
