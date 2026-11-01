@@ -7,6 +7,9 @@ const { Report, Tournament } = require('../models/Social');
 const Match = require('../models/Match');
 const presence = require('../utils/presence');
 const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/gameSettings');
+const { PayoutSeason, PayoutRequest, PayoutAccount, DEFAULT_RULES, dec, statusMessage, naira } = require('../utils/payout');
+const { notify } = require('../utils/acnotify');
+const { queueCard } = require('../utils/accards');
 const router = express.Router();
 // Hosting dashboards often leave stray spaces/newlines or quotes around values: clean them so login still matches.
 const clean = (v) => String(v == null ? '' : v).trim().replace(/^["']|["']$/g, '').trim();
@@ -263,4 +266,68 @@ router.post('/creators/:id/decide', async (req, res, next) => {
     res.json({ id: String(u._id), name: u.displayName, creator: u.creator });
   } catch (err) { next(err); }
 });
+// ---------- Payout seasons: admin-controlled dates, budgets, eligibility switches and review ----------
+const pBatch = (b, n) => ({ number: n, name: String(b?.name || `Batch ${n}`).slice(0, 60), opensAt: new Date(b?.opensAt), closesAt: new Date(b?.closesAt), budget: Math.max(0, Number(b?.budget) || 0), maxPayout: Math.max(0, Number(b?.maxPayout) || 1500), minPayout: Math.max(0, Number(b?.minPayout) || 100), minBalance: Math.max(0, Number(b?.minBalance) || 3000000), unitsPerNaira: Math.max(1, Number(b?.unitsPerNaira) || 3333.333333), countedUnitsCap: Math.max(0, Number(b?.countedUnitsCap) || 5000000), budgetRollover: ['none','next_batch','next_season'].includes(b?.budgetRollover) ? b.budgetRollover : 'none', status: ['draft','open','paused','closed'].includes(b?.status) ? b.status : 'draft' });
+const pRules = rules => (Array.isArray(rules) && rules.length ? rules : DEFAULT_RULES).map((r, i) => ({ key: String(r.key || `rule_${i}`), label: String(r.label || r.key || 'Rule').slice(0, 80), enabled: r.enabled !== false, value: Math.max(0, Number(r.value) || 0), description: String(r.description || '').slice(0, 200) }));
+router.get('/payouts', async (req, res, next) => {
+  try {
+    const [seasons, requests] = await Promise.all([PayoutSeason.find().sort({ seasonNo: -1 }).lean(), PayoutRequest.find().sort({ submittedAt: -1 }).limit(200).lean()]);
+    const ids = [...new Set(requests.map((r) => r.user))];
+    const [users, accounts] = await Promise.all([User.find({ _id: { $in: ids } }).select('acUsername displayName rewardsInterest.legalName').lean(), PayoutAccount.find({ user: { $in: ids } }).select('user bankName accountName').lean()]);
+    const U = new Map(users.map((u) => [String(u._id), u])), A = new Map(accounts.map((a) => [a.user, a]));
+    res.json({ seasons, requests: requests.map((r) => { const u = U.get(r.user) || {}, a = A.get(r.user) || {}; return { ...r, player: { username: u.acUsername || '', displayName: u.displayName || '', legalName: (u.rewardsInterest && u.rewardsInterest.legalName) || '' }, bank: { bankName: a.bankName || '', accountName: a.accountName || '' } }; }) });   // the full account number is never in this list
+  } catch (e) { next(e); }
+});
+// Opening, pausing or closing one batch (a new season starts every batch as a draft).
+router.post('/payouts/seasons/:id/batches/:n/status', async (req, res, next) => {
+  try {
+    const status = String(req.body?.status || ''), n = Number(req.params.n);
+    if (!['draft', 'open', 'paused', 'closed'].includes(status) || ![1, 2, 3].includes(n)) return res.status(400).json({ message: 'Choose a batch (1-3) and a status.' });
+    const r = await PayoutSeason.updateOne({ _id: req.params.id, 'batches.number': n }, { $set: { 'batches.$.status': status, updatedBy: 'admin' } });
+    if (!r.matchedCount) return res.status(404).json({ message: 'Season or batch not found.' });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+// Manual payment: the team needs the full account number to make the transfer. Only for an approved request, never in lists, and every look is logged (without the number).
+router.get('/payouts/requests/:id/bank', async (req, res, next) => {
+  try {
+    const r = await PayoutRequest.findById(req.params.id).lean(); if (!r) return res.status(404).json({ message: 'Payout request not found.' });
+    if (r.status !== 'approved') return res.status(409).json({ message: 'Bank details are shown only for an approved request that is waiting to be paid.' });
+    const a = await PayoutAccount.findOne({ user: r.user }).lean(); if (!a || !a.accountNumberCipher) return res.status(404).json({ message: 'This player has no bank details saved.' });
+    console.log('[payout]', JSON.stringify({ request: String(r._id), action: 'view_bank', at: new Date().toISOString() }));
+    res.set('Cache-Control', 'no-store').json({ bankName: a.bankName, accountName: a.accountName, accountNumber: dec(a.accountNumberCipher), amount: r.payoutAmount });
+  } catch (e) { next(e); }
+});
+// Review actions. approve = "we will pay this", pay = "the transfer has been sent" (the admin types the transfer reference). Every action tells the player.
+router.post('/payouts/requests/:id/action', async (req, res, next) => {
+  try {
+    const action = String(req.body?.action || ''), note = String(req.body?.note || '').trim().slice(0, 240), ref = String(req.body?.reference || '').trim().slice(0, 80);
+    const r = await PayoutRequest.findById(req.params.id); if (!r) return res.status(404).json({ message: 'Payout request not found.' });
+    if (['paid', 'rejected', 'rolled_over'].includes(r.status)) return res.status(409).json({ message: 'This request is already final.' });
+    if (action === 'pay' && r.status !== 'approved') return res.status(409).json({ message: 'Approve the request first, then mark it paid once you have made the bank transfer.' });
+    if (action === 'approve' || action === 'pay') {
+      const s = await PayoutSeason.findById(r.season), batch = s && s.batches.find((x) => Number(x.number) === r.batch);
+      const used = await PayoutRequest.aggregate([{ $match: { season: r.season, batch: r.batch, status: { $in: ['approved', 'processing', 'paid'] }, _id: { $ne: r._id } } }, { $group: { _id: null, total: { $sum: '$payoutAmount' } } }]);
+      const remaining = Math.max(0, Number(batch?.budget || 0) - Number(used[0]?.total || 0));
+      const amount = action === 'pay' ? Number(r.payoutAmount || 0) : Math.min(Number(r.rawPayout || 0), Number(batch?.maxPayout || r.rawPayout), remaining);   // what was approved is what gets paid
+      if (action === 'approve' && amount < Number(batch?.minPayout || 0)) return res.status(409).json({ message: 'Not enough budget remains in this batch. Roll this request over instead.' });
+      r.payoutAmount = amount;
+      if (action === 'pay') { r.status = 'paid'; r.paidAt = new Date(); r.providerReference = ref; } else r.status = 'approved';
+    } else if (action === 'hold') r.status = 'held';
+    else if (action === 'rollover') r.status = 'rolled_over';
+    else if (action === 'reject') { r.status = 'rejected'; r.rejectionReason = note || 'Not approved in this batch.'; }
+    else return res.status(400).json({ message: 'Unknown payout action.' });
+    r.adminNote = note; r.reviewedAt = new Date(); await r.save();
+    console.log('[payout]', JSON.stringify({ request: String(r._id), action, status: r.status, amount: r.payoutAmount, at: new Date().toISOString() }));
+    const m = statusMessage(action, r, action === 'reject' ? r.rejectionReason : note, ref);
+    if (m) {
+      const io = req.app.get('io');
+      await notify(io, r.user, { icon: m.icon, text: m.text, kind: m.kind, ref: 'u:payouts' }).catch(() => {});
+      if (action === 'pay' || action === 'approve') await queueCard(io, r.user, { icon: m.icon, title: m.title, text: m.text, tone: m.tone, btn: 'View withdrawals', lines: [['Batch', `Season ${r.seasonNo} · Batch ${r.batch}`], ['Amount', naira(r.payoutAmount)]] }).catch(() => {});
+    }
+    res.json({ request: r });
+  } catch (e) { next(e); }
+});
+router.post('/payouts/seasons', async (req, res, next) => { try { const b = req.body || {}, batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); if (!Number.isFinite(new Date(b.startsAt).getTime()) || !Number.isFinite(new Date(b.endsAt).getTime()) || new Date(b.endsAt) <= new Date(b.startsAt) || batches.some(x => !Number.isFinite(x.opensAt.getTime()) || !Number.isFinite(x.closesAt.getTime()) || x.closesAt <= x.opensAt)) return res.status(400).json({ message: 'Every season and batch needs valid dates.' }); const s = await PayoutSeason.create({ seasonNo: Math.max(1, Math.floor(Number(b.seasonNo) || 1)), name: String(b.name || `Season ${b.seasonNo || 1}`).slice(0, 80), startsAt: new Date(b.startsAt), endsAt: new Date(b.endsAt), status: ['draft','scheduled','active','paused','closed'].includes(b.status) ? b.status : 'draft', maxPayoutsPerSeason: Number(b.maxPayoutsPerSeason) === 1 ? 1 : 2, rules: pRules(b.rules), batches, createdBy: 'admin' }); res.json({ season: s }); } catch (e) { if (e.code === 11000) return res.status(409).json({ message: 'That season number already exists.' }); next(e); } });
+router.put('/payouts/seasons/:id', async (req, res, next) => { try { const b = req.body || {}, set = {}; for (const k of ['name','status','startsAt','endsAt','maxPayoutsPerSeason']) if (b[k] !== undefined) set[k] = k === 'maxPayoutsPerSeason' ? (Number(b[k]) === 1 ? 1 : 2) : (k === 'startsAt' || k === 'endsAt' ? new Date(b[k]) : b[k]); if (b.rules) set.rules = pRules(b.rules); if (b.batches) set.batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); const s = await PayoutSeason.findByIdAndUpdate(req.params.id, { $set: { ...set, updatedBy: 'admin' } }, { new: true }); if (!s) return res.status(404).json({ message: 'Season not found.' }); res.json({ season: s }); } catch (e) { next(e); } });
 module.exports = router;

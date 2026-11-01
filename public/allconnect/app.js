@@ -1,5 +1,5 @@
 /* Landing-page links (/play?open=gamehub, /play?open=lagosrun) go through the normal splash, sign-in and Continue flow; the wish is kept until the game has started. */
-try { const o = new URLSearchParams(location.search).get('open'); if (o === 'gamehub' || o === 'lagosrun') sessionStorage.setItem('ac:open', o) } catch (e) {}
+try { const o = new URLSearchParams(location.search).get('open'); if (o === 'gamehub' || o === 'lagosrun' || o === 'drive') sessionStorage.setItem('ac:open', o === 'drive' ? 'lagosrun' : o) } catch (e) {}
 /* ================= AllConnect client =================
    Login: same accounts as GameHub (POST /auth/login, /auth/register, Google). Realtime: Socket.io namespace /ac. */
 const NET = {
@@ -175,7 +175,7 @@ function hubQuiet(cb) {
   first ? f.addEventListener('load', () => hubRun(cb), { once: true }) : hubRun(cb)
 }
 
-/* Lagos Run opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
+/* Drive opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
 function openLagosRun() {
   const f = $('lrf');
   if (f.getAttribute('src') !== '/lagosrun/') f.src = '/lagosrun/'; /* closing sets it to about:blank, so each open starts the game fresh */
@@ -386,7 +386,7 @@ const APPS = [
   ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
   ['Bank', '<i class="fa-solid fa-building-columns"></i>', '#151a35'],
   ['GameHub', '🎮', '#151a35'],
-  ['Lagos Run', '🚌', 'linear-gradient(135deg,#f2b705,#e0301e 60%,#14110f)'],
+  ['Drive', '🚌', 'linear-gradient(135deg,#f2b705,#e0301e 60%,#14110f)'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
   ['Transport', '🚕', 'linear-gradient(135deg,#fbbf24,#d97706)', 1],
   ['State House', '🏛️', 'linear-gradient(135deg,#1d4ed8,#0f766e)', 1],
@@ -406,11 +406,11 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 OPEN.Homes = "PH.open('homes')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
-const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
+const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
 const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;

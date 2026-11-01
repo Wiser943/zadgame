@@ -198,7 +198,7 @@ const MT = (() => {
       })); return best;
     },
     plan(d, pref, via) {
-      this.prep(); const me = this.me(), acc = !!this.st.acc, opts = []; this.dest = d; this.via = via || null; this.pp = this.pp;
+      this.prep(); if (window.RIDE) RIDE.preload(); const me = this.me(), acc = !!this.st.acc, opts = []; this.dest = d; this.via = via || null; this.pp = this.pp;
       let wp = null;
       if (via && via.length) { let cur = me, ok = true, path = [me]; for (const w of via.concat([d])) { const leg = MAP3D.route(cur[0], cur[1], w.x, w.y, acc); if (!leg) { ok = false; break } path = path.concat(leg.slice(1)); cur = [w.x, w.y] } if (ok) wp = path }
       else wp = MAP3D.route(me[0], me[1], d.x, d.y, acc);
@@ -234,9 +234,17 @@ const MT = (() => {
       const o = this.sel; if (!o) return; const segs = o.segs.slice(), d = this.dest; this.runningTo = d; const el = document.getElementById('mtbar'); if (el) el.style.display = 'none';
       const step = i => {
         if (i >= segs.length) { this.ride = null; this.dest = null; this.opts = []; toast('📍 You arrived at ' + d.name); return }
-        const s = segs[i], md = MODES[s.m], go = () => { this.ride = s.m === 'walk' ? null : md.e; if (!MAP3D.walkPath(s.path, { mul: this.mulOf(s.m), run: s.m === 'walk' ? undefined : false, cb: () => step(i + 1) })) step(i + 1) };
+        const s = segs[i], md = MODES[s.m], go = () => { if (s.m !== 'walk' && window.RIDE && RIDE.can(s.m)) return this.driveLeg(s, d, o, () => step(i + 1)); this.ride = s.m === 'walk' ? null : md.e; if (!MAP3D.walkPath(s.path, { mul: this.mulOf(s.m), run: s.m === 'walk' ? undefined : false, cb: () => step(i + 1) })) step(i + 1) };
         if (s.wait && s.wait > .4) { this.ride = null; toast(`${md.e} ${s.waitLabel}: about ${Math.max(1, Math.round(s.wait))} min`); setTimeout(go, Math.min(9000, s.wait * 1800)) } else go();
       }; step(0);
+    },
+    /* a taxi, keke or bus leg plays as the Drive ride scene (5-10 s, with Skip); when it ends the player is at the end of the leg */
+    driveLeg(s, d, o, next) {
+      const p0 = s.path[0], p1 = s.path[s.path.length - 1], pins = MAP3D.pins.map(p => ({ x: p[2], y: p[3], name: p[0].replace(' · Coming soon', '') })), ev = this.evId();
+      const nm = pt => { if (d && this.dist(pt, [d.x, d.y]) < 60) return d.name; const n = this.near(pins, pt); return n ? n.name : 'the road' };
+      this.ride = null;
+      RIDE.play({ mode: s.m, from: nm(p0), to: nm(p1), mins: s.min, fare: o && o.k === s.m ? o.fare : 0, hour: this.hrs(), rain: ev === 'rain', goslow: ev === 'goslow',
+        done: () => { MAP3D.teleport(p1[0], p1[1]); this.ride = null; next() } });
     },
     transportOpts(d, me, acc) {
       const o = [];

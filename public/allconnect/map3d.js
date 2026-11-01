@@ -493,19 +493,19 @@
   }
   const rect = (x, y, w, h, z) => [[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]];
 
-  /* ---------- Lagos Run art on the map ----------
-     Textures, road decals and the danfo come from the Lagos Run game (/lagosrun/assets/sprites/...):
+  /* ---------- Drive art on the map ----------
+     Textures, road decals and the danfo come from the Drive game (/lagosrun/assets/sprites/...):
      asphalt on the roads, potholes / manholes / puddles / litter / skid marks / zebra crossings on them,
      corrugated-zinc, red-metal and tarp roofs on the small flat-roofed buildings, and danfos driving the horizontal roads.
      Everything is optional: if an image has not loaded (or Saver mode is on) the map simply draws as before. */
   const LRA = '/lagosrun/assets/sprites/';
   const LRX = { img: {}, on: false, tiles: [], decals: [], buses: [], asph: null, started: false };
-  /* ---------- Kenney road textures on top of the Lagos Run layer ----------
+  /* ---------- Kenney road textures on top of the Drive layer ----------
      Two cropped, transparent-background tiles (from the kenney_road-textures CC0 pack) laid over every road exactly
      the way lrTex() already lays the asphalt down: 'straight' repeats along each road's length (rotated 90° for a
      horizontal road vs a vertical one, since its lane-divider line has a direction), 'cross' is a single clean,
      rounded-corner 4-way junction stamped at every point two roads actually meet. Same opt-in pattern as LRX: if
-     the images never load, the roads simply look the way they did before (flat colour + the Lagos Run layer). */
+     the images never load, the roads simply look the way they did before (flat colour + the Drive layer). */
   const KXA = '/allconnect/assets/';
   const KX = { img: {}, on: false, started: false, straight: [], cross: [], cars: [] };
   const KX_CAR_COLS = ['red', 'green', 'orange', 'white'];      // kenney_racing-kit: four body colours, each with a front (S) and back (N) sprite
@@ -728,7 +728,7 @@
     } else {
       poly(ctx, rect(x0, y0, o.w, o.d, h), mix(o.roof, .0), 'rgba(0,0,0,.25)');
       if (o.style === 'dome') { const c = cam.project(o.x, o.y, h + 6, {}), r = o.w * .34 * c.k; ctx.beginPath(); ctx.arc(c.x, c.y - r * .35, r, 0, TAU); ctx.fillStyle = o.roof; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.stroke(); }
-      else if (lrRoof(ctx, o, x0, y0, h)) { /* Lagos Run roof texture drawn */ }
+      else if (lrRoof(ctx, o, x0, y0, h)) { /* Drive roof texture drawn */ }
       else if (o.h < 60) poly(ctx, rect(x0 + 5, y0 + 5, o.w - 10, o.d - 10, h + 1.5), mix(o.roof, -.12));
       if (o.o.tag === 'tower') { const c = cam.project(o.x, o.y, h + 3, {}); ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(2, 6 * c.k), 0, TAU); ctx.fill(); }
     }

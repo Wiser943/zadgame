@@ -2,7 +2,7 @@
    /play/home  /play/map  /play/buy  /play/phone  /play/phone/bank  (any phone app name works the same way).
    - Remembers where you are (Home / Map / Phone + the phone app that is open).
    - The browser Back / Forward buttons and the phone's Back gesture move between those places instead of leaving the game.
-   - Closing the phone (or GameHub / Lagos Run) returns to the tab you came from (e.g. Map), not always Home.
+   - Closing the phone (or GameHub / Drive) returns to the tab you came from (e.g. Map), not always Home.
    - After a refresh, "Continue" drops you straight back where you were (kept for 2 hours).
    It only wraps nav(), PH.open() and PH.close(), so no other file needs to know about it. */
 const ROUTER = (() => {
@@ -93,7 +93,7 @@ window.ROUTER = ROUTER;
     PH.open = function (name) { const r = _open.apply(this, arguments); ROUTER.onApp(name); return r };
     PH.close = function () { const r = _close.apply(this, arguments); ROUTER.onApp(''); return r };
   }
-  /* closing the phone, GameHub or Lagos Run returns to the tab you were on */
+  /* closing the phone, GameHub or Drive returns to the tab you were on */
   if (window.PHONEUI) PHONEUI.close = function () {
     if (this.busy || S.page !== 'phone') return; this.busy = true;
     const host = document.getElementById('phone'); host && host.classList.add('powering-off');

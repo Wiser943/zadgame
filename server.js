@@ -35,10 +35,12 @@ const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
 const acLagosRoutes = require('./routes/aclagos');
 const acCreatorRoutes = require('./routes/accreator');
+const payoutRoutes = require('./routes/payouts');
 const acMusicRoutes = require('./routes/acmusic');
 const acHubRoutes = require('./routes/achub');
 const acStyleRoutes = require('./routes/acstyle');
 const acPushRoutes = require('./routes/acpush');
+const lagosRunRoutes = require('./routes/lagosrun');
 const acTransportRoutes = require('./routes/actransport');
 const acGovRoutes = require('./routes/acgov');
 const acGemRoutes = require('./routes/acgem');
@@ -139,6 +141,7 @@ async function main() {
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/lagos', acLagosRoutes);
   app.use('/api/ac/creator', acCreatorRoutes);
+  app.use('/api/ac/payouts', payoutRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
   app.use('/api/ac/music', acMusicRoutes);
   app.use('/api/ac/public', acHubRoutes.pub);   // no login: public status + account recovery
@@ -154,9 +157,9 @@ async function main() {
   });
   app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
-  // Lagos Run: a standalone full-screen app (own folder, own service-worker scope, own manifest).
-  // Its leaderboard/account API is not part of AllConnect, so it answers "offline" and the game runs in guest mode.
-  app.use('/lagosrun/api', (req, res) => res.status(503).json({ ok: false, error: 'offline' }));
+  // Drive: a full-screen app (own folder, own service-worker scope, own manifest).
+  // It has no login of its own: its API (/lagosrun/api) uses the AllConnect session, so a signed-in player is signed in to the game too.
+  app.use('/lagosrun/api', lagosRunRoutes);
   app.get(['/lagosrun', '/lagosrun/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'lagosrun', 'index.html')));
 
   app.get('/landing.html', (_req, res) => res.redirect(301, '/'));

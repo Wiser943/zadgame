@@ -6,7 +6,7 @@
 const VCMD = {
   /* extra spoken names for the apps in OPEN (app.js). Keys are plain lowercase words, values are the OPEN key. */
   ALIAS: {
-    'game hub': 'GameHub', 'games': 'GameHub', 'game': 'GameHub', 'lagosrun': 'Lagos Run', 'run': 'Lagos Run',
+    'game hub': 'GameHub', 'games': 'GameHub', 'game': 'GameHub', 'lagosrun': 'Drive', 'lagos run': 'Drive', 'drive': 'Drive', 'run': 'Drive',
     'gist': 'P-Gist', 'p gist': 'P-Gist', 'pgist': 'P-Gist', 'reels': 'P-Gist', 'posts': 'P-Gist',
     'news': 'Gazette', 'newspaper': 'Gazette', 'whats new': "What's New", 'what is new': "What's New", 'updates': "What's New",
     'music': 'Songify', 'songs': 'Songify', 'money': 'Bank', 'wallet': 'Bank', 'bank': 'Bank',

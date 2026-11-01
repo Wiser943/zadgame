@@ -1,4 +1,4 @@
-// Lagos Run service worker.
+// Drive service worker.
 //
 // The game is ~15 MB of sprites plus hashed JS bundles, so nothing is
 // precached beyond the shell: everything the game actually loads is cached the
@@ -8,7 +8,7 @@
 
 // Bump VERSION whenever art in /assets or /icons changes: those are served from
 // the cache without asking the server, so players only get new art on a bump.
-const VERSION = 'lagosrun-ac-v1';
+const VERSION = 'lagosrun-ac-v3';
 const SHELL = ['/lagosrun/', '/lagosrun/manifest.webmanifest', '/lagosrun/icons/icon-192.png', '/lagosrun/icons/icon-512.png', '/lagosrun/share-bg.jpg'];
 
 self.addEventListener('install', (e) => {
