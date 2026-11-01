@@ -1626,3 +1626,16 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 #app.onmap #doorbtn{top:calc(192px + var(--sat))}
 #app.onmap #avbtn,#app.onmap #needs{display:none!important}
 #app.onmap .viewctl{align-items:flex-start}
+
+/* ===== Homes as a phone app: roomy cards (icon + text on top, buttons full width underneath) ===== */
+#appview .homes-list{display:grid;gap:12px;padding:0 4px 24px}
+#appview .homes-list .home-card{display:grid;grid-template-columns:48px 1fr;gap:10px 12px;align-items:start;padding:14px}
+#appview .homes-list .home-card .home-emoji{grid-row:1;width:48px;height:48px;font-size:26px}
+#appview .homes-list .home-card .home-copy{min-width:0}
+#appview .homes-list .home-card .home-copy b{display:block;font-size:15px}
+#appview .homes-list .home-card .home-copy p,#appview .homes-list .home-card .home-copy small{overflow-wrap:anywhere}
+#appview .homes-list .home-card .home-actions{grid-column:1 / -1;display:flex;gap:8px}
+#appview .homes-list .home-card .home-actions button{flex:1;min-height:42px}
+#appview .homes-list .home-error{display:flex;gap:10px;align-items:flex-start;padding:14px}
+#appview .homes-list .home-error>div{flex:1;min-width:0}
+@media (min-width:700px){#appview .homes-list{grid-template-columns:1fr 1fr}}

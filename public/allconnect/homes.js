@@ -5,12 +5,19 @@ const HOMES = {
   sizeFor: '',
   sizeMsg: '',
   errorMessage: '',
+  oldServer: false,
   async open() {
     SHEET.open({
       id: 'homes', title: '🏠 Homes & Furnishing', wide: true,
       body: () => '<p class="home-intro">Keep your starter room, or get another place to make your own.</p><div id="homesList" class="homes-list"><p class="empty">Loading homes…</p></div>'
     });
     await this.load();
+  },
+  /* Homes as its own phone app (Phone -> Homes): the same list, drawn into the app page */
+  openApp() {
+    PH.view = 'homes';
+    PH.shell('Homes', 'PH.close()', '<div class="abody" id="ab"></div>');
+    this.sizeFor = ''; this.openInline(document.getElementById('ab'));
   },
   /* inside the Venues app (Homes tab): same list, drawn into the page instead of a pop-up */
   openInline(ab) {
@@ -23,6 +30,7 @@ const HOMES = {
     const list = document.getElementById('homesList');
     try {
       this.data = await NET.api('/api/ac/properties');
+      this.oldServer = this.data.homesApi !== 2;      // the server answers with homesApi:2 once the new home code is deployed
       if (SHEET.isOpen('homes') || (window.PH && PH.view === 'homes')) this.draw();
     } catch (e) {
       if (list) list.innerHTML = `<div class="home-error"><b>Could not load homes</b><p>${this.esc(e.message || 'Check your connection and try again.')}</p><button onclick="HOMES.load()">Try again</button></div>`;
@@ -35,7 +43,8 @@ const HOMES = {
     if (!target || !d) return;
     if (this.sizeFor) return this.drawSizes();
     const own = d.properties || [], active = S.activePropertyId, rows = [];
-    if (this.errorMessage) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Couldn't complete that</b><p>${this.esc(this.errorMessage)}</p></div><button onclick="HOMES.load()">Try again</button></div>`);
+    if (this.oldServer) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Game server needs updating</b><p>Buying, renting and adding bedrooms need the latest server version. Redeploy the backend, then reopen Homes.</p></div></div>`);
+    if (this.errorMessage && !this.oldServer) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Couldn't complete that</b><p>${this.esc(this.errorMessage)}</p></div><button onclick="HOMES.load()">Try again</button></div>`);
     rows.push(`<div class="home-card"><div class="home-emoji">🛏️</div><div class="home-copy"><b>Starter Room</b><p>Your original AllConnect room and furniture are preserved.</p><small>Always available · Existing furniture</small></div><div class="home-actions"><button class="${!active ? 'secondary' : ''}" onclick="HOMES.enter('')">${!active ? 'Current home' : 'Enter'}</button></div></div>`);
     for (const h of d.catalogue || []) {
       const p = own.find(x => x.type === h.id && !(x.tenure === 'rent' && x.leaseExpiresAt && new Date(x.leaseExpiresAt) <= new Date()));
@@ -110,7 +119,7 @@ const HOMES = {
       toast((r.property.tenure === 'rent' ? 'Rented ' : 'Bought ') + r.property.name + ' ✓');
     } catch (e) {
       // Preserve the sheet and show the actual API message instead of silently failing.
-      this.errorMessage = e.status === 402 ? 'You do not have enough money for this home.' : e.status === 409 ? (e.message || 'You already have this home or it could not be acquired. Refresh and try again.') : e.status === 401 ? 'Your session has expired. Please sign in again.' : (e.message || 'The purchase could not be completed. Please try again.');
+      this.errorMessage = this.oldServer ? 'The game server is still on an older version, so this home action cannot work yet. Redeploy the backend and try again.' : e.status === 402 ? 'You do not have enough money for this home.' : e.status === 409 ? (e.message || 'You already have this home or it could not be acquired. Refresh and try again.') : e.status === 401 ? 'Your session has expired. Please sign in again.' : (e.message || 'The purchase could not be completed. Please try again.');
       if (!document.getElementById('homesList')) toast(this.errorMessage);
     } finally { this.busy = false; this.draw(); }
   },

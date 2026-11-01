@@ -219,7 +219,7 @@ async function main() {
       return res.status(400).json({ message: 'Some information is missing or invalid. Check your entries and try again.' });
     }
     if (name === 'CastError') {
-      return res.status(400).json({ message: 'That item or player could not be found. Refresh and try again.' });
+      return res.status(400).json({ message: 'Something in that request was not valid. Refresh and try again.' });
     }
     if (name === 'MongooseServerSelectionError' || name === 'MongoNetworkError' || name === 'MongoServerSelectionError') {
       return res.status(503).json({ message: 'The game database is temporarily unavailable. Please wait a moment and try again.' });

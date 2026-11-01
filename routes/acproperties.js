@@ -30,7 +30,7 @@ const getOwned = async (req) => {
   return { u, p };
 };
 router.get('/', async (req, res, next) => {
-  try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h, baseBedrooms: baseBedrooms(id), maxBedrooms: baseBedrooms(id) + maxExtra(id) })), properties: (u.ac.properties || []).map(publicHome), cash: u.ac.cash }); } catch (e) { next(e); }
+  try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h, baseBedrooms: baseBedrooms(id), maxBedrooms: baseBedrooms(id) + maxExtra(id) })), properties: (u.ac.properties || []).map(publicHome), cash: u.ac.cash, homesApi: 2 }); } catch (e) { next(e); }
 });
 router.post('/acquire', async (req, res, next) => {
   try {
@@ -90,7 +90,7 @@ router.post('/acquire', async (req, res, next) => {
   } catch (e) {
     const ref = randomUUID().slice(0, 12);
     console.error('[home-acquire]', ref, { user: String(req.user?.id || ''), type: String(req.body?.type || ''), name: e?.name, code: e?.code, message: e?.message });
-    return res.status(500).json({ message: 'This home action hit an unexpected server problem. Please try again.', reference: ref });
+    return res.status(500).json({ message: 'This home action hit an unexpected server problem (code ' + ref + '). Please try again.', reference: ref });
   }
 });
 // Add bedrooms to a home you own. Body: { bedrooms: <the TOTAL number of bedrooms you want> }, e.g. 3 for a 3-bedroom.

@@ -10,7 +10,7 @@ const NET = {
     const r = await fetch(url, { method: opt.method || 'GET', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: opt.body ? JSON.stringify(opt.body) : undefined });
     let j = {};
     try { j = await r.json() } catch {}
-    if (!r.ok) throw Object.assign(new Error(j.message || 'Something went wrong. Try again.'), { status: r.status });
+    if (!r.ok) throw Object.assign(new Error(j.message || 'Something went wrong. Try again.'), { status: r.status, data: j });
     return j
   },
   /* ---- instant UI: stale-while-revalidate cache. cb(data, fromCache) fires immediately with cached data (if any),
@@ -392,6 +392,7 @@ const APPS = [
   ['State House', '🏛️', 'linear-gradient(135deg,#1d4ed8,#0f766e)', 1],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
+  ['Homes', '🏠', 'linear-gradient(135deg,#34d399,#0ea5a5)', 1],
   ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
   ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
   ['Pet', '🐱', 'linear-gradient(135deg,#fcd34d,#f97316)', 1],
@@ -406,6 +407,7 @@ const APPS = [
 ];
 
 const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+OPEN.Homes = "PH.open('homes')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
@@ -818,12 +820,12 @@ function doEmote(kind) {
 function emoteUI() { $('emDance').classList.toggle('on', S.emote === 'dance'); $('emStop').style.display = S.emote ? 'block' : 'none' }
 window.emoteEnded = () => { S.emote = null; if (window.MAP3D) MAP3D.setEmote(null); emoteUI() };
 /* ================= global theme + saver: applies to the AllConnect shell, the phone apps AND the embedded GameHub.
-   Settings stores the player's CHOICE in 'ghPrefs' (night: off|on|auto, saver: auto|on|off, camAuto) and this file turns it into the values
-   everything else reads: ghPrefs.theme ('dark'|'light') and ghPrefs.lowPower (true|false). Auto follows the device colour-scheme preference. */
+   Settings stores the player's CHOICE in 'ghPrefs' (night: off|on|auto, saver: auto|on|off, camAuto) and this file turns it into the two values
+   everything else already reads: ghPrefs.theme ('dark'|'light') and ghPrefs.lowPower (true|false). So GameHub, the map, music and loaders need no changes. */
 const PREFX = {
   bat: null, net: null,
   lagosMin() { try { const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Lagos', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date()), g = t => +(p.find(x => x.type === t) || {}).value || 0; return g('hour') * 60 + g('minute') } catch (e) { const d = new Date(Date.now() + 36e5); return d.getUTCHours() * 60 + d.getUTCMinutes() } },
-  isNight() { try { return !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches } catch (e) { return false } },
+  isNight() { const m = this.lagosMin(); return m >= 18 * 60 + 30 || m < 6 * 60 + 30 },          // same window as the sun / moon icon on the home screen
   /* Auto saver: low battery (20% or less and not charging), Data Saver on, or a slow connection */
   slowNet() { const c = navigator.connection || navigator.mozConnection; if (!c) return false; return !!c.saveData || /(^|-)2g$/.test(c.effectiveType || '') || (c.downlink > 0 && c.downlink < 0.7) },
   lowBat() { const b = this.bat; return !!b && !b.charging && b.level <= 0.2 },
@@ -846,16 +848,22 @@ const PREFX = {
     this.derive();
     try { if (navigator.getBattery) navigator.getBattery().then(b => { this.bat = b; ['levelchange', 'chargingchange'].forEach(e => b.addEventListener(e, () => this.derive())); this.derive() }) } catch (e) {}
     try { const c = navigator.connection; if (c && c.addEventListener) c.addEventListener('change', () => this.derive()) } catch (e) {}
-    try { const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)'); if (mq) (mq.addEventListener || mq.addListener).call(mq, 'change', () => this.derive()) } catch (e) {}
+    setInterval(() => this.derive(), 60000);                                   // "Auto" night mode flips at 6:30 pm / 6:30 am even if the app stays open
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.derive() })
   }
 };
 window.PREFX = PREFX;
 function applyTheme() {
   const p = PREFX.prefs(), dark = PREFX.nightNow(p);
+  const level = Math.max(0, Math.min(100, Number(p.darkness ?? 100)));
+  const mix = (base) => Math.round(base * (1 - level / 100));
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#0d0f12' : '#075BFF');
+  root.style.setProperty('--darkness-level', String(level));
+  root.style.setProperty('--dark-bg', `rgb(${mix(20)},${mix(21)},${mix(29)})`);
+  root.style.setProperty('--dark-card', `rgb(${mix(31)},${mix(33)},${mix(44)})`);
+  root.style.setProperty('--dark-panel', `rgb(${mix(39)},${mix(41)},${mix(55)})`);
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? (level >= 95 ? '#000000' : `rgb(${mix(20)},${mix(21)},${mix(29)})`) : '#075BFF');
 }
 window.applyTheme = applyTheme;
 applyTheme();
