@@ -388,8 +388,18 @@ const HUB = {
     }, { id: 'vote', back: 'HUB.view(\'roadmap\')' });
   },
   async vote(id, btn) { if (btn) btn.disabled = true; try { await this.api('/vote', { method: 'POST', body: { id } }); SHEET.paint() } catch (e) { toast(e.message); if (btn) btn.disabled = false } },
-  v_changelog() {
-    this.sheet("What's new", () => this.C.changelog.map(c => `<div class="hlog"><div class="hlh"><b>${this.esc(c.title)}</b><small>v${this.esc(c.v)} · ${new Date(c.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><ul>${c.items.map(i => `<li>${this.esc(i)}</li>`).join('')}</ul></div>`).join(''), { id: 'changelog' });
+  /* What's new: three tabs. Added = shipped (changelog, newest first) / Building = roadmap lane "Now" / Planned = "Next" then "Later". */
+  v_changelog(tab) {
+    const R = l => this.C.roadmap.filter(r => r.lane === l);
+    const row = (r, fa, col) => UI.row({ ic: UI.ic(fa, col, 36), title: this.esc(r.title), sub: this.esc(r.note || '') });
+    const group = (label, list, fa, col) => list.length ? `<h4>${label}</h4>` + list.map(r => row(r, fa, col)).join('') : '';
+    const body = t => {
+      if (t === 'building') return `<p class="hlead">What the team is working on right now.</p>` + (R('Now').map(r => row(r, 'hammer', '#22b573')).join('') || '<p class="empty">Nothing in progress at the moment.</p>');
+      if (t === 'planned') return `<p class="hlead">Coming after what we are building. Vote to move something up.</p>` + (group('Up next', R('Next'), 'forward', '#6366f1') + group('Later', R('Later'), 'hourglass-half', '#94a3b8') || '<p class="empty">Nothing planned yet.</p>') + `<button class="rbigbtn" onclick="HUB.view('vote')">Vote on features</button>`;
+      return this.C.changelog.map(c => `<div class="hlog"><div class="hlh"><b>${this.esc(c.title)}</b><small>v${this.esc(c.v)} · ${new Date(c.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><ul>${c.items.map(i => `<li>${this.esc(i)}</li>`).join('')}</ul></div>`).join('');
+    };
+    SHEET.open({ id: 'changelog', title: "What's new", back: 'HUB.menu()', tab: tab || 'added',
+      tabs: [{ id: 'added', label: 'Added' }, { id: 'building', label: 'Building', badge: R('Now').length || '' }, { id: 'planned', label: 'Planned', badge: (R('Next').length + R('Later').length) || '' }], body });
   },
   v_lore() {
     this.sheet('Lore archive', () => `<p class="hlead">Stories behind the city.</p>` + this.C.lore.map(l => `<details class="hq2"><summary>${UI.ic(l.fa, '#0f766e', 28)} ${this.esc(l.title)}</summary><p>${this.esc(l.text)}</p></details>`).join(''), { id: 'lore' });

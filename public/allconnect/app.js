@@ -128,9 +128,9 @@ async function boot() {
     NET.user = j.user;
     applyAC(j.ac);
     $('uname').textContent = j.user.displayName;
-    $('uname2').textContent = j.user.displayName;
     $('auth').style.display = 'none';
     $('resume').style.display = 'block';
+    try { welcomeInfo(j.user) } catch (e) {}
     initCharacter();
     NET.connect();
     render();
@@ -492,8 +492,30 @@ function cityLoader() {
   requestAnimationFrame(() => { const b = $('clbar'); if (b) b.style.width = '12%' });
   return () => { const wait = Math.max(0, 1500 - (Date.now() - t0)); setTimeout(() => { clearInterval(tm); const b = $('clbar'); if (b) b.style.width = '100%'; el.classList.add('off'); setTimeout(() => el.remove(), 400) }, wait) };
 }
+
+/* ---------- welcome card: what you have, when you last played, unread, install, slow network ---------- */
+function welcomeInfo(user) {
+  const short = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'm' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : Math.round(n).toLocaleString('en-NG');
+  const when = t => { const s = (Date.now() - t) / 1000; return s < 90 ? 'just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : Math.floor(s / 86400) + ' d ago' };
+  const day = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  $('sd').textContent = day + (S.cash != null ? ' · ₦' + short(S.cash) : '');
+  let last = 0; try { last = Number(localStorage.getItem('ac:last:' + ((user && user.id) || 'x'))) || 0 } catch (e) {}
+  $('lastp').textContent = last ? 'Last played ' + when(last) : '';
+  const chips = [], c = navigator.connection || {};
+  if (c.saveData || /(^|-)2g$|3g/.test(c.effectiveType || '')) chips.push('<span class="wchip warn">📶 Slow network. Saver mode will help</span>');
+  if (window.__installEvt) chips.push('<a class="wchip" onclick="installApp()">⬇️ Install app</a>');
+  $('wsum').innerHTML = chips.join('');
+  NET.api('/api/ac/badges').then(b => { const n = (b.messages || 0) + (b.updates || 0) + (b.requests || 0); if (n) $('wsum').insertAdjacentHTML('afterbegin', `<span class="wchip hot">🔔 ${n > 99 ? '99+' : n} new</span>`) }).catch(() => {});
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installEvt = e; if ($('wsum') && !document.querySelector('#wsum [onclick="installApp()"]')) $('wsum').insertAdjacentHTML('beforeend', '<a class="wchip" onclick="installApp()">⬇️ Install app</a>') });
+function installApp() { const e = window.__installEvt; if (!e) return; e.prompt(); e.userChoice.finally(() => { window.__installEvt = null; const a = document.querySelector('#wsum [onclick="installApp()"]'); if (a) a.remove() }) }
+function newLifeAsk(show) {
+  const b = $('nlbox'), open = show === undefined ? b.style.display === 'none' : show;
+  b.style.display = open ? 'block' : 'none'; $('nlink').style.display = open ? 'none' : ''; if (open) { $('nlin').value = ''; $('nlgo').disabled = true; $('nlin').focus() }
+}
 async function start(n) {
   stopPreviews();
+  try { localStorage.setItem('ac:last:' + ((NET.user && NET.user.id) || 'x'), String(Date.now())) } catch (e) {}
   const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
   if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';

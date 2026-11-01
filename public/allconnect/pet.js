@@ -132,7 +132,11 @@ const PET = {
   },
   /* ----- talking: a squeaky English voice, with her mouth following the sounds she makes ----- */
   setTalk(on) { this.speaking = on; const f = this.fig(); if (f) f.classList.toggle('talk', on); if (!on) this.stopLip() },
-  voice() { try { const v = speechSynthesis.getVoices(); return v.find(x => /^en[-_]US/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null } catch (e) { return null } },
+  /* the player's own pet voice: pitch 0.1 (deep) to 2 (squeaky), speed 0.5 (slow) to 1.6 (fast), an optional chosen voice, and voice commands on/off */
+  VDEF: { pitch: 2, rate: 1.12, uri: '', cmds: true },
+  vp() { let o = {}; try { o = JSON.parse(localStorage.getItem('allconnect:petvoice') || '{}') || {} } catch (e) {} const d = this.VDEF, n = (x, lo, hi, f) => isFinite(x) && x !== '' && x !== null ? Math.max(lo, Math.min(hi, Number(x))) : f;
+    return { pitch: n(o.pitch, .1, 2, d.pitch), rate: n(o.rate, .5, 1.6, d.rate), uri: String(o.uri || ''), cmds: o.cmds !== false } },
+  voice() { try { const v = speechSynthesis.getVoices(), u = this.vp().uri; return (u && v.find(x => x.voiceURI === u)) || v.find(x => /^en[-_]US/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null } catch (e) { return null } },
   /* mouth shapes (visemes): A wide open, E wide smile, O round, U pucker, M lips closed (b m p), F teeth on lip (f v), C small open (other consonants) */
   VMAP: { a: 'A', e: 'E', i: 'E', y: 'E', o: 'O', u: 'U', w: 'U', b: 'M', m: 'M', p: 'M', f: 'F', v: 'F' },
   VDIG: { oo: 'U', ou: 'O', ow: 'O', ee: 'E', ea: 'E', ie: 'E', ai: 'A', ay: 'A', oa: 'O', th: 'C', sh: 'C', ch: 'C', ph: 'F', ng: 'C' },
@@ -177,13 +181,13 @@ const PET = {
     text = String(text || '').trim(); if (!text) return;
     this.think(false); const b = this.q('pbub'); if (b) { b.textContent = text; b.classList.add('on') }
     clearTimeout(this.bt); const f = this.fig(); if (f) f.classList.toggle('ask', /\?\s*$/.test(text)); if (/!\s*$/.test(text)) this.flash('joy', 1600);
-    const rate = 1.12; let started = false, ended = false;
+    const vp = this.vp(), rate = vp.rate; let started = false, ended = false;
     const begin = () => { if (started || ended) return; started = true; this.speaking = true; const g = this.fig(); if (g) g.classList.add('talk'); this.startLip(text, rate) };
     const done = () => { ended = true; this.setTalk(false); this.bt = setTimeout(() => { const x = this.q('pbub'); if (x && !this.speaking && !this.thinking) x.classList.remove('on') }, 2400) };
     const silent = () => { begin(); setTimeout(done, this.plan(text, rate).end + 400) };
     if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return silent();
     try {
-      speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.pitch = 2; u.rate = rate; u.lang = 'en-US'; const v = this.voice(); if (v) u.voice = v;
+      speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.pitch = vp.pitch; u.rate = rate; u.lang = 'en-US'; const v = this.voice(); if (v) { u.voice = v; if (v.lang) u.lang = v.lang }
       u.onstart = begin; u.onboundary = e => { begin(); this.syncLip(e.charIndex) }; u.onend = u.onerror = done; speechSynthesis.speak(u); setTimeout(begin, 700);
     } catch (e) { silent() }
   },
@@ -194,6 +198,7 @@ const PET = {
   hear(text) {
     const p = this.p; text = String(text || '').trim().slice(0, 200); if (!text) return;
     if (p.asleep) return toast(`Shh, ${p.name} is sleeping`); if (this.thinking) return;
+    if (window.VCMD && VCMD.run(text, this)) return;       // "open Songify and play ..." etc. run here, free
     if (this.mode === 'answer') this.answer({ text }); else this.repeat(text);
   },
   repeat(text) {
@@ -208,6 +213,7 @@ const PET = {
       if (r.notice) toast(r.notice);
       if (!r.reply) { this.think(false); return toast("I didn't catch that. Try again!") }
       if (payload.audio && r.heard) toast(`You said: “${r.heard}”`);
+      if (payload.audio && r.heard && window.VCMD && VCMD.run(r.heard, this)) { this.think(false); this.paintAll(); return }
       this.hist = this.hist.concat([{ r: 'u', t: r.heard || payload.text || '' }, { r: 'p', t: r.reply }]).slice(-6);
       this.flash('joy', 1200); this.speak(r.reply); this.paintAll();
       if (r.ai && r.ai.left <= 3) toast(r.ai.left ? `${r.ai.left} answers left today` : 'That was the last answer for today');
@@ -230,7 +236,7 @@ const PET = {
   async voiceBlob(blob) { try { this.voiceNote(await this.wav(blob)) } catch (e) { toast('I could not use that recording. Try again.') } },
   voiceNote(b64) {
     const audio = { mime: 'audio/wav', data: b64 }; if (this.mode === 'answer') return this.answer({ audio });
-    this.think(true); this.post('ask', { mode: 'repeat', audio }).then(r => { this.think(false); if (r.reply) this.repeat(r.reply); else toast("I didn't hear anything. Try again!") }).catch(e => { this.think(false); toast(e.message) });
+    this.think(true); this.post('ask', { mode: 'repeat', audio }).then(r => { this.think(false); if (r.reply && window.VCMD && VCMD.run(r.reply, this)) return; if (r.reply) this.repeat(r.reply); else toast("I didn't hear anything. Try again!") }).catch(e => { this.think(false); toast(e.message) });
   },
   /* any recording -> bounded 16 kHz mono WAV for the server transcription provider, as base64 */
   async wav(blob) {
@@ -386,6 +392,27 @@ const PET = {
       this.fx('💗', 3); this.flash('joy', 1500); PH.closeSheet(); this.paintAll();
     } catch (e) { toast(e.message); if (btn) btn.disabled = false }
   },
+
+  /* ----- Pet voice: the player picks how low or high and how fast the pet talks ----- */
+  voiceSheet() {
+    const vp = this.vp(), n = this.p.name, vs = (() => { try { return speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)) } catch (e) { return [] } })();
+    const pre = (l, a, b) => `<button type="button" class="lgbtn ghost" onclick="PET.setVoice('pitch',${a});PET.setVoice('rate',${b});PET.voiceSheet()">${l}</button>`;
+    PH.sheet(`<h3>${UI.esc(n)}'s voice 🎚️</h3>
+      <div class="pvs"><label><span><b>Pitch</b><em id="pvp">${this.pitchWord(vp.pitch)}</em></span><input type="range" min="0.1" max="2" step="0.05" value="${vp.pitch}" oninput="PET.setVoice('pitch',this.value)"><small><i>Low</i><i>High</i></small></label>
+      <label><span><b>Speed</b><em id="pvr">${vp.rate.toFixed(2)}×</em></span><input type="range" min="0.5" max="1.6" step="0.05" value="${vp.rate}" oninput="PET.setVoice('rate',this.value)"><small><i>Slow</i><i>Fast</i></small></label>
+      <div class="pvrow">${pre('Deep', 0.4, 0.9)}${pre('Normal', 1, 1)}${pre('Squeaky', 2, 1.12)}</div>
+      ${vs.length > 1 ? `<label class="pvsel"><span><b>Voice</b></span><select onchange="PET.setVoice('uri',this.value)"><option value="">Automatic</option>${vs.map(v => `<option value="${UI.esc(v.voiceURI)}" ${v.voiceURI === vp.uri ? 'selected' : ''}>${UI.esc(v.name)} (${UI.esc(v.lang)})</option>`).join('')}</select></label>` : ''}
+      <button type="button" class="trow" onclick="PET.setVoice('cmds',!PET.vp().cmds);PET.voiceSheet()"><span class="ti"><i class="fa-solid fa-microphone-lines"></i></span><span class="tl">Voice commands<small class="nsub">Say “open Songify and play …”, “open Bank”, “check my balance”</small></span><span class="sw2 ${vp.cmds ? 'on' : ''}"><i></i></span></button>
+      <div class="pvrow"><button type="button" class="lgbtn" onclick="PET.testVoice()">▶ Hear it</button><button type="button" class="lgbtn ghost" onclick="PET.setVoice('pitch',2);PET.setVoice('rate',1.12);PET.setVoice('uri','');PET.voiceSheet()">Reset</button></div>
+      <p class="hint2">Some phones ignore pitch for certain voices. If it sounds the same, pick another voice above.</p></div>`);
+  },
+  pitchWord(x) { x = Number(x); return x < .5 ? 'Very deep' : x < .9 ? 'Deep' : x < 1.2 ? 'Normal' : x < 1.6 ? 'High' : 'Squeaky' },
+  setVoice(k, v) {
+    const o = this.vp(); if (k === 'pitch' || k === 'rate') v = Number(v); o[k] = v;
+    try { localStorage.setItem('allconnect:petvoice', JSON.stringify(o)) } catch (e) {}
+    const a = document.getElementById('pvp'), b = document.getElementById('pvr'), x = this.vp(); if (a) a.textContent = this.pitchWord(x.pitch); if (b) b.textContent = x.rate.toFixed(2) + '×';
+  },
+  testVoice() { try { speechSynthesis.cancel() } catch (e) {} this.speak(`Hi, I'm ${this.p.name}. This is how I sound!`) },
   menu() {
     const p = this.p, c = p.checkin, row = (ic, label, sub, fn, end) => `<button class="fopt" onclick="${fn}"><span>${ic} ${label}<small>${sub}</small></span><b>${end || '›'}</b></button>`, v = (p.visits || []).length;
     PH.sheet(`<h3>${UI.esc(p.name)} 🐱</h3>` +
@@ -394,6 +421,7 @@ const PET = {
       row('🎓', 'Trick training', 'Teach and practise three tricks', 'PET.trickSheet()') +
       row('📖', 'Visitbook', `${(p.visits || []).length} recent friend visit${(p.visits || []).length === 1 ? '' : 's'}`, 'PET.visitbook()') +
       row('🏅', 'Milestones', `${(p.badges || []).length} of ${(this.ach || []).length} earned`, 'PET.milestones()') +
+      row('🎚️', 'Pet voice', 'Pitch, speed and voice commands', 'PET.voiceSheet()') +
       row('🧠', 'What she remembers', `${(p.memory || []).length} thing${(p.memory || []).length === 1 ? '' : 's'}`, 'PET.memorySheet()') +
       row('📸', 'Pet photo', 'Save it or post it on P-Gist', 'PET.photo()') +
       row('🏠', 'Show in my room', p.inRoom ? 'She wanders around your 3D room' : 'Let her roam your house', "PET.toggle('inRoom')", p.inRoom ? 'On' : 'Off') +

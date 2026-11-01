@@ -57,8 +57,8 @@ const SONGIFY = {
     const sc = document.querySelector('.screen'); if (!sc) return null;
     let h = document.getElementById('sg-yt');
     if (!h) { h = document.createElement('div'); h.id = 'sg-yt'; h.className = 'sg-yt float'; h.hidden = true;
-      h.innerHTML = '<button class="sgy-b sgy-x" onclick="SONGIFY.stop()" aria-label="Close player"><i class="fa-solid fa-xmark"></i></button><button class="sgy-b sgy-o" onclick="SONGIFY.openNP()" aria-label="Open player"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>';
-      sc.appendChild(h); this._ytId = ''; }
+      h.innerHTML = '<div class="sgy-d" aria-label="Drag to move the player"><i></i></div><button class="sgy-b sgy-x" onclick="SONGIFY.stop()" aria-label="Close player"><i class="fa-solid fa-xmark"></i></button><button class="sgy-b sgy-o" onclick="SONGIFY.openNP()" aria-label="Open player"><i class="fa-solid fa-up-right-and-down-left-from-center"></i></button>';
+      sc.appendChild(h); this._ytId = ''; this.bindFloat(h); }
     return h;
   },
   placeYT() {
@@ -76,8 +76,51 @@ const SONGIFY = {
     const sc = document.querySelector('.screen'), slot = this.np && this.alive() ? document.querySelector('#sg-np .np-youtube') : null;
     if (slot && sc) {
       const a = sc.getBoundingClientRect(), b = slot.getBoundingClientRect();
-      h.className = 'sg-yt full'; h.style.cssText = `left:${b.left - a.left}px;top:${b.top - a.top}px;width:${b.width}px;height:${b.height}px`;
-    } else { h.className = 'sg-yt float'; h.style.cssText = ''; }
+      h.className = 'sg-yt full'; h._dx = 0; h._dy = 0; h.style.cssText = `left:${b.left - a.left}px;top:${b.top - a.top}px;width:${b.width}px;height:${b.height}px`;
+    } else { h.className = 'sg-yt float'; h.style.cssText = ''; h._dx = 0; h._dy = 0; this.applyFloat(h); }
+  },
+
+  /* ---- the floating player can be dragged anywhere on the screen. Grab the bar at its top. The spot is saved per player
+     (as a fraction of the screen, so it still fits after a rotate/resize) and put back the next time. ---- */
+  fkey() { return 'acsgy:' + ((typeof NET !== 'undefined' && NET.user && NET.user.id) || 'guest'); },
+  fread() { try { const j = JSON.parse(localStorage.getItem(this.fkey()) || 'null'); return j && isFinite(j.x) && isFinite(j.y) ? j : null; } catch (e) { return null; } },
+  fwrite(v) { try { v ? localStorage.setItem(this.fkey(), JSON.stringify(v)) : localStorage.removeItem(this.fkey()); } catch (e) {} },
+  fbox() { const sc = document.querySelector('.screen'); return sc ? sc.getBoundingClientRect() : null; },
+  fset(h, x, y) { h._dx = x; h._dy = y; h.style.translate = (x || y) ? x + 'px ' + y + 'px' : ''; },
+  /* keep the whole player inside the screen. (nx, ny) = wanted offset from its normal corner, in px */
+  fclamp(h, nx, ny) {
+    const A = this.fbox(); if (!A) return [nx, ny];
+    const r = h.getBoundingClientRect(), cx = h._dx || 0, cy = h._dy || 0, M = 4, l = r.left - cx, t = r.top - cy;
+    const minX = A.left + M - l, maxX = A.right - M - r.width - l, minY = A.top + M - t, maxY = A.bottom - M - r.height - t;
+    return [Math.max(Math.min(minX, maxX), Math.min(maxX, nx)), Math.max(Math.min(minY, maxY), Math.min(maxY, ny))];
+  },
+  applyFloat(h) {
+    h = h || document.getElementById('sg-yt'); if (!h || !h.classList.contains('float')) return;
+    const p = this.fread(), A = this.fbox(); if (!p || !A || !A.width) return this.fset(h, 0, 0);
+    const [x, y] = this.fclamp(h, p.x * A.width, p.y * A.height); this.fset(h, x, y);
+  },
+  resetFloat() { this.fwrite(null); const h = document.getElementById('sg-yt'); if (h) this.fset(h, 0, 0); },
+  bindFloat(h) {
+    const grip = h.querySelector('.sgy-d'); if (!grip || grip._b) return; grip._b = 1;
+    let pid = null, sx = 0, sy = 0, ox = 0, oy = 0, moved = false;
+    grip.addEventListener('pointerdown', e => {
+      if (e.button > 0 || pid !== null || !h.classList.contains('float')) return;
+      pid = e.pointerId; sx = e.clientX; sy = e.clientY; ox = h._dx || 0; oy = h._dy || 0; moved = false;
+      try { grip.setPointerCapture(pid); } catch (x) {} h.classList.add('dragging'); e.preventDefault();
+    });
+    grip.addEventListener('pointermove', e => {
+      if (e.pointerId !== pid) return; e.preventDefault();
+      if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) < 4) return; moved = true;
+      const [x, y] = this.fclamp(h, ox + e.clientX - sx, oy + e.clientY - sy); this.fset(h, x, y);
+    });
+    const end = e => {
+      if (e.pointerId !== pid) return; pid = null; h.classList.remove('dragging'); try { grip.releasePointerCapture(e.pointerId); } catch (x) {}
+      if (!moved) return; const A = this.fbox();
+      if (A && A.width) this.fwrite((Math.abs(h._dx || 0) + Math.abs(h._dy || 0) < 1) ? null : { x: (h._dx || 0) / A.width, y: (h._dy || 0) / A.height });
+    };
+    grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
+    grip.addEventListener('contextmenu', e => e.preventDefault());
+    window.addEventListener('resize', () => { try { this.applyFloat(); } catch (x) {} });
   },
   ytCommand(func) {
     const frame = document.querySelector('#sg-yt iframe.songify-youtube');

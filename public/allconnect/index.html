@@ -225,8 +225,11 @@
       </svg></div>
      <div style="text-align:left"><b id="uname">wisdomw</b><span id="sd">Monday 5 Oct · ₦2.0m</span></div>
     </div>
-    <button class="btn p" id="contBtn" onclick="start(false)">Continue</button><button class="btn s" onclick="start(true)">New life</button>
-    <div class="foot"><span>Signed in as <b style="color:var(--ink)">@<span id="uname2">wisdomw</span></b></span><a onclick="logout()">Log out</a></div>
+    <div class="wsum" id="wsum"></div>
+    <button class="btn p" id="contBtn" onclick="start(false)">Continue</button>
+    <a class="nlink" id="nlink" onclick="newLifeAsk()">Start a new life…</a>
+    <div class="nlbox" id="nlbox" style="display:none"><p><b>This erases your ₦, home and progress.</b> Friends and stats stay. Type <b>NEW LIFE</b> to confirm.</p><input id="nlin" placeholder="NEW LIFE" autocomplete="off" autocapitalize="characters" oninput="$('nlgo').disabled=this.value.trim().toUpperCase()!=='NEW LIFE'"><div class="nlrow"><button class="btn s" onclick="newLifeAsk(false)">Cancel</button><button class="btn red" id="nlgo" disabled onclick="start(true)">Erase and start over</button></div></div>
+    <div class="foot"><span id="lastp"></span><a onclick="logout()">Log out</a></div>
    </div>
    <footer class="sfoot" id="sfoot" style="display:none"></footer>
   </div>
@@ -287,6 +290,7 @@
  <script src="/allconnect/keys.js"></script>
  <script src="/allconnect/songify.js"></script>
  <script src="/allconnect/pet.js"></script>
+ <script src="/allconnect/voicecmd.js"></script>
  <script src="/allconnect/feature-pack.js"></script>
  <script src="/allconnect/push.js"></script>
  <script src="/allconnect/router.js"></script>

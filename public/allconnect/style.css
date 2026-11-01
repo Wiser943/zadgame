@@ -1683,3 +1683,26 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 .chips{top:calc(50px + var(--sat))}
 #homeUI{top:calc(82px + var(--sat))}
 .needsbar{bottom:calc(64px + var(--sab))}
+
+/* welcome card */
+.wsum{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 10px}.wsum:empty{display:none}
+.wchip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;background:rgba(47,127,216,.12);color:#2f5fb0;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;text-decoration:none}
+.wchip.warn{background:rgba(245,158,11,.16);color:#9a5b00;cursor:default}.wchip.hot{background:#ef4444;color:#fff;cursor:default}
+.nlink{display:block;text-align:center;margin:12px 0 2px;color:#6b7390;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.nlbox{margin-top:12px;padding:12px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);text-align:left}.nlbox p{margin:0 0 8px;font-size:13px;line-height:1.45}
+.nlbox input{width:100%;box-sizing:border-box;margin-bottom:8px}.nlrow{display:flex;gap:8px}.nlrow .btn{flex:1;margin:0}
+.btn.red{background:#dc2626;color:#fff}.btn.red:disabled{opacity:.45}
+.foot a{padding:6px 2px}
+.sfoot a{color:#17203d}.sfoot a i{opacity:1}
+/* pet voice sheet */
+.pvs label{display:block;margin:0 0 14px}.pvs label>span{display:flex;justify-content:space-between;align-items:baseline}.pvs em{font-style:normal;color:var(--mut);font-size:13px}
+.pvs input[type=range]{width:100%;margin:8px 0 2px}.pvs small{display:flex;justify-content:space-between;color:var(--mut);font-size:11.5px}.pvs small i{font-style:normal}
+.pvrow{display:flex;gap:8px;margin:0 0 12px}.pvrow .lgbtn{flex:1}.pvsel select{width:100%;margin-top:6px;padding:9px;border-radius:12px}
+/* welcome card: make the name, date and social buttons easy to read over the picture */
+#splash #resume .who{background:rgba(255,255,255,.82)}
+#splash #resume .who b{color:#10172e}#splash #resume .who span{color:#3b4565}
+#splash #resume .foot span{color:#3b4565}
+.sfoot a{background:#fff;color:#17203d;opacity:1}.sfoot .official{background:#fff;color:#2f3650}
+:where(html[data-theme="dark"]) #splash #resume .who{background:rgba(27,32,52,.85)}
+:where(html[data-theme="dark"]) #splash #resume .who b{color:#f3f5fb}:where(html[data-theme="dark"]) #splash #resume .who span,:where(html[data-theme="dark"]) #splash #resume .foot span{color:#a9afc6}
+:where(html[data-theme="dark"]) .sfoot a{background:#1b2034;color:#e3e6f1}

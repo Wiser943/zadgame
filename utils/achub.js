@@ -154,11 +154,16 @@ const HELP = [
 
 /* ---------- roadmap + feature voting ---------- */
 const ROADMAP = [
+  /* lane: 'Now' = building today / 'Next' = planned, up next / 'Later' = planned, further out. Shown in What's new -> Building and Planned. */
   { id: 'r_pay', lane: 'Now', title: 'Real top-up and withdrawals', note: 'Deposit and bank transfer are coming soon.' },
-  { id: 'r_cars', lane: 'Next', title: 'Cars and the daily commute', note: 'Own a car, beat the go-slow.' },
-  { id: 'r_house', lane: 'Next', title: 'Rent or buy a bigger home', note: 'Move out of your starter flat.' },
-  { id: 'r_clubs', lane: 'Later', title: 'Neighbourhood clubs', note: 'Join your area against other areas.' },
-  { id: 'r_pets', lane: 'Later', title: 'Pets', note: 'Adopt a pet. Feed it. Walk it.' }
+  { id: 'r_prop', lane: 'Now', title: 'Home upkeep and weather', note: 'Repairs, storm damage and insurance for the place you live in.' },
+  { id: 'r_econ', lane: 'Now', title: 'Living costs that move', note: 'Prices and light, water and waste bills that follow what is happening in the city.' },
+  { id: 'r_cars', lane: 'Next', title: 'Car ownership', note: 'Servicing, fuel, insurance and fines for your own car.' },
+  { id: 'r_biz', lane: 'Next', title: 'Running a business', note: 'Staff wages, demand and competition for your business.' },
+  { id: 'r_market', lane: 'Next', title: 'Player marketplace', note: 'Buy and sell with other players, with receipts.' },
+  { id: 'r_social', lane: 'Later', title: 'Parties and reputation', note: 'Invitations, venue access and community achievements.' },
+  { id: 'r_bank', lane: 'Later', title: 'Savings and loans', note: 'Earn interest, borrow and build a credit score.' },
+  { id: 'r_prog', lane: 'Later', title: 'Careers, skills and quests', note: 'Level up and compete on separate leaderboards.' }
 ];
 const VOTES = [
   { id: 'v_cars', title: 'Cars and driving', fa: 'car' },
@@ -172,6 +177,7 @@ const VBYID = Object.fromEntries(VOTES.map((v) => [v.id, v]));
 
 /* ---------- changelog ---------- */
 const CHANGELOG = [
+  { v: '2.5', date: '2026-11-01', title: 'Your screen, your way', items: ['Floating Songify player can be dragged anywhere on the screen', 'Hold any home or map button, then drag it where you like', 'Settings: new Reset button & player positions', 'Settings: removed Reduce animations, Larger text, High contrast and Colour-blind friendly', 'What\'s new now shows what is added, being built and planned'] },
   { v: '2.4', date: '2026-10-09', title: 'Welcome to Lagos hub', items: ['New player setup: area, job, hobby and username', 'What can I do now? button on the home screen', 'Beginner missions with visible rewards', 'City newspaper, ticker, help desk, roadmap and voting', 'Result cards for work, promotions and investment payouts', 'Fixed the Manage requirements list overlap'] },
   { v: '2.3', date: '2026-10-05', title: 'Lagos Life', items: ['City events every 12 hours', 'Weekly bills and power cuts', 'Starter quests and the daily streak', 'Creator programme screen'] },
   { v: '2.2', date: '2026-09-28', title: 'Invest and Ads', items: ['Land, businesses and trucks', 'Create your own ad app'] }
