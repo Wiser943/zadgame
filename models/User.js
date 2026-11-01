@@ -67,7 +67,9 @@ const UserSchema = new mongoose.Schema({
     v2: { type: Boolean, default: false },                 // furniture moved to placeable items
     items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] },
     // Additional player homes live beside (not instead of) the legacy starter room.
-    properties: { type: [{ _id: false, id: String, type: String, tenure: { type: String, enum: ['owned', 'rent'], default: 'owned' },
+    // NOTE: a field called `type` must be written { type: { type: String } }. A bare `type: String` here makes Mongoose treat the whole
+    // entry as a plain String, so ac.properties became a list of strings: new homes could be written but never read back.
+    properties: { type: [{ _id: false, id: String, type: { type: String }, tenure: { type: String, enum: ['owned', 'rent'], default: 'owned' },
       boughtAt: { type: Date, default: Date.now }, leaseExpiresAt: { type: Date, default: null }, paint: { type: String, default: '#d9a93a' },
       level: { type: Number, default: 0, min: 0, max: 2 }, bedrooms: { type: Number, default: 0, min: 0, max: 5 }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
       items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },

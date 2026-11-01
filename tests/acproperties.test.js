@@ -116,3 +116,11 @@ test('Market Shop: buyable, fixed 10x8 shop floor with built-in counter/shelves/
   assert.equal(F.canPlace([], 'Plastic Chair', 10, 3, 0, undefined, L), false);     // outside the 10-wide plan
   assert.equal(F.canPlace([], 'Plastic Chair', 5, 7, 0, undefined, L), true);       // last row, 8 deep
 });
+
+test('User model: the home list entry declares its "type" field correctly (a bare `type: String` turns the list into strings)', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'models', 'User.js'), 'utf8');
+  const i = src.indexOf('properties: { type: [{'), block = src.slice(i, src.indexOf("wish:", i));
+  assert.ok(i > 0, 'properties field found');
+  assert.ok(/id: String, type: \{ type: String \}/.test(block), 'entry field "type" must be { type: String }');
+  assert.ok(!/id: String, type: String/.test(block), 'no bare `type: String` in the entry');
+});

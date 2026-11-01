@@ -134,7 +134,8 @@ const HOMES = {
     if (window.ROOM3D) ROOM3D.sync();
     if (window.BUY && BUY.active) BUY.draw();
     this.close();
-    toast(p ? ('Entered ' + p.name) : 'Back to your starter room');
+    const nm = p && (p.name || (((this.data && this.data.catalogue) || []).find(c => c.id === p.type) || {}).name || 'your home');
+    toast(p ? ('Entered ' + nm) : 'Back to your starter room');
   }
 };
 window.HOMES = HOMES;
