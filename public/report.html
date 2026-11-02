@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11152a">
+  <title>Suggest an idea · AllConnect</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b0e1b;--panel:#13182b;--panel2:#191f36;--line:#2a3150;--text:#f5f6ff;--muted:#a6aecb;--accent:#8b7cff;--accent2:#5ce1d1;--danger:#ff8585;--ok:#73e5ad}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 12% 0%,#24204d 0,transparent 42%),radial-gradient(ellipse at 100% 100%,#12383b 0,transparent 34%),var(--bg);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);padding:26px 16px 48px}
+    a{color:#c5bdff;text-decoration:none}.wrap{width:min(760px,100%);margin:auto}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:30px}.brand{font-weight:850;letter-spacing:.08em}.back{border:1px solid var(--line);border-radius:12px;padding:9px 13px;color:var(--muted)}.hero{margin-bottom:22px}.eyebrow{color:var(--accent2);font-weight:750;text-transform:uppercase;font-size:12px;letter-spacing:.16em}.hero h1{font-size:clamp(30px,6vw,46px);line-height:1.08;letter-spacing:-.04em;margin:10px 0 12px}.hero p{color:var(--muted);max-width:580px;margin:0}.card{background:linear-gradient(145deg,rgba(25,31,54,.96),rgba(16,20,37,.97));border:1px solid var(--line);border-radius:22px;padding:clamp(18px,4vw,30px);box-shadow:0 24px 70px #0003}.field{margin-bottom:19px}label{display:block;font-weight:700;margin-bottom:8px}.hint{color:var(--muted);font-size:12px;margin-top:6px}input,select,textarea{display:block;width:100%;background:#0d1223;border:1px solid #333b5e;color:var(--text);border-radius:12px;padding:13px 14px;font:inherit;outline:none}input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px #8b7cff25}textarea{min-height:150px;resize:vertical}.count{text-align:right;color:var(--muted);font-size:12px;margin-top:5px}.submit{width:100%;border:0;border-radius:13px;padding:14px 18px;background:linear-gradient(100deg,#8b7cff,#5a9dff);color:white;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 10px 28px #6254cf30}.submit:disabled{opacity:.55;cursor:wait}.notice{display:none;margin:0 0 18px;padding:12px 14px;border-radius:12px;background:#1b2940;border:1px solid #344365}.notice.show{display:block}.notice.error{color:#ffd0d0;border-color:#70404b;background:#301c2a}.notice.success{color:#c8ffe2;border-color:#28634b;background:#102d27}.bottom{color:var(--muted);font-size:13px;margin-top:17px;text-align:center}.recent{margin-top:22px}.recent h2{font-size:18px;margin:0 0 12px}.item{padding:13px 0;border-top:1px solid var(--line);display:flex;gap:14px;justify-content:space-between;align-items:center}.item-title{font-weight:700}.meta{font-size:12px;color:var(--muted);margin-top:3px}.status{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#c5bdff;background:#29264d;padding:5px 8px;border-radius:8px;white-space:nowrap}.empty{color:var(--muted);font-size:13px;padding:12px 0}@media(max-width:480px){body{padding:18px 12px 36px}.top{margin-bottom:24px}.item{align-items:flex-start}}
+  </style>
+  <link rel="stylesheet" href="/brand-palette.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="top"><a class="brand" href="/">AllConnect</a><a class="back" href="/">← Back to game</a></header>
+    <section class="hero"><div class="eyebrow">Help shape the game</div><h1>Your idea could be<br>the next big thing.</h1><p>Suggest a feature, report a bug, or tell us what would make AllConnect more fun. The team can review submissions and use them to plan future updates.</p></section>
+    <section class="card">
+      <div id="notice" class="notice" role="status" aria-live="polite"></div>
+      <form id="reportForm">
+        <div class="field"><label for="category">What is this about?</label><select id="category" name="category" required><option value="feature">New feature idea</option><option value="improvement">Improve something already in the game</option><option value="bug">Report a bug or error</option><option value="other">Something else</option></select></div>
+        <div class="field"><label for="title">Give it a short title</label><input id="title" name="title" maxlength="100" minlength="4" placeholder="e.g. Add player-owned restaurants" required><div class="hint">4–100 characters</div></div>
+        <div class="field"><label for="details">Tell us more</label><textarea id="details" name="details" minlength="10" maxlength="2000" placeholder="What would you like to see? How should it work? If reporting a bug, what happened and what did you expect?" required></textarea><div class="count"><span id="count">0</span>/2,000</div></div>
+        <button id="submit" class="submit" type="submit">Send suggestion ↗</button>
+      </form>
+      <div class="bottom">Please don't include passwords or private payment information. Limit: 5 submissions per account every 24 hours.</div>
+      <section class="recent"><h2>Your recent submissions</h2><div id="mine" class="empty">Sign in to view your submissions.</div></section>
+    </section>
+  </main>
+<script>
+(() => {
+  const form = document.getElementById('reportForm'), notice = document.getElementById('notice'), submit = document.getElementById('submit'), details = document.getElementById('details');
+  const labels = { feature: 'Feature idea', improvement: 'Improvement', bug: 'Bug report', other: 'Other' };
+  const show = (message, type = '') => { notice.textContent = message; notice.className = 'notice show' + (type ? ' ' + type : ''); };
+  details.addEventListener('input', () => document.getElementById('count').textContent = details.value.length);
+  async function request(url, options = {}) {
+    const response = await fetch(url, { credentials: 'same-origin', ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) { if (response.status === 401) throw new Error('Please sign in to submit a report.'); throw new Error(data.message || 'Something went wrong. Please try again.'); }
+    return data;
+  }
+  async function loadMine() {
+    const box = document.getElementById('mine');
+    try {
+      const data = await request('/api/reports/features/mine', { method: 'GET', headers: {} });
+      if (!data.reports.length) { box.className = 'empty'; box.textContent = 'No submissions yet. Your ideas will appear here after you send them.'; return; }
+      box.className = '';
+      box.replaceChildren(...data.reports.map(r => {
+        const item = document.createElement('div'); item.className = 'item';
+        const left = document.createElement('div'), title = document.createElement('div'), meta = document.createElement('div'), status = document.createElement('span');
+        title.className = 'item-title'; title.textContent = r.title; meta.className = 'meta'; meta.textContent = (labels[r.category] || 'Report') + ' · ' + new Date(r.createdAt).toLocaleDateString(); status.className = 'status'; status.textContent = r.status || 'new';
+        left.append(title, meta); item.append(left, status); return item;
+      }));
+    } catch (err) { box.className = 'empty'; box.textContent = err.message; }
+  }
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    submit.disabled = true; submit.textContent = 'Sending…';
+    try {
+      const data = await request('/api/reports/features', { method: 'POST', body: JSON.stringify({ category: form.category.value, title: form.title.value, details: form.details.value }) });
+      show(data.message || 'Thanks for helping shape AllConnect!', 'success'); form.reset(); document.getElementById('count').textContent = '0'; await loadMine();
+    } catch (err) { show(err.message, 'error'); }
+    finally { submit.disabled = false; submit.textContent = 'Send suggestion ↗'; }
+  });
+  loadMine();
+})();
+</script>
+</body>
+</html>
