@@ -143,6 +143,13 @@ html .sg-dark .songify-retry{background:#1ed760;color:#000}
 .np-foot{display:flex;justify-content:center;margin-top:10px;flex:none}.np-foot button{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:9px 18px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
 .np-q{position:absolute;left:0;right:0;bottom:0;max-height:62%;overflow-y:auto;background:#181818;border-radius:20px 20px 0 0;padding:12px 16px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .28s;box-shadow:0 -10px 30px rgba(0,0,0,.5);z-index:2}
 .sg-np.qopen .np-q{transform:none}
+/* the queue list stays hidden until the Queue button is pressed; pressing it again hides it */
+.np-q{display:none}
+.sg-np.qopen .np-q{display:block;animation:npqIn .26s ease-out}
+@keyframes npqIn{from{transform:translateY(100%)}to{transform:none}}
+.np-ctl .np-qbtn{width:auto;height:40px;padding:0 16px;border-radius:999px;background:rgba(255,255,255,.14);display:flex;align-items:center;gap:7px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#fff}
+.np-ctl .np-qbtn i{font-size:14px}
+.np-ctl .np-qbtn.on,.np-foot .np-qbtn.on{background:#fff;color:#000}
 .npq-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.npq-h b{font:800 16px Outfit,system-ui,sans-serif}.npq-h button{border:0;background:none;color:#fff;font-size:17px;width:34px;height:34px}
 .npq-r{display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer}.npq-r img{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#282828}
 .npq-r span{flex:1;min-width:0}.npq-r b,.npq-r small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.npq-r b{font-size:13px}.npq-r small{font-size:11.5px;color:#a7a7a7;margin-top:2px}

@@ -155,7 +155,10 @@ async function main() {
     const ok = db && (!redis.configured || redis.ok);
     res.status(ok ? 200 : 503).json({ ok, db, redis, time: new Date().toISOString() });
   });
-  app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+  // The admin page changes with new features, so the browser must always check for the latest copy.
+  const adminPage = (req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(path.join(__dirname, 'public', 'admin.html')); };
+  app.get('/admin', adminPage);
+  app.get('/admin.html', adminPage);
 
   // Drive: a full-screen app (own folder, own service-worker scope, own manifest).
   // It has no login of its own: its API (/lagosrun/api) uses the AllConnect session, so a signed-in player is signed in to the game too.

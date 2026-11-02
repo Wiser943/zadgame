@@ -196,7 +196,7 @@ const SONGIFY = {
     const player = '<div id="songify-player"></div>';
     if (this.tab === 'home') {
       body.innerHTML = `<div class="songify-head"><div><b>Music for every mood</b><span>Search Afrobeats, street-hop and more</span></div><i class="fa-solid fa-music songify-mark"></i></div>
-        <form class="songify-search" onsubmit="event.preventDefault();SONGIFY.search()"><input id="songify-q" class="sinput" value="${esc(this.q)}" oninput="SONGIFY.q=this.value" placeholder="Search Burna Boy, Asake, Amapiano…" autocomplete="off"><button class="songify-go" type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button></form>
+        <form class="songify-search" onsubmit="event.preventDefault();SONGIFY.search()"><input id="songify-q" class="sinput" value="${esc(this.q)}" oninput="SONGIFY.typing(this.value)" placeholder="Search Burna Boy, Asake, Amapiano…" autocomplete="off"><button class="songify-go" type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button></form>
         <div id="songify-status" class="songify-status"></div>${player}
         <div class="lab2 sg-lab" id="sg-lab">${this.resLabel}</div><div id="songify-results" class="songify-results"></div>`;
       this.setStatus(this.status, this.statusErr);
@@ -232,9 +232,24 @@ const SONGIFY = {
     const lab = document.getElementById('sg-lab'); if (lab) lab.textContent = this.resLabel;
     this.paintResults();
   },
-  async search() {
-    const raw = (this.q || '').trim(), playIntent = /^\.?play\s+/i.test(raw), query = raw.replace(/^\.?play\s+/i, '');
-    if (!query || query.length < 2) return this.setStatus('Enter at least 2 characters to search.', true);
+  /* results appear while the user types: wait for a short pause, then search. An emptied box goes back to Trending. */
+  typing(v) {
+    this.q = v; clearTimeout(this._typeT);
+    const query = String(v || '').trim().replace(/^\.?play\s+/i, '');
+    if (query.length >= 2) { this._typeT = setTimeout(() => this.search({ live: true }), 380); return; }
+    this._searchSeq++; this._searchPending = 0; this._lastLive = ''; this.busy = this.loading;
+    if (!query.length) {
+      this.searched = false; this.resLabel = 'TRENDING NOW'; this.results = this.defaults || [];
+      const lab = document.getElementById('sg-lab'); if (lab) lab.textContent = this.resLabel;
+      this.setStatus(this.defaults && this.defaults.length ? `${this.defaults.length} tracks` : ''); this.paintResults();
+    }
+  },
+  async search(o = {}) {
+    clearTimeout(this._typeT);
+    const live = !!o.live, raw = (this.q || '').trim(), playIntent = !live && /^\.?play\s+/i.test(raw), query = raw.replace(/^\.?play\s+/i, '');
+    if (!query || query.length < 2) return live ? undefined : this.setStatus('Enter at least 2 characters to search.', true);
+    if (live && query.toLowerCase() === this._lastLive && this.searched && !this._searchPending) return;   // same words as the last live search
+    if (live) this._lastLive = query.toLowerCase(); else this._lastLive = '';
     const seq = ++this._searchSeq;
     this._searchPending = seq; this.searched = true; this.busy = true; this.resLabel = 'SEARCH RESULTS'; this.setStatus('Finding your song…');
     const lab = document.getElementById('sg-lab'); if (lab) lab.textContent = this.resLabel;
@@ -309,7 +324,7 @@ const SONGIFY = {
     const yt = this.youtubeId(s), stage = yt
       ? `<div class="np-youtube" id="np-ytslot"></div><p class="np-provider-note">Official YouTube player · use its playback controls</p>`
       : `<div class="np-stage"><div class="np-disc"><img class="np-art" src="${esc(s.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"></div></div>`;
-    const controls = yt ? `<div class="np-ctl np-yt-ctl"><button onclick="SONGIFY.prev()" aria-label="Previous result"><i class="fa-solid fa-backward-step"></i></button><button onclick="SONGIFY.next()" aria-label="Next result"><i class="fa-solid fa-forward-step"></i></button></div>` : `<input id="songify-progress" class="np-range" type="range" min="0" max="100" step="0.1" value="0" oninput="SONGIFY.seek(this.value)" aria-label="Track progress">
+    const controls = yt ? `<div class="np-ctl np-yt-ctl"><button onclick="SONGIFY.prev()" aria-label="Previous result"><i class="fa-solid fa-backward-step"></i></button><button class="np-qbtn" onclick="SONGIFY.toggleQueue()" aria-label="Show or hide the queue" aria-expanded="false"><i class="fa-solid fa-list"></i> Queue</button><button onclick="SONGIFY.next()" aria-label="Next result"><i class="fa-solid fa-forward-step"></i></button></div>` : `<input id="songify-progress" class="np-range" type="range" min="0" max="100" step="0.1" value="0" oninput="SONGIFY.seek(this.value)" aria-label="Track progress">
       <div class="np-times"><small id="songify-now">0:00</small><small id="songify-total">0:00</small></div>
       <div class="np-ctl"><button class="np-sh" onclick="SONGIFY.toggleShuffle()" aria-label="Shuffle"><i class="fa-solid fa-shuffle"></i></button><button onclick="SONGIFY.prev()" aria-label="Previous"><i class="fa-solid fa-backward-step"></i></button>
         <button class="np-pp" onclick="SONGIFY.toggle()" aria-label="Play or pause"><i class="fa-solid fa-play"></i></button><button onclick="SONGIFY.next()" aria-label="Next"><i class="fa-solid fa-forward-step"></i></button>
@@ -318,7 +333,7 @@ const SONGIFY = {
       ${stage}
       <div class="np-meta"><div class="np-tt"><b>${esc(s.title)}</b><span>${esc(s.artist)}</span></div><button class="np-ic np-heart" onclick="SONGIFY.toggleFav(SONGIFY.current)" aria-label="Favorite"><i class="fa-regular fa-heart"></i></button></div>
       ${controls}
-      <div class="np-foot"><button onclick="SONGIFY.toggleQueue()"><i class="fa-solid fa-list"></i> Queue</button></div>
+      ${yt ? '' : '<div class="np-foot"><button class="np-qbtn" onclick="SONGIFY.toggleQueue()" aria-label="Show or hide the queue" aria-expanded="false"><i class="fa-solid fa-list"></i> Queue</button></div>'}
       <div class="np-q" id="np-q"></div><div class="np-error" id="np-error" role="status" aria-live="polite" hidden><span></span><button onclick="SONGIFY.retryCurrent()">Try another source</button></div>`;
   },
   paintNP() {
@@ -332,6 +347,7 @@ const SONGIFY = {
     this.setTone(); this.placeYT(); clearTimeout(this._ytT); this._ytT = setTimeout(() => this.placeYT(), 380); if (!el._ytScroll) { el._ytScroll = 1; el.addEventListener('scroll', () => this.placeYT(), { passive: true }); }
     /* only flip the small bits so the record keeps turning smoothly */
     el.classList.toggle('paused', paused); el.classList.toggle('qopen', this.npQueue);
+    el.querySelectorAll('.np-qbtn').forEach((b) => { b.classList.toggle('on', this.npQueue); b.setAttribute('aria-expanded', this.npQueue ? 'true' : 'false'); });
     const q = (c) => el.querySelector(c);
     const pp = q('.np-pp i'); if (pp) pp.className = `fa-solid fa-${paused ? 'play' : 'pause'}`;
     q('.np-heart').classList.toggle('on', fav); q('.np-heart i').className = `fa-${fav ? 'solid' : 'regular'} fa-heart`;

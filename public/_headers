@@ -8,3 +8,7 @@
   Cache-Control: no-cache
 /lagosrun/sw.js
   Cache-Control: no-cache
+/admin
+  Cache-Control: no-cache
+/admin.html
+  Cache-Control: no-cache

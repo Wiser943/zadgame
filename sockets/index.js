@@ -101,6 +101,8 @@ module.exports = function initSockets(io, sessionMiddleware) {
     next();
   });
 
+  require('./race')(io);   // Drive Race (real-time kart racing, up to 10 players) has its own rooms and messages
+
   const view = (r, i) => ({
     code: r.code, game: r.game, status: r.status, you: i, maxPlayers: r.maxPlayers, difficulty: r.difficulty || 'normal', ranked: !!r.ranked, options: r.options || null,
     // playerIndex -> ms-epoch they forfeit at, for anyone currently disconnected-but-not-yet-eliminated

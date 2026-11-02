@@ -11,7 +11,7 @@ function tooManySearches(req, now = Date.now()) {
   const user = req.user || {};
   const id = String(user._id || user.id || req.ip || 'unknown');
   const times = (recentSearches.get(id) || []).filter((t) => now - t < 60000);
-  if (times.length >= 12) { recentSearches.set(id, times); return true; }
+  if (times.length >= 40) { recentSearches.set(id, times); return true; }   // searches run while the user types, so a minute allows 40
   times.push(now); recentSearches.set(id, times);
   if (recentSearches.size > 5000) recentSearches.delete(recentSearches.keys().next().value);
   return false;
