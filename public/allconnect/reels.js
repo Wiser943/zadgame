@@ -158,7 +158,7 @@ const RL = {
       ${p.video.cc ? `<button class="rl-cc ${this.ccOn ? 'on' : ''}" onclick="event.stopPropagation();RL.cc()" aria-label="Captions">CC</button>` : ''}
       <button class="rl-snd" onclick="event.stopPropagation();RL.snd()" aria-label="Sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i></button>
       <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
-      ${p.text ? `<div class="rl-cap">${GIST.txt(p.text)}</div>` : ''}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
+      ${this.descHtml(p.text)}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
       <div class="rl-act"><button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
       <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
       <button role="menuitem" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
@@ -217,9 +217,10 @@ const RL = {
     this.i = i; const cards = [...f.querySelectorAll('.rl-card')], F = this.List();
     cards.forEach((c, k) => {
       const v = c.querySelector('video'), d = Math.abs(k - i);
-      if ((d === 0 || (d === 1 && !this.saver())) && !v.getAttribute('src') && !v._h && !v._want) this.attach(v, d > 0);
+      const ahead = k - i, reach = this.saver() ? 1 : 3;   // data saver: preload 1 reel ahead, otherwise 3
+      if ((d === 0 || (ahead >= 1 && ahead <= reach)) && !v.getAttribute('src') && !v._h && !v._want) this.attach(v, d > 0);
       if (k === i && v._h) v._h.config.maxBufferLength = 12;
-      if (d > 2 && (v.getAttribute('src') || v._h)) this.detach(v);
+      if ((ahead > reach || ahead < -1) && (v.getAttribute('src') || v._h)) this.detach(v);
       if (k === i) { c.classList.remove('paused'); v.muted = this.muted; v._go = 1; this.playReady(v) }
       else { v._go = 0; v.pause(); if (d > 0) try { v.currentTime = 0 } catch (e) { } }
       v.ontimeupdate = k === i ? () => { const b = c.querySelector('.rl-bar i'); if (b && v.duration) b.style.width = (v.currentTime / v.duration * 100) + '%' } : null
@@ -395,6 +396,27 @@ const RL = {
     post = this.compatPost(post); URL.revokeObjectURL(V.url); GIST.clearDraft(); GIST.C = null; GIST.put([post]); GIST.cache.set(post.id, post); GIST.afterPost(post, '');
     this.L.foryou.p = [post, ...this.L.foryou.p.filter(p => p.id !== post.id)]; this.L.foryou.ok = true; this.tab = 'foryou'; GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast('Reel posted ✓'); this.show(post.id)
   },
+  /* file fingerprint = SHA-256 of the first + last 2 MB and the size; lets the server spot someone re-uploading another creator's clip */
+  async fp(file) {
+    try {
+      const n = 2 * 1024 * 1024, a = new Uint8Array(await file.slice(0, n).arrayBuffer()), b = new Uint8Array(await file.slice(Math.max(0, file.size - n)).arrayBuffer()), z = new TextEncoder().encode(String(file.size));
+      const all = new Uint8Array(a.length + b.length + z.length); all.set(a, 0); all.set(b, a.length); all.set(z, a.length + b.length);
+      return [...new Uint8Array(await crypto.subtle.digest('SHA-256', all))].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 32)
+    } catch (e) { return '' }
+  },
+  /* the originality check held this reel: it is not public yet, the creator is told why and can appeal */
+  heldPublish(post, V, flag) {
+    try { URL.revokeObjectURL(V.url) } catch (e) { } GIST.clearDraft(); GIST.C = null; post = this.compatPost(post); GIST.put([post]); GIST.cache.set(post.id, post);
+    GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast('Reel held for review'); GIST.nav('post', post.id); setTimeout(() => this.appealSheet(post.id, flag && flag.reason), 350)
+  },
+  appealSheet(id, reason) {
+    PH.sheet(`<h3>Reel held for review</h3><p style="margin:6px 0 10px;line-height:1.45">${esc(reason || 'This video may not be original.')}</p><p class="muted" style="margin:0 0 8px;font-size:12.5px">If this is your own video, tell us why and an admin will watch it and decide.</p><textarea id="rl_ap" maxlength="500" rows="3" placeholder="e.g. I filmed this myself" style="width:100%;box-sizing:border-box"></textarea><button class="fopt" id="rl_apb" onclick="RL.sendAppeal('${id}')"><span><i class="fa-solid fa-paper-plane"></i> Appeal</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Not now</span></button>`)
+  },
+  async sendAppeal(id) {
+    const t = $('rl_ap'), b = $('rl_apb'); if (b) b.disabled = true;
+    try { await GIST.api('/posts/' + id + '/appeal', { method: 'POST', body: { text: t ? t.value : '' } }); PH.closeSheet(); toast('Appeal sent. An admin will review it.'); const c = GIST.cache.get(id); if (c && c.moderation) c.moderation.status = 'appealed'; if (GIST.cur && GIST.cur.fn === 'post') GIST.nav('post', id) }
+    catch (e) { if (b) b.disabled = false; GIST.err(e) }
+  },
   async publishLegacy(C, V, set) {
     const upload = await GIST.api('/videos/uploads', { method: 'POST', body: { caption: C.text, fileSize: V.file.size, contentType: V.file.type || 'application/octet-stream' } });
     if (!upload || !upload.uploadId || !upload.uploadUrl) throw new Error('The earlier P-Gist upload API did not return a Mux URL.');
@@ -424,7 +446,8 @@ const RL = {
       for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/mux-status/' + m.uploadId); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
       if (!mx) throw new Error('Your video is taking long to process. It will appear in your gallery when ready; try posting it again in a minute.');
       set('Posting…');
-      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { mux: { assetId: mx.assetId }, dur: mx.dur }, poll: C.poll || undefined } });
+      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { mux: { assetId: mx.assetId }, dur: mx.dur }, poll: C.poll || undefined, fingerprint: await this.fp(V.file) } });
+      if (r.flagged) return this.heldPublish(r.post, V, r.flagged);
       this.finishPublish(r.post, V)
     } catch (e) { C.busy = false; const e2 = $('gc_e'); if (e2) e2.textContent = e.message; GIST.btn(); const bb = $('gc_b'); if (bb) bb.textContent = 'Post'; GIST.err(e) }
   },
@@ -447,6 +470,17 @@ Object.assign(RL, {
   /* tablet / desktop: the Gist menu is a left rail that can collapse to icons. The choice is remembered; until the player picks, Reels start collapsed and the feed starts open. */
   navCollapsed(reels) { let v = null; try { v = localStorage.getItem('ac:gnavc') } catch (e) {} return v === null ? !!reels : v === '1' },
   toggleNav() { const a = PH.$a(); if (!a) return; const on = !a.classList.contains('navc'); a.classList.toggle('navc', on); try { localStorage.setItem('ac:gnavc', on ? '1' : '0') } catch (e) {} },
+  /* description: hashtags first (max 5, in a small box that scrolls up/down if it overflows), then the caption clamped to 2 lines with See more / See less */
+  descHtml(text) {
+    const raw = String(text || '').trim(); if (!raw) return '';
+    const TAG = /#[\p{L}\p{N}_]{2,30}/gu, tags = [...new Set(raw.match(TAG) || [])].slice(0, 5);
+    const clean = raw.replace(TAG, '').replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').replace(/[ \t]{2,}/g, ' ').trim();
+    const long = clean.length > 90 || clean.split('\n').length > 2;
+    const tagsH = tags.length ? `<div class="rl-tags" onclick="event.stopPropagation()">${tags.map(t => `<a class="rl-tag" data-tag="${esc(t.slice(1))}">${esc(t)}</a>`).join('')}</div>` : '';
+    const capH = clean ? `<div class="rl-desc${long ? ' clamp' : ''}"><div class="rl-cap">${GIST.txt(clean)}</div>${long ? '<button type="button" class="rl-more" onclick="event.stopPropagation();RL.moreDesc(this)">See more</button>' : ''}</div>` : '';
+    return tagsH + capH
+  },
+  moreDesc(btn) { const d = btn.closest('.rl-desc'); if (!d) return; const open = d.classList.toggle('open'); btn.textContent = open ? 'See less' : 'See more' },
   /* bottom bar: four icons, no text. Home (feed + reels), Discover, Create, Profile (the unified profile) */
   dock(at) {
     const disc = at === 'feed' && GIST.tab === 'trending' && !GIST.tagF, active = at === 'profile' ? 'me' : disc ? 'disc' : 'home',

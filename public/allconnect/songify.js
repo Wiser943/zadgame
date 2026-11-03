@@ -445,6 +445,7 @@ const SONGIFY = {
   share() {
     if (!this.current) return;
     const cur = this.current, song = { title: cur.title, artist: cur.artist || '', albumArt: cur.albumArt || '', streamUrl: cur.streamUrl };
+    this.closeNP();   // minimise now-playing (same as the down arrow) so the share screen is visible; the song keeps playing
     GIST.nav('compose');
     setTimeout(() => { if (GIST.C) { GIST.C.song = song; GIST.attDraw(); } const input = document.getElementById('gc_t'); if (input) { input.value = `Listening on Songify: ${this.current.title} - ${this.current.artist}`; input.dispatchEvent(new Event('input')); } }, 0);
   }

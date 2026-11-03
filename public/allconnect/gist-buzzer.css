@@ -33,7 +33,7 @@ html[data-theme="dark"] .screen.light:has(.pgist-social) .sb,html[data-theme="da
 :is(html,html[data-theme]) #appview.pgist-social.pgist-social .gme{width:34px;height:34px;border:0;padding:0;background:none;flex:none}
 :is(html,html[data-theme]) #appview.pgist-social.pgist-social .gwhat{flex:1;min-width:0;text-align:left;border:0;background:none;color:var(--g-mut);font:600 13.5px inherit;font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :is(html,html[data-theme]) #appview.pgist-social.pgist-social .gphoto{display:none}
-.gkinds{display:flex;gap:6px;padding:8px var(--g-pad) 8px}
+.gkinds{display:flex;gap:6px;padding:8px var(--g-pad) 8px;position:sticky;top:0;z-index:6;background:var(--g-bg);border-bottom:1px solid var(--g-line);box-shadow:-24px 0 0 var(--g-bg),24px 0 0 var(--g-bg)}
 .gkinds button{border:1px solid var(--g-line);background:var(--g-bg);color:var(--g-mut);border-radius:99px;padding:5px 13px;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer}
 .gkinds button.on{background:var(--g-acc);border-color:var(--g-acc);color:var(--g-acc-ink)}
 
@@ -195,3 +195,7 @@ html[data-theme="dark"] .screen.light:has(.pgist-social) .sb,html[data-theme="da
 .gskp .t{height:12px}.gk-stats{display:flex;gap:12px;padding:0 24px 16px}.gk-stats i{flex:1;height:38px;border-radius:12px}
 .gk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}.gk-grid i{aspect-ratio:1;border-radius:0}
 .gskc{padding:8px 14px}
+
+.gmod{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:0 var(--g-pad) 8px;padding:10px 12px;border-radius:12px;background:rgba(229,72,77,.1);border:1px solid rgba(229,72,77,.35);color:var(--g-ink);font-size:12.5px;line-height:1.4}
+.gmod b{flex:0 0 100%;font-weight:800;color:#e5484d}.gmod span{flex:1;min-width:0}
+.gmod button{flex:none;border:0;border-radius:99px;padding:6px 14px;background:var(--g-acc);color:var(--g-acc-ink);font:800 12px inherit;font-family:inherit}

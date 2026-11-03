@@ -142,7 +142,7 @@ const GIST = {
     const nviews = Number(p.views || p.viewCount || 0), chip = (nviews >= 10 && (this.imgs(p) || this.vid(p, o.detail))) ? `<span class="gvchip"><i class="fa-regular fa-eye"></i> ${nviews > 999 ? (nviews / 1000).toFixed(1) + 'k' : nviews}</span>` : '';
     const vc = (!o.detail && p.comments) ? `<button class="gcmlk" onclick="GIST.nav('post','${p.id}')">View ${p.comments === 1 ? 'the' : 'all ' + p.comments} comment${p.comments === 1 ? '' : 's'}</button>` : '';
     return `<article class="gp ${tmp ? 'pending' : ''}" data-id="${p.id}">${p.pinned ? '<div class="gpin"><i class="fa-solid fa-thumbtack"></i> Pinned</div>' : ''}<div class="gtop">${who}${folBtn}${tmp ? '' : `<button class="gmore" onclick="GIST.menu('${p.id}')" aria-label="More">⋯</button>`}</div>
-      <div class="gmedia">${chip}${media}</div>
+      ${this.modBanner(p)}<div class="gmedia">${chip}${media}</div>
       ${caption}
       <div class="gact"><button class="lk ${p.myRx ? 'on' : ''}" data-id="${p.id}" aria-label="React to post" aria-pressed="${!!p.myRx}"><span>${em ? em : '<i class="fa-solid fa-bolt" aria-hidden="true"></i>'}</span><b class="gnum">${p.likes || ''}</b></button>
       <button class="cm" onclick="${o.detail ? "$('gc_in')&&$('gc_in').focus()" : `GIST.nav('post','${p.id}')`}" aria-label="${o.detail ? 'Write a comment' : 'View comments'}"><span><i class="fa-regular fa-comment" aria-hidden="true"></i></span><b class="gnum gcn">${p.comments || ''}</b></button>
@@ -150,6 +150,14 @@ const GIST = {
       <div class="grs">${this.rxSummary(p)}</div>
       ${vc}
       </article>`
+  },
+  /* shown only to the author of a reel the originality check held back */
+  modBanner(p) {
+    const m = p.moderation; if (!m || !p.mine) return '';
+    if (m.status === 'flagged') return `<div class="gmod"><b>Held for review</b><span>${esc(m.reason || 'This video may not be original.')}</span><button onclick="RL.appealSheet('${p.id}',${esc(JSON.stringify(m.reason || ''))})">Appeal</button></div>`;
+    if (m.status === 'appealed') return `<div class="gmod"><b>Appeal under review</b><span>An admin will watch the video and decide.</span></div>`;
+    if (m.status === 'rejected') return `<div class="gmod"><b>Hidden after review</b><span>${esc(m.reviewNote || 'This reel stays hidden.')}</span></div>`;
+    return ''
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
   /* ---------- feed ---------- */

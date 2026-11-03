@@ -315,3 +315,13 @@
 #appview.pgist-social .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 #appview.pgist-social .gdraft-note{margin:0 0 10px;padding:9px 12px;border-radius:12px;background:#f0f7dc;color:#3b4f17;font-size:12px;font-weight:700}
 #appview.pgist-social .gshared-open{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:0;border-radius:12px;background:transparent;color:var(--ink);text-align:left;font:600 12px 'DM Sans',system-ui,sans-serif}#appview.pgist-social .gshared-open .gsh{min-width:0;display:flex;flex-direction:column;gap:3px}#appview.pgist-social .gshared-open:focus-visible{outline:3px solid var(--grn);outline-offset:2px}
+
+/* reel description: tags on top (max 5, scrolls vertically if they overflow), caption clamped with See more */
+.rl-tags{display:flex;flex-wrap:wrap;gap:4px 6px;max-height:50px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;pointer-events:auto}
+.rl-tags::-webkit-scrollbar{display:none}
+.rl-tag{flex:none;font:800 12px/1.2 'Plus Jakarta Sans',system-ui,sans-serif;color:#fff;background:rgba(255,255,255,.16);border-radius:99px;padding:4px 9px;text-decoration:none;backdrop-filter:blur(6px)}
+.rl-desc .rl-cap{max-height:none;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.rl-desc.open .rl-cap{display:block;max-height:34vh;overflow-y:auto;scrollbar-width:none;overscroll-behavior:contain}
+.rl-desc.open .rl-cap::-webkit-scrollbar{display:none}
+.rl-more{align-self:flex-start;border:0;background:none;color:rgba(255,255,255,.85);font:800 12px 'Plus Jakarta Sans',system-ui,sans-serif;padding:2px 0 0;text-shadow:0 1px 3px rgba(0,0,0,.55)}
+.rl-desc{display:flex;flex-direction:column;align-items:flex-start}

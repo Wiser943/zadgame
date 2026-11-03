@@ -53,9 +53,6 @@ Object.assign(PH,{
         ${this.seg('saver','🔋','Data & battery saver','Uses less data and keeps your phone cool. Naija still looks like Naija.',[['auto','Auto'],['on','On'],['off','Off']],p.saver,this.saverHint(p))}
         ${this.lrow('Reset button & player positions','fa-solid fa-arrows-up-down-left-right',"DRAGPOS.reset();SONGIFY.resetFloat&&SONGIFY.resetFloat()")}
         <label class="trow"><span class="ti"><i class="fa-solid fa-globe"></i></span><span class="tl">Language</span><select class="ssel" onchange="PH.setLang(this.value)"><option value="pcm" ${p.lang==='en'||p.lang==='fr'?'':'selected'}>Naija Pidgin (default)</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
-      <div class="lab2">AVATAR</div><div class="sgrp">${this.lrow('Style, pronouns & avatar privacy','fa-solid fa-user-astronaut',"PH.open('style');STYLE.go('id')")}</div>
-      <div class="lab2">SHOP</div><div class="sgrp">${this.lrow('Backgrounds, boards, tokens & announcers','fa-solid fa-bag-shopping',"openHub(b=>b.shop())")}</div>
-      <div class="lab2">HELP</div><div class="sgrp">${this.lrow('Game tutorial','fa-solid fa-graduation-cap',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','fa-solid fa-share-nodes',"PH.sub('socials')"):''}${this.lrow('About us','fa-solid fa-circle-info',"PH.sub('about')")}${this.lrow('Legal','fa-solid fa-scale-balanced',"PH.sub('legal')")}</div>
       <button class="fopt red out" onclick="logout()"><span>Log out</span></button><p class="ver">AllConnect ${(window.HUB&&HUB.C&&HUB.C.changelog&&HUB.C.changelog[0]&&HUB.C.changelog[0].v)||'1.1'} · GameHub 1.0.10141</p></div>`);
     this.notifPaint();
     const cv=document.querySelector('#swav .avcov');if(cv){const im=new Image();im.onerror=()=>{cv.style.background='#6366f1';cv.textContent=cv.dataset.n};im.src=u.avatar}
@@ -93,8 +90,11 @@ Object.assign(PH,{
       const back=this.editBack;this.editBack=null;back==='PH.settings()'?this.settings():(new Function(back))()}catch(e){err.textContent=e.message||'Could not save'}b.disabled=false},
   hubRefresh(){try{const w=document.getElementById('hubf').contentWindow;if(w&&w.GHBridge&&w.GHBridge.ready())w.GHBridge.refreshMe()}catch(e){}},
   /* ----- info pages ----- */
+  /* Guide app: tutorial, socials, about and legal (moved out of Settings) */
+  guide(){this.view='guide';
+    this.shell('Guide','PH.close()',`<div class="abody" id="ab"><p class="hint2">Learn the app, find us online, and read the rules.</p><div class="sgrp">${this.lrow('Game tutorial','fa-solid fa-graduation-cap',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','fa-solid fa-share-nodes',"PH.sub('socials')"):''}${this.lrow('About us','fa-solid fa-circle-info',"PH.sub('about')")}${this.lrow('Legal','fa-solid fa-scale-balanced',"PH.sub('legal')")}</div></div>`)},
   sub(name){this.view='settings-'+name;const T={socials:'Join our Socials',tutorial:'Game Tutorial',about:'About Us',legal:'Legal'}[name];
-    this.shell(T,'PH.settings()',`<div class="abody" id="ab">${this.subBody(name)}</div>`);if(name==='tutorial')this.loadRules()},
+    this.shell(T,'PH.guide()',`<div class="abody" id="ab">${this.subBody(name)}</div>`);if(name==='tutorial')this.loadRules()},
   faq(q,a){return `<div class="faq"><b>${esc(q)}</b><p>${esc(a)}</p></div>`},
   subBody(n){
     if(n==='socials')return `<p class="hint2">Follow along for updates, and hang out with other players.</p><div class="sgrp">${socialList().map(s=>`<a class="trow" href="${esc(s[2])}" target="_blank" rel="noopener"><span class="ti"><i class="${s[0]}"></i></span><span class="tl">${esc(s[1])}</span><span class="chv">›</span></a>`).join('')}</div>`;

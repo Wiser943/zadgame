@@ -4,6 +4,10 @@
 
 /* labels + collapse buttons only exist for the rails, so hide them everywhere else */
 .tkdock .dl,.tkdock .dtog,.sg-tog{display:none}
+/* Menu (collapse) buttons are for the tablet rail only. Other rules set display on every dock button, so force-hide below the tablet breakpoint */
+@media not all and (min-width:768px) and (min-height:520px){
+  html:root #appview .tkdock .dtog,html:root .sg-nav .sg-tog,.sg-wrap>.sg-nav .sg-tog{display:none!important}
+}
 .sg-main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden}
 .sg-wrap{min-width:0;overflow:hidden}
 
@@ -112,4 +116,9 @@
   .pet .pright .qr,.pet .pright .cin{max-width:none;margin-left:0;margin-right:0;width:100%}
   .pet .pright .qr{margin-top:6px}
   .pet .pright .cin{margin-top:6px}
+}
+
+/* phones: the Songify queue spans the full width of the now-playing screen (small side padding only) */
+@media not all and (min-width:768px) and (min-height:520px){
+  .sg-np .np-q{margin:12px -22px 4px!important;padding:12px 10px!important;border-radius:16px 16px 0 0!important}
 }

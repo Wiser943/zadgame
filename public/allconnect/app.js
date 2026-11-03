@@ -403,11 +403,15 @@ const APPS = [
   ["What's New", '<i class="fa-solid fa-clock-rotate-left"></i>', 'linear-gradient(135deg,#f97316,#c2410c)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
+  ['Shop', '<i class="fa-solid fa-bag-shopping"></i>', 'linear-gradient(135deg,#34d399,#0891b2)', 1],
+  ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
 const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 OPEN.Homes = "PH.open('homes')";
+OPEN.Shop = "openHub(b=>b.shop())";
+OPEN.Guide = "PH.open('guide')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];

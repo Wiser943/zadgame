@@ -190,6 +190,34 @@ router.post('/reports/:id/action', async (req, res, next) => {
     res.json({ ok: true, status: report.status });
   } catch (err) { next(err); }
 });
+// ---------- reel appeals: reels flagged by the originality check; creators appeal, the admin watches the video URL and decides ----------
+const GistPostM = require('../models/Gist');
+router.get('/reel-appeals', async (req, res, next) => {
+  try {
+    const st = ['appealed', 'flagged', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : 'appealed';
+    const rows = await GistPostM.find({ 'moderation.status': st }).sort({ 'moderation.appealedAt': -1, 'moderation.flaggedAt': -1 }).limit(100).lean();
+    const ids = [...new Set(rows.map(r => r.author))].filter(x => /^[a-f\d]{24}$/i.test(x));
+    const users = await User.find({ _id: { $in: ids } }).select('displayName acUsername').lean(), nm = new Map(users.map(u => [String(u._id), u]));
+    res.json({ appeals: rows.map(r => ({ id: String(r._id), status: r.moderation.status, reason: r.moderation.reason || '', source: r.moderation.source || '', caption: r.text || '',
+      appealText: r.moderation.appealText || '', videoUrl: r.moderation.videoUrl || (r.video && r.video.url) || '', flaggedAt: r.moderation.flaggedAt, appealedAt: r.moderation.appealedAt || null,
+      author: { id: r.author, name: nm.get(r.author)?.displayName || 'Unknown', username: nm.get(r.author)?.acUsername || '' }, reviewNote: r.moderation.reviewNote || '' })) });
+  } catch (err) { next(err); }
+});
+router.post('/reel-appeals/:id/decide', async (req, res, next) => {
+  try {
+    const decision = String(req.body?.decision || ''), note = String(req.body?.note || '').trim().slice(0, 240);
+    if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ message: 'Unknown decision.' });
+    const p = await GistPostM.findById(req.params.id);
+    if (!p || !p.moderation || !['flagged', 'appealed'].includes(p.moderation.status)) return res.status(404).json({ message: 'Nothing to review on this reel.' });
+    p.moderation.status = decision === 'approve' ? 'approved' : 'rejected'; p.moderation.reviewedAt = new Date(); p.moderation.reviewNote = note;
+    p.hidden = decision !== 'approve'; p.markModified('moderation'); await p.save();
+    notify(req.app.get('io'), p.author, { icon: decision === 'approve' ? '✅' : '🚫', kind: 'gist', ref: String(p._id),
+      text: decision === 'approve' ? 'Your appeal was approved. Your reel is now live.' : 'Your appeal was reviewed and the reel stays hidden.' + (note ? ' ' + note : '') }).catch(() => {});
+    if (decision === 'approve') { const io = req.app.get('io'); if (io) io.of('/ac').emit('gist:new', { id: String(p._id), author: p.author }); }
+    console.log('[moderation]', JSON.stringify({ reel: String(p._id), decision, author: p.author, at: p.moderation.reviewedAt }));
+    res.json({ ok: true, status: p.moderation.status });
+  } catch (err) { next(err); }
+});
 // Admin post -> shows up in every player's Updates feed (and live to anyone online). kind: admin | update
 router.post('/ac/post', ensureAdmin, async (req, res, next) => {
   try {

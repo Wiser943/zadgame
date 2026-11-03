@@ -14,6 +14,9 @@ const GistPostSchema = new Schema({
   poll: { options: { type: [PollOption], default: undefined }, endsAt: Date },
   song: { title: String, artist: String, albumArt: String, streamUrl: String },   // a Songify track shared to the feed: tapping it opens Songify and plays it
   video: { uploadId: String, assetId: String, playbackId: String, duration: Number, kind: String, mux: { assetId: String, playbackId: String, signed: Boolean, captions: Boolean }, url: String, fileId: String, mime: String, size: Number, dur: Number, poster: { url: String, thumb: String } },   // legacy Mux fields remain readable while current reels use the nested mux record
+  fingerprint: { type: String, default: '', index: true, sparse: true },   // reel file fingerprint (hash of the file head/tail + size), used to spot re-uploads of someone else's clip
+  // originality check on reels: '' = clear | 'flagged' | 'appealed' | 'approved' | 'rejected'. Flagged/appealed/rejected reels are also hidden:true (only the author still sees them).
+  moderation: { status: { type: String, default: '' }, reason: String, source: String, flaggedAt: Date, appealText: String, appealedAt: Date, videoUrl: String, reviewedAt: Date, reviewNote: String },
   views: { type: Number, default: 0 },
   plays: { type: Number, default: 0 }, watchMs: { type: Number, default: 0 }, completions: { type: Number, default: 0 },   // watch analytics, used to rank reels
   reporters: { type: [String], default: [] }, hidden: { type: Boolean, default: false },                              // 3 different reports hide a post from feeds
@@ -34,6 +37,7 @@ GistPostSchema.index({ tags: 1, createdAt: -1 });
 GistPostSchema.index({ text: 'text' }, { name: 'gist_text_search' });
 GistPostSchema.index({ 'video.url': 1, createdAt: -1 }, { sparse: true });
 GistPostSchema.index({ 'video.playbackId': 1 }, { sparse: true });
+GistPostSchema.index({ 'moderation.status': 1, 'moderation.appealedAt': -1 }, { sparse: true });
 
 const GistLikeSchema = new Schema({ post: { type: String, index: true }, user: String, type: { type: String, default: 'like' }, createdAt: { type: Date, default: Date.now } });
 GistLikeSchema.index({ post: 1, user: 1 }, { unique: true });

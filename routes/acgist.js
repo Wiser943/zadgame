@@ -8,6 +8,7 @@ const registry = require('../games/registry');
 const ensureAuth = require('../middleware/auth');
 const { normalizeUsername } = require('../utils/allconnect');
 const { notify } = require('../utils/acnotify');
+const { checkReel } = require('../utils/contentCheck');
 const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
@@ -136,6 +137,7 @@ async function hydrate(posts, uid) {
       election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
       video: normalizeVideo(p.video, playback), views: p.views || 0,
       tags: p.tags || [], pinned: !!p.pinned, edited: !!p.editedAt,
+      ...(p.author === uid && p.moderation && p.moderation.status ? { moderation: { status: p.moderation.status, reason: p.moderation.reason || '', reviewNote: p.moderation.reviewNote || '' } } : {}),
       likes: Math.max(0, p.likes || 0), rx: p.rx || {}, comments: Math.max(0, p.comments || 0), shares: Math.max(0, p.shares || 0),
       myRx: liked.get(id) || '', liked: liked.has(id), saved: savedIds.has(id), createdAt: p.createdAt,
     };
@@ -292,13 +294,35 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
     }
     if (!text && !images.length && !game && !sharedFrom && !poll && !video && !song) return bad(res, 'Write something or add a photo first.');
     const tags = parseTags(text), mentions = await parseMentions(text);
-    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, song, sharedFrom, tags, mentions });
+    // originality check: a flagged reel is saved but hidden from everyone except its author until an admin clears it
+    let verdict = { flagged: false };
+    if (video && video.kind === 'mux') verdict = await checkReel({ uid, text, fingerprint: String(b.fingerprint || ''), playbackId: video.mux && video.mux.playbackId });
+    const mod = verdict.flagged ? { hidden: true, moderation: { status: 'flagged', reason: verdict.reason, source: verdict.source, flaggedAt: new Date(), videoUrl: (video && video.url) || '' } } : {};
+    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, song, sharedFrom, tags, mentions, fingerprint: video && /^[a-f0-9]{16,64}$/i.test(String(b.fingerprint || '')) ? String(b.fingerprint) : '', ...mod });
     if (video && video.fileId) await reelstore.markUsed(video.fileId).catch(() => {});
     const pid = String(post._id), who = label(req.user);
     if (origAuthor) ping(req, origAuthor, `${who} reshared your gist`, { icon: '🔁', ref: sharedFrom, key: 'rs:' + uid + sharedFrom });
     mentions.forEach((m) => ping(req, m, `${who} mentioned you in a gist`, { icon: '＠', ref: pid }));
+    if (verdict.flagged) {
+      notify(req.app.get('io'), uid, { icon: '🚩', text: 'Your reel was held for review: ' + verdict.reason + ' Open it to appeal.', kind: 'gist', ref: pid }).catch(() => {});
+      return res.json({ post: (await hydrate([post.toObject()], uid))[0], flagged: { reason: verdict.reason, source: verdict.source } });
+    }
     const io = req.app.get('io'); if (io) io.of('/ac').emit('gist:new', { id: pid, author: uid });
     res.json({ post: (await hydrate([post.toObject()], uid))[0] });
+  } catch (e) { next(e); }
+});
+
+/* the author appeals a flagged reel: it goes to the admin queue together with the video URL so the admin can watch it */
+router.post('/posts/:id/appeal', limit('appeal', 6, 3600000), async (req, res, next) => {
+  try {
+    const uid = me(req); if (!isId(req.params.id)) return bad(res, 'Invalid post.');
+    const text = String((req.body && req.body.text) || '').trim().slice(0, 500);
+    const p = await GistPost.findOne({ _id: req.params.id, author: uid });
+    if (!p || !p.moderation || p.moderation.status !== 'flagged') return bad(res, 'This reel is not waiting for an appeal.', 409);
+    p.moderation.status = 'appealed'; p.moderation.appealText = text; p.moderation.appealedAt = new Date();
+    p.moderation.videoUrl = (p.video && (p.video.url || (p.video.mux && p.video.mux.playbackId ? 'https://stream.mux.com/' + p.video.mux.playbackId + '.m3u8' : ''))) || p.moderation.videoUrl || '';
+    p.markModified('moderation'); await p.save();
+    res.json({ ok: true, status: 'appealed' });
   } catch (e) { next(e); }
 });
 
