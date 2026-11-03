@@ -4,7 +4,8 @@
 
 /* labels + collapse buttons only exist for the rails, so hide them everywhere else */
 .tkdock .dl,.tkdock .dtog,.sg-tog{display:none}
-.sg-main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.sg-main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.sg-wrap{min-width:0;overflow:hidden}
 
 /* Songify queue: opens right under the Queue button (never on top of it) on every screen size */
 .np-q{position:static!important;transform:none!important;bottom:auto!important;left:auto!important;right:auto!important;
@@ -40,14 +41,6 @@
   html:root #appview.navc.pgist-social.pgist-social.pgist-social .tkdock.gicons button{justify-content:center;padding:0}
   html:root #appview.navc.pgist-social.pgist-social.pgist-social .tkdock.gicons button .dl{display:none}
 
-  /* feed: the like / comment / share buttons stand in a column on the RIGHT of each post (TikTok style) */
-  html:root #appview.pgist-social .abody:not(.rlb){padding-bottom:18px}
-  html:root #appview.pgist-social #gfeed .gp,html:root #appview.pgist-social .abody>.gp{display:grid;grid-template-columns:minmax(0,1fr) 64px;column-gap:6px}
-  html:root #appview.pgist-social .gp>*{grid-column:1;min-width:0}
-  html:root #appview.pgist-social .gp>.gact{grid-column:2;grid-row:1 / span 8;align-self:end;flex-direction:column;align-items:center;gap:12px;padding:8px 0 14px;justify-self:center}
-  html:root #appview.pgist-social .gp>.gact button{flex-direction:column;gap:3px;width:52px;padding:10px 0;border-radius:26px}
-  html:root #appview.pgist-social .gp>.gact .sh{margin-left:0}
-
   /* ================= Reels: left rail (starts collapsed), actions open on the right ================= */
   html:root #appview.pgist-social.rlmode .rl-v{object-fit:contain}
   html:root #appview.pgist-social.rlmode .rl-info{right:104px}
@@ -75,7 +68,12 @@
   .sg-wrap.sgc>.sg-nav{width:64px}
   .sg-wrap.sgc>.sg-nav button{justify-content:center;padding:12px 0}
   .sg-wrap.sgc>.sg-nav button span{display:none}
-  .sg-body .songify-results{display:grid;grid-template-columns:1fr 1fr;column-gap:20px}
+  .sg-body{overflow-x:hidden}
+  .sg-body .songify-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+  .sg-body .songify-result{min-width:0;overflow:hidden}
+  .sg-body .songify-result>span{min-width:0;flex:1}
+  .sg-body .songify-result b,.sg-body .songify-result small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sg-body .songify-head,.sg-body .songify-search,.sg-body .songify-player{min-width:0;max-width:100%;box-sizing:border-box}
 
   /* Now Playing: record / video on the LEFT, details + controls + queue on the RIGHT */
   .sg-np{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:44px;grid-auto-rows:min-content;align-content:center;padding:calc(58px + env(safe-area-inset-top,0px)) 44px 26px}
@@ -109,5 +107,9 @@
   .pet .pcols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:22px;align-items:start}
   .pet .pleft{display:block;position:sticky;top:6px}
   .pet .pright{display:flex;flex-direction:column;gap:4px}
-  .pet .pstage{height:clamp(280px,56vh,430px)}
+  .pet .pstage{height:clamp(220px,46vh,400px)}
+  .pet .pright .pmode.seg2{margin:8px 0 0;max-width:none}
+  .pet .pright .qr,.pet .pright .cin{max-width:none;margin-left:0;margin-right:0;width:100%}
+  .pet .pright .qr{margin-top:6px}
+  .pet .pright .cin{margin-top:6px}
 }

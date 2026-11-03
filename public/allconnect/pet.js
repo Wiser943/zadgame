@@ -52,9 +52,17 @@ const PET = {
       <div class="gln pneeds" id="pn"></div><div class="pgrow" id="pgrow"></div>
       <div class="pact"><button onclick="PET.foodSheet()"><b>🍛</b>${('Feed')}</button><button onclick="PET.careSheet()"><b>🩺</b>${('Care')}</button><button onclick="PET.playSheet()"><b>🎾</b>${('Play')}</button><button onclick="PET.dress()"><b>👕</b>${('Dress')}</button><button onclick="PET.sleep()" id="pslp"></button></div></div></div></div>
       <div class="seg2 pmode" id="pmode"></div><div class="qr" id="pchips"></div>
-      <div class="cin"><input id="pin" placeholder="" maxlength="120" autocomplete="off" onkeydown="if(event.key==='Enter')PET.sendInput()"><button class="sbtn vnmic" data-vn="pet" id="pmic" aria-label="Send, or hold to talk"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`, '', '<button class="gbell" id="pmenu" onclick="PET.menu()" aria-label="Menu">☰<em id="pbadge" hidden></em></button>');
-    this.paintMode(); this.paintAll(); clearInterval(this.tmr); this.n = 0; this.tmr = setInterval(() => this.step(), 4000);
+      <div class="cin" id="pcin"><input id="pin" placeholder="" maxlength="120" autocomplete="off" onkeydown="if(event.key==='Enter')PET.sendInput()"><button class="sbtn vnmic" data-vn="pet" id="pmic" aria-label="Send, or hold to talk"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`, '', '<button class="gbell" id="pmenu" onclick="PET.menu()" aria-label="Menu">☰<em id="pbadge" hidden></em></button>');
+    this.paintMode(); this.place(); this.paintAll(); clearInterval(this.tmr); this.n = 0; this.tmr = setInterval(() => this.step(), 4000);
     if (!this.greeted && !p.asleep) { this.greeted = true; setTimeout(() => this.speak(`Hi! I'm ${p.name}. ` + (this.mode === 'answer' ? 'Ask me anything!' : "Say something and I'll repeat it!")), 500) }
+  },
+  /* tablet / desktop: the Repeat/Answer switch, the quick phrases and the chat box live in the RIGHT column (under the buttons); on a phone they stay at the bottom */
+  place() {
+    if (!this._mq) { this._mq = window.matchMedia('(min-width:768px) and (min-height:520px)'); const f = () => { if (PH.view === 'pet') this.place() }; this._mq.addEventListener ? this._mq.addEventListener('change', f) : this._mq.addListener(f) }
+    const R = document.querySelector('#ab .pright'), A = PH.$a(), ab = document.getElementById('ab'); if (!R || !A || !ab) return;
+    const bits = ['pmode', 'pchips', 'pcin'].map(i => document.getElementById(i)).filter(Boolean);
+    if (this._mq.matches) bits.forEach(b => { if (b.parentNode !== R) R.appendChild(b) });
+    else bits.forEach(b => { if (b.parentNode !== A) A.appendChild(b) });
   },
   leave() {
     clearInterval(this.tmr); this.tmr = null; clearTimeout(this.bt); this.g = null;
