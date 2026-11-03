@@ -44,7 +44,7 @@ const JOBS = {
   },
   async open() {
     PH.view = 'jobs';
-    PH.shell('Jobs', 'PH.close()', '<div class="abody" id="ab"><p class="empty">Loading…</p></div>');
+    PH.shell('Jobs', 'PH.close()', '<div class="abody jobsx" id="ab"><p class="empty">Loading…</p></div>');
     if (this.data) this.draw();
     await this.load(); if (PH.view === 'jobs') this.draw()
   },
@@ -65,7 +65,7 @@ const JOBS = {
   draw() {
     const ab = document.getElementById('ab'); if (!ab || !this.data) return;
     const d = this.data, m = d.mine, pay = n => '₦' + Number(n).toLocaleString('en-NG');
-    let h = '';
+    let h = '<div class="jcols"><div class="jleft">';
     if (m) {
       const nx = m.next, pct = nx ? Math.min(100, Math.round(((m.shifts - nx.from) / Math.max(1, nx.at - nx.from)) * 100)) : 100, b = this.btn(m);
       h += `<div class="jmine"><div class="jtop"><span class="jlab">YOUR JOB</span><label class="jauto"><input type="checkbox" ${m.auto ? 'checked' : ''} onchange="JOBS.setAuto(this.checked)"><span>Go automatically</span></label></div>
@@ -76,10 +76,11 @@ const JOBS = {
         ${m.blocked ? `<small class="jwarn">${esc(m.blocked)} <a href="#" onclick="TR.open('shop');return false">Open Transport</a></small>` : ''}
         <button class="jwork" id="jwork" onclick="JOBS.work(false)" ${b.off ? 'disabled' : ''}>${b.t}</button></div>`;
     } else h += '<p class="jhint">Pick a job to start earning ₦ every shift. You can switch any time.</p>';
+    h += '</div><div class="jright">';
     h += d.jobs.filter(j => !m || j.id !== m.id).map(j => `<div class="jcard"><div class="jrow"><span class="jic">${j.emoji}</span><div class="jnm"><b>${esc(j.name)}</b><span>Starts as ${esc(j.startTitle)}</span></div><div class="jpay"><b>${pay(j.startPay)}</b><span>per shift</span></div></div>
         <p class="jdesc">${esc(j.blurb)}</p><div class="jmeta">🕘 ${esc(j.hours)}</div><div class="jmeta">${esc(j.days)}</div>${j.needsText ? `<div class="jmeta">🚗 ${esc(j.needsText)}</div>` : ''}
         <button class="jsw" onclick="JOBS.switchTo('${j.id}')">Switch to this job</button></div>`).join('');
-    ab.innerHTML = h
+    ab.innerHTML = h + '</div></div>'
   }
 };
 window.JOBS = JOBS;

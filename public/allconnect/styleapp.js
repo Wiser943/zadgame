@@ -131,7 +131,7 @@ const STYLE = {
   /* ---------- the app ---------- */
   async open() {
     PH.view = 'style'; if (PH.TINT && !PH.TINT.style) PH.TINT.style = '#ffffff';
-    PH.shell('Style', 'STYLE.close()', `<div class="abody stx" id="ab"><div class="stpv"><canvas id="stCv" width="300" height="400" role="img" aria-label="Your avatar"></canvas><div class="sttry" id="stTry" style="display:none"><span></span><button onclick="STYLE.resetTry()">Reset</button></div></div><div id="stDesc" class="stdesc" style="display:none"></div><div class="sttabs" id="stTabs"></div><div id="stBody"><p class="empty">Loading…</p></div></div>`);
+    PH.shell('Style', 'STYLE.close()', `<div class="abody stx" id="ab"><div class="stleft"><div class="stpv"><canvas id="stCv" width="300" height="400" role="img" aria-label="Your avatar"></canvas><div class="sttry" id="stTry" style="display:none"><span></span><button onclick="STYLE.resetTry()">Reset</button></div></div><div id="stDesc" class="stdesc" style="display:none"></div></div><div class="sttabs" id="stTabs"></div><div id="stBody"><p class="empty">Loading…</p></div></div>`);
     if (!this.D) { try { await this.load() } catch (e) { toast(e.message); return } }
     if (PH.view !== 'style') return; this.mountPreview(); this.paint(true);
   },

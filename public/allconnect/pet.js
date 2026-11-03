@@ -46,11 +46,11 @@ const PET = {
   },
   draw() {
     const p = this.p;
-    PH.shell(`<span onclick="PET.rename()" style="cursor:pointer">${UI.esc(p.name)} ✎</span>`, 'PH.close()', `<div class="abody chat pet" id="ab"><div class="pbanner" id="pbanner"></div>
+    PH.shell(`<span onclick="PET.rename()" style="cursor:pointer">${UI.esc(p.name)} ✎</span>`, 'PH.close()', `<div class="abody chat pet" id="ab"><div class="pcols"><div class="pleft"><div class="pbanner" id="pbanner"></div>
       <div class="pstage" id="pst" onclick="PET.poke(event)"><div class="pbub" id="pbub"></div><div id="pfig">${this.svg()}</div><span class="pill pchip" id="pchip"></span><span class="pill pchip pcash" id="pcash"></span></div>
-      <div class="pnext" id="pnext" aria-live="polite"></div>
+      </div><div class="pright"><div class="pnext" id="pnext" aria-live="polite"></div>
       <div class="gln pneeds" id="pn"></div><div class="pgrow" id="pgrow"></div>
-      <div class="pact"><button onclick="PET.foodSheet()"><b>🍛</b>${('Feed')}</button><button onclick="PET.careSheet()"><b>🩺</b>${('Care')}</button><button onclick="PET.playSheet()"><b>🎾</b>${('Play')}</button><button onclick="PET.dress()"><b>👕</b>${('Dress')}</button><button onclick="PET.sleep()" id="pslp"></button></div></div>
+      <div class="pact"><button onclick="PET.foodSheet()"><b>🍛</b>${('Feed')}</button><button onclick="PET.careSheet()"><b>🩺</b>${('Care')}</button><button onclick="PET.playSheet()"><b>🎾</b>${('Play')}</button><button onclick="PET.dress()"><b>👕</b>${('Dress')}</button><button onclick="PET.sleep()" id="pslp"></button></div></div></div></div>
       <div class="seg2 pmode" id="pmode"></div><div class="qr" id="pchips"></div>
       <div class="cin"><input id="pin" placeholder="" maxlength="120" autocomplete="off" onkeydown="if(event.key==='Enter')PET.sendInput()"><button class="sbtn vnmic" data-vn="pet" id="pmic" aria-label="Send, or hold to talk"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`, '', '<button class="gbell" id="pmenu" onclick="PET.menu()" aria-label="Menu">☰<em id="pbadge" hidden></em></button>');
     this.paintMode(); this.paintAll(); clearInterval(this.tmr); this.n = 0; this.tmr = setInterval(() => this.step(), 4000);

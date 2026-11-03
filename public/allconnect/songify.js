@@ -181,18 +181,22 @@ const SONGIFY = {
     if (window.ACFeatures && NET.user) ACFeatures.list('song.recent').then(r => { const remote = (r.features || []).map(x => x.payload).filter(s => s && s.streamUrl); this.recent = [...remote, ...this.recent.filter(s => !remote.some(x => x.streamUrl === s.streamUrl))].slice(0, 12); this.save('recent', this.recent); this.paintResults(); }).catch(() => {});
     document.querySelector('.screen')?.classList.add('light');
     PH.view = this.view;
-    PH.shell('Songify', 'SONGIFY.close()', '<div class="sg-wrap"><div class="sg-body" id="sg-body"></div><div id="sg-mini"></div><nav class="sg-nav" id="sg-nav"></nav></div>');
+    PH.shell('Songify', 'SONGIFY.close()', '<div class="sg-wrap"><div class="sg-main"><div class="sg-body" id="sg-body"></div><div id="sg-mini"></div></div><nav class="sg-nav" id="sg-nav"></nav></div>');
     this.draw();
   },
   close() { this.closeNP(true); document.querySelector('.screen')?.classList.remove('sg-dark'); PH.close(); },
   setTab(t) { this.tab = t; this.draw(); },
+  /* tablet / desktop: the nav is a left rail that can collapse to icons (the choice is remembered) */
+  navC() { try { return localStorage.getItem('ac:sgnavc') === '1'; } catch (e) { return false; } },
+  toggleNav() { const w = document.querySelector('.sg-wrap'); if (!w) return; const on = !w.classList.contains('sgc'); w.classList.toggle('sgc', on); try { localStorage.setItem('ac:sgnavc', on ? '1' : '0'); } catch (e) {} setTimeout(() => this.placeYT(), 260); },
   navHtml() {
-    return [['home', 'fa-house', 'Home'], ['favs', 'fa-heart', 'Favorites'], ['recent', 'fa-clock-rotate-left', 'Recent']]
+    return '<button class="sg-tog" onclick="SONGIFY.toggleNav()" aria-label="Collapse or expand the menu"><i class="fa-solid fa-bars"></i><span>Menu</span></button>' +
+      [['home', 'fa-house', 'Home'], ['favs', 'fa-heart', 'Favorites'], ['recent', 'fa-clock-rotate-left', 'Recent']]
       .map((t) => `<button class="${this.tab === t[0] ? 'on' : ''}" onclick="SONGIFY.setTab('${t[0]}')"><i class="fa-solid ${t[1]}"></i><span>${t[2]}</span></button>`).join('');
   },
   draw() {
     const body = document.getElementById('sg-body'); if (!body) return;
-    document.getElementById('sg-nav').innerHTML = this.navHtml();
+    document.getElementById('sg-nav').innerHTML = this.navHtml(); const wrap = document.querySelector('.sg-wrap'); if (wrap) wrap.classList.toggle('sgc', this.navC());
     const player = '<div id="songify-player"></div>';
     if (this.tab === 'home') {
       body.innerHTML = `<div class="songify-head"><div><b>Music for every mood</b><span>Search Afrobeats, street-hop and more</span></div><i class="fa-solid fa-music songify-mark"></i></div>
@@ -353,6 +357,8 @@ const SONGIFY = {
     q('.np-heart').classList.toggle('on', fav); q('.np-heart i').className = `fa-${fav ? 'solid' : 'regular'} fa-heart`;
     const sh = q('.np-sh'), rp = q('.np-rp'); if (sh) sh.classList.toggle('on', this.shuffle); if (rp) { rp.classList.toggle('on', this.repeat !== 'off'); rp.querySelector('sup').textContent = this.repeat === 'one' ? '1' : ''; }
     q('.np-from b').textContent = this.listLabel();
+    if (this.npQueue && !this._qWas) { const pq = q('#np-q'); if (pq) setTimeout(() => { try { pq.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 60); }
+    this._qWas = this.npQueue;
     const i = Math.max(0, this.idx()), up = this.queue.slice(i, i + 25);
     q('#np-q').innerHTML = `<div class="npq-h"><b>Queue</b><button onclick="SONGIFY.toggleQueue()" aria-label="Close queue"><i class="fa-solid fa-xmark"></i></button></div>` + (up.map((t, k) => { const on = k === 0; return `<div class="npq-r ${on ? 'on' : ''}" onclick="SONGIFY.playQ(${i + k})"><img src="${esc(t.albumArt || '/icon-192.png')}" alt="" onerror="this.src='/icon-192.png'"><span><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span>${on ? '<i class="fa-solid fa-volume-high"></i>' : ''}</div>`; }).join('') || '<p class="empty">Nothing queued.</p>');
     const err = q('#np-error'); if (err) { err.hidden = !this.statusErr; const text = err.querySelector('span'); if (text) text.textContent = this.statusErr ? this.status : ''; }
@@ -444,6 +450,7 @@ const SONGIFY = {
   }
 };
 window.SONGIFY = SONGIFY;
+window.addEventListener('resize', () => { try { SONGIFY.placeYT(); } catch (e) {} });
 SONGIFY.init();
 
 /* Songify is a dark, Spotify-style app: switch the phone chrome (status bar, header, tint) while it is on screen,

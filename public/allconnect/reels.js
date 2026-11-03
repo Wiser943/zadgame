@@ -437,18 +437,21 @@ const RL = {
   PH.shell = function () {
     const r = shell.apply(this, arguments), a = this.$a(), old = a.querySelector('.tkdock'); if (old) old.remove();
     const gist = this.view === 'gist', reels = gist && GIST.cur && GIST.cur.fn === 'reels';
-    a.classList.toggle('pgist-social', gist); a.classList.toggle('rlmode', !!reels); a.classList.remove('rlfull');
+    a.classList.toggle('pgist-social', gist); a.classList.toggle('rlmode', !!reels); a.classList.remove('rlfull'); a.classList.toggle('navc', gist && RL.navCollapsed(!!reels));
     if (gist && GIST.cur && ['feed', 'reels', 'profile'].includes(GIST.cur.fn)) a.insertAdjacentHTML('beforeend', RL.dock(GIST.cur.fn));
     return r
   };
   PH.close = function () { const a = this.$a(); if (a) a.classList.remove('pgist-social', 'rlmode', 'rlfull'); if (typeof RL !== 'undefined') RL.stop(); return close.apply(this, arguments) };
 })();
 Object.assign(RL, {
+  /* tablet / desktop: the Gist menu is a left rail that can collapse to icons. The choice is remembered; until the player picks, Reels start collapsed and the feed starts open. */
+  navCollapsed(reels) { let v = null; try { v = localStorage.getItem('ac:gnavc') } catch (e) {} return v === null ? !!reels : v === '1' },
+  toggleNav() { const a = PH.$a(); if (!a) return; const on = !a.classList.contains('navc'); a.classList.toggle('navc', on); try { localStorage.setItem('ac:gnavc', on ? '1' : '0') } catch (e) {} },
   /* bottom bar: four icons, no text. Home (feed + reels), Discover, Create, Profile (the unified profile) */
   dock(at) {
     const disc = at === 'feed' && GIST.tab === 'trending' && !GIST.tagF, active = at === 'profile' ? 'me' : disc ? 'disc' : 'home',
-      it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}" aria-label="${lb}"${active === k ? ' aria-current="page"' : ''}><i class="fa-solid ${ic}"></i></button>`;
-    return `<nav class="tkdock gicons" aria-label="Gist navigation">${it('home', 'fa-house', 'Home', 'RL.goFeed()')}${it('disc', 'fa-compass', 'Discover', 'RL.goDiscover()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i></button>${it('me', 'fa-user', 'Profile', 'RL.goMe()').replace('</button>', (((window.PH && PH.badges && PH.badges.updates) || 0) + ((window.PH && PH.localUnread) || 0) > 0 ? '<span class="gdot" aria-label="New activity"></span>' : '') + '</button>')}</nav>`
+      it = (k, ic, lb, fn) => `<button class="${active === k ? 'on' : ''}" onclick="${fn}" aria-label="${lb}"${active === k ? ' aria-current="page"' : ''}><i class="fa-solid ${ic}"></i><span class="dl">${lb}</span></button>`;
+    return `<nav class="tkdock gicons" aria-label="Gist navigation"><button class="dtog" onclick="RL.toggleNav()" aria-label="Collapse or expand the menu"><i class="fa-solid fa-bars"></i><span class="dl">Menu</span></button>${it('home', 'fa-house', 'Home', 'RL.goFeed()')}${it('disc', 'fa-compass', 'Discover', 'RL.goDiscover()')}<button class="mk" onclick="RL.create()" aria-label="Create"><i class="fa-solid fa-plus"></i><span class="dl">Create</span></button>${it('me', 'fa-user', 'Profile', 'RL.goMe()').replace('</button>', (((window.PH && PH.badges && PH.badges.updates) || 0) + ((window.PH && PH.localUnread) || 0) > 0 ? '<span class="gdot" aria-label="New activity"></span>' : '') + '</button>')}</nav>`
   },
   goDiscover() { this.stop(); GIST.stack = []; GIST.tab = 'trending'; GIST.tagF = ''; GIST.feed() },
   goFeed() { this.stop(); GIST.stack = []; if (GIST.tab === 'trending' || GIST.tab === 'me') GIST.tab = 'latest'; GIST.tagF = ''; GIST.feed() },
