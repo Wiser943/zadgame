@@ -229,7 +229,7 @@
     <div class="wsum" id="wsum"></div>
     <button class="btn p" id="contBtn" onclick="start(false)">Continue</button>
     <a class="nlink" id="nlink" onclick="newLifeAsk()">Start a new life…</a>
-    <div class="nlbox" id="nlbox" style="display:none"><p><b>This erases your ₦, home and progress.</b> Friends and stats stay. Type <b>NEW LIFE</b> to confirm.</p><input id="nlin" placeholder="NEW LIFE" autocomplete="off" autocapitalize="characters" oninput="$('nlgo').disabled=this.value.trim().toUpperCase()!=='NEW LIFE'"><div class="nlrow"><button class="btn s" onclick="newLifeAsk(false)">Cancel</button><button class="btn red" id="nlgo" disabled onclick="start(true)">Erase and start over</button></div></div>
+    <div class="nlbox" id="nlbox" style="display:none"><p><b>This erases your ₦, home and progress.</b> Friends and stats stay. Type <b>NEW LIFE</b> to confirm.</p><input id="nlin" placeholder="NEW LIFE" autocomplete="off" autocapitalize="characters" oninput="$('nlgo').disabled=this.value.trim().toUpperCase()!=='NEW LIFE'"><div class="nlrow"><button class="btn s" onclick="newLifeAsk(false)">Cancel</button><button class="btn red" id="nlgo" disabled onclick="start(true)">Erase</button></div></div>
     <div class="foot"><span id="lastp"></span><a onclick="logout()">Log out</a></div>
    </div>
    <footer class="sfoot" id="sfoot" style="display:none"></footer>

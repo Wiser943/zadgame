@@ -1706,3 +1706,25 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 :where(html[data-theme="dark"]) #splash #resume .who{background:rgba(27,32,52,.85)}
 :where(html[data-theme="dark"]) #splash #resume .who b{color:#f3f5fb}:where(html[data-theme="dark"]) #splash #resume .who span,:where(html[data-theme="dark"]) #splash #resume .foot span{color:#a9afc6}
 :where(html[data-theme="dark"]) .sfoot a{background:#1b2034;color:#e3e6f1}
+
+/* new life: while confirming, the card shows ONLY the confirm box (Cancel brings the welcome view back) */
+#splash #resume.nl-open>:not(#nlbox){display:none!important}
+#splash #resume.nl-open .nlbox{margin-top:0;background:rgba(255,255,255,.9);border-color:rgba(220,38,38,.45)}
+#splash #resume .nlbox p{color:#1b2238}
+#splash #resume .nlbox input{background:#fff;color:#14171c;border-color:#d4d9e6}
+
+/* dark mode for the sign-in / welcome card: same see-through top, dark glass at the bottom */
+html[data-theme="dark"] #splash .card{background:linear-gradient(rgba(10,14,26,.14) 0,rgba(10,14,26,.34) 36%,rgba(14,18,32,.8) 58%,rgba(14,18,32,.95) 76%);border-color:rgba(255,255,255,.14);box-shadow:0 10px 34px rgba(0,0,0,.55)}
+html[data-theme="dark"] #splash .card .seg{background:rgba(20,26,44,.6)}
+html[data-theme="dark"] #splash .card .seg button{color:#c3c9de}
+html[data-theme="dark"] #splash .card .seg .on{background:#33465e;color:#fff;box-shadow:none}
+html[data-theme="dark"] #splash .card input{background:rgba(20,26,44,.62);border-color:rgba(255,255,255,.16);color:#f3f5fb}
+html[data-theme="dark"] #splash .card input::placeholder{color:#9aa3bf}
+html[data-theme="dark"] #splash .card .who{background:rgba(27,32,52,.85)}
+html[data-theme="dark"] #splash .card .note,html[data-theme="dark"] #splash .card .altlinks a,html[data-theme="dark"] #splash .card .nlink,html[data-theme="dark"] #splash .card .foot span{color:#aab2cc}
+html[data-theme="dark"] #splash .card .foot a{color:#7db0ff}
+html[data-theme="dark"] #splash .card .aerr{color:#ff8a8a}
+html[data-theme="dark"] #splash #resume .nlbox{background:rgba(127,29,29,.35);border-color:rgba(248,113,113,.5)}
+html[data-theme="dark"] #splash #resume .nlbox p{color:#f1d9d9}
+html[data-theme="dark"] #splash #resume .nlbox input{background:rgba(20,26,44,.8);color:#f3f5fb;border-color:rgba(255,255,255,.2)}
+html[data-theme="dark"] #splash .card .btn.s:not(.gbtn){background:#262c45;color:#e8ebf7}

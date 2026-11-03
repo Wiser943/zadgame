@@ -515,7 +515,7 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window
 function installApp() { const e = window.__installEvt; if (!e) return; e.prompt(); e.userChoice.finally(() => { window.__installEvt = null; const a = document.querySelector('#wsum [onclick="installApp()"]'); if (a) a.remove() }) }
 function newLifeAsk(show) {
   const b = $('nlbox'), open = show === undefined ? b.style.display === 'none' : show;
-  b.style.display = open ? 'block' : 'none'; $('nlink').style.display = open ? 'none' : ''; if (open) { $('nlin').value = ''; $('nlgo').disabled = true; $('nlin').focus() }
+  b.style.display = open ? 'block' : 'none'; $('nlink').style.display = open ? 'none' : ''; const rs = $('resume'); if (rs) rs.classList.toggle('nl-open', !!open);   // open: the card shows only the confirm box; Cancel brings Continue back if (open) { $('nlin').value = ''; $('nlgo').disabled = true; $('nlin').focus() }
 }
 async function start(n) {
   stopPreviews();
