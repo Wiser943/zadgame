@@ -24,7 +24,11 @@ const PH={
       const w=a.querySelector('.ahw');if(!w)return;if(b.querySelector(':scope>#gkinds'))return;const y=b.scrollTop,dy=y-(b._l||0);if(Math.abs(dy)<8)return;b._l=y;
       const h=w.offsetHeight,room=b.scrollHeight-b.clientHeight;
       if(dy>0&&y>60&&room>h+80){w.style.marginTop=-h+'px';w.classList.add('hide')}else if(dy<0||y<=0){w.style.marginTop='';w.classList.remove('hide')}},true)},
-  sheet(html){this.closeSheet();const s=document.createElement('div');s.className='asheet';s.innerHTML=`<div class="shcard">${html}</div>`;s.onclick=e=>{if(e.target===s)s.remove()};this.$a().appendChild(s)},
+  /* Bottom sheet. Tapping outside closes it, so normal sheets have no Cancel button. A confirm question (a hint line plus a red
+     action, or sheet(html,{confirm:true})) keeps Cancel so nobody deletes or blocks by mistake. */
+  sheet(html,o){this.closeSheet();const confirm=!!(o&&o.confirm)||(/class="hint2"/.test(html)&&/class="fopt red/.test(html));
+    if(!confirm)html=html.replace(/<button class="fopt" onclick="PH\.closeSheet\(\)"><span>Cancel<\/span><\/button>/g,'');
+    const s=document.createElement('div');s.className='asheet'+(confirm?' confirm':'');s.innerHTML=`<div class="shcard"><i class="shgrab" aria-hidden="true"></i>${html}</div>`;s.onclick=e=>{if(e.target===s){s.classList.add('out');setTimeout(()=>s.remove(),160)}};this.$a().appendChild(s)},
   closeSheet(){this.$a().querySelectorAll('.asheet').forEach(s=>s.remove())},
   /* Avatar: the initial circle is ALWAYS drawn, and the profile photo is layered on top of it.
      If the photo is missing, blocked, broken or still loading, the first letter of the name shows instead of an empty circle. */

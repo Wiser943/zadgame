@@ -435,14 +435,24 @@ const RL = {
     try {
       if (this._legacyApi) return await this.publishLegacy(C, V, set);
       let m;
-      try { m = await GIST.api('/reels/mux-upload', { method: 'POST' }) }
+      try { m = await GIST.api('/reels/mux-upload', { method: 'POST', body: { origin: location.origin } }) }
       catch (e) {
         if (!e || e.status !== 404) throw e;
         try { await this.legacyConfig() }
         catch (legacyError) { if (legacyError && legacyError.status === 404) throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.'); throw legacyError }
         return await this.publishLegacy(C, V, set)
       }
-      if (!m || !m.uploadId || !m.url) throw new Error('The server did not return a Mux upload URL.'); await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url); set('Processing…'); let mx = null;
+      if (!m || !m.uploadId || !m.url) throw new Error('The server did not return a Mux upload URL.'); try { await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url) }
+      catch (ue) {
+        // A blocked-by-CORS upload and a dropped connection look the same to the browser. Ask for a fresh upload link that
+        // accepts any origin and try once more before showing an error.
+        if (!ue || !/Could not connect to Mux/.test(ue.message || '')) throw ue;
+        await this.online(); set('Retrying…');
+        const m2 = await GIST.api('/reels/mux-upload', { method: 'POST', body: { origin: '*' } });
+        if (!m2 || !m2.uploadId || !m2.url) throw ue; m = m2;
+        await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url)
+      }
+      set('Processing…'); let mx = null;
       for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/mux-status/' + m.uploadId); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
       if (!mx) throw new Error('Your video is taking long to process. It will appear in your gallery when ready; try posting it again in a minute.');
       set('Posting…');

@@ -33,6 +33,7 @@
 <link rel="stylesheet" href="/allconnect/gist-buzzer.css">
 <link rel="stylesheet" href="/allconnect/tablet-apps.css">
 <link rel="stylesheet" href="/allconnect/tablet-layout.css">
+<link rel="stylesheet" href="/allconnect/ui-polish.css">
 </head>
 
 <body>
@@ -133,8 +134,10 @@
     <div><b>Daily gem hunt</b><span id="gem">Find today's gem · next prize ₦3,000</span></div>
    </div>
    <div class="pill quest q3" id="q3" onclick="LAGOS.open()" style="display:none"></div>
-   <div class="pill quest q4" id="q4" onclick="HUB.now()" style="display:none"><i>✨</i><div><b>What can I do now?</b><span id="q4sub">9ja dey wake up…</span></div></div>
-   <button class="pill clean" onclick="toggleClean()">^ Clean screen</button>
+   <div class="hu-bottom">
+    <div class="pill quest q4" id="q4" onclick="HUB.now()" style="display:none"><i>✨</i><div><b>What can I do now?</b><span id="q4sub">9ja dey wake up…</span></div></div>
+    <button class="pill clean" onclick="toggleClean()">^ Clean screen</button>
+   </div>
   </div>
   
   <!-- MAP -->
@@ -206,7 +209,7 @@
   </div>
   
   <!-- SPLASH -->
-  <div id="splash"><div class="sky" aria-hidden="true"><i class="cloud" style="--w:300px;--t:2%;--d:95s;--o:-20s"></i><i class="cloud" style="--w:210px;--t:13%;--d:70s;--o:-48s"></i><i class="cloud" style="--w:380px;--t:-3%;--d:130s;--o:-90s"></i><i class="cloud" style="--w:170px;--t:24%;--d:85s;--o:-8s"></i><i class="cloud" style="--w:260px;--t:8%;--d:110s;--o:-70s"></i><i class="cloud" style="--w:150px;--t:19%;--d:60s;--o:-35s"></i></div><div class="dio" id="dio"></div><img class="brandlogo" src="/logo.png" alt="AllConnect - One account. Every app." width="220" height="220" fetchpriority="high">
+  <div id="splash" class="sp-loading"><div class="sky" aria-hidden="true"><i class="cloud" style="--w:300px;--t:2%;--d:95s;--o:-20s"></i><i class="cloud" style="--w:210px;--t:13%;--d:70s;--o:-48s"></i><i class="cloud" style="--w:380px;--t:-3%;--d:130s;--o:-90s"></i><i class="cloud" style="--w:170px;--t:24%;--d:85s;--o:-8s"></i><i class="cloud" style="--w:260px;--t:8%;--d:110s;--o:-70s"></i><i class="cloud" style="--w:150px;--t:19%;--d:60s;--o:-35s"></i></div><video class="splash-video" id="splashVideo" muted loop playsinline webkit-playsinline preload="auto" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1"></video><div class="dio" id="dio"></div><img class="brandlogo" src="/logo.png" alt="AllConnect - One account. Every app." width="220" height="220" fetchpriority="high">
    <div class="sp"></div>
    <div class="card" id="auth">
     <div class="seg"><button id="tl" class="on" onclick="authMode('login')">Sign in</button><button id="tr" onclick="authMode('register')">Create account</button></div>
@@ -229,7 +232,7 @@
     <div class="wsum" id="wsum"></div>
     <button class="btn p" id="contBtn" onclick="start(false)">Continue</button>
     <a class="nlink" id="nlink" onclick="newLifeAsk()">Start a new life…</a>
-    <div class="nlbox" id="nlbox" style="display:none"><p><b>This erases your ₦, home and progress.</b> Friends and stats stay. Type <b>NEW LIFE</b> to confirm.</p><input id="nlin" placeholder="NEW LIFE" autocomplete="off" autocapitalize="characters" oninput="$('nlgo').disabled=this.value.trim().toUpperCase()!=='NEW LIFE'"><div class="nlrow"><button class="btn s" onclick="newLifeAsk(false)">Cancel</button><button class="btn red" id="nlgo" disabled onclick="start(true)">Erase</button></div></div>
+    <div class="nlbox" id="nlbox" style="display:none"><p><b>This erases your ₦, home and progress.</b> Friends and stats stay. Type <b>NEW LIFE</b> to confirm.</p><input id="nlin" placeholder="Type NEW LIFE" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" enterkeyhint="done" oninput="var ok=this.value.trim().toUpperCase()==='NEW LIFE';$('nlgo').disabled=!ok;this.classList.toggle('ok',ok)"><div class="nlrow"><button class="btn s" onclick="newLifeAsk(false)">Cancel</button><button class="btn red" id="nlgo" disabled onclick="start(true)">Erase</button></div></div>
     <div class="foot"><span id="lastp"></span><a onclick="logout()">Log out</a></div>
    </div>
    <footer class="sfoot" id="sfoot" style="display:none"></footer>

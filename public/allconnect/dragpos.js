@@ -8,7 +8,7 @@ const DRAGPOS = {
   targets: [['#viewctl', 'viewctl'], ['#emotes > button', 'emo'], ['#doorbtn', 'door'], ['#homeUI .quest', 'quest'], ['#homeUI .clean', 'clean'], ['#usebar', 'usebar']],
   uid() { return (typeof NET !== 'undefined' && NET.user && NET.user.id) || 'guest' },
   keyOf(el) { return el._dpId },
-  key(id, page) { return 'acdrag2:' + this.uid() + ':' + (page || this.page) + ':' + id },
+  key(id, page) { return 'acdrag3:' + this.uid() + ':' + (page || this.page) + ':' + id },
   read(id) { try { const j = JSON.parse(localStorage.getItem(this.key(id)) || 'null'); return j && isFinite(j.x) && isFinite(j.y) ? j : null } catch (e) { return null } },
   write(id, v) { try { if (v) localStorage.setItem(this.key(id), JSON.stringify(v)); else localStorage.removeItem(this.key(id)) } catch (e) {} },
   appBox() { const a = document.getElementById('app'); return a ? a.getBoundingClientRect() : null },

@@ -430,7 +430,11 @@ router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, 
     const uid = me(req);
     if (await ACVideo.countDocuments({ user: uid }) >= reelstore.MAX_PER_USER) return bad(res, `Your gallery has ${reelstore.MAX_PER_USER} videos already. Delete an old one to upload a new one.`, 409);
     if (await ACVideo.countDocuments({ user: uid, createdAt: { $gte: new Date(Date.now() - 86400000) } }) >= DAILY_UPLOADS) return bad(res, `You can upload ${DAILY_UPLOADS} videos a day. Try again tomorrow.`, 429);
-    const origin = String(req.headers.origin || '') || '*';
+    // CORS origin Mux will accept for this one-time upload URL. The browser's own origin is the most reliable source
+    // (proxies such as Netlify can drop or rewrite the Origin header), so: body.origin -> Origin header -> Referer -> '*'.
+    const cleanOrigin = (v) => { try { const u = new URL(String(v || '')); return /^https?:$/.test(u.protocol) ? u.origin : ''; } catch (e) { return ''; } };
+    const wantAny = req.body && req.body.origin === '*';
+    const origin = wantAny ? '*' : (cleanOrigin(req.body && req.body.origin) || cleanOrigin(req.headers.origin) || cleanOrigin(req.headers.referer) || '*');
     const { d, cc } = await createUpload(uid, origin);
     await ACVideo.create({ user: uid, uploadId: d.id, status: 'pending', cc });   // saved now, so it is never lost if the app closes mid-upload
     res.json({ uploadId: d.id, url: d.url });

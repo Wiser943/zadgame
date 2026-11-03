@@ -509,16 +509,18 @@ function welcomeInfo(user) {
   if (c.saveData || /(^|-)2g$|3g/.test(c.effectiveType || '')) chips.push('<span class="wchip warn">📶 Slow network. Saver mode will help</span>');
   if (window.__installEvt) chips.push('<a class="wchip" onclick="installApp()">⬇️ Install app</a>');
   $('wsum').innerHTML = chips.join('');
-  NET.api('/api/ac/badges').then(b => { const n = (b.messages || 0) + (b.updates || 0) + (b.requests || 0); if (n) $('wsum').insertAdjacentHTML('afterbegin', `<span class="wchip hot">🔔 ${n > 99 ? '99+' : n} new</span>`) }).catch(() => {});
+  // the unread count now lives in the bottom pill (where "Official" used to be) instead of a red chip in the card
+  NET.api('/api/ac/badges').then(b => SFOOT.setBell((b.messages || 0) + (b.updates || 0) + (b.requests || 0))).catch(() => {});
 }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installEvt = e; if ($('wsum') && !document.querySelector('#wsum [onclick="installApp()"]')) $('wsum').insertAdjacentHTML('beforeend', '<a class="wchip" onclick="installApp()">⬇️ Install app</a>') });
 function installApp() { const e = window.__installEvt; if (!e) return; e.prompt(); e.userChoice.finally(() => { window.__installEvt = null; const a = document.querySelector('#wsum [onclick="installApp()"]'); if (a) a.remove() }) }
 function newLifeAsk(show) {
   const b = $('nlbox'), open = show === undefined ? b.style.display === 'none' : show;
-  b.style.display = open ? 'block' : 'none'; $('nlink').style.display = open ? 'none' : ''; const rs = $('resume'); if (rs) rs.classList.toggle('nl-open', !!open);   // open: the card shows only the confirm box; Cancel brings Continue back if (open) { $('nlin').value = ''; $('nlgo').disabled = true; $('nlin').focus() }
+  b.style.display = open ? 'block' : 'none'; $('nlink').style.display = open ? 'none' : ''; const rs = $('resume'); if (rs) rs.classList.toggle('nl-open', !!open);   // open: the card shows only the confirm box; Cancel brings Continue back
+  if (open) { const i = $('nlin'); i.value = ''; i.classList.remove('ok'); $('nlgo').disabled = true; setTimeout(() => { try { i.focus({ preventScroll: true }) } catch (e) {} }, 60) }
 }
 async function start(n) {
-  stopPreviews();
+  stopPreviews(); SPLASHBG.pause();
   try { localStorage.setItem('ac:last:' + ((NET.user && NET.user.id) || 'x'), String(Date.now())) } catch (e) {}
   const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
@@ -589,22 +591,42 @@ boot();
     for (let k = 0; k < N; k++) s += `<polygon points="${P(i/N,k/N)} ${P((i+1)/N,k/N)} ${P((i+1)/N,(k+1)/N)} ${P(i/N,(k+1)/N)}" fill="${(i+k)%2?'#c58a52':'#a8693a'}"/>`;
   f.innerHTML = s
 })();
-(function() {
-  const r = document.getElementById('room');
-  if (!r) return;
-  let s = r.outerHTML.replace(/ id="room"/, '').replace(/ onclick="walk\(event\)"/, '').replace(/id="(ck|lg)"/g, 'id="$1s"').replace(/url\(#(ck|lg)\)/g, 'url(#$1s)').replace(/ id="(me|wl|wr)"/g, '').replace('class="room"', 'class="room splash-room"');
-  const sp = document.getElementById('splash');
-  sp.insertAdjacentHTML('afterbegin', s)
-})();
-
-/* ================= sign-in screen background: orbiting 3D map (falls back to the flat room picture) ================= */
-(function() {
-  const go = () => {
+/* ================= sign-in screen background =================
+   1. If /allconnect/splash.mp4 (or .webm) exists, that video plays behind the sign-in card.
+   2. If there is no video, the 3D map (the one that sways over the city) plays instead.
+   The card, logo row and buttons stay hidden (#splash.sp-loading) until the background has its first frame, so a refresh
+   never shows a blank or half-built scene. A hard time limit keeps the screen from ever waiting forever. */
+const SPLASHBG = {
+  VIDEOS: [['/allconnect/splash.mp4', 'video/mp4'], ['/allconnect/splash.webm', 'video/webm']],
+  done: false, dio: null,
+  release() { if (this.done) return; this.done = true; clearTimeout(this.cap); const sp = document.getElementById('splash'); if (sp) sp.classList.remove('sp-loading') },
+  pause() { const v = document.getElementById('splashVideo'); if (v) try { v.pause() } catch (e) {} },
+  /* resolves true once the first video frame is ready, false when there is no (playable) video */
+  tryVideo(v) {
+    return new Promise(res => {
+      let i = 0, fin = false; const end = ok => { if (fin) return; fin = true; clearTimeout(t); v.onerror = v.onloadeddata = null; if (!ok) { try { v.pause(); v.removeAttribute('src'); v.load() } catch (e) {} } res(ok) };
+      const t = setTimeout(() => end(false), 4000);
+      v.onloadeddata = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); end(true) };
+      const next = () => { if (i >= this.VIDEOS.length) return end(false); v.src = this.VIDEOS[i][0]; i++; v.load() };
+      v.onerror = next; next()
+    })
+  },
+  async go() {
+    const sp = document.getElementById('splash'); if (!sp) return;
     let saver = false; try { saver = !!JSON.parse(localStorage.getItem('ghPrefs') || '{}').lowPower } catch (e) {}
-    if (saver || !window.DIORAMA) return;
-    DIORAMA.mount(document.getElementById('dio'), { mode: 'top', shiftY: .06, shiftYWide: 0 }).then(d => { if (d) { const r = document.querySelector('#splash .splash-room'); if (r) r.style.display = 'none' } })
-  };
-  if (window.DIORAMA) go(); else window.addEventListener('load', go)
+    if (saver) return this.release();                      // saver mode: sky and clouds only, nothing heavy loads
+    this.cap = setTimeout(() => this.release(), 6500);
+    const v = document.getElementById('splashVideo');
+    if (v && await this.tryVideo(v)) { v.classList.add('on'); return this.release() }
+    if (!window.DIORAMA) return this.release();
+    try { this.dio = await DIORAMA.mount(document.getElementById('dio'), { mode: 'top', shiftY: .06, shiftYWide: 0 }) } catch (e) {}
+    this.release()
+  }
+};
+(function () {
+  const run = () => SPLASHBG.go();
+  /* diorama.js is deferred, so it is ready by DOMContentLoaded (no need to wait for every image and font to finish) */
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run()
 })();
 
 /* ================= instant feel: preload everything in the background (unless Saver mode is on) ================= */
@@ -690,12 +712,22 @@ async function loadSocials() {
     const d = await r.json();
     window.SOCIAL = d.socials || {};
   } catch (e) { window.SOCIAL = {} }
-  const f = $('sfoot'),
-    ks = Object.keys(SOC_META).filter(k => window.SOCIAL[k]);
-  if (!f) return;
-  f.innerHTML = ks.length ? '<span class="official"><i class="fa-solid fa-circle-check"></i> Official</span>' + ks.map(k => `<a href="${esc(window.SOCIAL[k])}" target="_blank" rel="noopener noreferrer" aria-label="${SOC_META[k][0]}"><i class="${SOC_META[k][1]}"></i></a>`).join('') : '';
-  f.style.display = ks.length ? 'flex' : 'none'
+  SFOOT.paint()
 }
+/* Bottom pill row on the welcome screen. The first pill shows the bell + unread count when there is something new,
+   and is not drawn at all when there is nothing (it reuses the old "Official" pill's look). */
+const SFOOT = {
+  bell: 0,
+  paint() {
+    const f = $('sfoot'); if (!f) return;
+    const ks = Object.keys(SOC_META).filter(k => window.SOCIAL && window.SOCIAL[k]), n = this.bell;
+    const bell = n > 0 ? `<span class="official bellp" role="button" tabindex="0" onclick="openNotifs()" onkeydown="if(event.key==='Enter')openNotifs()" aria-label="${n} new notifications"><i class="fa-solid fa-bell"></i> ${n > 99 ? '99+' : n}</span>` : '';
+    f.innerHTML = bell + ks.map(k => `<a href="${esc(window.SOCIAL[k])}" target="_blank" rel="noopener noreferrer" aria-label="${SOC_META[k][0]}"><i class="${SOC_META[k][1]}"></i></a>`).join('');
+    f.style.display = (bell || ks.length) ? 'flex' : 'none'
+  },
+  setBell(n) { this.bell = Math.max(0, Number(n) || 0); this.paint() }
+};
+function openNotifs() { try { sessionStorage.setItem('ac:open', 'updates') } catch (e) {} start(false) }
 loadSocials();
 
 /* ================= HUD mute: one tap mutes / unmutes ALL game sound (music, effects, announcer) ================= */
