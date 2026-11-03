@@ -1,0 +1,251 @@
+// Pure logic, no I/O. Simplified classic Ludo for 2 or 4 players.
+//
+// Board model: one shared 52-cell outer track (indices 0-51, clockwise)
+// plus a private 6-cell home stretch per color. A token's progress is
+// tracked as "steps" from its own color's start:
+//   0        = still in the yard (needs a roll of 6 to leave)
+//   1-51     = on the shared track; global cell = (start + steps - 1) % 52
+//   52-57    = in the private home stretch (can't be captured here)
+//   57       = home (finished)
+//
+// Rules (room creator can pick variants, see DEFAULT_RULES):
+//  - needs a 6 to leave the yard, exact roll to reach home, three 6s in a row forfeit the turn
+//  - capturing sends opponent tokens on that cell back to their yard (not on safe cells)
+//  - blockades (optional): two or more of a player's tokens on one non-safe cell cannot be passed or landed on by opponents
+//  - bonusRolls (optional): an extra roll after a capture or after getting a token home (a 6 always gives one)
+//  - safeStars (default on): the star cells 8, 21, 34, 47 are safe as well as the start cells
+
+const TRACK_LEN = 52;
+const HOME_STEPS = 57;                 // steps value once a token is home
+const CORNER_STARTS = [0, 13, 26, 39]; // shared-track entry cell per corner
+const CORNER_COLORS = ['red', 'green', 'yellow', 'blue'];
+const START_CELLS = new Set([0, 13, 26, 39]);
+const STAR_CELLS = new Set([8, 21, 34, 47]);
+const DEFAULT_RULES = { blockades: false, bonusRolls: false, safeStars: true };
+const cleanRules = (r) => ({ blockades: !!(r && r.blockades), bonusRolls: !!(r && r.bonusRolls), safeStars: r && r.safeStars === false ? false : true });
+const isSafe = (state, cell) => START_CELLS.has(cell) || ((state.rules?.safeStars ?? true) && STAR_CELLS.has(cell));
+const TOKENS_PER_PLAYER = 4;
+
+// 2-player games use opposite corners (red/yellow) so both sides are symmetric.
+// 3-player games use red/green/yellow, leaving the blue corner empty.
+function cornersFor(playerCount) {
+  if (playerCount === 4) return [0, 1, 2, 3];
+  if (playerCount === 3) return [0, 1, 2];
+  return [0, 2];
+}
+
+function createInitialState(playerCount, options) {
+  const n = playerCount === 4 ? 4 : playerCount === 3 ? 3 : 2;
+  const corners = cornersFor(n);
+  return {
+    playerCount: n,
+    starts: corners.map((c) => CORNER_STARTS[c]),
+    colors: corners.map((c) => CORNER_COLORS[c]),
+    tokens: Array.from({ length: n }, () => Array(TOKENS_PER_PLAYER).fill(0)),
+    active: Array(n).fill(true),
+    rules: cleanRules(options),
+    turn: 0,
+    dice: null,
+    sixStreak: 0
+  };
+}
+
+function globalCell(state, playerIndex, steps) {
+  return (state.starts[playerIndex] + steps - 1) % TRACK_LEN;
+}
+
+function nextActive(state, from) {
+  for (let k = 1; k <= state.playerCount; k++) {
+    const i = (from + k) % state.playerCount;
+    if (state.active[i]) return i;
+  }
+  return from;
+}
+
+// Is there an opponent blockade (2+ tokens of one other player, same non-safe track cell) on this cell?
+function blockadeAt(state, mover, cell) {
+  if (!state.rules?.blockades || isSafe(state, cell)) return false;
+  for (let p = 0; p < state.playerCount; p++) {
+    if (p === mover) continue;
+    let n = 0;
+    for (const st of state.tokens[p]) if (st >= 1 && st <= TRACK_LEN - 1 && globalCell(state, p, st) === cell) n++;
+    if (n >= 2) return true;
+  }
+  return false;
+}
+function pathBlocked(state, playerIndex, steps, dice) {
+  for (let k = 1; k <= dice; k++) { const to = steps + k; if (to <= TRACK_LEN - 1 && blockadeAt(state, playerIndex, globalCell(state, playerIndex, to))) return true; }
+  return false;
+}
+function movableTokens(state, playerIndex, dice) {
+  const out = [];
+  state.tokens[playerIndex].forEach((steps, t) => {
+    if (steps === HOME_STEPS) return;                          // already home
+    if (steps === 0) { if (dice === 6) out.push(t); return; }   // needs a 6 to leave the yard
+    if (steps + dice > HOME_STEPS) return;                      // no overshooting home
+    if (pathBlocked(state, playerIndex, steps, dice)) return;   // cannot pass or land on a blockade
+    out.push(t);
+  });
+  return out;
+}
+
+function isValidMove(state, playerIndex, move) {
+  if (state.turn !== playerIndex || !state.active[playerIndex]) return false;
+  if (!move) return false;
+  if (move.type === 'roll') return state.dice === null;
+  if (move.type === 'move') {
+    if (state.dice === null || !Number.isInteger(move.token)) return false;
+    return movableTokens(state, playerIndex, state.dice).includes(move.token);
+  }
+  return false;
+}
+
+function passTurn(state) {
+  state.dice = null;
+  state.sixStreak = 0;
+  state.turn = nextActive(state, state.turn);
+}
+
+function applyMove(state, playerIndex, move) {
+  const s = {
+    ...state,
+    tokens: state.tokens.map((row) => row.slice()),
+    active: state.active.slice()
+  };
+
+  if (move.type === 'roll') {
+    // The die is rolled server-side — never trust a client-supplied value.
+    const dice = 1 + Math.floor(Math.random() * 6);
+    s.lastRoll = dice;                      // kept even if the turn auto-passes, for UI/sound purposes
+    s.lastRollStreak = dice === 6 ? s.sixStreak + 1 : 0;
+    s.sixStreak = dice === 6 ? s.sixStreak + 1 : 0;
+    if (s.sixStreak >= 3) { passTurn(s); return s; }                          // three 6s in a row forfeits the turn
+    if (movableTokens(s, playerIndex, dice).length === 0) { passTurn(s); return s; } // nothing playable, auto-pass
+    s.dice = dice;
+    return s;
+  }
+
+  // move.type === 'move'
+  const dice = s.dice;
+  const fromSteps = s.tokens[playerIndex][move.token];
+  let steps = fromSteps;
+  steps = steps === 0 ? 1 : steps + dice;
+  s.tokens[playerIndex][move.token] = steps;
+  s.lastMove = { player: playerIndex, token: move.token, from: fromSteps, to: steps, dice };
+  s.lastCapture = null;
+
+  // Capture: landing on a shared, non-safe cell occupied by exactly one opponent sends it home.
+  if (steps >= 1 && steps <= TRACK_LEN - 1) {
+    const cell = globalCell(s, playerIndex, steps);
+    if (!isSafe(s, cell)) {
+      const captured = [];
+      for (let p = 0; p < s.playerCount; p++) {
+        if (p === playerIndex) continue;
+        s.tokens[p] = s.tokens[p].map((st, t) => {
+          if (st >= 1 && st <= TRACK_LEN - 1 && globalCell(s, p, st) === cell) { captured.push({ player: p, token: t }); return 0; }
+          return st;
+        });
+      }
+      if (captured.length) s.lastCapture = captured;
+    }
+  }
+
+  if (steps === HOME_STEPS) s.lastHome = { player: playerIndex, token: move.token };
+  else s.lastHome = null;
+
+  const bonus = s.rules?.bonusRolls && (s.lastCapture || steps === HOME_STEPS);
+  if ((dice === 6 && s.sixStreak < 3) || bonus) s.dice = null;   // extra roll for the same player
+  else passTurn(s);
+  return s;
+}
+
+function checkResult(state) {
+  for (let i = 0; i < state.playerCount; i++) {
+    if (state.tokens[i].every((st) => st === HOME_STEPS)) return { status: 'win', winnerIndex: i };
+  }
+  const activeIdx = state.active.reduce((a, v, i) => (v ? a.concat(i) : a), []);
+  if (activeIdx.length === 1) return { status: 'win', winnerIndex: activeIdx[0] }; // last player standing
+  if (activeIdx.length === 0) return { status: 'draw' };
+  return { status: 'ongoing' };
+}
+
+// Called by sockets/index.js when a player forfeits mid-game (left or timed
+// out) so the remaining players' turns keep flowing without them.
+function markOut(state, playerIndex) {
+  const s = { ...state, active: state.active.slice() };
+  s.active[playerIndex] = false;
+  if (s.turn === playerIndex) passTurn(s);
+  return s;
+}
+
+// Ends the current player's turn without a move — used by sockets/index.js
+// when a player doesn't roll, or rolls but doesn't pick a token, within the
+// per-turn time limit.
+function forcePass(state) {
+  const s = { ...state, tokens: state.tokens.map((row) => row.slice()), active: state.active.slice() };
+  passTurn(s);
+  return s;
+}
+
+// A simple running "score" per player — total steps travelled across all 4
+// tokens (a token counts more the further it has progressed), plus a +56
+// bonus for every token that has raced all the way home. Used to decide a
+// winner if the match clock (see sockets/index.js) runs out before anyone
+// finishes all 4 tokens.
+function score(state, playerIndex) {
+  const toks = state.tokens[playerIndex];
+  const travelled = toks.reduce((sum, steps) => sum + steps, 0);
+  const homeBonus = toks.filter((steps) => steps === HOME_STEPS).length * 56;
+  return travelled + homeBonus;
+}
+function scores(state) {
+  return Array.from({ length: state.playerCount }, (_, i) => score(state, i));
+}
+// Returns the winning player index, or null for a tie (draw) between the
+// leaders. Only counts players still active (not eliminated).
+function highestScoreWinner(state) {
+  let best = -1, bestScore = -1, tie = false;
+  for (let i = 0; i < state.playerCount; i++) {
+    if (!state.active[i]) continue;
+    const sc = score(state, i);
+    if (sc > bestScore) { bestScore = sc; best = i; tie = false; }
+    else if (sc === bestScore) tie = true;
+  }
+  if (best === -1) return null;
+  return tie ? null : best;
+}
+
+// Simple bot: roll when it can, then move whichever token scores best —
+// favoring captures, reaching home, and leaving the yard on a 6, otherwise
+// just advancing the furthest token.
+function botMove(state, playerIndex) {
+  if (state.dice === null) return { type: 'roll' };
+  const dice = state.dice;
+  const movable = movableTokens(state, playerIndex, dice);
+  if (!movable.length) return null;
+  let best = movable[0], bestScore = -Infinity;
+  for (const t of movable) {
+    const steps = state.tokens[playerIndex][t];
+    const toSteps = steps === 0 ? 1 : steps + dice;
+    let score = toSteps;
+    if (toSteps === HOME_STEPS) score += 100;
+    if (steps === 0 && dice === 6) score += 20;
+    if (toSteps >= 1 && toSteps <= TRACK_LEN - 1) {
+      const cell = globalCell(state, playerIndex, toSteps);
+      if (!isSafe(state, cell)) {
+        for (let p = 0; p < state.playerCount; p++) {
+          if (p === playerIndex) continue;
+          if (state.tokens[p].some((st) => st >= 1 && st <= TRACK_LEN - 1 && globalCell(state, p, st) === cell)) score += 50;
+        }
+      }
+    }
+    if (score > bestScore) { bestScore = score; best = t; }
+  }
+  return { type: 'move', token: best };
+}
+
+module.exports = {
+  DEFAULT_RULES, cleanRules, movableTokens,
+  createInitialState, isValidMove, applyMove, checkResult, markOut,
+  forcePass, score, scores, highestScoreWinner, botMove
+};
