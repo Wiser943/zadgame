@@ -578,7 +578,7 @@ async function start(n) {
   try { localStorage.setItem('ac:last:' + ((NET.user && NET.user.id) || 'x'), String(Date.now())) } catch (e) {}
   const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
-  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
+  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac); if (window.DRAGPOS) DRAGPOS.reset(true) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
   render();
   nav('home');
   if (window.PH) setTimeout(() => PH.openDeepLink && PH.openDeepLink(), 80);

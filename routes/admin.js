@@ -10,6 +10,7 @@ const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/g
 const { PayoutSeason, PayoutRequest, PayoutAccount, DEFAULT_RULES, dec, statusMessage, naira } = require('../utils/payout');
 const { notify } = require('../utils/acnotify');
 const { queueCard } = require('../utils/accards');
+const withdrawalNotices = require('../services/withdrawalNotices');
 const router = express.Router();
 // Hosting dashboards often leave stray spaces/newlines or quotes around values: clean them so login still matches.
 const clean = (v) => String(v == null ? '' : v).trim().replace(/^["']|["']$/g, '').trim();
@@ -313,7 +314,8 @@ router.post('/payouts/seasons/:id/batches/:n/status', async (req, res, next) => 
     if (!['draft', 'open', 'paused', 'closed'].includes(status) || ![1, 2, 3].includes(n)) return res.status(400).json({ message: 'Choose a batch (1-3) and a status.' });
     const r = await PayoutSeason.updateOne({ _id: req.params.id, 'batches.number': n }, { $set: { 'batches.$.status': status, updatedBy: 'admin' } });
     if (!r.matchedCount) return res.status(404).json({ message: 'Season or batch not found.' });
-    res.json({ ok: true });
+    const notified = status === 'open' ? await withdrawalNotices.afterAdminChange(req.app.get('io'), req.params.id, { batch: n }).catch(() => []) : [];
+    res.json({ ok: true, notified: notified.length > 0 });
   } catch (e) { next(e); }
 });
 // Manual payment: the team needs the full account number to make the transfer. Only for an approved request, never in lists, and every look is logged (without the number).
@@ -356,6 +358,31 @@ router.post('/payouts/requests/:id/action', async (req, res, next) => {
     res.json({ request: r });
   } catch (e) { next(e); }
 });
-router.post('/payouts/seasons', async (req, res, next) => { try { const b = req.body || {}, batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); if (!Number.isFinite(new Date(b.startsAt).getTime()) || !Number.isFinite(new Date(b.endsAt).getTime()) || new Date(b.endsAt) <= new Date(b.startsAt) || batches.some(x => !Number.isFinite(x.opensAt.getTime()) || !Number.isFinite(x.closesAt.getTime()) || x.closesAt <= x.opensAt)) return res.status(400).json({ message: 'Every season and batch needs valid dates.' }); const s = await PayoutSeason.create({ seasonNo: Math.max(1, Math.floor(Number(b.seasonNo) || 1)), name: String(b.name || `Season ${b.seasonNo || 1}`).slice(0, 80), startsAt: new Date(b.startsAt), endsAt: new Date(b.endsAt), status: ['draft','scheduled','active','paused','closed'].includes(b.status) ? b.status : 'draft', maxPayoutsPerSeason: Number(b.maxPayoutsPerSeason) === 1 ? 1 : 2, rules: pRules(b.rules), batches, createdBy: 'admin' }); res.json({ season: s }); } catch (e) { if (e.code === 11000) return res.status(409).json({ message: 'That season number already exists.' }); next(e); } });
-router.put('/payouts/seasons/:id', async (req, res, next) => { try { const b = req.body || {}, set = {}; for (const k of ['name','status','startsAt','endsAt','maxPayoutsPerSeason']) if (b[k] !== undefined) set[k] = k === 'maxPayoutsPerSeason' ? (Number(b[k]) === 1 ? 1 : 2) : (k === 'startsAt' || k === 'endsAt' ? new Date(b[k]) : b[k]); if (b.rules) set.rules = pRules(b.rules); if (b.batches) set.batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); const s = await PayoutSeason.findByIdAndUpdate(req.params.id, { $set: { ...set, updatedBy: 'admin' } }, { new: true }); if (!s) return res.status(404).json({ message: 'Season not found.' }); res.json({ season: s }); } catch (e) { next(e); } });
+router.post('/payouts/seasons', async (req, res, next) => { try { const b = req.body || {}, batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); if (!Number.isFinite(new Date(b.startsAt).getTime()) || !Number.isFinite(new Date(b.endsAt).getTime()) || new Date(b.endsAt) <= new Date(b.startsAt) || batches.some(x => !Number.isFinite(x.opensAt.getTime()) || !Number.isFinite(x.closesAt.getTime()) || x.closesAt <= x.opensAt)) return res.status(400).json({ message: 'Every season and batch needs valid dates.' }); const s = await PayoutSeason.create({ seasonNo: Math.max(1, Math.floor(Number(b.seasonNo) || 1)), name: String(b.name || `Season ${b.seasonNo || 1}`).slice(0, 80), startsAt: new Date(b.startsAt), endsAt: new Date(b.endsAt), status: ['draft','scheduled','active','paused','closed'].includes(b.status) ? b.status : 'draft', maxPayoutsPerSeason: Number(b.maxPayoutsPerSeason) === 1 ? 1 : 2, rules: pRules(b.rules), batches, createdBy: 'admin' }); const notified = (s.status === 'active' || s.status === 'scheduled') ? await withdrawalNotices.tick(req.app.get('io')).catch(() => []) : []; res.json({ season: s, notified: notified.length > 0 }); } catch (e) { if (e.code === 11000) return res.status(409).json({ message: 'That season number already exists.' }); next(e); } });
+router.put('/payouts/seasons/:id', async (req, res, next) => { try { const b = req.body || {}, set = {}; for (const k of ['name','status','startsAt','endsAt','maxPayoutsPerSeason']) if (b[k] !== undefined) set[k] = k === 'maxPayoutsPerSeason' ? (Number(b[k]) === 1 ? 1 : 2) : (k === 'startsAt' || k === 'endsAt' ? new Date(b[k]) : b[k]); if (b.rules) set.rules = pRules(b.rules); if (b.batches) set.batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); const s = await PayoutSeason.findByIdAndUpdate(req.params.id, { $set: { ...set, updatedBy: 'admin' } }, { new: true }); if (!s) return res.status(404).json({ message: 'Season not found.' }); const notified = (b.status === 'active' || b.status === 'scheduled') ? await withdrawalNotices.afterAdminChange(req.app.get('io'), s._id, { season: true }).catch(() => []) : []; res.json({ season: s, notified: notified.length > 0 }); } catch (e) { next(e); } });
+// Re-send the "season / batch is open" notices to every player (use sparingly: it is a push to everyone).
+router.post('/payouts/seasons/:id/notify', async (req, res, next) => {
+  try {
+    const s = await PayoutSeason.findById(req.params.id).lean(); if (!s) return res.status(404).json({ message: 'Season not found.' });
+    if (!['scheduled', 'active'].includes(s.status)) return res.status(409).json({ message: 'Set the season to Scheduled or Active first. Players are only told about seasons that can accept withdrawals.' });
+    const sent = await withdrawalNotices.afterAdminChange(req.app.get('io'), s._id, { season: true, batch: Number(req.body?.batch) || 0 });
+    res.json({ ok: true, sent: sent.length, message: sent.length ? 'Players were notified.' : 'Nothing to announce right now. The season may be outside its dates, or no batch is open yet.' });
+  } catch (e) { next(e); }
+});
+// One call for the dashboard: what needs the admin's attention right now.
+router.get('/overview', async (req, res, next) => {
+  try {
+    const now = new Date(), day = new Date(Date.now() - 864e5);
+    const safe = (p, d = 0) => p.catch(() => d);
+    const [pending, approved, reports, tourOpen, creators, appeals, newUsers, totalUsers, season] = await Promise.all([
+      safe(PayoutRequest.countDocuments({ status: { $in: ['submitted', 'held'] } })), safe(PayoutRequest.countDocuments({ status: 'approved' })),
+      safe(Report.countDocuments({ status: 'open' })), safe(Tournament.countDocuments({ status: 'open' })),
+      safe(User.countDocuments({ 'creator.status': 'applied' })),
+      safe(GistPostM.countDocuments({ 'moderation.status': 'appealed' })),
+      safe(User.countDocuments({ createdAt: { $gte: day } })), safe(User.estimatedDocumentCount()),
+      safe(PayoutSeason.findOne({ status: { $in: ['scheduled', 'active'] }, startsAt: { $lte: now }, endsAt: { $gte: now } }).sort({ seasonNo: -1 }).select('seasonNo name endsAt batches status').lean(), null)
+    ]);
+    res.json({ pendingPayouts: pending, toPay: approved, openReports: reports, openTournaments: tourOpen, creatorApplications: creators, reelAppeals: appeals, newUsers24h: newUsers, totalUsers, onlineNow: presence.count ? presence.count() : 0, season });
+  } catch (e) { next(e); }
+});
 module.exports = router;

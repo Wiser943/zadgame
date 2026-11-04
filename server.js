@@ -263,6 +263,10 @@ async function main() {
   setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
+  /* withdrawal seasons: tell players when a season/batch opens or is about to close (each notice is sent once) */
+  const withdrawalNotices = require('./services/withdrawalNotices');
+  setTimeout(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 20000).unref();
+  setInterval(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 60 * 1000).unref();
   require('./utils/mux').startSweep();   // tidies uploads that never finished (only when Mux is configured)
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);

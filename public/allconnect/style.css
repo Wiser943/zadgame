@@ -71,9 +71,10 @@ svg.room{position:absolute;left:-4%;width:108%;height:auto;top:clamp(96px,17%,17
 #mapcities::-webkit-scrollbar{display:none}
 .citymore{width:28px;height:28px;padding:0!important;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none;transition:transform .2s ease}
 .citymore.open{transform:rotate(180deg)}
-#mapcitiesMore{flex-direction:column;flex-wrap:nowrap;align-items:stretch;max-height:170px;overflow-y:auto;width:190px;max-width:78vw;scrollbar-width:none}
+/* the overflow states scroll sideways in one row, same as the visible 4 above it, instead of stacking into a tall
+   column — a tall column at the .pill class's 999px radius was rendering as a big rounded blob rather than a list */
+#mapcitiesMore{flex-direction:row;flex-wrap:nowrap;align-items:center;max-width:min(260px,78vw);overflow-x:auto;scrollbar-width:none;justify-content:flex-start}
 #mapcitiesMore::-webkit-scrollbar{display:none}
-#mapcitiesMore button{text-align:center}
 .load{position:absolute;left:50%;top:52%;transform:translateX(-50%);padding:9px 18px;color:var(--mut);font-size:14px;white-space:nowrap}
 
 /* buy mode */

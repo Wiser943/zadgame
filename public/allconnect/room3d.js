@@ -2,6 +2,7 @@
    Walls that face the camera fade out so you can always see inside. Falls back to the flat SVG room if WebGL or the library is unavailable. */
 window.ROOM3D = {
   on: false, loading: false, T: null, az: Math.PI / 4, pol: 0.95, dist: 30, d0: 30, tAz: null, W: 0, H: 0, shiftY: 0, dark_: false, page_: 'home',
+  WALL_H: 2.4,   // box-room wall height (was 3 — shorter walls so the room reads less tall/boxy)
   walls: [], gw: 6, gd: 6, offX: 0, offZ: 0, layout: null, roomKey: 6, extras: null, avatar: null, goal: null, ptr: new Map(), pinch: 0, drag: false, down: null, last: 0,
   load() {
     return new Promise((ok, no) => {
@@ -46,12 +47,13 @@ window.ROOM3D = {
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshLambertMaterial({ map: tx })); this.floor.rotation.x = -Math.PI / 2; sc.add(this.floor);
     // four walls (the ones facing the camera fade away)
     const W = (w, h, d, x, z, out) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: S.paint, transparent: true })); m.position.set(x, h / 2, z); sc.add(m); this.walls.push({ m, out }); return m };
-    this.wW = W(.15, 3, 6.15, -3.075, 0, [-1, 0]); this.wN = W(6.15, 3, .15, 0, -3.075, [0, -1]); this.wE = W(.15, 3, 6.15, 3.075, 0, [1, 0]); this.wS = W(6.15, 3, .15, 0, 3.075, [0, 1]);
+    const WH = this.WALL_H;
+    this.wW = W(.15, WH, 6.15, -3.075, 0, [-1, 0]); this.wN = W(6.15, WH, .15, 0, -3.075, [0, -1]); this.wE = W(.15, WH, 6.15, 3.075, 0, [1, 0]); this.wS = W(6.15, WH, .15, 0, 3.075, [0, 1]);
     const n0 = sc.children.length;
-    // door + poster + lamp on the west wall, window + AC + lamp on the north wall
+    // door + poster + lamp on the west wall, window + AC + lamp on the north wall (y's are hand-placed to clear WH's ceiling)
     this.box(.12, 2.1, 1.1, 0x5a2c14, -2.95, 1.05, 1.6); this.box(.1, .9, .7, 0xf2f2f2, -2.97, 1.8, -1.5);
     this.box(1.5, 1.0, .12, 0x80868a, 1.6, 1.7, -2.94); this.walls.glass = this.box(1.3, .8, .1, 0xbfe4ff, 1.6, 1.7, -2.9).material; Object.assign(this.walls.glass, { transparent: true, opacity: .7 }); this.box(1.3, .08, .12, 0x555a5c, 1.6, 1.7, -2.88);
-    this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.4, -2.8);
+    this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.05, -2.8);
     this.glass = this.walls.glass; this.shellDecor = sc.children.slice(n0);
     this.moon = new THREE.DirectionalLight(0x7f9bff, 0); this.moon.position.set(-6, 10, -4); sc.add(this.moon); this.lamps = [];
     this.itemsGroup = new THREE.Group(); sc.add(this.itemsGroup); this.ghostG = null; this.ring = null; this.path = [];
@@ -315,8 +317,9 @@ window.ROOM3D = {
       const lx = gw + .15, lz = gd + .15, ex = gw - 3 + .075, ez = gd - 3 + .075, geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
       this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(gw, gd); this.floor.position.set(offX, 0, offZ); this.floor.material.map.repeat.set(gw / 2, gd / 2);
       geo(this.slab, gw + .5, .3, gd + .5); this.slab.position.set(offX, -.15, offZ);
-      geo(this.wW, .15, 3, lz); this.wW.position.set(-3.075, 1.5, offZ); geo(this.wN, lx, 3, .15); this.wN.position.set(offX, 1.5, -3.075);
-      geo(this.wE, .15, 3, lz); this.wE.position.set(ex, 1.5, offZ); geo(this.wS, lx, 3, .15); this.wS.position.set(offX, 1.5, ez);
+      const WH = this.WALL_H, wy = WH / 2;
+      geo(this.wW, .15, WH, lz); this.wW.position.set(-3.075, wy, offZ); geo(this.wN, lx, WH, .15); this.wN.position.set(offX, wy, -3.075);
+      geo(this.wE, .15, WH, lz); this.wE.position.set(ex, wy, offZ); geo(this.wS, lx, WH, .15); this.wS.position.set(offX, wy, ez);
     }
     if (this.avatar && (L || was)) { const c = L ? L.start : null; this.avatar.position.set(c ? this.cc(c[0]) : -1, 0, c ? this.cc(c[1]) : 1.2); this.path = []; this.onArrive = null }
     this.resize()
@@ -332,8 +335,8 @@ window.ROOM3D = {
       const [w, d] = FURN.footprint(it.name, it.rot), g = this.model(it.name); g.position.set(this.cc(it.x) + (w - 1) / 2, 0, this.cc(it.z) + (d - 1) / 2); g.rotation.y = it.rot * Math.PI / 180; g.userData.id = it.id; g.userData.name = it.name; ig.add(g); this.byId[it.id] = g;
       if (g.userData.lamp) lamp(g.position.x, g.userData.lamp.y, g.position.z, false)
     }
-    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .35, 0x222222, bx, 2.82, bz, ig); lamp(bx, 2.6, bz, true) }
-    if (own('Wall Lamp') && !this.layout) { this.box(.12, .2, .22, 0x555555, -2.93, 2.2, .2, ig); lamp(-2.8, 2.2, .2); this.box(.22, .2, .12, 0x555555, 1.2, 2.2, -2.93, ig); lamp(1.2, 2.2, -2.8) }
+    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .35, 0x222222, bx, this.WALL_H - .18, bz, ig); lamp(bx, this.WALL_H - .4, bz, true) }
+    if (own('Wall Lamp') && !this.layout) { const ly = this.WALL_H - .8; this.box(.12, .2, .22, 0x555555, -2.93, ly, .2, ig); lamp(-2.8, ly, .2); this.box(.22, .2, .12, 0x555555, 1.2, ly, -2.93, ig); lamp(1.2, ly, -2.8) }
     this.ensureAvatarFree(); if (this.selId) this.select(this.selId); if (this.ghostInfo) this.ghost(this.ghostInfo.name, this.ghostInfo.x, this.ghostInfo.z, this.ghostInfo.rot, this.ghostInfo.valid)
   },
   /* ---------- her pet cat (from the Pet app, when "Show in my room" is on): a small cat that wanders the floor ---------- */
