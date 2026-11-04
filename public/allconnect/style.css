@@ -65,6 +65,15 @@ svg.room{position:absolute;left:-4%;width:108%;height:auto;top:clamp(96px,17%,17
 .maphud button{border:0;background:transparent;color:inherit;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;padding:5px 9px;border-radius:999px;white-space:nowrap;cursor:pointer}
 .maphud button.on{background:#1b2236;color:#fff}
 .maphud .cities button.on{background:#075BFF;color:#fff}
+/* city/state row: up to 4 chips show at once; the chevron reveals the rest of Nigeria's states in a scrollable panel */
+.citywrap{display:flex;align-items:center;gap:6px;max-width:100%;pointer-events:auto}
+#mapcities{flex:1;min-width:0;flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+#mapcities::-webkit-scrollbar{display:none}
+.citymore{width:28px;height:28px;padding:0!important;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none;transition:transform .2s ease}
+.citymore.open{transform:rotate(180deg)}
+#mapcitiesMore{flex-direction:column;flex-wrap:nowrap;align-items:stretch;max-height:170px;overflow-y:auto;width:190px;max-width:78vw;scrollbar-width:none}
+#mapcitiesMore::-webkit-scrollbar{display:none}
+#mapcitiesMore button{text-align:center}
 .load{position:absolute;left:50%;top:52%;transform:translateX(-50%);padding:9px 18px;color:var(--mut);font-size:14px;white-space:nowrap}
 
 /* buy mode */
@@ -365,6 +374,14 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 /* ---- 3D house ---- */
 #room3d{position:absolute;inset:0;width:100%;height:100%;z-index:1;display:none;touch-action:none}
 #app.r3d > svg#room{display:none!important}
+#app.rloading > svg#room{display:none!important}
+#roomLoad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;display:none;align-items:center;gap:8px;padding:8px 14px 8px 12px;pointer-events:none;transition:opacity .35s ease}
+#app.rloading #roomLoad{display:flex}
+#app.onmap #roomLoad{display:none!important}
+#roomLoad.off{opacity:0}
+#roomLoad .rlbar{width:60px;height:5px;border-radius:999px;background:rgba(127,131,150,.3);overflow:hidden}
+#roomLoad .rlbar i{display:block;height:100%;width:0;border-radius:999px;background:var(--grn);transition:width .25s linear}
+#roomLoad span{min-width:32px;text-align:right;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--ink)}
 
 /* ===== Needs bars open from the profile picture ===== */
 .av{cursor:pointer;-webkit-tap-highlight-color:transparent}.av[aria-expanded="true"]{box-shadow:0 0 0 3px #fff,0 0 0 6px rgba(7,91,255,.28)}
@@ -461,7 +478,7 @@ svg.room{touch-action:none;transform-origin:50% 50%;translate:var(--tx,0px) var(
 .gpnote{display:block;text-align:center;color:var(--mut);font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin:2px 0 6px}
 .chpk.need button{animation:gpn .35s 2}@keyframes gpn{50%{transform:translateX(3px)}0%,100%{transform:none}}
 .emotes{position:absolute;right:10px;bottom:calc(138px + var(--sab));z-index:6;display:none;flex-direction:column;gap:6px}
-.emotes button{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.94);box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:19px;line-height:1}
+.emotes button{width:42px;height:42px;border-radius:50%;border:0;background:var(--pill);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.2);font-size:19px;line-height:1}
 .emotes button.on{background:#075BFF;box-shadow:0 0 0 3px rgba(7,91,255,.28)}
 #app.onmap .emotes{bottom:calc(214px + var(--sab))}
 .av canvas{display:block;width:100%;height:100%}.who .a canvas{display:block;width:100%;height:100%}
@@ -1690,7 +1707,10 @@ html[data-theme="dark"] .vnlive{background:#20243a}html[data-theme="dark"] .vnli
 .wchip.warn{background:rgba(245,158,11,.16);color:#9a5b00;cursor:default}.wchip.hot{background:#ef4444;color:#fff;cursor:default}
 .nlink{display:block;text-align:center;margin:12px 0 2px;color:#6b7390;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .nlbox{margin-top:12px;padding:12px;border-radius:14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.35);text-align:left}.nlbox p{margin:0 0 8px;font-size:13px;line-height:1.45}
-.nlbox input{width:100%;box-sizing:border-box;margin-bottom:8px}.nlrow{display:flex;gap:8px}.nlrow .btn{flex:1;margin:0}
+.nlbox input{display:block;width:100%;height:auto;box-sizing:border-box;margin-bottom:8px;border:1.5px solid rgba(239,68,68,.35);background:rgba(255,255,255,.6);border-radius:14px;padding:11px 14px;font:500 14px 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--ink);outline:0;transition:border-color .15s,box-shadow .15s}.nlbox input::placeholder{color:#9aa0b8}
+#splash #resume .nlbox input.ok{border-color:#1fa855;box-shadow:0 0 0 3px rgba(31,168,85,.18)}
+html[data-theme="dark"] #splash #resume .nlbox input.ok{border-color:#2ecc71;box-shadow:0 0 0 3px rgba(46,204,113,.22)}
+.nlrow{display:flex;gap:8px}.nlrow .btn{flex:1;margin:0}
 .btn.red{background:#dc2626;color:#fff}.btn.red:disabled{opacity:.45}
 .foot a{padding:6px 2px}
 .sfoot a{color:#17203d}.sfoot a i{opacity:1}

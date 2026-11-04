@@ -123,7 +123,10 @@ const HOMES = {
       if (!document.getElementById('homesList')) toast(this.errorMessage);
     } finally { this.busy = false; this.draw(); }
   },
-  enter(id) {
+  /* opts.silent: true when the router is restoring the last-entered home after a refresh/back-forward — skips the
+     toast and sheet-close (nothing is open to close yet) so it doesn't look like a fresh user action. */
+  enter(id, opts) {
+    opts = opts || {};
     S.activePropertyId = id || '';
     const p = (S.properties || []).find(x => x.id === S.activePropertyId);
     S.activeProperty = p || null;
@@ -133,6 +136,8 @@ const HOMES = {
     setPaint(p ? (p.paint || S.legacyPaint) : S.legacyPaint);
     if (window.ROOM3D) ROOM3D.sync();
     if (window.BUY && BUY.active) BUY.draw();
+    if (window.ROUTER && ROUTER.onHome) ROUTER.onHome(S.activePropertyId);   // remember this across refresh
+    if (opts.silent) return;
     this.close();
     const nm = p && (p.name || (((this.data && this.data.catalogue) || []).find(c => c.id === p.type) || {}).name || 'your home');
     toast(p ? ('Entered ' + nm) : 'Back to your starter room');

@@ -1308,12 +1308,16 @@
     setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
     hud: HUD,
     setFilter(k, on) { if (k in HUD && k !== 'city') HUD[k] = on ? 1 : 0; },
-    setCity(id) {
-      if (id === HUD.city) return;
-      if (!CITIES[id]) { if (g.toast) g.toast('Port Harcourt isn’t open yet — you’re still in ' + (HUD.city === 'lagos' ? 'Lagos' : 'Abuja')); return }
+    /* label is the readable name shown in the "coming soon" toast for any state that isn't built yet (anything not in CITIES);
+       returns true when id is now (or already was) the active city, false for a not-built-yet state, so callers know whether
+       to move the "on" highlight. */
+    setCity(id, label) {
+      if (id === HUD.city) return true;
+      if (!CITIES[id]) { if (g.toast) g.toast('🚧 ' + (label || 'That state') + ' is coming soon — you’re still in ' + (HUD.city === 'lagos' ? 'Lagos' : 'Abuja')); return false }
       loadCity(id); HUD.city = id;
       const [sx, sy] = CITIES[id].spawn; teleport(sx, sy);
       if (g.toast) g.toast(id === 'lagos' ? '🏠 Back in Lagos' : '🏛️ Welcome to Abuja — look around, nothing here is buyable as a home yet');
+      return true;
     },
     /* moves the "Home" pin to the player's actual house: the numbered slot the server gave them in their chosen hood (see HUB.loadMe) */
     setHome(hood, slot) {

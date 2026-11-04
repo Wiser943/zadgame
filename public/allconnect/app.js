@@ -64,12 +64,46 @@ function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
 function mapChip(btn) { const k = btn.getAttribute('data-f'); if (!window.MAP3D || !k) return; const on = !MAP3D.hud[k]; MAP3D.setFilter(k, on); btn.classList.toggle('on', !!on) }
 // legend rows now double as the map's layer filter toggles (the old separate chip row was removed)
 function legendToggle(k) { if (!window.MAP3D) return; MAP3D.setFilter(k, !MAP3D.hud[k]); if (typeof SHEET !== 'undefined' && SHEET.isOpen('legend')) SHEET.paint() }
+/* every Nigerian state, for the map's city/state switcher: Lagos, Port Harcourt (Rivers) and Abuja (FCT) stay first since
+   they're what the map actually has built; the toast in MAP3D.setCity() tells players the rest are coming soon. */
+const NG_STATES = [
+  { key: 'lagos', label: 'Lagos' }, { key: 'ph', label: 'Port Harcourt' }, { key: 'abuja', label: 'Abuja' },
+  { key: 'abia', label: 'Abia' }, { key: 'adamawa', label: 'Adamawa' }, { key: 'akwaibom', label: 'Akwa Ibom' },
+  { key: 'anambra', label: 'Anambra' }, { key: 'bauchi', label: 'Bauchi' }, { key: 'bayelsa', label: 'Bayelsa' },
+  { key: 'benue', label: 'Benue' }, { key: 'borno', label: 'Borno' }, { key: 'crossriver', label: 'Cross River' },
+  { key: 'delta', label: 'Delta' }, { key: 'ebonyi', label: 'Ebonyi' }, { key: 'edo', label: 'Edo' },
+  { key: 'ekiti', label: 'Ekiti' }, { key: 'enugu', label: 'Enugu' }, { key: 'gombe', label: 'Gombe' },
+  { key: 'imo', label: 'Imo' }, { key: 'jigawa', label: 'Jigawa' }, { key: 'kaduna', label: 'Kaduna' },
+  { key: 'kano', label: 'Kano' }, { key: 'katsina', label: 'Katsina' }, { key: 'kebbi', label: 'Kebbi' },
+  { key: 'kogi', label: 'Kogi' }, { key: 'kwara', label: 'Kwara' }, { key: 'nasarawa', label: 'Nasarawa' },
+  { key: 'niger', label: 'Niger' }, { key: 'ogun', label: 'Ogun' }, { key: 'ondo', label: 'Ondo' },
+  { key: 'osun', label: 'Osun' }, { key: 'oyo', label: 'Oyo' }, { key: 'plateau', label: 'Plateau' },
+  { key: 'sokoto', label: 'Sokoto' }, { key: 'taraba', label: 'Taraba' }, { key: 'yobe', label: 'Yobe' },
+  { key: 'zamfara', label: 'Zamfara' }
+];
+function cityBtn(s) { return `<button type="button" data-city="${s.key}" data-label="${esc(s.label)}" onclick="mapCity(this)">${esc(s.label)}</button>` }
+function renderCityTabs() {
+  const main = document.getElementById('mapcities'), more = document.getElementById('mapcitiesMore');
+  if (!main || !more) return;
+  main.innerHTML = NG_STATES.slice(0, 4).map(cityBtn).join('');
+  more.innerHTML = NG_STATES.slice(4).map(cityBtn).join('');
+  const first = main.querySelector('button'); if (first) first.classList.add('on');
+}
+function toggleCityMore(open) {
+  const p = document.getElementById('mapcitiesMore'), b = document.getElementById('citymoreBtn'); if (!p || !b) return;
+  const on = open !== undefined ? !!open : p.style.display !== 'flex';
+  p.style.display = on ? 'flex' : 'none';
+  b.classList.toggle('open', on);
+  b.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+renderCityTabs();
 function mapCity(btn) {
   if (!window.MAP3D) return;
   const city = btn.getAttribute('data-city');
-  if (city !== 'lagos') { MAP3D.setCity(city); return } // not built yet: toast only, keep Lagos selected and walkable
-  document.querySelectorAll('#mapcities button').forEach(b => b.classList.toggle('on', b === btn));
-  MAP3D.setCity(city);
+  const label = btn.getAttribute('data-label') || btn.textContent;
+  const switched = MAP3D.setCity(city, label);
+  if (switched) document.querySelectorAll('#mapcities button, #mapcitiesMore button').forEach(b => b.classList.toggle('on', b.getAttribute('data-city') === city));
+  if (btn.closest('#mapcitiesMore')) toggleCityMore(false); // picked from the overflow list: collapse it back down
 }
 
 function applyAC(ac) {
@@ -487,6 +521,26 @@ drawApps();
 try { window.matchMedia('(min-width:768px) and (min-height:520px)').addEventListener('change', () => drawApps()) } catch (e) {}
 /* ?ref=<code> invite links: remembered until the player has finished setup (see HUB.redeemRef) */
 try { const rf = new URLSearchParams(location.search).get('ref'); if (rf && /^[A-Za-z0-9_]{2,40}$/.test(rf)) { localStorage.setItem('ac:ref', rf); history.replaceState(null, '', location.pathname) } } catch (e) {}
+/* small pill shown over the room while ROOM3D (room3d.js) gets ready — see its init(). The flat starter-room
+   SVG underneath doesn't reflect the player's actual furniture, so it's hidden for that window instead of
+   flashing on screen; the percentage is staged like cityLoader's bar below, just smaller. */
+const RLOAD = {
+  t: null, pct: 0,
+  paint() { const b = $('roomLoadBar'), p = $('roomLoadPct'), n = Math.round(this.pct); if (b) b.style.width = n + '%'; if (p) p.textContent = n + '%' },
+  start() {
+    const app = $('app'); if (!app) return;
+    app.classList.remove('r3d'); app.classList.add('rloading');
+    const pill = $('roomLoad'); if (pill) pill.classList.remove('off');
+    this.pct = 0; this.paint(); clearInterval(this.t);
+    this.t = setInterval(() => { this.pct += (92 - this.pct) * 0.18 + 1.5; if (this.pct > 92) this.pct = 92; this.paint() }, 120);
+  },
+  done() {
+    clearInterval(this.t); this.pct = 100; this.paint();
+    const pill = $('roomLoad'); if (pill) pill.classList.add('off');
+    setTimeout(() => { const app = $('app'); if (app) app.classList.remove('rloading'); if (pill) pill.classList.remove('off'); this.pct = 0; this.paint() }, 360);
+  }
+};
+window.RLOAD = RLOAD;
 /* city-world loading sequence: a few Lagos lines while the room and map get ready */
 function cityLoader() {
   const L = [NG.say('Waking up 9ja…', '9ja dey wake…'), NG.say('Starting the generators…', 'We dey start generator…'), NG.say('Sweeping Third Mainland Bridge…', 'We dey sweep Third Mainland Bridge…'), NG.say('Heating the jollof…', 'Jollof dey cook…'), NG.say('Tuning the danfo horns…', 'Danfo horn dey ready…'), NG.say('Opening your front door…', 'We dey open your door…')], T = ['Tip: pay bills before Sunday night so the light stays on.', 'Tip: tick "Go automatically" in Jobs and your shifts run themselves.', 'Tip: the city event changes every 12 hours.', 'Tip: new players are protected from big-money risks for 7 days.'];

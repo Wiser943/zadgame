@@ -11,12 +11,14 @@ window.ROOM3D = {
   },
   async init() {
     if (this.on || this.loading) return; this.loading = true;
+    if (window.RLOAD) RLOAD.start();   // covers the flat starter-room SVG with a small % pill until this finishes
     try {
       const probe = document.createElement('canvas'); if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) throw 0;
       await this.load(); this.build(); this.on = true; document.getElementById('app').classList.add('r3d');
       this.page(S.page || 'home'); this.paint(S.paint); this.sync(); this.dark(!BAN.light); requestAnimationFrame(t => this.loop(t))
     } catch (e) { console.warn('3D room unavailable, using flat room', e) }
-    this.loading = false
+    this.loading = false;
+    if (window.RLOAD) RLOAD.done();   // success: fades out onto the 3D room. failure: fades out onto the flat room instead
   },
   mat(c, o) { return new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {})) },
   box(w, h, d, c, x, y, z, parent) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), typeof c === 'object' ? c : this.mat(c)); m.position.set(x, y, z); (parent || this.scene).add(m); return m },

@@ -116,7 +116,10 @@
     <path d="M-11-8Q0-24 11-8Z" fill="#1a1010" />
    </g>
   </svg>
-  
+  <!-- shown instead of the plain starter-room SVG above while the real 3D room is getting ready, so a room that
+       doesn't match the player's actual furniture never flashes on screen first -->
+  <div class="pill" id="roomLoad"><div class="rlbar"><i id="roomLoadBar"></i></div><span id="roomLoadPct">0%</span></div>
+
   <div class="hud" id="hud">
    <div class="pill bal hudL" role="button" tabindex="0" onclick="openBank()" aria-label="Open AllConnect Pay"><span id="bal">₦2,024,000</span><button class="plus" onclick="event.stopPropagation();openBank(true)" aria-label="Deposit money">+</button></div>
    <div class="pill t hudR"><span id="hico">🌙</span><span id="clk">--:--</span><span class="mood" id="mood">😄 Very Happy</span><button class="mutebtn" id="mute" onclick="toggleMute()" aria-label="Mute or unmute game sound"></button></div>
@@ -151,11 +154,11 @@
         Legend sheet already lists, so each legend row now doubles as its on/off toggle instead (see hub.js v_legend). -->
    <button class="pill walkyaba" onclick="MAP3D.walkYaba()">🚶 Walk Yaba</button>
    <div class="maphud">
-    <div class="pill cities" id="mapcities">
-     <button type="button" class="on" data-city="lagos" onclick="mapCity(this)">Lagos</button>
-     <button type="button" data-city="ph" onclick="mapCity(this)">Port Harcourt</button>
-     <button type="button" data-city="abuja" onclick="mapCity(this)">Abuja</button>
+    <div class="citywrap">
+     <div class="pill cities" id="mapcities"></div>
+     <button type="button" class="pill citymore" id="citymoreBtn" onclick="toggleCityMore()" aria-label="Show more states" aria-expanded="false"><i class="fa-solid fa-chevron-down"></i></button>
     </div>
+    <div class="pill cities citiesMore" id="mapcitiesMore" style="display:none"></div>
    </div>
   </div>
 
