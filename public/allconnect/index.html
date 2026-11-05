@@ -34,6 +34,7 @@
 <link rel="stylesheet" href="/allconnect/tablet-apps.css">
 <link rel="stylesheet" href="/allconnect/tablet-layout.css">
 <link rel="stylesheet" href="/allconnect/ui-polish.css">
+<link rel="stylesheet" href="/allconnect/extras.css">
 </head>
 
 <body>
@@ -178,7 +179,7 @@
   <!-- Homes use the shared SHEET modal from ui.js. -->
   <!-- BUY -->
   <div id="buy">
-   <div class="top"><span class="pill">Buy mode</span><button class="pill homes-open" onclick="HOMES.open()">🏠 Homes</button><span class="pill" id="bal2">₦0</span><button class="pill x" onclick="BUY.exit()" aria-label="Close">✕</button></div>
+   <div class="top"><span class="pill shopseg" id="shopseg" role="tablist"><button type="button" role="tab" id="sgMall" class="on" onclick="MALL.mode('mall')">🏬 Mall</button><button type="button" role="tab" id="sgHome" onclick="MALL.mode('home')">🏠 Home</button></span><button class="pill homes-open" onclick="HOMES.open()">🏠 Homes</button><span class="pill" id="bal2">₦0</span><button class="pill x" onclick="BUY.exit()" aria-label="Close">✕</button></div>
    <button class="btn p catbtn" id="catbtn" onclick="BUY.openSheet()">▦ Catalogue</button>
    <div class="sheet" id="sheet">
     <h2>Catalogue <small onclick="BUY.hideSheet()">Hide</small></h2>
@@ -287,6 +288,10 @@
  <script src="/allconnect/invest.js"></script>
  <script src="/allconnect/venues.js"></script>
  <script src="/allconnect/ads.js"></script>
+ <script src="/allconnect/notice.js"></script>
+ <script src="/allconnect/health.js"></script>
+ <script src="/allconnect/age.js"></script>
+ <script src="/allconnect/mall.js"></script>
  <script src="/allconnect/lagos.js"></script>
  <script src="/allconnect/goals.js"></script>
  <script src="/allconnect/gem.js"></script>

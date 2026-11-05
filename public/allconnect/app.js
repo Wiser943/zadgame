@@ -138,6 +138,7 @@ function authMode(m) {
 }
 if (location.hash === '#register' || location.hash === '#sign-up') authMode('register');
 async function doAuth() {
+  if (window.AGE && !AGE.ok()) return AGE.gate(() => doAuth());
   const id = $('fid').value.trim(),
     pw = $('fpw').value,
     name = $('fname').value.trim(),
@@ -170,11 +171,13 @@ async function boot() {
     render();
     if (window.PH) PH.init();
     if (window.PUSH) PUSH.init();
+    if (window.AGE) AGE.sync();
     warmUp()
   }
   catch (e) {
     $('auth').style.display = 'block';
     $('resume').style.display = 'none';
+    if (window.AGE && !AGE.ok()) AGE.gate();
     if (e.status && e.status !== 401) $('aerr').textContent = e.message;
     else if (!e.status) $('aerr').textContent = 'Cannot reach the server. Check your connection and try again.';
     else if (window.JUST_AUTHED) $('aerr').textContent = 'Signed in, but your session was not saved. Allow cookies for this site and try again.'
@@ -345,14 +348,14 @@ window.PHONEUI=PHONEUI;
 
 const NAV = [
   ['home', 'Home', '<path d="M4 11l8-7 8 7v9H4z"/>'],
-  ['buy', 'Buy', '<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M6 9V7a2 2 0 012-2h8a2 2 0 012 2v2M7 17v2M17 17v2"/>'],
+  ['buy', 'Shop', '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6.5a3 3 0 016 0V8"/>'],
   ['map', 'Map', '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>'],
   ['phone', 'Phone', '<rect x="7" y="3" width="10" height="18" rx="2"/>']
 ];
 
 function nav(w, keep) {
   if (w === 'phone' && S.page === 'phone') { if (window.PHONEUI) PHONEUI.close(); else nav('home'); return; }
-  if (S.page === 'buy' && w !== 'buy' && window.BUY) BUY.leave();
+  if (S.page === 'buy' && w !== 'buy') { if (window.BUY) BUY.leave(); if (window.MALL) MALL.leave() }
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
@@ -386,8 +389,8 @@ function nav(w, keep) {
   if (window.GEM && typeof NET !== 'undefined' && NET.user) GEM.boot();
   if (window.GOALS && typeof NET !== 'undefined' && NET.user) GOALS.boot();
   if (w == 'buy') {
-    $('room').style.top = '44px';
-    BUY.enter()
+    if (window.MALL) MALL.enter();   /* Shop tab: the 3D mall, or "My Home" (the old Buy mode) */
+    else { $('room').style.top = '44px'; BUY.enter() }
   } else $('room').style.top = '';
   if (w == 'map') {
     if (window.ADS) ADS.paintMap()
@@ -427,9 +430,10 @@ const APPS = [
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
   ['Homes', '🏠', 'linear-gradient(135deg,#34d399,#0ea5a5)', 1],
-  ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
-  ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
+  ['Play Store', '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="#00c3ff" d="M4 3 12.5 12 4 21z"/><path fill="#00e676" d="M4 3 17.3 10.5 12.5 12z"/><path fill="#ffc400" d="M17.3 10.5 21 12 17.3 13.5 12.5 12z"/><path fill="#ff3d57" d="M12.5 12 17.3 13.5 4 21z"/></svg>', 'linear-gradient(135deg,#ffffff,#dbe7ff)', 1],
+  ['Boutique', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
   ['Pet', '🐱', 'linear-gradient(135deg,#fcd34d,#f97316)', 1],
+  ['Health', '💊', 'linear-gradient(135deg,#34d399,#0f766e)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['City', '<i class="fa-solid fa-city"></i>', 'linear-gradient(135deg,#f59e0b,#e8337a)', 1],
@@ -442,13 +446,14 @@ const APPS = [
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", 'Play Store': "PH.open('ads')", Boutique: "PH.open('style')",
+Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 OPEN.Homes = "PH.open('homes')";
 OPEN.Shop = "openHub(b=>b.shop())";
 OPEN.Guide = "PH.open('guide')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
-const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
+const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Boutique', 'Songify', 'Settings'];
 const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;

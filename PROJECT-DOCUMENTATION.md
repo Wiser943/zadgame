@@ -743,3 +743,12 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - **Brand voice:** direct, warm, lightly local. Example: “Save it for later.” “Your padi queue is ready.”
 - **Wordmark/logo:** preserve the existing AllConnect mark.
 - **Signature color:** the existing warm gold used for the shared wallet and home UI.
+
+## Update: Health, Shop mall, Play Store, age check, notice banner
+- **Health app** (`public/allconnect/health.js`, `routes/achealth.js`, `utils/achealth.js`): illness (mild -> serious after a day -> hospital after another day), chemist for the player AND the pet, General Hospital (₦80,000), player pharmacies (every player who owns the Pharmacy venue; owners set prices and restock). State: `User.ac.health`, shelf: `ACVenue.shop`.
+- **Shop tab** (`mall.js`): the old Buy tab. Opens on a 3D mall with shoppers; "Home" switches to the old Buy mode (move furniture, buy items). Fresh Market food uses `POST /api/ac/health/market`.
+- **Play Store**: the Ads app renamed; "Apps" lists player-published apps, "Publish" is the old Ads screen.
+- **Boutique**: the Style app renamed.
+- **Messages**: tabs Chats / Groups / Friends / Requests / Find, no header (tap the home bar to leave).
+- **Notice banner** (`notice.js`): hideable yellow card in PGist Discover, Bank > Withdraw and Messages. Edit `NOTICE.SLIDES` to change the text.
+- **Age check** (`age.js`, `routes/acage.js`): date of birth + 18+ attestation before sign-in/sign-up; only the birth year and time are stored (`ac.birthYear`, `ac.ageAt`).

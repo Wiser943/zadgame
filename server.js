@@ -45,6 +45,8 @@ const acTransportRoutes = require('./routes/actransport');
 const acGovRoutes = require('./routes/acgov');
 const acGemRoutes = require('./routes/acgem');
 const acPetRoutes = require('./routes/acpet');
+const acHealthRoutes = require('./routes/achealth');
+const acAgeRoutes = require('./routes/acage');
 const acFeatureRoutes = require('./routes/acfeatures');
 const reportRoutes = require('./routes/reports');
 const developerRoutes = require('./routes/developers');
@@ -132,6 +134,8 @@ async function main() {
   app.use('/api/ac/invest', acInvestRoutes);
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
+  app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
+  app.use('/api/ac/age', acAgeRoutes);       // 18+ attestation
   app.use('/api/ac/pet', acPetRoutes);      // Pet app: needs, shop, clothes, mini-games (all paid from the main balance)
   app.use('/api/ac/features', acFeatureRoutes); // saved, scheduled and collaborative cross-app features
   app.use('/api/ac/gov', acGovRoutes);          // State House: elections, announcements, policies
