@@ -110,6 +110,8 @@ function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
   S.legacyItems = ac.items || []; S.legacyPaint = ac.paint; S.properties = ac.properties || [];
+  /* first load after opening or refreshing the game: go back into the home the player entered last (saved on the server) */
+  if (!S.homeSynced) { S.homeSynced = true; let saved = ac.activeProperty; if (saved === undefined) { try { saved = localStorage.getItem('ac:home') || '' } catch (e) { saved = '' } } if (saved && !S.activePropertyId) S.activePropertyId = saved }
   S.activeProperty = S.activePropertyId ? S.properties.find(p => p.id === S.activePropertyId) || null : null;
   if (!S.activeProperty) S.activePropertyId = '';
   S.items = S.activeProperty ? S.activeProperty.items : S.legacyItems;

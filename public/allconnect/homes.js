@@ -137,6 +137,8 @@ const HOMES = {
     if (window.ROOM3D) ROOM3D.sync();
     if (window.BUY && BUY.active) BUY.draw();
     if (window.ROUTER && ROUTER.onHome) ROUTER.onHome(S.activePropertyId);   // remember this across refresh
+    try { localStorage.setItem('ac:home', S.activePropertyId) } catch (e) {}
+    if (!opts.silent) NET.api('/api/ac/properties/active', { method: 'POST', body: { id: S.activePropertyId } }).catch(() => {});   // and on the server, so it follows the player to any phone
     if (opts.silent) return;
     this.close();
     const nm = p && (p.name || (((this.data && this.data.catalogue) || []).find(c => c.id === p.type) || {}).name || 'your home');

@@ -32,6 +32,15 @@ const getOwned = async (req) => {
 router.get('/', async (req, res, next) => {
   try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h, baseBedrooms: baseBedrooms(id), maxBedrooms: baseBedrooms(id) + maxExtra(id) })), properties: (u.ac.properties || []).map(publicHome), cash: u.ac.cash, homesApi: 2 }); } catch (e) { next(e); }
 });
+/* Remembers which home the player entered last. It only accepts a home they own (or rent with time left); '' is the Starter Room. */
+router.post('/active', async (req, res, next) => {
+  try {
+    const id = String(req.body?.id || '').slice(0, 80);
+    const u = await rawUpdate(req.user.id, id ? activePropertyFilter(id) : {}, { $set: { 'ac.activeProperty': id } });
+    if (!u) return bad(res, 'You do not have access to that home.', 409);
+    res.json({ activeProperty: id });
+  } catch (err) { next(err); }
+});
 router.post('/acquire', async (req, res, next) => {
   try {
     const type = String(req.body?.type || '');

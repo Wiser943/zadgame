@@ -752,3 +752,8 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - **Messages**: tabs Chats / Groups / Friends / Requests / Find, no header (tap the home bar to leave).
 - **Notice banner** (`notice.js`): hideable yellow card in PGist Discover, Bank > Withdraw and Messages. Edit `NOTICE.SLIDES` to change the text.
 - **Age check** (`age.js`, `routes/acage.js`): date of birth + 18+ attestation before sign-in/sign-up; only the birth year and time are stored (`ac.birthYear`, `ac.ageAt`).
+- **Admin**: Players modal has "Add coins" (`POST /admin-api/users/:id/credit`), shown to the player as a credit on their bank statement.
+- **Withdraw page**: every requirement shows what you have, what is needed and what is left (`utils/payout.js` returns `have/need/left/unit/detail/progress`).
+- **Updates**: newest first, unread ones marked NEW, list opens at the top.
+- **Notification banner** (`banner.js`): drops down with a short sound, swipe up to dismiss, tap to open.
+- **Music** (`public/js/bgm.js`): fixed level with a watchdog that restores it and wakes the engine if the phone pauses it.

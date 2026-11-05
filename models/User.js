@@ -74,6 +74,7 @@ const UserSchema = new mongoose.Schema({
       level: { type: Number, default: 0, min: 0, max: 2 }, bedrooms: { type: Number, default: 0, min: 0, max: 5 }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
       items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },
     wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
+    activeProperty: { type: String, default: '' },         // the home the player last entered ('' = the Starter Room), so it loads again after a refresh
     health: { type: mongoose.Schema.Types.Mixed, default: null },   // Health app: { ill, checked, last } (see utils/achealth.js)
     ageAt: { type: Date, default: null },                  // when the player attested they are 18 or older
     birthYear: { type: Number, default: null },            // year they entered in the age check (the full date is never stored)

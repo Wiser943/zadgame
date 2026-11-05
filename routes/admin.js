@@ -72,6 +72,23 @@ router.post('/users/:id/penalize', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+/* Adds coins to a player's main balance. It lands on their bank statement as a credit from AllConnect and the phone updates live. */
+router.post('/users/:id/credit', async (req, res, next) => {
+  try {
+    const coins = Math.max(0, Math.min(1000000000, Math.floor(Number(req.body?.coins)) || 0));
+    const reason = String(req.body?.reason || '').trim().slice(0, 240);
+    if (coins < 1) return res.status(400).json({ message: 'Enter how many coins to add.' });
+    const user = await User.findById(req.params.id).select('displayName ac.cash');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    const cash = await require('../utils/economy').adjust(user.id, coins);
+    if (cash == null) return res.status(409).json({ message: 'Could not update that balance. Try again.' });
+    await require('../models/ACTxn').create({ user: String(user.id), type: 'credit', amount: coins, cpName: 'AllConnect', cpNum: '', note: reason || 'Added by AllConnect', ref: require('../utils/acbank').makeRef(), kind: 'admin' });
+    await User.updateOne({ _id: user.id }, { $set: { adminNote: ('Added ' + coins + ' coins' + (reason ? ': ' + reason : '')).slice(0, 240) } });
+    try { require('../utils/acnotify').emitUser(req.app.get('io'), String(user.id), 'cash', { delta: coins }); } catch (e) { /* the phone catches up on its next refresh */ }
+    res.json({ user: { id: user.id, displayName: user.displayName, coins: cash } });
+  } catch (err) { next(err); }
+});
+
 // ---------- analytics (privacy-conscious: aggregate counts only, no message content) ----------
 // Photo storage health (imgbb) - shows the real reason when uploads fail
 const acPhotos = require('./acphotos');

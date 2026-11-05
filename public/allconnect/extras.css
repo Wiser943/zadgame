@@ -93,3 +93,38 @@
 #buy.mallmode .homes-open{display:none}
 #buy .top .homes-open{padding:8px 11px;font-size:12.5px}
 @media (max-width:400px){#buy:not(.mallmode) .top #bal2{display:none}}
+
+/* ---- Bank > Withdraw ---- */
+.wdh{border-radius:26px;padding:18px 18px 16px;margin-bottom:14px;color:#fff;background:linear-gradient(140deg,#1e3a8a,#4338ca 55%,#7c3aed);box-shadow:0 10px 28px rgba(67,56,202,.28)}
+.wdh .wdt{display:flex;align-items:center;justify-content:space-between;gap:10px}.wdh .wdt span{font:800 19px Outfit,system-ui,sans-serif}
+.wdp{font-style:normal;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:999px;padding:5px 11px}.wdp.no{background:rgba(251,191,36,.22);color:#fde68a}.wdp.ok{background:rgba(52,211,153,.25);color:#a7f3d0}
+.wdbal{margin:14px 0 8px}.wdbal small{display:block;opacity:.8;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif}.wdbal b{font:800 34px Outfit,system-ui,sans-serif;letter-spacing:-.01em}.wdbal u{text-decoration:none;opacity:.8;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif;margin-left:6px}
+.wdmeta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.wdmeta span{background:rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.wdsum{height:8px;border-radius:5px;background:rgba(255,255,255,.2);overflow:hidden}.wdsum i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#34d399,#a7f3d0)}.wdsl{display:block;margin-top:7px;opacity:.9;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.wdq{background:var(--card,#fff);border:1px solid rgba(120,130,160,.18);border-left:5px solid #f87171;border-radius:20px;padding:14px 14px 12px;margin-bottom:10px}.wdq.ok{border-left-color:#22c55e}
+.wdqh{display:flex;gap:11px;align-items:flex-start}.wdqi{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font:800 14px system-ui;color:#fff;background:#ef4444}.wdq.ok .wdqi{background:#22c55e}
+.wdqh b{display:block;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif}.wdqh small{display:block;opacity:.7;font:500 13px/1.35 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:1px}
+.wdqbar{height:8px;border-radius:5px;background:rgba(120,130,160,.22);overflow:hidden;margin:12px 0 9px}.wdqbar i{display:block;height:100%;border-radius:5px;background:#f59e0b}.wdq.ok .wdqbar i{background:#22c55e}
+.wdqn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.wdqn span{background:rgba(120,130,160,.12);border-radius:12px;padding:7px 9px}.wdqn em{display:block;font-style:normal;opacity:.7;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em}.wdqn b{font:800 15px Outfit,system-ui,sans-serif;word-break:break-word}
+.wdqu{text-align:right;opacity:.6;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:3px}
+.wdqd{margin:8px 0 0;font:500 13.5px/1.45 'Plus Jakarta Sans',system-ui,sans-serif;opacity:.88}
+.wdnote{margin:6px 4px 14px;opacity:.75;font:500 13.5px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
+
+/* ---- Updates: unread first, marked NEW ---- */
+.upd.isnew .ub{box-shadow:0 0 0 1.5px rgba(96,165,250,.7)}
+.upd .nwt{display:inline-block;background:#3b82f6;color:#fff;border-radius:6px;padding:1px 6px;margin-right:4px;font:800 10px system-ui;letter-spacing:.04em}
+
+/* ---- iPhone-style notification banner ---- */
+.ntb{position:fixed;z-index:100001;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;margin:0 auto;max-width:420px;display:flex;gap:11px;align-items:flex-start;padding:12px 14px 15px;border-radius:26px;color:#111827;background:rgba(246,246,249,.86);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:0 14px 40px rgba(0,0,0,.32),0 0 0 .5px rgba(0,0,0,.08);transform:translateY(-190%);transition:transform .52s cubic-bezier(.2,1.15,.3,1);touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none}
+.ntb.in{transform:translateY(0)}.ntb.drag{transition:none}.ntb.out{transform:translateY(-200%);transition:transform .34s cubic-bezier(.4,0,1,1)}
+.ntb::after{content:"";position:absolute;left:50%;bottom:5px;width:36px;height:4px;border-radius:2px;margin-left:-18px;background:rgba(60,60,67,.3)}
+.ntb-i{width:40px;height:40px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:23px;background:linear-gradient(135deg,#e0e7ff,#c7d2fe)}
+.ntb-t{min-width:0;flex:1}.ntb-h{display:flex;justify-content:space-between;gap:8px;font:600 12px 'Plus Jakarta Sans',system-ui,sans-serif;color:#6b7280;text-transform:uppercase;letter-spacing:.02em}.ntb-h time{text-transform:none;letter-spacing:0}
+.ntb-t b{display:block;font:700 15.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ntb-t p{margin:1px 0 0;font:500 14.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif;color:#374151;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (prefers-color-scheme:dark){.ntb{background:rgba(44,44,50,.88);color:#fff}.ntb-t p{color:#d1d5db}.ntb-h{color:#9ca3af}.ntb::after{background:rgba(255,255,255,.35)}}
+
+/* ---- Messages: back button beside the tabs ---- */
+.mtop{display:flex;align-items:center;gap:4px;margin:6px 10px 4px 6px;flex:none}
+.mtop .mtabs{flex:1;min-width:0;margin:0}.mtop .mtabs button{font-size:12.5px;padding:10px 1px}
+.mback{flex:none;width:36px;height:40px;border:0;background:none;color:#2563eb;font:400 38px/1 system-ui,sans-serif;padding:0 0 4px;cursor:pointer;-webkit-tap-highlight-color:transparent}

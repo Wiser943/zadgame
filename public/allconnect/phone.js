@@ -67,7 +67,7 @@ const PH={
   /* ----- Messages ----- */
   async messages(tab){const sh=tab==='updates',T=['chats','groups','friends','requests','find'];if(tab&&!sh&&T.includes(tab))this.tab=tab;if(!T.includes(this.tab))this.tab='chats';this.view='messages';this.chatId=null;
     const rq=(this.badges&&this.badges.requests)||0;
-    const seg=`<div class="mtabs" role="tablist">${[['chats','Chats'],['groups','Groups'],['friends','Friends'],['requests','Requests'],['find','Find']].map(([k,n])=>`<button role="tab" class="${this.tab===k?'on':''}" onclick="PH.messages('${k}')">${n}${k==='requests'&&rq?`<em>${rq>9?'9+':rq}</em>`:''}</button>`).join('')}</div>`;
+    const seg=`<div class="mtop"><button type="button" class="mback" onclick="PH.close()" aria-label="Back">‹</button><div class="mtabs" role="tablist">${[['chats','Chats'],['groups','Groups'],['friends','Friends'],['requests','Requests'],['find','Find']].map(([k,n])=>`<button role="tab" class="${this.tab===k?'on':''}" onclick="PH.messages('${k}')">${n}${k==='requests'&&rq?`<em>${rq>9?'9+':rq}</em>`:''}</button>`).join('')}</div></div>`;
     this.shell('Messages','PH.close()','<div class="abody" id="ab"><p class="empty">Loading…</p></div>',seg);
     if(sh)this.shade(true);
     if(this.tab==='groups')await this.drawGroups();else if(this.tab==='chats')await this.drawChats();else await this.drawPeople()},
@@ -113,9 +113,10 @@ const PH={
     ['pointerup','pointercancel'].forEach(k=>sb.addEventListener(k,()=>{st=null}));
     const t=document.getElementById('pt');if(t)t.addEventListener('click',()=>this.shade(true))},
   async drawShade(){
+    this._newN=(this.badges.updates||0)+(this.localUnread||0);this._top=2;   /* the unread ones are shown first, marked NEW, and the list opens at the top */
     const paint=rows=>{this.updates=rows;const b=document.getElementById('ubody');if(!b)return;
       const all=[...rows,...this.local].sort((a,b)=>new Date(b.at)-new Date(a.at));const c=document.getElementById('uclr');if(c)c.disabled=!all.length;
-      b.innerHTML=all.length?all.map(u=>{const go=u.ref&&!u.local?` tap" onclick="PH.shade(false,true);PH.openUpd('${esc(u.ref)}')`:'';return `<div class="upd${go}"><span class="uic">${u.icon}</span><div class="ub k-${KIND_BG[u.kind]?u.kind:'info'}" style="background:${KIND_BG[u.kind]||KIND_BG.info}">${esc(u.text)}<small>${this.ago2(u.at)}${u.ref&&!u.local?' · tap to open':''}</small></div></div>`}).join(''):`<p class="empty">Nothing yet. Likes, comments, replies, mentions, new followers, friend requests and news from the team show up here.</p>`};
+      b.innerHTML=all.length?all.map((u,i)=>{const nw=i<(this._newN||0)?' isnew':'';const go=u.ref&&!u.local?` tap" onclick="PH.shade(false,true);PH.openUpd('${esc(u.ref)}')`:'';return `<div class="upd${nw}${go}"><span class="uic">${u.icon}</span><div class="ub k-${KIND_BG[u.kind]?u.kind:'info'}" style="background:${KIND_BG[u.kind]||KIND_BG.info}">${esc(u.text)}<small>${nw?'<b class="nwt">NEW</b> ':''}${this.ago2(u.at)}${u.ref&&!u.local?' · tap to open':''}</small></div></div>`}).join(''):`<p class="empty">Nothing yet. Likes, comments, replies, mentions, new followers, friend requests and news from the team show up here.</p>`;if(this._top>0){this._top--;b.scrollTop=0;if(b.parentElement)b.parentElement.scrollTop=0}};
     paint(this.updates||[]);
     try{await NET.swr('/api/ac/updates',d=>paint(d.updates))}catch(e){}
     NET.api('/api/ac/updates/seen',{method:'POST'}).then(()=>{this.badges.updates=0;this.localUnread=0;this.drawBadges()}).catch(()=>{})},
@@ -124,7 +125,7 @@ const PH={
   ago2(t){const d=new Date(t),s=(Date.now()-d)/1000;return s<60?'just now':s<3600?Math.floor(s/60)+'m ago':s<86400?this.time(t):d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' · '+this.time(t)},
   /* tapping a notification opens the gist / profile it is about */
   openUpd(ref){const back=()=>PH.messages('updates');if(ref.startsWith('u:'))GIST.openProfile(ref.slice(2),back);else GIST.openPost(ref,back)},
-  local_(icon,text,kind){this.local.unshift({id:'l'+Date.now(),icon,text,kind,at:Date.now(),local:true});this.local.length=Math.min(this.local.length,30);if(!this.shadeOn)this.localUnread++;this.drawBadges();if(this.shadeOn)this.drawShade()},
+  local_(icon,text,kind){if(kind==='warn')this.banner({icon,app:'AllConnect',title:'Heads up',text,tap:()=>this.bannerOpen('updates')});this.local.unshift({id:'l'+Date.now(),icon,text,kind,at:Date.now(),local:true});this.local.length=Math.min(this.local.length,30);if(!this.shadeOn)this.localUnread++;this.drawBadges();if(this.shadeOn)this.drawShade()},
   /* ----- Chat ----- */
   async chat(id,back){this.view='chat';this.chatId=id;this.replyTo=null;this.editing=null;this._tp=null;this.newId=null;this.newCount=0;this.chatBack=back||null;const bk=this.chatBack||'PH.messages()';document.querySelector('.screen').classList.add('light');
     const hit=NET.cache.get('/api/ac/messages/'+id);
@@ -176,15 +177,21 @@ const PH={
   notify(title,body,target){if(window.PUSH&&PUSH.ok===false)return;if(!document.hidden||!('Notification' in window)||Notification.permission!=='granted')return;try{const n=new Notification(title,{body,icon:'/pwa-192.png',tag:target?.type||'allconnect'});n.onclick=()=>{window.focus();location.href='/?open='+encodeURIComponent(target?.type||'updates')+(target?.id?'&id='+encodeURIComponent(target.id):'')+(target?.mid?'&mid='+encodeURIComponent(target.mid):'')+(target?.ref?'&ref='+encodeURIComponent(target.ref):'')};}catch(e){}},
   openDeepLink(){const q=new URLSearchParams(location.search);let kind=q.get('open'),kept='';try{kept=sessionStorage.getItem('ac:open')||'';sessionStorage.removeItem('ac:open')}catch(e){}if(!kind)kind=kept;if(kind==='drive')kind='lagosrun';if(!kind)return;history.replaceState(null,'',history.state&&history.state.ac?location.pathname:'/play/home');if(kind==='chat'&&q.get('id')){this.pendingReply=q.get('mid')||null;this.pendingFocus=q.get('reply')==='1';this.open('messages');setTimeout(()=>this.chat(q.get('id')),80)}else if(kind==='gist'&&q.get('ref')){GIST.openPost(q.get('ref'))}else if(kind==='updates'){this.messages('updates') }else if(kind==='gamehub'){openHub()}else if(kind==='lagosrun'){openLagosRun()}else if(kind==='song'){const raw=q.get('track');if(raw){try{const track=JSON.parse(raw);setTimeout(()=>SONGIFY.openSharedTrack(track),80)}catch(e){toast('This shared song link is invalid.')}}}},
   /* ----- live events ----- */
+  /* iPhone-style banner (falls back to a toast), who sent it, and where tapping it goes */
+  banner(o){if(window.BANNER&&BANNER.show(o))return;toast((o.icon||'')+' '+String(o.title&&o.title!=='New update'?o.title+': ':'')+String(o.text||'').slice(0,44))},
+  senderName(id){const f=((this.friends&&this.friends.friends)||[]).find(u=>u.id===id);if(f)return f.username?'@'+f.username:f.displayName;
+    const c=(this._chats||[]).find(x=>[x.id,x.userId,x.with,x.peer&&x.peer.id,x.user&&x.user.id].includes(id));const u=c&&(c.peer||c.user||c);if(u&&(u.username||u.displayName||u.name))return u.username?'@'+u.username:(u.displayName||u.name);return 'New message'},
+  bannerOpen(kind,id){const go=()=>{if(kind==='chat')this.chat(id);else if(kind==='group'&&this.group)this.group(id);else this.messages(kind==='updates'?'updates':kind==='requests'?'requests':'groups')};
+    if(S.page==='phone')go();else{try{PHONEUI.open()}catch(e){return}setTimeout(go,480)}},
   on(ev,p){
     if(ev==='gmsg'||ev==='group'){this.gEvent(ev,p);return}
     if(ev==='gist:new'){if(window.GIST)GIST.onNew(p);return}
     if(ev==='dm'){NET.drop('/api/ac/chats');NET.cache.delete('/api/ac/messages/'+p.from);this.badges.messages++;const open=this.view==='chat'&&this.chatId===p.from;
       if(open){this.push(p);NET.api('/api/ac/messages/'+p.from).catch(()=>{});this.badges.messages=Math.max(0,this.badges.messages-1)}
-      else{if(p.kind==='text'||p.kind==='invite')toast('💬 '+(p.text||'📷 Photo').slice(0,40));this.notify('New message on AllConnect',p.text||'📷 Photo',{type:'chat',id:p.from,mid:p.id});
+      else{if(p.kind==='text'||p.kind==='invite')this.banner({icon:'💬',app:'Messages',title:this.senderName(p.from),text:p.kind==='invite'?'Invited you to play a game':(p.text||'📷 Photo').slice(0,140),tap:()=>this.bannerOpen('chat',p.from)});this.notify('New message on AllConnect',p.text||'📷 Photo',{type:'chat',id:p.from,mid:p.id});
         if(this.view==='messages'&&this.tab==='chats')this.drawChats()}
       this.drawBadges()}
-    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;toast(p.icon+' '+p.text.slice(0,48));this.drawBadges();if(this.shadeOn)this.drawShade();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}
+    if(ev==='update'){NET.drop('/api/ac/updates');this.badges.updates++;const fr=p.kind==='friend'&&/friend request/i.test(p.text||'')&&!/accepted/i.test(p.text||'');this.banner({icon:p.icon,app:p.kind==='friend'?'Friends':'AllConnect',title:fr?'New friend request':p.kind==='friend'?'Friends':'New update',text:String(p.text||'').slice(0,160),tap:()=>this.bannerOpen(fr?'requests':'updates')});this.drawBadges();if(this.shadeOn)this.drawShade();this.notify('New AllConnect update',p.text,p.ref?{type:p.ref.startsWith('u:')?'updates':'gist',ref:p.ref}:{type:'updates'})}
     if(ev==='friends'){NET.drop('/api/ac/friends');this.refreshBadges();if(this.view==='contacts'||(this.view==='messages'&&['friends','requests','find'].includes(this.tab)))this.loadFriends()}
     if(ev==='seen'&&this.view==='chat'&&this.chatId===p.by){this.msgs.forEach(m=>{if(m.from===NET.user.id)m.read=true});this.drawMsgs()}
     if(ev==='cash'&&this.view==='bank')this.bankLoad();if(ev==='cash')NET.api('/api/ac/state').then(j=>{S.cash=j.ac.cash;S.needs=j.ac.needs;render()}).catch(()=>{})}
