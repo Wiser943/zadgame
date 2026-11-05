@@ -33,7 +33,7 @@
 /* ---- Messages: one row of tabs, no header ---- */
 .appview.nohead .ahead{display:none}
 .mtabs{display:flex;gap:2px;background:#eceef4;border-radius:16px;padding:4px;margin:6px 14px 4px;flex:none}
-.mtabs button{flex:1 1 0;min-width:0;border:0;background:none;border-radius:12px;padding:10px 2px;font:600 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#6b7280;position:relative;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mtabs button{flex:1 1 auto;min-width:0;border:0;background:none;border-radius:12px;padding:10px 7px;font:600 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#6b7280;position:relative;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .mtabs button.on{background:#fff;color:#111827;box-shadow:0 1px 3px rgba(20,30,60,.14)}
 .mtabs em{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:8px;background:#ef4444;color:#fff;font:700 10px/16px system-ui;font-style:normal;text-align:center;padding:0 4px}
 .screen.light .home{pointer-events:auto;cursor:pointer}
@@ -42,7 +42,7 @@
 /* ---- Health app ---- */
 .hl{padding-bottom:26px}
 .hlcard{border-radius:28px;padding:20px 20px 18px;color:#fff;margin-bottom:10px}
-.hlcard.mild{background:linear-gradient(135deg,#f59e0b,#ea580c)}.hlcard.serious{background:linear-gradient(135deg,#ef4444,#9f1239)}.hlcard.ok{background:linear-gradient(135deg,#22c55e,#0f766e)}
+.hlcard.mild{background:linear-gradient(135deg,#f59e0b,#ea580c)}.hlcard.serious{background:linear-gradient(135deg,#ef4444,#9f1239)}.hlcard.fine{background:linear-gradient(135deg,#22c55e,#0f766e)}
 .hlcard .hle{font-size:40px;line-height:1}.hlcard h3{font:800 26px Outfit,system-ui,sans-serif;margin:6px 0 2px;color:#fff}.hlcard .hls{margin:0 0 8px;opacity:.92;font:600 15px 'Plus Jakarta Sans',system-ui,sans-serif}.hlcard p{margin:0 0 6px;font:500 15px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;color:#fff}.hlcard small{opacity:.9;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
 .hlpet{background:#fff4d6;border-radius:14px;padding:10px 14px;margin-bottom:6px;font:600 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#7c2d12}
 .hlrow{display:flex;align-items:center;gap:13px;width:100%;text-align:left;border:0;background:none;padding:14px 4px;border-bottom:1px solid #eceef4;cursor:pointer;color:#111827}
@@ -97,14 +97,14 @@
 /* ---- Bank > Withdraw ---- */
 .wdh{border-radius:26px;padding:18px 18px 16px;margin-bottom:14px;color:#fff;background:linear-gradient(140deg,#1e3a8a,#4338ca 55%,#7c3aed);box-shadow:0 10px 28px rgba(67,56,202,.28)}
 .wdh .wdt{display:flex;align-items:center;justify-content:space-between;gap:10px}.wdh .wdt span{font:800 19px Outfit,system-ui,sans-serif}
-.wdp{font-style:normal;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:999px;padding:5px 11px}.wdp.no{background:rgba(251,191,36,.22);color:#fde68a}.wdp.ok{background:rgba(52,211,153,.25);color:#a7f3d0}
+.wdp{font-style:normal;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:999px;padding:5px 11px}.wdp.todo{background:rgba(251,191,36,.22);color:#fde68a}.wdp.met{background:rgba(52,211,153,.25);color:#a7f3d0}
 .wdbal{margin:14px 0 8px}.wdbal small{display:block;opacity:.8;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif}.wdbal b{font:800 34px Outfit,system-ui,sans-serif;letter-spacing:-.01em}.wdbal u{text-decoration:none;opacity:.8;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif;margin-left:6px}
 .wdmeta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.wdmeta span{background:rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
 .wdsum{height:8px;border-radius:5px;background:rgba(255,255,255,.2);overflow:hidden}.wdsum i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#34d399,#a7f3d0)}.wdsl{display:block;margin-top:7px;opacity:.9;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
-.wdq{background:var(--card,#fff);border:1px solid rgba(120,130,160,.18);border-left:5px solid #f87171;border-radius:20px;padding:14px 14px 12px;margin-bottom:10px}.wdq.ok{border-left-color:#22c55e}
-.wdqh{display:flex;gap:11px;align-items:flex-start}.wdqi{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font:800 14px system-ui;color:#fff;background:#ef4444}.wdq.ok .wdqi{background:#22c55e}
+.wdq{display:block;width:auto;height:auto;border-radius:20px;color:inherit;background:var(--card,#fff);border:1px solid rgba(120,130,160,.18);border-left:5px solid #f87171;border-radius:20px;padding:14px 14px 12px;margin-bottom:10px}.wdq.met{border-left-color:#22c55e}
+.wdqh{display:flex;gap:11px;align-items:flex-start}.wdqi{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font:800 14px system-ui;color:#fff;background:#ef4444}.wdq.met .wdqi{background:#22c55e}
 .wdqh b{display:block;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif}.wdqh small{display:block;opacity:.7;font:500 13px/1.35 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:1px}
-.wdqbar{height:8px;border-radius:5px;background:rgba(120,130,160,.22);overflow:hidden;margin:12px 0 9px}.wdqbar i{display:block;height:100%;border-radius:5px;background:#f59e0b}.wdq.ok .wdqbar i{background:#22c55e}
+.wdqbar{height:8px;border-radius:5px;background:rgba(120,130,160,.22);overflow:hidden;margin:12px 0 9px}.wdqbar i{display:block;height:100%;border-radius:5px;background:#f59e0b}.wdq.met .wdqbar i{background:#22c55e}
 .wdqn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.wdqn span{background:rgba(120,130,160,.12);border-radius:12px;padding:7px 9px}.wdqn em{display:block;font-style:normal;opacity:.7;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em}.wdqn b{font:800 15px Outfit,system-ui,sans-serif;word-break:break-word}
 .wdqu{text-align:right;opacity:.6;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:3px}
 .wdqd{margin:8px 0 0;font:500 13.5px/1.45 'Plus Jakarta Sans',system-ui,sans-serif;opacity:.88}
@@ -126,5 +126,5 @@
 
 /* ---- Messages: back button beside the tabs ---- */
 .mtop{display:flex;align-items:center;gap:4px;margin:6px 10px 4px 6px;flex:none}
-.mtop .mtabs{flex:1;min-width:0;margin:0}.mtop .mtabs button{font-size:12.5px;padding:10px 1px}
+.mtop .mtabs{flex:1;min-width:0;margin:0}.mtop .mtabs button{font-size:12.5px;padding:10px 5px}
 .mback{flex:none;width:36px;height:40px;border:0;background:none;color:#2563eb;font:400 38px/1 system-ui,sans-serif;padding:0 0 4px;cursor:pointer;-webkit-tap-highlight-color:transparent}

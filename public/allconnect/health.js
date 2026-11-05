@@ -18,7 +18,7 @@ const HEALTH = {
     const D = this.D, ab = document.getElementById('ab'); if (!ab || !D) return; const ill = D.ill;
     const card = ill
       ? `<div class="hlcard ${ill.sev}"><div class="hle">${ill.emoji}</div><h3>${esc(ill.name)}</h3><p class="hls">${ill.sev === 'mild' ? 'Mild · treat it before it gets worse' : 'Serious · get treated now'}</p><p>${esc(ill.blurb)}</p><small>${ill.sev === 'mild' ? 'Turns serious in ' : 'Hospital admission with a big bill in '}${this.hrs(ill.msLeft)}</small></div>`
-      : `<div class="hlcard ok"><div class="hle">💪</div><h3>You feel fine</h3><p class="hls">No sickness right now</p><p>Eat, sleep and stay clean. If you do fall ill, you can get drugs here.</p></div>`;
+      : `<div class="hlcard fine"><div class="hle">💪</div><h3>You feel fine</h3><p class="hls">No sickness right now</p><p>Eat, sleep and stay clean. If you do fall ill, you can get drugs here.</p></div>`;
     const petBar = D.pet && D.pet.sick ? `<div class="hlpet">🐱 ${esc(D.pet.name)} is not well. Order pet drugs from the chemist.</div>` : '';
     ab.innerHTML = card + petBar +
       this.row('💊', 'Order drugs from the chemist', `For you or your pet · delivered to you · from ${this.naira(Math.min(...D.chemist.map(i => i.price)))}`, 'HEALTH.chemist()') +
