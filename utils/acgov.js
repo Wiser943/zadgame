@@ -66,6 +66,12 @@ const OFFICES = {
   }
 };
 const OFFICE_IDS = Object.keys(OFFICES);
+/* The admin can change what it costs to run (fee), the term allowance, and who may run. These are the built-in defaults; setOfficeSettings() overlays the saved values. */
+const OFFICE_KEYS = ['fee', 'salary', 'minAgeDays', 'minFollowers'];
+const OFFICE_DEFAULTS = Object.fromEntries(OFFICE_IDS.map((id) => [id, Object.fromEntries(OFFICE_KEYS.map((k) => [k, OFFICES[id][k]]))]));
+function setOfficeSettings(map) {
+  for (const id of OFFICE_IDS) for (const k of OFFICE_KEYS) { const v = Math.floor(Number(map && map[id] && map[id][k])); OFFICES[id][k] = Number.isFinite(v) && v >= 0 ? Math.min(v, 1e10) : OFFICE_DEFAULTS[id][k]; }
+}
 
 const naira = (n) => '₦' + Math.round(n).toLocaleString('en-NG');
 
@@ -182,6 +188,6 @@ const wonLine = (o, handle) => `${o.icon} ${handle} don win! New ${o.title} of $
 
 module.exports = {
   HOUR, DAY, EPOCH, CYCLE, CAMPAIGN, SHORTLIST_SIZE, MIN_VOTER_DAYS, POLICY_COOLDOWN, ANN_PER_DAY, ANN_GAP, FX_MIN, FX_MAX, TOTAL_MIN, TOTAL_MAX,
-  FX_KEYS, FX_LABEL, OFFICES, OFFICE_IDS, naira, cycleBounds, cycleOf, termOf, setRounds, rounds, checkRound, LEGACY_LAST, eligibility, voterOk, ageDays, shortlist, pickWinner,
+  FX_KEYS, FX_LABEL, OFFICES, OFFICE_IDS, OFFICE_KEYS, OFFICE_DEFAULTS, setOfficeSettings, naira, cycleBounds, cycleOf, termOf, setRounds, rounds, checkRound, LEGACY_LAST, eligibility, voterOk, ageDays, shortlist, pickWinner,
   isActive, optionOf, currentOption, activeFx, applyFx, setOffices, activeNow, applyPolicies, describeFx, wonLine
 };

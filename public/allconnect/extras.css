@@ -128,3 +128,6 @@
 .mtop{display:flex;align-items:center;gap:4px;margin:6px 10px 4px 6px;flex:none}
 .mtop .mtabs{flex:1;min-width:0;margin:0}.mtop .mtabs button{font-size:12.5px;padding:10px 5px}
 .mback{flex:none;width:36px;height:40px;border:0;background:none;color:#2563eb;font:400 38px/1 system-ui,sans-serif;padding:0 0 4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* withdrawal requirement boxes: abbreviated numbers never wrap or stretch the grid */
+.wdqn{grid-template-columns:repeat(3,minmax(0,1fr))}.wdqn span{min-width:0;overflow:hidden}.wdqn b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wdbal b{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}

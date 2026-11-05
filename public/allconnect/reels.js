@@ -343,14 +343,83 @@ const RL = {
       if (!GIST.C) return URL.revokeObjectURL(url);
       if (GIST.C.video) URL.revokeObjectURL(GIST.C.video.url);
       if (GIST.C.images.length) { GIST.C.images = []; toast('A post has photos or a video, so your photos were removed.') }
-      GIST.C.video = { file, url, poster, dur: v.duration || 0, w: v.videoWidth, h: v.videoHeight }; GIST.attDraw()
+      GIST.C.video = { file, url, poster, dur: v.duration || 0, w: v.videoWidth, h: v.videoHeight }; GIST.C.set = GIST.C.set || { visibility: 'public', allowComments: true, allowReuse: true }; GIST.attDraw(); this.editor()
     };
     v.src = url
   },
   prevHtml(C) {
-    const V = C.video; if (!V) return '';
-    return `<div class="rl-prev"><video src="${V.url}" ${V.poster ? `poster="${V.poster}"` : ''} controls playsinline muted preload="metadata"></video><button onclick="RL.rm()" aria-label="Remove video"><i class="fa-solid fa-xmark"></i></button><small><i class="fa-solid fa-clapperboard"></i> ${this.dur(V.dur)} · ${(V.file.size / 1048576).toFixed(1)} MB</small></div>`
+    const V = C.video; if (!V) return ''; const T = C.set = C.set || { visibility: 'public', allowComments: true, allowReuse: true };
+    return `<div class="rl-prev"><video src="${V.url}" ${V.poster ? `poster="${V.poster}"` : ''} controls playsinline muted preload="metadata"></video><button onclick="RL.rm()" aria-label="Remove video"><i class="fa-solid fa-xmark"></i></button><small><i class="fa-solid fa-clapperboard"></i> ${this.dur(V.dur)} · ${(V.file.size / 1048576).toFixed(1)} MB</small></div>
+      <button class="fopt" onclick="RL.editor()"><span><i class="fa-solid fa-wand-magic-sparkles"></i> Edit video (crop, mirror, speed, trim)</span></button>
+      <div class="rl-set"><div class="lab2">STEP 2 OF 2 · POST SETTINGS</div>
+        <div class="sr"><span><b>Who can watch</b><small>Followers-only and private videos are hidden from everyone else</small></span><select onchange="RL.setOpt('visibility',this.value)"><option value="public" ${T.visibility === 'public' ? 'selected' : ''}>Everyone</option><option value="followers" ${T.visibility === 'followers' ? 'selected' : ''}>Followers</option><option value="private" ${T.visibility === 'private' ? 'selected' : ''}>Only me</option></select></div>
+        <div class="sr"><span><b>Allow comments</b><small>Let people comment on this video</small></span><label class="sw"><input type="checkbox" ${T.allowComments ? 'checked' : ''} onchange="RL.setOpt('allowComments',this.checked)"><i></i></label></div>
+        <div class="sr"><span><b>Allow reuse</b><small>Let others repost this video to their feed</small></span><label class="sw"><input type="checkbox" ${T.allowReuse ? 'checked' : ''} onchange="RL.setOpt('allowReuse',this.checked)"><i></i></label></div>
+        <small style="opacity:.7">Every video goes live as "Under review". If it does not follow the rules it can be flagged and hidden, and you can request a review.</small></div>`
   },
+  setOpt(k, v) { if (GIST.C && GIST.C.set) GIST.C.set[k] = v },
+  /* ---------- step 1 of 2: edit the video (crop to a ratio, mirror, speed, trim). The edits are baked into the file just before step 2. ---------- */
+  editor() {
+    const C = GIST.C, V = C && C.video, host = PH.$a(); if (!V || !host) return;
+    const old = host.querySelector('.rl-edit'); if (old) old.remove();
+    const E = this.E = { ar: 'orig', mirror: false, speed: 1, start: 0, end: Math.max(0.5, V.dur || 1) };
+    const el = document.createElement('div'); el.className = 'rl-edit'; el.innerHTML = `<div class="rle-top"><button class="btn s" onclick="RL.editClose(false)" aria-label="Close editor"><i class="fa-solid fa-xmark"></i></button><b>Edit video <span class="rle-step">Step 1 of 2</span></b><button class="btn s" onclick="RL.editClose(false)">Skip</button></div>
+      <div class="rle-stage" id="rle_stage"><div class="rle-box" id="rle_box"><video id="rle_v" src="${V.url}" playsinline muted loop autoplay></video></div></div>
+      <div class="rle-tools"><div class="rle-row"><label>Ratio</label>${[['orig', 'Original'], ['9:16', '9:16'], ['1:1', '1:1'], ['4:5', '4:5'], ['16:9', '16:9']].map(x => `<button data-ar="${x[0]}" class="${x[0] === 'orig' ? 'on' : ''}" onclick="RL.edSet('ar','${x[0]}')">${x[1]}</button>`).join('')}</div>
+        <div class="rle-row"><label>Speed</label>${[0.5, 0.75, 1, 1.5, 2].map(x => `<button data-sp="${x}" class="${x === 1 ? 'on' : ''}" onclick="RL.edSet('speed',${x})">${x}x</button>`).join('')}<button id="rle_m" onclick="RL.edSet('mirror',!RL.E.mirror)"><i class="fa-solid fa-left-right"></i> Mirror</button></div>
+        <div class="rle-row"><label>Start</label><input type="range" id="rle_s" min="0" max="${E.end}" step="0.1" value="0" oninput="RL.edTrim()"><span id="rle_sv" style="width:42px;font-size:12px">0.0s</span></div>
+        <div class="rle-row"><label>End</label><input type="range" id="rle_e" min="0" max="${E.end}" step="0.1" value="${E.end}" oninput="RL.edTrim()"><span id="rle_ev" style="width:42px;font-size:12px">${E.end.toFixed(1)}s</span></div>
+        <div class="rle-go"><button class="btn p" id="rle_next" onclick="RL.editClose(true)">Next</button></div></div>`;
+    host.appendChild(el); this._edUp = () => this.edLayout(); window.addEventListener('resize', this._edUp); this.edLayout(); this.edApply();
+    const v = $('rle_v'); if (v) { v.ontimeupdate = () => { if (v.currentTime >= E.end - 0.05 || v.currentTime < E.start - 0.2) v.currentTime = E.start }; v.onloadedmetadata = () => { this.edLayout() }; v.play().catch(() => { }) }
+  },
+  edRatio() { const V = GIST.C && GIST.C.video, a = this.E.ar; if (a === 'orig') return (V && V.w && V.h) ? V.w / V.h : 9 / 16; const [w, h] = a.split(':').map(Number); return w / h },
+  edLayout() { const st = $('rle_stage'), bx = $('rle_box'); if (!st || !bx) return; const W = st.clientWidth - 28, H = st.clientHeight - 12, r = this.edRatio(), w = Math.max(60, Math.min(W, H * r)), h = w / r; bx.style.width = w + 'px'; bx.style.height = h + 'px' },
+  edApply() { const E = this.E, v = $('rle_v'); if (v) { v.style.transform = E.mirror ? 'scaleX(-1)' : ''; v.playbackRate = E.speed } document.querySelectorAll('.rle-row [data-ar]').forEach(b => b.classList.toggle('on', b.dataset.ar === E.ar)); document.querySelectorAll('.rle-row [data-sp]').forEach(b => b.classList.toggle('on', Number(b.dataset.sp) === E.speed)); const m = $('rle_m'); if (m) m.classList.toggle('on', E.mirror); this.edLayout() },
+  edSet(k, v) { this.E[k] = v; this.edApply() },
+  edTrim() { const E = this.E, s = $('rle_s'), e = $('rle_e'); let a = Number(s.value), b = Number(e.value); if (b - a < 0.5) { if (document.activeElement === s) { a = Math.max(0, b - 0.5); s.value = a } else { b = Math.min(Number(e.max), a + 0.5); e.value = b } } E.start = a; E.end = b; $('rle_sv').textContent = a.toFixed(1) + 's'; $('rle_ev').textContent = b.toFixed(1) + 's'; const v = $('rle_v'); if (v && (v.currentTime < a || v.currentTime > b)) v.currentTime = a },
+  async editClose(apply) {
+    const C = GIST.C, V = C && C.video, host = PH.$a(), el = host && host.querySelector('.rl-edit'); if (!V) { if (el) el.remove(); return }
+    const E = this.E, finish = () => { window.removeEventListener('resize', this._edUp); if (el) el.remove(); GIST.attDraw(); const t = $('gc_t'); if (t && !('ontouchstart' in window)) t.focus() };
+    if (!apply) return finish();
+    const nb = $('rle_next'); if (nb) { nb.disabled = true; nb.textContent = 'Applying edits…' }
+    try {
+      const r = await this.bake(V, E, f => { const b = $('rle_next'); if (b) b.textContent = 'Applying edits ' + Math.round(f * 100) + '%' });
+      if (r.file !== V.file) { URL.revokeObjectURL(V.url); V.file = r.file; V.url = URL.createObjectURL(r.file); V.w = r.w; V.h = r.h; V.dur = r.dur; V.poster = '' }
+    } catch (e) { toast('Could not apply the edits, so your original video will be used.') }
+    finish()
+  },
+  /* draws the video frame by frame to a canvas (crop + mirror), plays it at the chosen speed between start and end and records it again */
+  async bake(V, E, onp) {
+    const file = V.file, plain = { file, w: V.w, h: V.h, dur: V.dur };
+    const same = E.ar === 'orig' && !E.mirror && E.speed === 1 && E.start < 0.05 && E.end >= V.dur - 0.05; if (same) return plain;
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream || !(window.AudioContext || window.webkitAudioContext)) { toast('This browser cannot apply video edits, so your original video will be posted.'); return plain }
+    const mimes = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'], mime = mimes.find(m => MediaRecorder.isTypeSupported(m)); if (!mime) return plain;
+    const v = document.createElement('video'); v.src = V.url; v.playsInline = true; v.muted = false; v.preload = 'auto';
+    await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = no; setTimeout(no, 10000) });
+    const sw = v.videoWidth, sh = v.videoHeight, r = this.edRatio(); let cw = sw, ch = sh, cx = 0, cy = 0;
+    if (sw / sh > r) { cw = sh * r; cx = (sw - cw) / 2 } else { ch = sw / r; cy = (sh - ch) / 2 }
+    const sc = Math.min(1, 1280 / Math.max(cw, ch)), ow = Math.max(2, Math.round(cw * sc / 2) * 2), oh = Math.max(2, Math.round(ch * sc / 2) * 2), cv = document.createElement('canvas'); cv.width = ow; cv.height = oh; const g = cv.getContext('2d');
+    const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(), dest = ac.createMediaStreamDestination(); ac.createMediaElementSource(v).connect(dest);
+    const st = cv.captureStream(30); dest.stream.getAudioTracks().forEach(t => st.addTrack(t));
+    const rec = new MediaRecorder(st, { mimeType: mime, videoBitsPerSecond: 3000000, audioBitsPerSecond: 96000 }), chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) };
+    const stopped = new Promise(res => { rec.onstop = res });
+    v.currentTime = E.start; await new Promise(res => { v.onseeked = res; setTimeout(res, 1500) }); v.playbackRate = E.speed; try { v.preservesPitch = true } catch (e) { }
+    const span = Math.max(0.5, E.end - E.start); let alive = true;
+    const stop = () => { if (!alive) return; alive = false; try { rec.stop() } catch (e) { } v.pause() };
+    const draw = () => { if (!alive) return; g.save(); if (E.mirror) { g.translate(ow, 0); g.scale(-1, 1) } g.drawImage(v, cx, cy, cw, ch, 0, 0, ow, oh); g.restore(); onp(Math.min(0.99, (v.currentTime - E.start) / span)); if (v.currentTime >= E.end - 0.03) return stop(); v.requestVideoFrameCallback ? v.requestVideoFrameCallback(draw) : requestAnimationFrame(draw) };
+    const guard = setTimeout(stop, span / E.speed * 1000 + 15000); v.onended = stop;
+    rec.start(500); await ac.resume(); await v.play(); draw(); await stopped; clearTimeout(guard); ac.close().catch(() => { });
+    const blob = new Blob(chunks, { type: mime.split(';')[0] }); if (!blob.size) return plain;
+    return { file: new File([blob], 'reel.' + (blob.type.includes('mp4') ? 'mp4' : 'webm'), { type: blob.type }), w: ow, h: oh, dur: span / E.speed }
+  },
+  /* "Learn more" on a flagged video: why, what it means and what the creator can do (like TikTok) */
+  learnMore(id) {
+    const c = GIST.cache.get(id), m = c && c.moderation; if (!m) return; const L = m.learn || { title: 'Community guidelines', why: m.reason || 'This video may not follow our rules.', fix: 'Post videos that follow the community guidelines.' };
+    const what = m.status === 'appealed' ? 'Your review request is with the team. We will tell you what they decide.' : m.status === 'rejected' ? 'The team checked your video again and it stays hidden. You can delete it.' : 'Only you can see this video. It is hidden from everyone else until it is reviewed.';
+    PH.sheet(`<h3>${esc(L.title)}</h3><p style="margin:6px 0 10px;line-height:1.45"><b>Why:</b> ${esc(m.reason || L.why)}</p><p style="margin:0 0 10px;line-height:1.45"><b>What this means:</b> ${esc(what)}</p><p style="margin:0 0 12px;line-height:1.45"><b>What you can do:</b> ${esc(L.fix)}</p>${m.reviewNote ? `<p style="margin:0 0 12px;line-height:1.45"><b>Note from the team:</b> ${esc(m.reviewNote)}</p>` : ''}${m.canAppeal ? `<button class="fopt" onclick="PH.closeSheet();RL.appealSheet('${id}',${esc(JSON.stringify(m.reason || ''))})"><span><i class="fa-solid fa-flag"></i> Request a review</span></button>` : ''}<button class="fopt red out" onclick="RL.delMine('${id}')"><span><i class="fa-solid fa-trash"></i> Delete this video</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Close</span></button>`)
+  },
+  async delMine(id) { if (!confirm('Delete this video for good?')) return; try { await GIST.api('/posts/' + id, { method: 'DELETE' }); GIST.cache.delete(id); PH.closeSheet(); toast('Video deleted'); this.goFeed() } catch (e) { GIST.err(e) } },
   rm() { const C = GIST.C; if (C && C.video) { URL.revokeObjectURL(C.video.url); C.video = null; GIST.attDraw() } },
   online() { return new Promise(r => { if (navigator.onLine) return r(); const f = () => { window.removeEventListener('online', f); r() }; window.addEventListener('online', f) }) },
   /* Proven direct-upload path: send the complete selected file from the browser to Mux. The Node server only creates the signed upload URL and checks processing status. */
@@ -394,7 +463,7 @@ const RL = {
   },
   finishPublish(post, V) {
     post = this.compatPost(post); URL.revokeObjectURL(V.url); GIST.clearDraft(); GIST.C = null; GIST.put([post]); GIST.cache.set(post.id, post); GIST.afterPost(post, '');
-    this.L.foryou.p = [post, ...this.L.foryou.p.filter(p => p.id !== post.id)]; this.L.foryou.ok = true; this.tab = 'foryou'; GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast('Reel posted ✓'); this.show(post.id)
+    this.L.foryou.p = [post, ...this.L.foryou.p.filter(p => p.id !== post.id)]; this.L.foryou.ok = true; this.tab = 'foryou'; GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast(post.moderation && post.moderation.status === 'review' ? 'Reel posted · under review' : 'Reel posted ✓'); this.show(post.id)
   },
   /* file fingerprint = SHA-256 of the first + last 2 MB and the size; lets the server spot someone re-uploading another creator's clip */
   async fp(file) {
@@ -456,7 +525,7 @@ const RL = {
       for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/mux-status/' + m.uploadId); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
       if (!mx) throw new Error('Your video is taking long to process. It will appear in your gallery when ready; try posting it again in a minute.');
       set('Posting…');
-      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { mux: { assetId: mx.assetId }, dur: mx.dur }, poll: C.poll || undefined, fingerprint: await this.fp(V.file) } });
+      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { mux: { assetId: mx.assetId }, dur: mx.dur }, poll: C.poll || undefined, settings: C.set || undefined, fingerprint: await this.fp(V.file) } });
       if (r.flagged) return this.heldPublish(r.post, V, r.flagged);
       this.finishPublish(r.post, V)
     } catch (e) { C.busy = false; const e2 = $('gc_e'); if (e2) e2.textContent = e.message; GIST.btn(); const bb = $('gc_b'); if (bb) bb.textContent = 'Post'; GIST.err(e) }

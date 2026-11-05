@@ -15,6 +15,9 @@ const DEFAULT_RULES = [
   { key: 'noSuspension', label: 'Account in good standing', enabled: true, value: 1, description: 'Suspended or fraud-held accounts cannot withdraw.' },
   { key: 'posts', label: 'Minimum P-Gist posts', enabled: false, value: 0, description: 'Optional activity requirement set by the admin.' }
 ];
+// 3,000,000 -> "3m", 1,250,000 -> "1.25m", 12,500 -> "12.5k". Rounds down (up for "left") so nobody is shown more than they have.
+const abbr = (n, up) => { n = Number(n) || 0; const a = Math.abs(n), r = (v) => { const k = Math.pow(10, 2); const x = up ? Math.ceil(v * k - 1e-9) / k : Math.floor(v * k + 1e-9) / k; return String(x); };
+  if (a >= 1e12) return r(n / 1e12) + 't'; if (a >= 1e9) return r(n / 1e9) + 'b'; if (a >= 1e6) return r(n / 1e6) + 'm'; if (a >= 1e4) return r(n / 1e3) + 'k'; return Number(n).toLocaleString('en-NG'); };
 const rulesFor = season => season.rules && season.rules.length ? season.rules : DEFAULT_RULES;
 const userPostCount = async userId => { try { const Post = require('../models/Gist').GistPost; return Post.countDocuments({ author: String(userId), hidden: { $ne: true } }); } catch (_) { return 0; } };
 async function eligibility(user, season) {
@@ -27,7 +30,7 @@ async function eligibility(user, season) {
     const fmt = n => Number(n).toLocaleString('en-NG'), plural = (n, w) => fmt(n) + ' ' + w + (Number(n) === 1 ? '' : 's');
     if (r.key === 'minBalance') {
       need = Number(r.value || 0); have = units; ok = have >= need; left = Math.max(0, need - have); unit = 'units'; actual = fmt(units) + ' units';
-      detail = ok ? `You have ${fmt(have)} units. The minimum is ${fmt(need)}.` : `You have ${fmt(have)} of the ${fmt(need)} units needed. You still need ${fmt(left)} more units.`;
+      detail = ok ? `You have ${abbr(have)} units. The minimum is ${abbr(need)}.` : `You have ${abbr(have)} of the ${abbr(need)} units needed. You still need ${abbr(left, true)} more units.`;
     }
     if (r.key === 'accountAgeDays') {
       need = Number(r.value || 0); have = Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000); ok = have >= need; left = Math.max(0, need - have); unit = 'days'; actual = have + ' day(s)';
@@ -71,4 +74,4 @@ function statusMessage(action, r, note = '', ref = '') {
     default: return null;
   }
 }
-module.exports = { enc, dec, DEFAULT_RULES, rulesFor, eligibility, scheduleFor, rawFor, statusMessage, naira, PayoutAccount, PayoutRequest, PayoutSeason };
+module.exports = { abbr, enc, dec, DEFAULT_RULES, rulesFor, eligibility, scheduleFor, rawFor, statusMessage, naira, PayoutAccount, PayoutRequest, PayoutSeason };

@@ -154,9 +154,12 @@ const GIST = {
   /* shown only to the author of a reel the originality check held back */
   modBanner(p) {
     const m = p.moderation; if (!m || !p.mine) return '';
-    if (m.status === 'flagged') return `<div class="gmod"><b>Held for review</b><span>${esc(m.reason || 'This video may not be original.')}</span><button onclick="RL.appealSheet('${p.id}',${esc(JSON.stringify(m.reason || ''))})">Appeal</button></div>`;
-    if (m.status === 'appealed') return `<div class="gmod"><b>Appeal under review</b><span>An admin will watch the video and decide.</span></div>`;
-    if (m.status === 'rejected') return `<div class="gmod"><b>Hidden after review</b><span>${esc(m.reviewNote || 'This reel stays hidden.')}</span></div>`;
+    const learn = `<button onclick="RL.learnMore('${p.id}')">Learn more</button>`;
+    if (m.status === 'review') return `<div class="gmod rev"><b>Under review</b><span>Your video is live while the team checks it. We will tell you if anything is wrong.</span></div>`;
+    if (m.status === 'flagged') return `<div class="gmod"><b>Flagged · only you can see this</b><span>${esc((m.learn && m.learn.title) || m.reason || 'This video may break the rules.')}</span>${learn}<button onclick="RL.appealSheet('${p.id}',${esc(JSON.stringify(m.reason || ''))})">Request review</button></div>`;
+    if (m.status === 'appealed') return `<div class="gmod"><b>Review requested</b><span>An admin will watch the video and decide. Only you can see it until then.</span>${learn}</div>`;
+    if (m.status === 'rejected') return `<div class="gmod"><b>Hidden after review</b><span>${esc(m.reviewNote || 'This video stays hidden.')}</span>${learn}</div>`;
+    if (m.status === 'approved') return `<div class="gmod ok"><b>Posted</b><span>Your video passed review.</span></div>`;
     return ''
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
@@ -409,7 +412,7 @@ const GIST = {
       <h4>Milestones</h4>${ms}
       <h4>Your stats</h4><div class="gmgrid">${grid.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span>${x[2] ? `<small>${x[2]}</small>` : ''}</div>`).join('')}</div>
       ${S.top ? `<div class="gmtop"><small>Top gist</small><p>${esc(S.top.text) || 'Photo or poll gist'}</p><span><span class="fa-solid fa-bolt"></span> ${n(S.top.likes)} &nbsp; <span class="fa-solid fa-comment"></span> ${n(S.top.comments)}</span></div>` : ''}
-      <h4>Rewards &amp; payouts</h4><div class="gmrw" id="gmrw"><button class="gmrwh" onclick="GIST.rewards()"><span class="gmrwi">💰</span><span class="gmrwt"><b>Rewards and Payouts</b><small>Confirm your details so you are ready when we launch</small></span><span class="gmrwb">E dey come soon</span></button><div id="gmrwf"></div></div>
+      <h4>Creator Academy &amp; tools</h4><div class="gmrw acr" id="gmrw"><button class="gmrwh" onclick="GIST.nav('academy')"><span class="gmrwi">🎓</span><span class="gmrwt"><b>Creator Academy</b><small>Lessons, caption helper, posting checklist and more</small></span><span class="gmrwb">Open</span></button></div>
       <h4>Earnings</h4><div class="gmpay"><span class="fa-solid fa-wallet"></span><div><b>Real-money payouts</b><p>${esc(d.payouts.text)}</p></div></div>
     </div>`;
   },
