@@ -131,3 +131,21 @@
 
 /* withdrawal requirement boxes: abbreviated numbers never wrap or stretch the grid */
 .wdqn{grid-template-columns:repeat(3,minmax(0,1fr))}.wdqn span{min-width:0;overflow:hidden}.wdqn b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wdbal b{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+
+/* requirement cards: --card was never defined, so the card fell back to white while dark-theme text is light (white on white). Use the app's own surface + ink colours. */
+.wdq{background:var(--sf);color:var(--ink)}.wdqh small{color:var(--mut);opacity:1}.wdqn span{background:rgba(120,130,160,.2)}.wdqn em{color:var(--mut);opacity:1}.wdqn b{color:var(--ink)}.wdqu{color:var(--mut);opacity:1}.wdqd{color:var(--ink)}
+/* reel editor: icon buttons stay small, title stays on one line, chips wrap instead of being cut off */
+.rl-edit{--ac:#c6ff3d}.rl-edit .rle-top{padding:calc(12px + env(safe-area-inset-top,0px)) 14px 8px;justify-content:space-between}
+.rl-edit .rle-top .rle-ib{flex:none;width:auto;min-width:0;height:38px;padding:0 16px;border:0;border-radius:99px;background:rgba(128,138,160,.24);color:inherit;font:700 14px inherit;font-family:inherit;display:grid;place-items:center}
+.rl-edit .rle-top .rle-ib.sq{width:38px;padding:0}.rl-edit .rle-top b{flex:1;text-align:center;white-space:nowrap;display:flex;flex-direction:column;line-height:1.15;font-size:16px}.rl-edit .rle-top b .rle-step{font-size:12px;font-weight:600;opacity:.7}
+.rl-edit .rle-row{flex-wrap:wrap;overflow:visible;gap:6px}.rl-edit .rle-row>label{width:44px}.rl-edit .rle-row button{padding:6px 11px;font-size:12.5px}
+.rl-edit input[type=range]{accent-color:var(--ac)}.rl-edit .rle-go button{height:46px}
+
+/* CapCut-style editor: toolbar at the bottom, tapping a tool opens only its options */
+.rl-edit .rle-panel{display:none;margin:0 14px 8px;padding:12px 14px 14px;border-radius:18px;background:rgba(128,138,160,.18)}.rl-edit .rle-panel.open{display:block}
+.rl-edit .rle-ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.rl-edit .rle-ph b{font-size:15px}.rl-edit .rle-ph .rle-ib{height:32px;width:32px;border:0;border-radius:50%;background:var(--ac);color:#111;display:grid;place-items:center}
+.rl-edit .rle-chips{display:flex;flex-wrap:wrap;gap:8px}.rl-edit .rle-chips button,.rl-edit .rle-reset{border:0;border-radius:99px;padding:8px 14px;background:rgba(128,138,160,.28);color:inherit;font:700 13px inherit;font-family:inherit}.rl-edit .rle-chips button.on{background:var(--ac);color:#111}
+.rl-edit .rle-sl{display:flex;align-items:center;gap:10px;margin:8px 0}.rl-edit .rle-sl label{width:78px;flex:none;font-size:12.5px;opacity:.8}.rl-edit .rle-sl input{flex:1;min-width:0}.rl-edit .rle-sl span{width:40px;flex:none;text-align:right;font-size:12.5px}.rl-edit .rle-hint{margin:10px 0 0;font-size:12px;opacity:.65}.rl-edit .rle-reset{margin-top:6px}
+.rl-edit .rle-bar{display:flex;gap:4px;padding:4px 10px}.rl-edit .rle-tb{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:none;color:inherit;padding:9px 2px;border-radius:14px;font:600 11.5px inherit;font-family:inherit}.rl-edit .rle-tb i{font-size:19px}
+.rl-edit .rle-tb.on{background:rgba(198,255,61,.16);color:var(--ac)}.rl-edit .rle-tb.mod::after{content:'';position:absolute;top:7px;right:calc(50% - 20px);width:7px;height:7px;border-radius:50%;background:var(--ac)}
+.rl-edit .rle-go{padding:6px 14px calc(14px + env(safe-area-inset-bottom,0px))}.rl-edit .rle-go button{width:100%}

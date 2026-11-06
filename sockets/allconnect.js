@@ -42,8 +42,8 @@ module.exports = function initAllConnect(io) {
       const p = sanitizePos(raw); if (!p) return;
       const o = online.get(socket.id); if (!o) return;
       const now = Date.now(); if (o.posAt && now - o.posAt < 70) return; o.posAt = now;
-      o.x = p.x; o.y = p.y; o.h = p.h; o.st = p.st;
-      socket.broadcast.emit('pos', { id: o.id, name: o.name, x: p.x, y: p.y, h: p.h, st: p.st });
+      o.x = p.x; o.y = p.y; o.h = p.h; o.st = p.st; o.v = p.v; o.sp = p.sp; o.job = p.job;
+      socket.broadcast.emit('pos', { id: o.id, name: o.name, x: p.x, y: p.y, h: p.h, st: p.st, v: p.v, sp: p.sp, job: p.job });
       if (!o.saveAt || now - o.saveAt > 8000) {
         o.saveAt = now;
         User.updateOne({ _id: u.id }, { $set: { 'ac.mapPos': { x: p.x, y: p.y, h: p.h } } }).catch(() => {});

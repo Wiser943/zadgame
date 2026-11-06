@@ -219,13 +219,13 @@ function openLagosRun() {
   const f = $('lrf');
   if (f.getAttribute('src') !== '/lagosrun/') f.src = '/lagosrun/'; /* closing sets it to about:blank, so each open starts the game fresh */
   $('lagosrun').style.display = 'block';
-  try { if (window.BGM) BGM.pause() } catch (e) {}
+  try { if (window.BGM) { BGM.hold('drive', true); BGM.pause() } } catch (e) {}
   try { document.documentElement.requestFullscreen && !document.fullscreenElement && /Android|iPad/.test(navigator.userAgent) && document.documentElement.requestFullscreen().catch(() => {}) } catch (e) {}
 }
 function closeLagosRun() {
   const f = $('lrf'); $('lagosrun').style.display = 'none'; f.removeAttribute('src'); f.src = 'about:blank';
   try { if (document.fullscreenElement) document.exitFullscreen() } catch (e) {}
-  try { if (window.BGM) BGM.sync() } catch (e) {}
+  try { if (window.BGM) { BGM.hold('drive', false); BGM.sync() } } catch (e) {}
   nav('home')
 }
 

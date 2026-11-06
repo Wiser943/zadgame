@@ -362,22 +362,46 @@ const RL = {
   editor() {
     const C = GIST.C, V = C && C.video, host = PH.$a(); if (!V || !host) return;
     const old = host.querySelector('.rl-edit'); if (old) old.remove();
-    const E = this.E = { ar: 'orig', mirror: false, speed: 1, start: 0, end: Math.max(0.5, V.dur || 1) };
-    const el = document.createElement('div'); el.className = 'rl-edit'; el.innerHTML = `<div class="rle-top"><button class="btn s" onclick="RL.editClose(false)" aria-label="Close editor"><i class="fa-solid fa-xmark"></i></button><b>Edit video <span class="rle-step">Step 1 of 2</span></b><button class="btn s" onclick="RL.editClose(false)">Skip</button></div>
+    const dur = Math.max(0.5, V.dur || 1), E = this.E = { ar: 'orig', mirror: false, speed: 1, start: 0, end: dur, bright: 0, contrast: 0, sat: 0 }; this._dur = dur; this.tool = '';
+    const T = [['trim', 'fa-scissors', 'Trim'], ['speed', 'fa-gauge-high', 'Speed'], ['transform', 'fa-crop-simple', 'Transform'], ['mirror', 'fa-left-right', 'Mirror'], ['adjust', 'fa-sliders', 'Adjust']];
+    const el = document.createElement('div'); el.className = 'rl-edit'; el.innerHTML = `<div class="rle-top"><button class="rle-ib sq" onclick="RL.editClose(false)" aria-label="Close editor"><i class="fa-solid fa-xmark"></i></button><b>Edit video<span class="rle-step">Step 1 of 2</span></b><button class="rle-ib" onclick="RL.editClose(false)">Skip</button></div>
       <div class="rle-stage" id="rle_stage"><div class="rle-box" id="rle_box"><video id="rle_v" src="${V.url}" playsinline muted loop autoplay></video></div></div>
-      <div class="rle-tools"><div class="rle-row"><label>Ratio</label>${[['orig', 'Original'], ['9:16', '9:16'], ['1:1', '1:1'], ['4:5', '4:5'], ['16:9', '16:9']].map(x => `<button data-ar="${x[0]}" class="${x[0] === 'orig' ? 'on' : ''}" onclick="RL.edSet('ar','${x[0]}')">${x[1]}</button>`).join('')}</div>
-        <div class="rle-row"><label>Speed</label>${[0.5, 0.75, 1, 1.5, 2].map(x => `<button data-sp="${x}" class="${x === 1 ? 'on' : ''}" onclick="RL.edSet('speed',${x})">${x}x</button>`).join('')}<button id="rle_m" onclick="RL.edSet('mirror',!RL.E.mirror)"><i class="fa-solid fa-left-right"></i> Mirror</button></div>
-        <div class="rle-row"><label>Start</label><input type="range" id="rle_s" min="0" max="${E.end}" step="0.1" value="0" oninput="RL.edTrim()"><span id="rle_sv" style="width:42px;font-size:12px">0.0s</span></div>
-        <div class="rle-row"><label>End</label><input type="range" id="rle_e" min="0" max="${E.end}" step="0.1" value="${E.end}" oninput="RL.edTrim()"><span id="rle_ev" style="width:42px;font-size:12px">${E.end.toFixed(1)}s</span></div>
-        <div class="rle-go"><button class="btn p" id="rle_next" onclick="RL.editClose(true)">Next</button></div></div>`;
+      <div class="rle-panel" id="rle_panel"></div>
+      <div class="rle-bar" id="rle_bar">${T.map(t => `<button class="rle-tb" data-t="${t[0]}" onclick="RL.edTool('${t[0]}')"><i class="fa-solid ${t[1]}"></i><span>${t[2]}</span></button>`).join('')}</div>
+      <div class="rle-go"><button class="btn p" id="rle_next" onclick="RL.editClose(true)">Next</button></div>`;
     host.appendChild(el); this._edUp = () => this.edLayout(); window.addEventListener('resize', this._edUp); this.edLayout(); this.edApply();
     const v = $('rle_v'); if (v) { v.ontimeupdate = () => { if (v.currentTime >= E.end - 0.05 || v.currentTime < E.start - 0.2) v.currentTime = E.start }; v.onloadedmetadata = () => { this.edLayout() }; v.play().catch(() => { }) }
   },
+  /* tapping a tool opens just its options above the toolbar (tap it again, or the tick, to close). Mirror flips straight away. */
+  edTool(t) {
+    if (t === 'mirror') { this.edSet('mirror', !this.E.mirror); return }
+    this.tool = this.tool === t ? '' : t; this.edPanel(); this.edApply(); requestAnimationFrame(() => this.edLayout())
+  },
+  edPanel() {
+    const pn = $('rle_panel'), t = this.tool, E = this.E; if (!pn) return; if (!t) { pn.className = 'rle-panel'; pn.innerHTML = ''; return }
+    const chip = (k, val, label) => `<button data-c="${k}:${val}" onclick="RL.edSet('${k}',${typeof val === 'string' ? `'${val}'` : val})">${label}</button>`;
+    const sl = (k, label, v) => `<div class="rle-sl"><label>${label}</label><input type="range" min="-50" max="50" step="1" value="${v}" oninput="RL.edAdj('${k}',this.value)"><span id="rle_v_${k}">${v}</span></div>`;
+    const title = { trim: 'Trim', speed: 'Speed', transform: 'Transform', adjust: 'Adjust' }[t];
+    const body = t === 'trim' ? `<div class="rle-sl"><label>Start</label><input type="range" id="rle_s" min="0" max="${this._dur}" step="0.1" value="${E.start}" oninput="RL.edTrim()"><span id="rle_sv">${E.start.toFixed(1)}s</span></div><div class="rle-sl"><label>End</label><input type="range" id="rle_e" min="0" max="${this._dur}" step="0.1" value="${E.end}" oninput="RL.edTrim()"><span id="rle_ev">${E.end.toFixed(1)}s</span></div>`
+      : t === 'speed' ? `<div class="rle-chips">${[0.5, 0.75, 1, 1.5, 2].map(x => chip('speed', x, x + 'x')).join('')}</div>`
+      : t === 'transform' ? `<div class="rle-chips">${[['orig', 'Original'], ['9:16', '9:16'], ['1:1', '1:1'], ['4:5', '4:5'], ['16:9', '16:9']].map(x => chip('ar', x[0], x[1])).join('')}</div><p class="rle-hint">The video is cropped from the centre to fit the ratio.</p>`
+      : `${sl('bright', 'Brightness', E.bright)}${sl('contrast', 'Contrast', E.contrast)}${sl('sat', 'Saturation', E.sat)}<button class="rle-reset" onclick="RL.edReset()">Reset</button>`;
+    pn.className = 'rle-panel open'; pn.innerHTML = `<div class="rle-ph"><b>${title}</b><button class="rle-ib sq" onclick="RL.edTool('${t}')" aria-label="Done"><i class="fa-solid fa-check"></i></button></div>${body}`
+  },
   edRatio() { const V = GIST.C && GIST.C.video, a = this.E.ar; if (a === 'orig') return (V && V.w && V.h) ? V.w / V.h : 9 / 16; const [w, h] = a.split(':').map(Number); return w / h },
   edLayout() { const st = $('rle_stage'), bx = $('rle_box'); if (!st || !bx) return; const W = st.clientWidth - 28, H = st.clientHeight - 12, r = this.edRatio(), w = Math.max(60, Math.min(W, H * r)), h = w / r; bx.style.width = w + 'px'; bx.style.height = h + 'px' },
-  edApply() { const E = this.E, v = $('rle_v'); if (v) { v.style.transform = E.mirror ? 'scaleX(-1)' : ''; v.playbackRate = E.speed } document.querySelectorAll('.rle-row [data-ar]').forEach(b => b.classList.toggle('on', b.dataset.ar === E.ar)); document.querySelectorAll('.rle-row [data-sp]').forEach(b => b.classList.toggle('on', Number(b.dataset.sp) === E.speed)); const m = $('rle_m'); if (m) m.classList.toggle('on', E.mirror); this.edLayout() },
+  /* CSS filter text for the colour sliders (also used when the edit is baked into the file) */
+  edFilter(E) { E = E || this.E; if (!E.bright && !E.contrast && !E.sat) return ''; return `brightness(${(1 + E.bright / 100).toFixed(2)}) contrast(${(1 + E.contrast / 100).toFixed(2)}) saturate(${(1 + E.sat / 50).toFixed(2)})` },
+  edApply() {
+    const E = this.E, v = $('rle_v'); if (v) { v.style.transform = E.mirror ? 'scaleX(-1)' : ''; v.style.filter = this.edFilter(E); v.playbackRate = E.speed }
+    document.querySelectorAll('.rle-chips [data-c]').forEach(b => { const d = b.dataset.c, i = d.indexOf(':'), k = d.slice(0, i), val = d.slice(i + 1); b.classList.toggle('on', String(E[k]) === val) });
+    const mod = { trim: E.start > 0.05 || E.end < this._dur - 0.05, speed: E.speed !== 1, transform: E.ar !== 'orig', mirror: E.mirror, adjust: !!(E.bright || E.contrast || E.sat) };
+    document.querySelectorAll('#rle_bar [data-t]').forEach(b => { const t = b.dataset.t; b.classList.toggle('on', this.tool === t || (t === 'mirror' && E.mirror)); b.classList.toggle('mod', !!mod[t]) }); this.edLayout()
+  },
   edSet(k, v) { this.E[k] = v; this.edApply() },
-  edTrim() { const E = this.E, s = $('rle_s'), e = $('rle_e'); let a = Number(s.value), b = Number(e.value); if (b - a < 0.5) { if (document.activeElement === s) { a = Math.max(0, b - 0.5); s.value = a } else { b = Math.min(Number(e.max), a + 0.5); e.value = b } } E.start = a; E.end = b; $('rle_sv').textContent = a.toFixed(1) + 's'; $('rle_ev').textContent = b.toFixed(1) + 's'; const v = $('rle_v'); if (v && (v.currentTime < a || v.currentTime > b)) v.currentTime = a },
+  edAdj(k, val) { this.E[k] = Number(val); const o = $('rle_v_' + k); if (o) o.textContent = val; this.edApply() },
+  edReset() { Object.assign(this.E, { bright: 0, contrast: 0, sat: 0 }); this.edPanel(); this.edApply() },
+  edTrim() { const E = this.E, s = $('rle_s'), e = $('rle_e'); let a = Number(s.value), b = Number(e.value); if (b - a < 0.5) { if (document.activeElement === s) { a = Math.max(0, b - 0.5); s.value = a } else { b = Math.min(Number(e.max), a + 0.5); e.value = b } } E.start = a; E.end = b; $('rle_sv').textContent = a.toFixed(1) + 's'; $('rle_ev').textContent = b.toFixed(1) + 's'; const v = $('rle_v'); if (v && (v.currentTime < a || v.currentTime > b)) v.currentTime = a; this.edApply() },
   async editClose(apply) {
     const C = GIST.C, V = C && C.video, host = PH.$a(), el = host && host.querySelector('.rl-edit'); if (!V) { if (el) el.remove(); return }
     const E = this.E, finish = () => { window.removeEventListener('resize', this._edUp); if (el) el.remove(); GIST.attDraw(); const t = $('gc_t'); if (t && !('ontouchstart' in window)) t.focus() };
@@ -392,7 +416,7 @@ const RL = {
   /* draws the video frame by frame to a canvas (crop + mirror), plays it at the chosen speed between start and end and records it again */
   async bake(V, E, onp) {
     const file = V.file, plain = { file, w: V.w, h: V.h, dur: V.dur };
-    const same = E.ar === 'orig' && !E.mirror && E.speed === 1 && E.start < 0.05 && E.end >= V.dur - 0.05; if (same) return plain;
+    const same = E.ar === 'orig' && !E.mirror && E.speed === 1 && E.start < 0.05 && E.end >= V.dur - 0.05 && !this.edFilter(E); if (same) return plain;
     if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream || !(window.AudioContext || window.webkitAudioContext)) { toast('This browser cannot apply video edits, so your original video will be posted.'); return plain }
     const mimes = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'], mime = mimes.find(m => MediaRecorder.isTypeSupported(m)); if (!mime) return plain;
     const v = document.createElement('video'); v.src = V.url; v.playsInline = true; v.muted = false; v.preload = 'auto';
@@ -407,7 +431,8 @@ const RL = {
     v.currentTime = E.start; await new Promise(res => { v.onseeked = res; setTimeout(res, 1500) }); v.playbackRate = E.speed; try { v.preservesPitch = true } catch (e) { }
     const span = Math.max(0.5, E.end - E.start); let alive = true;
     const stop = () => { if (!alive) return; alive = false; try { rec.stop() } catch (e) { } v.pause() };
-    const draw = () => { if (!alive) return; g.save(); if (E.mirror) { g.translate(ow, 0); g.scale(-1, 1) } g.drawImage(v, cx, cy, cw, ch, 0, 0, ow, oh); g.restore(); onp(Math.min(0.99, (v.currentTime - E.start) / span)); if (v.currentTime >= E.end - 0.03) return stop(); v.requestVideoFrameCallback ? v.requestVideoFrameCallback(draw) : requestAnimationFrame(draw) };
+    let flt = this.edFilter(E); if (flt && !('filter' in g)) { flt = ''; toast('This browser cannot apply colour adjustments, so they were skipped.') }
+    const draw = () => { if (!alive) return; g.save(); if (flt) g.filter = flt; if (E.mirror) { g.translate(ow, 0); g.scale(-1, 1) } g.drawImage(v, cx, cy, cw, ch, 0, 0, ow, oh); g.restore(); onp(Math.min(0.99, (v.currentTime - E.start) / span)); if (v.currentTime >= E.end - 0.03) return stop(); v.requestVideoFrameCallback ? v.requestVideoFrameCallback(draw) : requestAnimationFrame(draw) };
     const guard = setTimeout(stop, span / E.speed * 1000 + 15000); v.onended = stop;
     rec.start(500); await ac.resume(); await v.play(); draw(); await stopped; clearTimeout(guard); ac.close().catch(() => { });
     const blob = new Blob(chunks, { type: mime.split(';')[0] }); if (!blob.size) return plain;

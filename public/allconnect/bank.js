@@ -26,9 +26,9 @@ Object.assign(PH,{
     return Object.assign({},r,{have:n,need:v,left,unit:u,progress:v?Math.min(1,n/v):1,detail:r.ok?'You have '+abbr(n)+' '+u+'. The minimum is '+abbr(v)+'.':'You have '+abbr(n)+' of the '+abbr(v)+' '+u+' needed. You still need '+abbr(left,1)+' more.'})},
   /* one requirement: what it is, how far along you are, and exactly how much is left */
   reqCard(r){const f=n=>Number(n).toLocaleString('en-NG'),pct=Math.round((r.progress!=null?r.progress:(r.ok?1:0))*100),num=r.need!=null;
-    return '<div class="wdq '+(r.ok?'met':'todo')+'"><div class="wdqh"><span class="wdqi">'+(r.ok?'✓':'✕')+'</span><div><b>'+esc(r.label)+'</b><small>'+esc(r.description||'')+'</small></div></div>'+
+    return '<div class="wdq '+(r.ok?'met':'todo')+'"><div class="wdqh"><span class="wdqi">'+(r.ok?'✓':'✕')+'</span><div><b>'+esc(r.label)+'</b>'+(r.description&&r.description!==r.label?'<small>'+esc(r.description)+'</small>':'')+'</div></div>'+
       (num?'<div class="wdqbar"><i style="width:'+pct+'%"></i></div><div class="wdqn"><span><em>You have</em><b title="'+f(r.have)+'">'+abbr(r.have)+'</b></span><span><em>Needed</em><b title="'+f(r.need)+'">'+abbr(r.need)+'</b></span><span><em>'+(r.ok?'Status':'Remaining')+'</em><b title="'+(r.ok?'':f(r.left))+'">'+(r.ok?'Done':abbr(r.left,1))+'</b></span></div><div class="wdqu">'+esc(r.unit||'')+'</div>':'')+
-      '<p class="wdqd">'+esc(r.detail||r.actual||'')+'</p></div>'},
+      '<p class="wdqd">'+esc(num&&r.key==='minBalance'?(r.ok?'You have '+abbr(r.have)+' units. The minimum is '+abbr(r.need)+'.':'You have '+abbr(r.have)+' of the '+abbr(r.need)+' units needed. You still need '+abbr(r.left,1)+' more units.'):(r.detail||r.actual||''))+'</p></div>'},
   payoutDraw(){
     const p=this.P,b=document.getElementById('payoutBox'); if(!b)return;
     if(!p.season){b.innerHTML=NOTICE.html()+'<div class="card2"><h3>No withdrawal season is open</h3><p class="hint2">Keep playing and watch Updates for the next season announcement.</p></div>';return}

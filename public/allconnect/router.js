@@ -113,7 +113,7 @@ window.ROUTER = ROUTER;
   if (_clr) window.closeLagosRun = function () {
     const f = document.getElementById('lrf'); document.getElementById('lagosrun').style.display = 'none'; f.removeAttribute('src'); f.src = 'about:blank';
     try { if (document.fullscreenElement) document.exitFullscreen() } catch (e) {}
-    try { if (window.BGM) BGM.sync() } catch (e) {}
+    try { if (window.BGM) { BGM.hold('drive', false); BGM.sync() } } catch (e) {}
     nav(ROUTER.back());
   };
   /* start() is where the splash hands over to the game */
