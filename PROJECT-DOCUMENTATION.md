@@ -758,19 +758,6 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - **Notification banner** (`banner.js`): drops down with a short sound, swipe up to dismiss, tap to open.
 - **Music** (`public/js/bgm.js`): fixed level with a watchdog that restores it and wakes the engine if the phone pauses it.
 
----
-
-## Desktop HUD and the 3D street world (Nov 2026)
-
-**Desktop HUD** (`public/allconnect/desktop.css` + `desktop.js`). On windows at least 900 x 560, `desktop.js` adds `body.dk` and builds a second set of controls in `#dk`: one pill across the top (home, clock, **Where to?** search over every map pin, wallet and +), avatar + mood + needs bottom-left, a Home / Shop / Map pill and phone button bottom-centre, and Radio / Go outside / Go to work + garage pill bottom-right. The old phone-style `#hud`, `#nav`, `#chips` and `#needsbar` are hidden by CSS only (their code still runs), so nothing else needed changing. In Buy mode the catalogue becomes a dark panel on the right with its categories in a rail on the left (pure CSS on `#buy .sheet`). All new class names are `dk`-prefixed because `style.css` already owns `.row`, `.av`, `.needs`.
-
-**3D street world** (`world3d.js` engine, `worldhud.js` HUD/input/enter-exit, `world.css`). "Step outside" (the home door button, Go outside, or Explore in 3D on the map page) now opens a real-time Three.js Lagos built from the same 1000 x 1000 map data as the canvas map (roads, bridges, coast, pins; 1 map unit = 1 m), so a player here and a player on the old map stand in the same place. Lagos only for now; other cities fall back to the map.
-- Walk: WASD / arrows, Shift run, drag to look, wheel zoom, click ground to walk, touch stick on touch devices. E uses whatever is nearby (your car, your door, a venue pin, another player). G dance, V wave.
-- Other players: drawn live from the same socket `players` / `pos` events the map uses. Players mid-shift (`st:'work'`) play a work animation with their job title above their head; players in a vehicle show the vehicle. NPC shop-keepers, traders and traffic wardens work around the venues, NPC pedestrians walk the pavements and AI traffic runs three loops (mainland, island, island inner).
-- Driving: if `/api/ac/transport/state` returns a car / van / bus / motorcycle it is parked by your door. Press E, then W/S/A/D, Space brake, R reverse, H horn, C hood camera. Needs a licence, fuel and condition above 0 (read from Transport state). Fuel is not burnt by the street world yet.
-- Server: `utils/acmappos.js` accepts states `drive` and `work` and optional `v` (vehicle kind), `sp` (km/h) and `job` (<=24 chars, sanitised); `sockets/allconnect.js` relays them. Covered by `tests/acmappos.test.js`.
-- Hooks: `worldhud.js` wraps `nav()` (phone opens on top of the street and pauses it; any other page exits the street) and `DOOR.press`. Script order in `index.html`: `world3d.js`, `worldhud.js`, `desktop.js` after `hub.js`.
-
 ## Admin, moderation and creator updates (Nov 2026)
 - **Admin players:** edit details, change password, add/deduct/set balance (`PUT /admin-api/users/:id`, `POST .../password`, `POST .../balance`).
 - **Withdrawals:** Balances tab; edit/delete seasons, edit/reset batches, delete non-final requests.

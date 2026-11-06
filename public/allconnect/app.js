@@ -214,6 +214,11 @@ function hubQuiet(cb) {
   first ? f.addEventListener('load', () => hubRun(cb), { once: true }) : hubRun(cb)
 }
 
+/* Shop tab safety net: loads /allconnect/mall.js on demand (cache-busted) if the page came up without it */
+function loadMallScript() {
+  if (window.MALL) return Promise.resolve(true);
+  return new Promise(res => { const s = document.createElement('script'); s.src = '/allconnect/mall.js?v=' + Date.now(); s.onload = () => res(!!window.MALL); s.onerror = () => res(false); document.head.appendChild(s) })
+}
 /* Drive opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
 function openLagosRun() {
   const f = $('lrf');
@@ -392,7 +397,7 @@ function nav(w, keep) {
   if (window.GOALS && typeof NET !== 'undefined' && NET.user) GOALS.boot();
   if (w == 'buy') {
     if (window.MALL) MALL.enter();   /* Shop tab: the 3D mall, or "My Home" (the old Buy mode) */
-    else { $('room').style.top = '44px'; BUY.enter() }
+    else loadMallScript().then(ok => { if (S.page !== 'buy') return; if (ok && window.MALL) MALL.enter(); else { $('room').style.top = '44px'; BUY.enter() } })   /* mall.js did not load (old cached page, missing file): fetch it fresh once before giving up and showing the old house */
   } else $('room').style.top = '';
   if (w == 'map') {
     if (window.ADS) ADS.paintMap()
