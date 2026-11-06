@@ -156,10 +156,9 @@ const GIST = {
     const m = p.moderation; if (!m || !p.mine) return '';
     const learn = `<button onclick="RL.learnMore('${p.id}')">Learn more</button>`;
     if (m.status === 'review') return `<div class="gmod rev"><b>Under review</b><span>Your video is live while the team checks it. We will tell you if anything is wrong.</span></div>`;
-    if (m.status === 'flagged') return `<div class="gmod"><b>Flagged · only you can see this</b><span>${esc((m.learn && m.learn.title) || m.reason || 'This video may break the rules.')}</span>${learn}<button onclick="RL.appealSheet('${p.id}',${esc(JSON.stringify(m.reason || ''))})">Request review</button></div>`;
+    if (m.status === 'flagged') return `<div class="gmod"><b>Flagged · only you can see this</b><span>${esc((m.learn && m.learn.title) || m.reason || 'This video may break the rules.')}</span>${learn}</div>`;
     if (m.status === 'appealed') return `<div class="gmod"><b>Review requested</b><span>An admin will watch the video and decide. Only you can see it until then.</span>${learn}</div>`;
     if (m.status === 'rejected') return `<div class="gmod"><b>Hidden after review</b><span>${esc(m.reviewNote || 'This video stays hidden.')}</span>${learn}</div>`;
-    if (m.status === 'approved') return `<div class="gmod ok"><b>Posted</b><span>Your video passed review.</span></div>`;
     return ''
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
@@ -467,11 +466,17 @@ const GIST = {
     const btns = r.isMe ? `<div class="gpb"><button class="btn p" onclick="PH.editProfile('GIST.openProfile(\\'me\\')')"><i class="fa-solid fa-pen"></i> Edit profile</button><button class="btn s" onclick="GIST.nav('compose')"><i class="fa-solid fa-plus"></i> New gist</button></div>`
       : r.relation === 'blocked' ? `<div class="gpb"><button class="btn p" id="gmb2" onclick="GIST.unblock()"><i class="fa-solid fa-lock-open"></i> Unblock</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`
       : `<div class="gpb"><button class="btn ${r.isFollowing ? 's' : 'p'}" id="gfb" onclick="GIST.follow()">${r.isFollowing ? 'Following ✓' : 'Follow'}</button><button class="btn s" id="gmb2" onclick="GIST.message()"><i class="fa-solid fa-comment"></i> Message</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`;
-    $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')"` : ''}></div><div class="gavw">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
+    const avSrc = (/src="([^"]+)"/.exec(PH.av({ avatar: u.avatar, displayName: '', username: '' })) || [])[1] || '';
+    $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')" data-ph="${esc(u.cover)}" onclick="GIST.viewPhoto(this.dataset.ph)"` : ''}></div><div class="gavw" data-ph="${esc(avSrc)}" onclick="GIST.viewPhoto(this.dataset.ph)">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
       <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
       <div class="gprofile-tabs" role="tablist" aria-label="Profile posts">${[['grid','Grid'],['posts','Posts'],['reels','Reels']].map(([m,n]) => `<button role="tab" aria-controls="gprofile-content" tabindex="${(this.pf.mode || 'grid') === m ? '0' : '-1'}" aria-selected="${(this.pf.mode || 'grid') === m}" class="${(this.pf.mode || 'grid') === m ? 'on' : ''}" onclick="GIST.profileMode('${m}')">${n}</button>`).join('')}</div><div id="gprofile-content" role="tabpanel">${this.profileContent(posts, more)}</div>`
+  },
+  /* full-screen look at a profile photo or cover; tap anywhere to close */
+  viewPhoto(url) {
+    if (!url) return toast('No photo to show yet');
+    const o = document.createElement('div'); o.className = 'gview'; o.innerHTML = `<button class="gvx" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><img src="${esc(url)}" alt="">`; o.onclick = () => o.remove(); (PH.$a() || document.body).appendChild(o)
   },
   profileMode(mode) { if (!['grid','posts','reels'].includes(mode) || !this.pf) return; this.pf.mode = mode; this.drawProfile() },
   profileContent(posts, more) {
@@ -592,10 +597,12 @@ const GIST = {
     if (C.sharedId && !C.shared) this.api('/posts/' + encodeURIComponent(C.sharedId)).then(r => { if (this.C === C && r.post) { C.shared = r.post; this.put([r.post]); this.attDraw() } }).catch(() => {});
     if (mode === 'share' && arg) { C.shared = this.cache.get(arg) || null }
     if (mode === 'image' && arg && !C.images.some(i => i.url === arg.url)) C.images.push(arg);
-    PH.shell(C.shared ? 'Share post' : 'New post', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp">${C.restoredDraft ? '<p class="gdraft-note" role="status">Draft restored from this device.</p>' : ''}<div class="gcwho">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></div>
-      <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'Write a caption… Use #hashtags and @mentions'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
-      <div id="gc_att"></div><div class="gtools"><button onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button onclick="RL.pick()"><i class="fa-solid fa-video"></i> Video</button><button onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
-      <div class="aerr" id="gc_e" role="alert" aria-live="polite"></div><button class="btn p" id="gc_b" onclick="GIST.submit()" aria-live="polite">${C.shared ? 'Share' : 'Post'}</button></div></div>`);
+    if (!C.set) C.set = { visibility: 'public', allowComments: true, allowReuse: true };
+    const who = `<span class="gcwho2">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></span>`;
+    PH.shell(C.shared ? 'Share post' : 'New post', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp">${C.restoredDraft ? '<p class="gdraft-note" role="status">Draft restored from this device.</p>' : ''}
+      <div class="gcrow"><div class="gcin2"><textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'Write a caption… Use #hashtags and @mentions'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div></div><div class="gcthumb" id="gc_thumb"></div></div>
+      <div id="gc_att"></div><div class="gtools" id="gc_tools"><button data-k="photos" onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button data-k="poll" onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button data-k="video" onclick="RL.pick()"><i class="fa-solid fa-video"></i> Video</button><button data-k="game" onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
+      <div class="aerr" id="gc_e" role="alert" aria-live="polite"></div><button class="btn p" id="gc_b" onclick="GIST.submit()" aria-live="polite">${C.shared ? 'Share' : 'Post'}</button></div></div>`, '', who);
     this.attDraw(); this.cc(); if (mode === 'photos') this.pickOpen(); else if (mode === 'video') RL.pick(); else if (!('ontouchstart' in window)) $('gc_t').focus()
   },
   cancelCompose() { const t = $('gc_t'); if (this.C) this.C.text = t ? t.value : ''; this.saveDraft(); if (this.C && this.C.video && !this.C.text) { RL.rm() } const C = this.C; if (C && (C.text || C.images.length || C.game || C.song || C.poll || C.video) && !C.shared) { PH.sheet(`<h3>Discard this gist?</h3><button class="fopt red out" onclick="PH.closeSheet();GIST.clearDraft();GIST.C=null;GIST.back()"><span>Discard</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Keep writing</span></button>`) } else { this.C = null; this.clearDraft(); this.back() } },
@@ -603,11 +610,26 @@ const GIST = {
   btn() { const C = this.C, b = $('gc_b'); if (!b) return; b.disabled = C.busy || !(C.text.trim() || C.images.length || C.game || C.shared || C.poll || C.song || C.video); b.textContent = C.shared ? 'Share' : 'Post' },
   attDraw() {
     const C = this.C, a = $('gc_att'); if (!a) return;
-    a.innerHTML = RL.prevHtml(C) + (C.images.length ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
+    const has = !!(C.video || C.images.length), th = $('gc_thumb'), row = document.querySelector('.gcrow');
+    if (th) th.innerHTML = RL.thumbHtml(C); if (row) row.classList.toggle('media', has);
+    a.innerHTML = RL.editHtml(C) + (C.images.length > 1 ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button class="ed" onclick="GIST.editImg(${i})" aria-label="Edit photo"><i class="fa-solid fa-pen"></i></button><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
       (C.poll ? `<div class="gpollp"><b><i class="fa-solid fa-chart-simple"></i> Poll · ${C.poll.hours >= 24 ? C.poll.hours / 24 + 'd' : C.poll.hours + 'h'}</b>${C.poll.options.map(o => `<span>${esc(o)}</span>`).join('')}<button onclick="GIST.C.poll=null;GIST.attDraw()" aria-label="Remove poll"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.game ? `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(C.game.name)}</b><small>${C.game.code ? 'Room code <code>' + esc(C.game.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.C.game=null;GIST.attDraw()"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.song ? this.songcard(C.song, true) : '') +
-      (C.shared ? `<div class="gshared"><div class="gsh"><b>${esc(C.shared.author.displayName)}</b></div>${C.shared.text ? `<div class="gtx">${this.txt(C.shared.text.slice(0, 200))}</div>` : ''}${this.imgs(C.shared)}</div>` : ''); this.btn(); this.saveDraft()
+      (C.shared ? `<div class="gshared"><div class="gsh"><b>${esc(C.shared.author.displayName)}</b></div>${C.shared.text ? `<div class="gtx">${this.txt(C.shared.text.slice(0, 200))}</div>` : ''}${this.imgs(C.shared)}</div>` : RL.setHtml(C));
+    /* a post cannot hold a video and photos at once, so the other choice goes away */
+    const tb = $('gc_tools'); if (tb) { const q = k => tb.querySelector('[data-k="' + k + '"]'); q('photos').style.display = C.video ? 'none' : ''; q('video').style.display = (C.video || C.images.length) ? 'none' : '' }
+    this.btn(); this.saveDraft()
+  },
+  /* tap a photo in the strip to edit it again (crop, rotate, filters...) */
+  async editImg(i) {
+    const im = this.C.images[i]; if (!im) return;
+    try {
+      const blob = await (await fetch(im.url, { credentials: 'same-origin' })).blob(), data = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob) });
+      const out = await RL.editPhoto(data, 'Edit photo', 'Step 1 of 2'); if (!out || out === data) return; toast('Saving…');
+      const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: out } }); if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo);
+      this.C.images[i] = { src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }; this.pk.mine = null; this.attDraw()
+    } catch (e) { toast('This photo cannot be edited. Remove it and add it again from your device.') }
   },
   rmImg(i) { this.C.images.splice(i, 1); this.attDraw() },
   pollSheet() {
@@ -621,7 +643,7 @@ const GIST = {
   submit() {
     const C = this.C; if (C.busy) return; if (C.video) return RL.publish(); C.text = ($('gc_t').value || ''); const u = NET.user || {}, orig = C.shared && C.shared.id;
     const body = { text: C.text, images: C.images.map(i => i.src === 'mine' ? { src: 'mine', id: i.id } : { src: 'platform', url: i.url }) };
-    if (C.game) body.game = { key: C.game.key, code: C.game.code }; if (C.shared) body.sharedFrom = C.shared.id; if (C.poll) body.poll = C.poll; if (C.song) body.song = C.song;
+    if (C.game) body.game = { key: C.game.key, code: C.game.code }; if (C.shared) body.sharedFrom = C.shared.id; if (C.poll) body.poll = C.poll; if (C.song) body.song = C.song; if (!C.shared && C.set) body.settings = C.set;
     const tmp = { id: 'tmp' + Date.now(), author: { id: u.id, displayName: u.displayName || 'You', username: u.username || '', avatar: u.avatar || '', verified: !!u.verified }, mine: true, text: C.text.trim(), images: C.images.map(i => ({ url: i.url, thumb: i.thumb || i.url })), game: C.game ? { key: C.game.key, name: C.game.name, code: C.game.code } : null, song: C.song || null, match: null, election: null, tags: [], pinned: false, edited: false, likes: 0, rx: {}, comments: 0, shares: 0, myRx: '', liked: false, createdAt: new Date().toISOString(), shared: C.shared || undefined,
       poll: C.poll ? { options: C.poll.options.map(t => ({ text: t, votes: 0 })), total: 0, endsAt: new Date(Date.now() + C.poll.hours * 3600000).toISOString(), ended: false, myVote: -1 } : undefined };
     this.C = null; this.stack = []; this.tab = 'latest'; this.tagF = ''; this.cache.set(tmp.id, tmp); ['latest', 'following', 'me'].forEach(k => { if (this.F[k] && this.F[k].ok) this.F[k].p.unshift(tmp) }); this.F.latest = this.F.latest || { p: [tmp], more: false, ok: true, next: 0 }; this.F.latest.ok = true; if (!this.F.latest.p.includes(tmp)) this.F.latest.p.unshift(tmp);
@@ -647,10 +669,14 @@ const GIST = {
   },
   pickToggle(tab, i) { const L = tab === 'mine' ? this.pk.mine : this.pk.plat, p = L[i], C = this.C; const at = C.images.findIndex(x => (x.id && x.id === p.id) || (x.url && x.url === p.url)); if (at >= 0) C.images.splice(at, 1); else { if (C.images.length >= 10) return toast('You can add up to 10 photos'); C.images.push(tab === 'mine' ? { src: 'mine', id: p.id, url: p.url, thumb: p.thumb || p.url } : { src: 'platform', url: p.url, thumb: p.thumb || p.url }) } this.pickDraw() },
   async pickFiles(inp) {
-    const files = [...inp.files]; inp.value = ''; const k = this.pk; if (!files.length) return; k.busy = true; this.pickDraw();
-    for (const f of files) { if (this.C.images.length >= 10) { toast('You can add up to 10 photos'); break } if (!f.type.startsWith('image/')) continue;
-      try { const data = await PH.resize(f, 1600, .88), r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: data } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }) } catch (e) { this.err(e); break } }
-    k.busy = false; this.pickDraw(); this.attDraw()
+    const files = [...inp.files].filter(f => f.type.startsWith('image/')); inp.value = ''; const k = this.pk; if (!files.length) return;
+    PH.closeSheet(); let n = 0;
+    for (const f of files) { if (this.C.images.length >= 10) { toast('You can add up to 10 photos'); break } n++;
+      try {
+        const raw = await PH.resize(f, 1600, .88), data = await RL.editPhoto(raw, 'Edit photo', files.length > 1 ? 'Photo ' + n + ' of ' + files.length : 'Step 1 of 2'); if (data === null) continue;
+        toast('Uploading…'); const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: data } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }); this.attDraw()
+      } catch (e) { this.err(e); break } }
+    this.attDraw()
   },
   /* ---------- game link picker ---------- */
   async gameSheet() { if (!this.games) { try { this.games = (await this.api('/games')).games } catch (e) { return this.err(e) } } this.gsel = this.C.game ? this.C.game.key : null; PH.sheet(`<h3>Attach a game</h3><p class="hint2">Pick a game. Add a room code if you already created a room so friends can join in one tap.</p><div class="pre" id="gg_list"></div><input class="sinput" id="gg_code" placeholder="Room code or invite link (optional)" autocapitalize="characters" autocomplete="off" value="${esc(this.C.game && this.C.game.code || '')}"><div class="aerr" id="gg_e"></div><button class="btn p" onclick="GIST.gameAttach()">Attach</button>`); this.gameDraw() },
