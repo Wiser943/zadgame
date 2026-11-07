@@ -6,6 +6,8 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
   phone: { type: String, unique: true, sparse: true, trim: true },
   passwordHash: { type: String },
+  emailVerifiedAt: { type: Date, default: null },
+  emailCode: { hash: { type: String, default: '' }, expires: { type: Date, default: null }, tries: { type: Number, default: 0 }, sentAt: { type: Date, default: null } },
   displayName: { type: String, default: 'Player' },
   avatar: { type: String, default: '' },
   cover: { type: String, default: '' },                 // profile cover photo (small JPEG data URI)
@@ -78,6 +80,18 @@ const UserSchema = new mongoose.Schema({
     health: { type: mongoose.Schema.Types.Mixed, default: null },   // Health app: { ill, checked, last } (see utils/achealth.js)
     ageAt: { type: Date, default: null },                  // when the player attested they are 18 or older
     birthYear: { type: Number, default: null },            // year they entered in the age check (the full date is never stored)
+    // Character sheet, memory book and privacy choices (see routes/acv2.js)
+    traits: { type: [String], default: [] },                // exactly three trait ids once chosen
+    memories: { type: [{ _id: false, id: String, icon: String, title: String, text: String, mood: Number, at: { type: Date, default: Date.now } }], default: [] },
+    prefs: {
+      readReceipts: { type: Boolean, default: true },
+      whoCanMessage: { type: String, enum: ['everyone', 'friends'], default: 'everyone' },
+      whoCanSendMoney: { type: String, enum: ['anyone', 'friends'], default: 'anyone' },
+      showRelationships: { type: Boolean, default: false },
+      showBirthday: { type: Boolean, default: false },
+      marketingEmails: { type: Boolean, default: false }
+    },
+    bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },   // month + day only, shown to friends only when showBirthday is on
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },
     mapPos: { x: { type: Number }, y: { type: Number }, h: { type: Number } },

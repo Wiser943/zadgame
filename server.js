@@ -91,6 +91,7 @@ async function main() {
   });
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
   app.use('/api/ac/gist/mux-webhook', express.raw({ type: '*/*', limit: '1mb' })); // Mux webhooks must reach the signature check untouched
+  app.use('/api/ac/v2/topup/webhook', express.raw({ type: '*/*', limit: '200kb' }), require('./routes/acv2').webhook); // Paystack webhook: needs the raw body for its signature
   app.use('/api/ac/voice', express.json({ limit: '1.4mb' })); // voice notes arrive as base64 JSON
   app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
@@ -135,6 +136,7 @@ async function main() {
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
   app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
+  app.use('/api/ac/v2', require('./routes/acv2'));  // traits, memory book, privacy, password, email, wallet top-up
   app.use('/api/ac/age', acAgeRoutes);       // 18+ attestation
   app.use('/api/ac/pet', acPetRoutes);      // Pet app: needs, shop, clothes, mini-games (all paid from the main balance)
   app.use('/api/ac/features', acFeatureRoutes); // saved, scheduled and collaborative cross-app features
