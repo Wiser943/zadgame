@@ -15,7 +15,7 @@ const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
 const reelstore = require('../utils/reelstore');
 
-const { muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
+const { muxWhy, muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
 const ACVideo = require('../models/ACVideo');
 const { normalizeVideo } = require('../utils/gistVideo');
 
@@ -458,7 +458,7 @@ router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, 
     const { d, cc } = await createUpload(uid, origin);
     await ACVideo.create({ user: uid, uploadId: d.id, status: 'pending', cc });   // saved now, so it is never lost if the app closes mid-upload
     res.json({ uploadId: d.id, url: d.url });
-  } catch (e) { console.error('[mux upload]', e.message); bad(res, 'Could not start the upload. Please try again.', 502); }
+  } catch (e) { console.error('[mux upload]', e.status || '', e.message); bad(res, 'Could not start the upload. ' + muxWhy(e), 502); }
 });
 router.get('/reels/mux-status/:uploadId', async (req, res, next) => {
   try {

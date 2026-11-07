@@ -1119,19 +1119,32 @@
     }
     drawClusters(ctx);
     for (const f of LAYERS.world) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
-    // pin labels
+    // pin labels: every place is a small icon bubble. Tap it (or hover it with a mouse) and it opens into [icon  name  Open >].
     ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
+    let openPin = null;
     for (const p of PINS) {
       const [nm, em, x, y, kind, act] = p; if (!HUD.gov && (kind === 'gov' || kind === 'court')) continue; if (!HUD.ads && kind === 'radio') continue;
       const hh = p[7] || { radio: 72, hall: 36, shop: 26, home: 54, glass: 82, dome: 56, airport: 30, gym: 36, court: 58, hotel: 112, club: 42, tower: 102, boat: 40, park: 20, refinery: 26 }[kind] || 30;
       const b = cam.project(x, y, hh + 10, tmp); if (tmp.z < NEAR || tmp.x < -80 || tmp.x > M.w + 80 || tmp.y < 40 || tmp.y > M.h + 40) continue;
-      if ((cam.D > 1100 || (act === 'district' && cam.D > 650)) && kind !== 'home') { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 11, 0, TAU); ctx.fill(); ctx.font = '13px system-ui'; ctx.fillStyle = '#000'; ctx.fillText(em, tmp.x, tmp.y + 1); ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif'; M.hits.push({ x: tmp.x - 12, y: tmp.y - 12, w: 24, h: 24, pin: p, kind: 'pin' }); continue; }
-      const label = em + ' ' + nm, w = ctx.measureText(label).width + 18, px = tmp.x, py = tmp.y - 10;
-      ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.96)'; ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-      rr(ctx, px - w / 2, py - 12, w, 24, 12); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      ctx.beginPath(); ctx.moveTo(px - 5, py + 11.5); ctx.lineTo(px + 5, py + 11.5); ctx.lineTo(px, py + 17); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#1b1f33'; ctx.fillText(label, px, py + 1);
-      M.hits.push({ x: px - w / 2, y: py - 12, w, h: 30, pin: p, kind: 'pin' });
+      if (M.exp === p || M.hov === p) { openPin = { p, x: tmp.x, y: tmp.y }; continue; }
+      ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+      ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.97)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 12, 0, TAU); ctx.fill();
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.font = '14px system-ui'; ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.fillText(em, tmp.x, tmp.y + 1); ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
+      M.hits.push({ x: tmp.x - 15, y: tmp.y - 15, w: 30, h: 30, pin: p, kind: 'pin', expand: true });
+    }
+    if (openPin) { ctx.save();   // the opened pill is drawn last so it sits on top of the other icons
+      const { p, x: px, y: py } = openPin, [nm, em, , , , act] = p, name = nm.replace(' · Coming soon', ''), nw = ctx.measureText(name).width, ew = 18, bw = ctx.measureText('Open ›').width + 18;
+      const w = 10 + ew + 6 + nw + 8 + bw + 5, h = 28, x0 = px - w / 2, y0 = py - h / 2;
+      ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2; ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.98)'; rr(ctx, x0, y0, w, h, 14); ctx.fill();
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '14px system-ui'; ctx.fillStyle = '#000'; ctx.fillText(em, x0 + 10, py + 1);
+      ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif'; ctx.fillStyle = '#1b1f33'; ctx.fillText(name, x0 + 10 + ew + 6, py + 1);
+      const bx = x0 + w - bw - 5; ctx.fillStyle = '#075BFF'; rr(ctx, bx, y0 + 4, bw, h - 8, 10); ctx.fill();
+      ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText('Open ›', bx + bw / 2, py + 1);
+      M.hits.push({ x: x0, y: y0, w, h, pin: p, kind: 'pin', expand: true });
+      M.hits.push({ x: bx - 4, y: y0, w: bw + 8, h, pin: p, kind: 'pin', go: true });
+      ctx.restore();
     }
     // night tint from the in-game clock
     const hrs = ((getS() && getS().min) || 720) / 60 % 24, night = hrs >= 19.5 || hrs < 5.5 ? 1 : hrs >= 18 ? (hrs - 18) / 1.5 : hrs < 7 ? (7 - hrs) / 1.5 : 0;
@@ -1157,6 +1170,7 @@
     e.preventDefault();
   }
   function onMove(e) {
+    if (e.pointerType === 'mouse' && !M.drag) { const [hx, hy] = rectXY(e), hh = [...M.hits].reverse().find(h => h.kind === 'pin' && hx >= h.x && hx <= h.x + h.w && hy >= h.y && hy <= h.y + h.h); M.hov = hh ? hh.pin : null; M.cv.style.cursor = hh ? 'pointer' : '' }
     const p = ptrs.get(e.pointerId); if (!p) return; const [x, y] = rectXY(e), px = p.x, py = p.y; p.x = x; p.y = y;
     if (ptrs.size === 1 && M.drag) {
       const d = M.drag; d.moved += Math.abs(x - d.lx) + Math.abs(y - d.ly);
@@ -1218,6 +1232,8 @@
   }
   function tap(x, y) {
     const hit = [...M.hits].reverse().find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+    if (hit && hit.kind === 'pin' && hit.expand && !hit.go) { M.exp = M.exp === hit.pin ? null : hit.pin; return; }
+    if (!hit || hit.kind !== 'pin') M.exp = null;
     if (hit && hit.kind === 'pin') {
       const [nm, em, px, py, , act] = hit.pin;
       if (act === 'home') return g.nav('home');

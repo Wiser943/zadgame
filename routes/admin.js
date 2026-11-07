@@ -158,6 +158,22 @@ router.get('/ac/photo-status', (req, res) => {
 });
 router.post('/ac/photo-test', async (req, res, next) => { try { res.json(await acPhotos.testUpload()); } catch (e) { next(e); } });
 
+// Video storage (Mux): shows whether the keys exist and what Mux says when we try to use them.
+router.get('/ac/video-status', (req, res) => {
+  const m = require('../utils/mux'), id = m.env('MUX_TOKEN_ID'), sec = m.env('MUX_TOKEN_SECRET');
+  res.json({ configured: !!(id && sec), idPreview: id ? id.slice(0, 4) + '…' + id.slice(-3) : '', secretSet: !!sec, captions: m.env('MUX_CAPTIONS') === 'true', maxMB: m.MUX_MAX_MB, maxSec: m.MUX_MAX_SEC });
+});
+router.post('/ac/video-test', async (req, res) => {
+  const m = require('../utils/mux');
+  if (!m.muxOn()) return res.json({ ok: false, message: 'MUX_TOKEN_ID and MUX_TOKEN_SECRET are not both set on the host.' });
+  try {
+    await m.mux('GET', '/video/v1/uploads?limit=1');
+    const u = await m.createUpload('admin-test', '*');   // the same call the app makes when a player posts a video
+    try { await m.mux('PUT', '/video/v1/uploads/' + u.d.id + '/cancel'); } catch (e) { /* a test upload that never receives a file just expires */ }
+    res.json({ ok: true, message: 'Mux accepted the keys and created a test upload. Video posting should work.' });
+  } catch (e) { res.json({ ok: false, status: e.status || 0, message: m.muxWhy(e) }); }
+});
+
 // Social links for the login footer + Settings (empty = nothing shown to players)
 const ACSetting = require('../models/ACSetting');
 const SOC = ['x', 'tiktok', 'instagram', 'linkedin'];

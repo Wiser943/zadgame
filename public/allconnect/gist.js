@@ -622,14 +622,16 @@ const GIST = {
     this.btn(); this.saveDraft()
   },
   /* tap a photo in the strip to edit it again (crop, rotate, filters...) */
+  /* re-encode an edited picture to a normal JPEG (max 1600px) so it always fits the upload limits */
+  shrinkImg(data, max = 1600, q = .86) { return new Promise(res => { const im = new Image(); im.onload = () => { try { const k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k)); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', q)) } catch (e) { res(data) } }; im.onerror = () => res(data); im.src = data }) },
   async editImg(i) {
     const im = this.C.images[i]; if (!im) return;
     try {
       const blob = await (await fetch(im.url, { credentials: 'same-origin' })).blob(), data = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob) });
-      const out = await RL.editPhoto(data, 'Edit photo', 'Step 1 of 2'); if (!out || out === data) return; toast('Saving…');
+      const out0 = await RL.editPhoto(data, 'Edit photo', 'Step 1 of 2'); if (!out0 || out0 === data) return; toast('Saving…'); const out = await this.shrinkImg(out0);
       const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: out } }); if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo);
       this.C.images[i] = { src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }; this.pk.mine = null; this.attDraw()
-    } catch (e) { toast('This photo cannot be edited. Remove it and add it again from your device.') }
+    } catch (e) { toast(e && e.status ? e.message : 'This photo cannot be edited. Remove it and add it again from your device.') }
   },
   rmImg(i) { this.C.images.splice(i, 1); this.attDraw() },
   pollSheet() {
@@ -674,7 +676,7 @@ const GIST = {
     for (const f of files) { if (this.C.images.length >= 10) { toast('You can add up to 10 photos'); break } n++;
       try {
         const raw = await PH.resize(f, 1600, .88), data = await RL.editPhoto(raw, 'Edit photo', files.length > 1 ? 'Photo ' + n + ' of ' + files.length : 'Step 1 of 2'); if (data === null) continue;
-        toast('Uploading…'); const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: data } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }); this.attDraw()
+        toast('Uploading…'); const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: await this.shrinkImg(data) } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }); this.attDraw()
       } catch (e) { this.err(e); break } }
     this.attDraw()
   },
