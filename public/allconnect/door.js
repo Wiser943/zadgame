@@ -10,7 +10,7 @@ const DOOR = {
   },
   /* called whenever the player switches between Home / Buy / Map / Phone */
   set(w) {
-    this.view = w; this.mount(); clearInterval(this.timer);
+    this.view = w; this.mount(); clearInterval(this.timer); if (w === 'home' && window.MAP3D && MAP3D.inside) MAP3D.inside();
     if (w === 'home') this.paint(); else this.btn.style.display = 'none'
   },
   paint() {

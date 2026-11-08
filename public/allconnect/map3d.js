@@ -147,7 +147,7 @@
   const boards = [];
 
   function box(x, y, w, d, h, wall, roof, o) {
-    o = o || {}; objs.push({ t: 'box', x, y, w, d, h, wall, roof, style: o.style || 'flat', rh: o.rh || 0, r: Math.max(w, d), o });
+    o = o || {}; objs.push({ t: 'box', x, y, w, d, h, hb: h, rb: o.rh || 0, wall, roof, style: o.style || 'flat', rh: o.rh || 0, r: Math.max(w, d), o });
     if (!o.walk) blocks.push([x - w / 2 - 5, y - d / 2 - 5, x + w / 2 + 5, y + d / 2 + 5]);
   }
   function tree(x, y, s) { objs.push({ t: 'tree', x, y, s: s || 1, r: 12, c: pick(['#3f8f4a', '#2f7d3f', '#4c9c52', '#378443']) }); }
@@ -468,7 +468,7 @@
   }
 
   /* ---------- state ---------- */
-  const M = { cv: null, ctx: null, cam: null, on: false, raf: 0, last: 0, w: 0, h: 0, dpr: 1, D: 300, tD: 300, follow: true, me: null, others: new Map(), hits: [], emote: null, path: null, pi: 0, dest: null, vel: [0, 0] };
+  const M = { hs: 1, flat: false, outside: false, force3d: false, wasFlat: false, ease3d: false, liveT: 0, cv: null, ctx: null, cam: null, on: false, raf: 0, last: 0, w: 0, h: 0, dpr: 1, D: 300, tD: 300, follow: true, me: null, others: new Map(), hits: [], emote: null, path: null, pi: 0, dest: null, vel: [0, 0] };
   const HUD = { goslow: 1, ads: 1, neighbours: 1, sea: 1, gov: 1, city: 'lagos' };
   const cam = new Camera({ F: 500, tilt: 1.02, yaw: -.28, D: 340 }); M.cam = cam;
   const getS = () => (typeof S !== 'undefined' ? S : null), getNET = () => (typeof NET !== 'undefined' ? NET : null);
@@ -719,7 +719,7 @@
         const t0 = .42, t1 = .58; if (f[2] === 0 && f[3] === 1) poly(ctx, [[f[0][0] + (f[1][0] - f[0][0]) * t0, f[0][1], 0], [f[0][0] + (f[1][0] - f[0][0]) * t1, f[0][1], 0], [f[0][0] + (f[1][0] - f[0][0]) * t1, f[0][1], 12], [f[0][0] + (f[1][0] - f[0][0]) * t0, f[0][1], 12]], '#4a2f1c');
       }
     }
-    if (o.style === 'hip') {                                            // pyramid roof
+    if (o.style === 'hip' && M.hs > .5) {                               // pyramid roof (drawn flat in the 2D overview)
       const ap = [o.x, o.y, h + (o.rh || 10)], c = [[x0 - 2, y0 - 2], [x1 + 2, y0 - 2], [x1 + 2, y1 + 2], [x0 - 2, y1 + 2]];
       const sh = [-.05, -.2, -.28, -.12];
       for (let i = 0; i < 4; i++) { const a = c[i], b = c[(i + 1) % 4], cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, nx = Math.sign(cx - o.x) * (Math.abs(cx - o.x) > Math.abs(cy - o.y) ? 1 : 0), ny = Math.sign(cy - o.y) * (Math.abs(cy - o.y) >= Math.abs(cx - o.x) ? 1 : 0);
@@ -1061,6 +1061,35 @@
   }
 
   /* ---------- frame ---------- */
+
+  /* ---------- 2D overview (desktop) <-> 3D street view (after "Step outside") ----------
+     On a big screen the Map is a flat top-down plan: buildings are footprints, places are icons, and rings + counters show
+     where things are happening. The tall 3D buildings only appear in the street view you get when you step outside. */
+  const SOLID = { box: 1, tank: 1, poster: 1, mast: 1 };
+  function applyHeights() { for (const o of objs) { if (!SOLID[o.t]) continue; if (o.hb === undefined) { o.hb = o.h; o.rb = o.rh || 0 } o.h = Math.max(1.2, o.hb * M.hs); if (o.t === 'box') o.rh = o.rb * M.hs } }
+  function modeStep(dt) {
+    const flat = M.w >= 768 && !M.outside && !M.force3d; M.flat = flat;
+    const k = 1 - Math.exp(-dt * 7), tH = flat ? .06 : 1;
+    if (Math.abs(tH - M.hs) > .002) { M.hs += (tH - M.hs) * k; if (Math.abs(tH - M.hs) <= .002) M.hs = tH; applyHeights() }
+    if (flat) { cam.tilt += (0 - cam.tilt) * k; cam.yaw += (0 - cam.yaw) * k; if (!M.wasFlat) { M.wasFlat = true; M.tD = Math.max(M.tD, 1100) } }
+    else { if (M.wasFlat) { M.wasFlat = false; M.ease3d = true } if (M.ease3d) { cam.tilt += (1.02 - cam.tilt) * k; cam.yaw += (-.28 - cam.yaw) * k; if (Math.abs(cam.tilt - 1.02) < .01) M.ease3d = false } }
+  }
+  // which kinds of place are buzzing because of the current city event
+  const EVENT_KINDS = { owambe: ['hall', 'club', 'hotel', 'boat', 'park'], market: ['shop'], fuel: ['refinery'] };
+  function liveKinds() { try { const ev = g.LAGOS && g.LAGOS.d && g.LAGOS.d.event; return ev ? (EVENT_KINDS[ev.id] || []) : [] } catch (e) { return [] } }
+  function mapChrome() {
+    if ($('mapView')) return; const box = M.cv.parentNode, d = document.createElement('div'); d.id = 'mapView';
+    d.innerHTML = '<button id="mapLive" class="mvlive" onclick="MAP3D.showEvents()" aria-label="What is happening now"></button><button id="mapDim" class="mvdim" onclick="MAP3D.toggle3d()" aria-label="Switch between 2D map and 3D street view">3D</button>';
+    box.appendChild(d); const st = document.createElement('style');
+    st.textContent = '#mapView{position:absolute;left:16px;top:74px;z-index:6;display:none;flex-direction:column;align-items:flex-start;gap:8px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}@media(min-width:768px){#mapView{display:flex}}#mapView button{border:0;cursor:pointer;font:700 13px "Plus Jakarta Sans",system-ui,sans-serif;color:#fff;background:rgba(18,24,38,.88);border-radius:999px;height:34px;padding:0 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);backdrop-filter:blur(6px)}#mapView .mvlive:empty{display:none}#mapView button:hover{background:rgba(40,52,80,.95)}';
+    document.head.appendChild(st);
+  }
+  function chromeUpdate(now) {
+    if (now - M.liveT < 900) return; M.liveT = now; const live = $('mapLive'), dim = $('mapDim'); if (!live) return;
+    const ev = g.LAGOS && g.LAGOS.d && g.LAGOS.d.event, ks = liveKinds(), n = PINS.filter(p => ks.includes(p[4])).length;
+    live.textContent = ev && n ? (ev.icon || '🎉') + ' ' + (ev.title || 'Event') + ' · ' + n + ' place' + (n > 1 ? 's' : '') + ' buzzing' : '';
+    dim.textContent = M.flat ? '3D' : (M.outside ? '2D' : '2D'); dim.style.display = M.outside ? 'none' : '';
+  }
   function frame(now) {
     if (!M.on) return; M.raf = requestAnimationFrame(frame);
     const dt = Math.min(.05, (now - M.last) / 1000 || .016); M.last = now; const t = now / 1000;
@@ -1068,7 +1097,7 @@
     // zoom easing + inertia
     const dz = M.tD - M.D; if (Math.abs(dz) > .01) { const before = M.zoomAt ? (cam.update(), cam.pick(M.zoomAt[0], M.zoomAt[1], 0)) : null; M.D += dz * (1 - Math.exp(-dt * 10)); cam.D = M.D; cam.update(); if (before) { const after = cam.pick(M.zoomAt[0], M.zoomAt[1], 0); if (after) { cam.tx += before.x - after.x; cam.ty += before.y - after.y; } } }
     if (!M.drag && (Math.abs(M.vel[0]) + Math.abs(M.vel[1]) > .05)) { cam.tx += M.vel[0] * dt; cam.ty += M.vel[1] * dt; const f = Math.exp(-dt * 4); M.vel[0] *= f; M.vel[1] *= f; }
-    updateMe(dt); updateOthers(dt);
+    updateMe(dt); updateOthers(dt); modeStep(dt); chromeUpdate(now);
     cam.tx = clamp(cam.tx, -EXT * .75, W + EXT * .75); cam.ty = clamp(cam.ty, -EXT * .75, W + EXT * .75); cam.update();
     draw(t);
     const cp = $('mpCompass'); if (cp) cp.firstElementChild.style.transform = `rotate(${-cam.yaw}rad)`;
@@ -1121,13 +1150,14 @@
     for (const f of LAYERS.world) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
     // pin labels: every place is a small icon bubble. Tap it (or hover it with a mouse) and it opens into [icon  name  Open >].
     ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
-    let openPin = null;
+    let openPin = null; const liveK = liveKinds();
     for (const p of PINS) {
       const [nm, em, x, y, kind, act] = p; if (!HUD.gov && (kind === 'gov' || kind === 'court')) continue; if (!HUD.ads && kind === 'radio') continue;
       const hh = p[7] || { radio: 72, hall: 36, shop: 26, home: 54, glass: 82, dome: 56, airport: 30, gym: 36, court: 58, hotel: 112, club: 42, tower: 102, boat: 40, park: 20, refinery: 26 }[kind] || 30;
       const b = cam.project(x, y, hh + 10, tmp); if (tmp.z < NEAR || tmp.x < -80 || tmp.x > M.w + 80 || tmp.y < 40 || tmp.y > M.h + 40) continue;
       if (M.exp === p || M.hov === p) { openPin = { p, x: tmp.x, y: tmp.y }; continue; }
       ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+      if (liveK.includes(kind)) { const ph = performance.now() / 1000; ctx.save(); ctx.strokeStyle = 'rgba(255,92,60,' + (.45 + .35 * Math.sin(ph * 3.2)) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 17 + 3 * Math.sin(ph * 3.2), 0, TAU); ctx.stroke(); ctx.restore() }
       ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.97)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 12, 0, TAU); ctx.fill();
       ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
       ctx.font = '14px system-ui'; ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.fillText(em, tmp.x, tmp.y + 1); ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
@@ -1174,7 +1204,7 @@
     const p = ptrs.get(e.pointerId); if (!p) return; const [x, y] = rectXY(e), px = p.x, py = p.y; p.x = x; p.y = y;
     if (ptrs.size === 1 && M.drag) {
       const d = M.drag; d.moved += Math.abs(x - d.lx) + Math.abs(y - d.ly);
-      if (d.mode === 'rot') { cam.yaw += (x - d.lx) * .008; cam.tilt = clamp(cam.tilt + (y - d.ly) * .005, 0, 1.15); cam.update(); }
+      if (d.mode === 'rot' && !M.flat) { cam.yaw += (x - d.lx) * .008; cam.tilt = clamp(cam.tilt + (y - d.ly) * .005, 0, 1.15); cam.update(); }
       else if (d.moved > 6) { M.follow = false; cam.update(); const q = cam.pick(x, y, 0); if (q && d.anchor) { const dx = d.anchor.x - q.x, dy = d.anchor.y - q.y; cam.tx += dx; cam.ty += dy; M.vel = [dx * 50, dy * 50]; cam.update(); } }
       d.lx = x; d.ly = y;
     } else if (ptrs.size === 2 && M.pin) {
@@ -1182,7 +1212,7 @@
       const dyA = a.y - (a === p ? py : a.y), dyB = b.y - (b === p ? py : b.y);
       const rot = ((ang - pn.a + Math.PI * 3) % TAU) - Math.PI, sc = dist / pn.d, parallel = Math.abs(rot) < .08 && Math.abs(sc - 1) < .08 && Math.abs(my - pn.my) > Math.abs(mx - pn.mx);
       M.follow = false;
-      if (parallel && (Math.abs(a.y - a.sy) > 14 || pn.tilting)) { pn.tilting = true; cam.tilt = clamp(cam.tilt - (dyA + dyB) / 2 * .006, 0, 1.15); cam.update(); }
+      if (!M.flat && parallel && (Math.abs(a.y - a.sy) > 14 || pn.tilting)) { pn.tilting = true; cam.tilt = clamp(cam.tilt - (dyA + dyB) / 2 * .006, 0, 1.15); cam.update(); }
       else {
         cam.yaw -= (rot) * 1; M.D = M.tD = clamp(M.D / sc, 80, maxD()); cam.D = M.D; cam.update();
         const q = cam.pick(mx, my, 0); if (q && pn.anchor) { cam.tx += pn.anchor.x - q.x; cam.ty += pn.anchor.y - q.y; cam.update(); }
@@ -1307,12 +1337,17 @@
       M.cv.addEventListener('pointerdown', onDown); M.cv.addEventListener('pointermove', onMove); M.cv.addEventListener('pointerup', onUp); M.cv.addEventListener('pointercancel', onUp);
       M.cv.addEventListener('wheel', onWheel, { passive: false }); M.cv.addEventListener('contextmenu', e => e.preventDefault()); g.addEventListener('keydown', onKey); g.addEventListener('resize', resize);
       ensureMe(); cam.tx = M.me.x; cam.ty = M.me.y; cam.yaw = -.28; cam.tilt = 1.02; M.D = M.tD = 340; cam.D = 340;
+      if (g.innerWidth >= 768) { cam.yaw = 0; cam.tilt = 0; M.hs = .06; M.D = M.tD = cam.D = 1250; M.wasFlat = true; applyHeights(); cam.update() }
+      mapChrome();
     },
     show() { API.init(); M.on = true; resize(); if (M.saved) { API.restorePos(M.saved); M.saved = null; } sendPos(true); cancelAnimationFrame(M.raf); M.last = performance.now(); M.raf = requestAnimationFrame(frame); },
     hide() { stopTour(); M.on = false; cancelAnimationFrame(M.raf); },
     zoom(f) { zoomBy(f); },
     rotate(a) { cam.yaw += a; cam.update(); },
     tilt(a) { cam.tilt = clamp(cam.tilt + a, 0, 1.15); cam.update(); },
+    inside() { M.outside = false },
+    toggle3d() { M.force3d = !M.force3d; const b = $('mapDim'); if (b) b.textContent = M.force3d ? '2D' : '3D' },
+    showEvents() { try { g.LAGOS.open() } catch (e) { } },
     toggleTilt() { cam.tilt = cam.tilt > .5 ? 0 : .95; cam.update(); },
     resetNorth() { cam.yaw = 0; cam.update(); },
     recenter() { M.follow = true; M.tD = Math.min(M.tD, 240); },
@@ -1342,10 +1377,10 @@
     },
     /* leaving your home: you appear on the street just outside your door; coming back is the "Step inside" button (door.js) */
     homePin() { return PINS.find(p => p[5] === 'home') },
-    stepOutside() { API.init(); const h = API.homePin(); if (!h) return; ensureMe(); teleport(h[2], h[3] + 34); M.follow = true; M.tD = Math.min(M.tD || 240, 240) },
+    stepOutside() { API.init(); M.outside = true; const h = API.homePin(); if (!h) return; ensureMe(); teleport(h[2], h[3] + 34); M.follow = true; M.tD = Math.min(M.tD || 240, 240) },
     nearHome(r) { const h = API.homePin(); return !!(h && M.me && Math.hypot(M.me.x - h[2], M.me.y - (h[3] + 34)) <= (r || 70)) },
-    walkHome() { const h = API.homePin(); if (h) { M.follow = true; API.walkTo(h[2], h[3] + 34) } },
-    walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
+    walkHome() { const h = API.homePin(); if (h) { M.outside = true; M.follow = true; API.walkTo(h[2], h[3] + 34) } },
+    walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { M.outside = true; API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
     startTour, stopTour,
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
     visit(em, title) {      /* Visit only works when you are at the place; from farther away you travel there first */
