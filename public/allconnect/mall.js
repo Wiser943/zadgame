@@ -43,7 +43,7 @@ const MALL = {
     if (document.getElementById('mall')) return;
     const el = document.createElement('div'); el.id = 'mall';
     el.innerHTML = `<canvas id="mallcv" aria-label="3D mall. Tap a shop to go in." role="img"></canvas>
-      <div class="mallban"><b>AllConnect Mall</b><span>Tap a shop to go in</span></div><div class="mallload" id="mallload">Opening the mall…</div>
+      <div class="mallban"><b>AllConnect Mall</b><span>Tap a shop to go in</span></div><div class="mallhint" id="mallhint">Drag to turn · pinch or scroll to zoom</div><div class="mallctl"><button type="button" aria-label="Zoom in" onclick="MALL.view.zoom(0.85)">＋</button><button type="button" aria-label="Zoom out" onclick="MALL.view.zoom(1.18)">－</button><button type="button" aria-label="Turn left" onclick="MALL.view.turn(-0.4)">⟲</button><button type="button" aria-label="Turn right" onclick="MALL.view.turn(0.4)">⟳</button><button type="button" aria-label="Reset view" onclick="MALL.view.reset()">◎</button></div><div class="mallload" id="mallload">Opening the mall…</div>
       <div class="mallcards" id="mallcards">${this.SHOPS.map(s => `<button type="button" class="mcard" style="--c:${s.c}" onclick="MALL.go('${s.k}')"><span class="mce">${s.e}</span><b>${s.n}</b><small>${s.t}</small></button>`).join('')}</div>
       <div class="mallsheet" id="mallsheet"></div>`;
     document.getElementById('buy').appendChild(el)
@@ -95,14 +95,27 @@ const MALL = {
     [[-7, 3.5], [7, 3.5], [-12, 5], [12, 5]].forEach(([x, z]) => { this.box(2.6, 0.4, 0.8, 0x8a4b14, x, 0.5, z); this.box(2.6, 0.12, 0.8, 0x6b3a10, x, 0.72, z) });
     [[-15, 3], [15, 3], [-4.5, -4.5], [4.5, -4.5], [-15.5, -5], [15.5, -5]].forEach(([x, z]) => { this.box(0.7, 0.7, 0.7, 0xb4683a, x, 0.35, z); const l = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2, 7), this.mat(0x2f9e5d)); l.position.set(x, 1.7, z); this.scene.add(l) });
     /* shoppers */
-    const n = (navigator.hardwareConcurrency || 4) <= 4 ? 9 : 14; this.npcs = []; for (let i = 0; i < n; i++) this.npcs.push(this.spawn(true));
-    /* drag to look around, tap a shop to go in */
-    let sx = 0, sc = 0, moved = false, down = false;
+    const n = (navigator.hardwareConcurrency || 4) <= 4 ? 6 : 10; this.npcs = []; for (let i = 0; i < n; i++) this.npcs.push(this.spawn(true));
+    /* One finger or mouse drag turns the mall sideways (about 270 degrees in total) and tilts it a little. Pinch or wheel zooms.
+       Two fingers, right-drag or Shift-drag slides along the shops. Tap a shop sign to go in. */
+    this.az = this.taz = 0; this.zm = this.tzm = 1; this.pc = this.tpc = 1;
+    const AZ = Math.PI * 0.75, ZMIN = 0.42, ZMAX = 1.55, clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), ptrs = new Map();
+    let moved = false, pinch0 = 0, zm0 = 1, mid0 = 0;
+    const mid = () => { const q = [...ptrs.values()]; return (q[0].x + q[1].x) / 2 }, gap = () => { const q = [...ptrs.values()]; return Math.hypot(q[0].x - q[1].x, q[0].y - q[1].y) || 1 };
     cv.style.touchAction = 'none';
-    cv.addEventListener('pointerdown', e => { down = true; moved = false; sx = e.clientX; sc = this.tx; this.touched = true; try { cv.setPointerCapture(e.pointerId) } catch (x) {} });
-    cv.addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - sx; if (Math.abs(dx) > 6) moved = true; this.tx = Math.max(-11, Math.min(11, sc - dx * 0.045)) });
-    cv.addEventListener('pointerup', e => { if (!down) return; down = false; if (!moved) this.tap(e) });
-    cv.addEventListener('pointercancel', () => { down = false });
+    cv.addEventListener('pointerdown', e => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, b: e.button }); if (ptrs.size === 1) moved = false; else if (ptrs.size === 2) { moved = true; pinch0 = gap(); zm0 = this.tzm; mid0 = mid() } this.touched = true; try { cv.setPointerCapture(e.pointerId) } catch (x) {} });
+    cv.addEventListener('pointermove', e => {
+      const q = ptrs.get(e.pointerId); if (!q) return; const dx = e.clientX - q.x, dy = e.clientY - q.y; q.x = e.clientX; q.y = e.clientY;
+      if (ptrs.size >= 2) { this.tzm = clamp(zm0 * pinch0 / gap(), ZMIN, ZMAX); const m = mid(); this.tx = clamp(this.tx - (m - mid0) * 0.035 * this.zm, -11, 11); mid0 = m; return }
+      if (Math.hypot(e.clientX - q.sx, e.clientY - q.sy) > 6) moved = true; if (!moved) return;
+      if (q.b === 2 || e.shiftKey) this.tx = clamp(this.tx - dx * 0.035 * this.zm, -11, 11);
+      else { this.taz = clamp(this.taz - dx * 0.0085, -AZ, AZ); this.tpc = clamp(this.tpc + dy * 0.004, 0.45, 1.6) }
+    });
+    const up = e => { const had = ptrs.delete(e.pointerId); if (had && ptrs.size === 0 && !moved && e.type === 'pointerup') this.tap(e) };
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); cv.addEventListener('contextmenu', e => e.preventDefault());
+    cv.addEventListener('wheel', e => { e.preventDefault(); this.touched = true; this.tzm = clamp(this.tzm * (e.deltaY > 0 ? 1.1 : 0.91), ZMIN, ZMAX) }, { passive: false });
+    this.view = { turn: d => { this.touched = true; this.taz = clamp(this.taz + d, -AZ, AZ) }, zoom: f => { this.touched = true; this.tzm = clamp(this.tzm * f, ZMIN, ZMAX) }, reset: () => { this.taz = 0; this.tzm = 1; this.tpc = 1 } };
+    window.addEventListener('keydown', e => { if (!this.shown || this.m !== 'mall' || /input|textarea|select/i.test((e.target || {}).tagName || '')) return; const k = e.key; if (k === 'ArrowLeft') this.view.turn(-0.12); else if (k === 'ArrowRight') this.view.turn(0.12); else if (k === '+' || k === '=') this.view.zoom(0.88); else if (k === '-') this.view.zoom(1.14); else if (k === '0') this.view.reset() });
     window.addEventListener('resize', () => { if (this.shown && this.m === 'mall') this.size() })
   },
   size() { const cv = document.getElementById('mallcv'); if (!cv || !this.r) return; const w = cv.clientWidth || 360, h = cv.clientHeight || 640; this.r.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix() },
@@ -111,16 +124,37 @@ const MALL = {
     ray.setFromCamera(v, this.cam); const hit = ray.intersectObjects(this.hits)[0]; if (hit) this.go(hit.object.userData.k)
   },
   /* ---------- shoppers ---------- */
+  /* An independent copy of the home-tab character (same model, clothes, walk and idle animation) for a shopper. It reuses
+     ROOM3D's own builder through a throw-away object, so the house character is never touched. */
+  figure(gender) {
+    const pick = a => a[Math.floor(Math.random() * a.length)], ok = a => a.filter(k => window.ACAvatar && ACAvatar.HS && ACAvatar.HS[k]);
+    const look = ACAvatar.defaultRender(gender, {
+      skin: pick(['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#6b4226', '#4a2c17']), hair: pick(['#111111', '#16100d', '#2b1b10', '#3b2a1a']),
+      top: pick(['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#111827', '#ffffff']),
+      bottom: pick(['#1f2937', '#374151', '#1e3a8a', '#78350f', '#111827']), shoe: pick(['#f4f4f4', '#2b2b2b', '#7a4b2a'])
+    });
+    const styles = ok(gender === 'female' ? ['braids_bun', 'box_braids', 'knotless', 'ghana', 'afro_puff', 'twist_out', 'space_buns', 'afro', 'cornrows'] : ['lowcut', 'fade', 'highfade', 'waves', 'flattop', 'afro', 'twists', 'locs', 'cornrows']); if (styles.length) look.hair.style = pick(styles);
+    const f = Object.create(ROOM3D);                    // methods only: every field below is this shopper's own
+    f.scene = new THREE.Group(); f.avatar = null; f.parts = null; f.pose = {}; f.tp = {}; f.ph = Math.random() * 6; f.tt = Math.random() * 5; f.spin = 0; f.em = null; f.dn = 0; f.mood = 'neutral'; f.poseName = ''; f.ext = {}; f.laststate = ''; f.look = null;
+    f.buildAvatar(gender, look); return f;
+  },
   spawn(scatter) {
-    const P = {
-      skin: [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e], top: [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899, 0x14b8a6, 0xf97316, 0x111827, 0xffffff], low: [0x1f2937, 0x374151, 0x1e3a8a, 0x78350f, 0x111827], hair: [0x111111, 0x2b1b10, 0x3b2a1a]
-    }, pick = a => a[Math.floor(Math.random() * a.length)], g = new THREE.Group();
+    const gender = Math.random() < 0.5 ? 'female' : 'male', n = { ph: Math.random() * 6, sp: 1.6 + Math.random() * 1.1, state: 'walk', wait: 0, t: 0, shop: null, exit: false, bub: null };
+    try { n.fig = this.figure(gender); n.g = n.fig.avatar }
+    catch (e) { n.fig = null; n.g = this.oldFigure(n) }      // if the character model cannot be built, fall back to the simple one
+    this.scene.add(n.g); this.place(n, scatter); this.pick(n); return n
+  },
+  oldFigure(n) {
+    const P = { skin: [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e], top: [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899], low: [0x1f2937, 0x374151, 0x1e3a8a], hair: [0x111111, 0x2b1b10] }, pick = a => a[Math.floor(Math.random() * a.length)], g = new THREE.Group();
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.7, 0.3), this.mat(pick(P.top))); torso.position.y = 1.0; g.add(torso);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), this.mat(pick(P.skin))); head.position.y = 1.58; g.add(head);
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.235, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2), this.mat(pick(P.hair))); hair.position.y = 1.62; g.add(hair);
-    const limb = (w, h, d, c, x, y) => { const p = new THREE.Group(); p.position.set(x, y, 0); const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this.mat(c)); m.position.y = -h / 2; p.add(m); g.add(p); return p };
-    const lc = pick(P.low); const n = { g, legL: limb(0.2, 0.62, 0.22, lc, -0.13, 0.64), legR: limb(0.2, 0.62, 0.22, lc, 0.13, 0.64), armL: limb(0.14, 0.55, 0.16, pick(P.skin), -0.35, 1.32), armR: limb(0.14, 0.55, 0.16, pick(P.skin), 0.35, 1.32), ph: Math.random() * 6, sp: 1.6 + Math.random() * 1.1, state: 'walk', wait: 0, t: 0, shop: null, exit: false, bub: null };
-    this.scene.add(g); this.place(n, scatter); this.pick(n); return n
+    const limb = (w, h, d, c, x, y) => { const q = new THREE.Group(); q.position.set(x, y, 0); const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), this.mat(c)); m.position.y = -h / 2; q.add(m); g.add(q); return q }, lc = pick(P.low);
+    n.legL = limb(0.2, 0.62, 0.22, lc, -0.13, 0.64); n.legR = limb(0.2, 0.62, 0.22, lc, 0.13, 0.64); n.armL = limb(0.14, 0.55, 0.16, pick(P.skin), -0.35, 1.32); n.armR = limb(0.14, 0.55, 0.16, pick(P.skin), 0.35, 1.32); return g
+  },
+  anim(n, dt, moving) {
+    if (n.fig) { try { n.fig.animate(performance.now(), dt, moving) } catch (e) { n.fig = null } return }
+    if (!n.legL) return; if (!moving) { n.legL.rotation.x = n.legR.rotation.x = n.armL.rotation.x = n.armR.rotation.x = 0; return }
+    n.ph += dt * n.sp * 5; const sw = Math.sin(n.ph) * 0.7; n.legL.rotation.x = sw; n.legR.rotation.x = -sw; n.armL.rotation.x = -sw * 0.8; n.armR.rotation.x = sw * 0.8
   },
   place(n, scatter) { n.g.visible = true; n.state = 'walk'; n.g.position.set(scatter ? (Math.random() * 28 - 14) : (Math.random() * 8 - 4), 0, scatter ? (Math.random() * 12 - 3) : 10.5) },
   pick(n) {
@@ -139,7 +173,7 @@ const MALL = {
     this.npcs.forEach(n => {
       if (n.bub && n.bt > 0) { n.bt -= dt; if (n.bt <= 0) n.bub.visible = false }
       if (n.state === 'in') { n.t -= dt; if (n.t <= 0) { n.g.visible = true; n.state = 'walk'; n.wait = 2.4; this.say(n, n.si) } return }
-      if (n.wait > 0) { n.wait -= dt; n.legL.rotation.x = n.legR.rotation.x = n.armL.rotation.x = n.armR.rotation.x = 0; if (n.wait <= 0) this.pick(n); return }
+      if (n.wait > 0) { n.wait -= dt; this.anim(n, dt, false); if (n.wait <= 0) this.pick(n); return }
       const dx = n.tg.x - n.g.position.x, dz = n.tg.z - n.g.position.z, d = Math.hypot(dx, dz);
       if (d < 0.18) {
         if (n.exit) { n.g.position.set(Math.random() * 8 - 4, 0, 10.5); this.pick(n); return }
@@ -148,8 +182,7 @@ const MALL = {
       }
       let mx = dx / d, mz = dz / d; const fx = n.g.position.x, fz = n.g.position.z - this.fz, fd = Math.hypot(fx, fz);
       if (fd < 3.1) { mx += (fx / fd) * 1.2; mz += (fz / fd) * 1.2; const l = Math.hypot(mx, mz); mx /= l; mz /= l }
-      n.g.position.x += mx * n.sp * dt; n.g.position.z += mz * n.sp * dt; n.g.rotation.y = Math.atan2(mx, mz); n.ph += dt * n.sp * 5;
-      const sw = Math.sin(n.ph) * 0.7; n.legL.rotation.x = sw; n.legR.rotation.x = -sw; n.armL.rotation.x = -sw * 0.8; n.armR.rotation.x = sw * 0.8
+      n.g.position.x += mx * n.sp * dt; n.g.position.z += mz * n.sp * dt; n.g.rotation.y = Math.atan2(mx, mz); this.anim(n, dt, true)
     })
   },
   loop(t) {
@@ -157,7 +190,9 @@ const MALL = {
     const dt = Math.min(0.05, (t - this.last) / 1000); this.last = t; this.step(dt);
     if (!this.touched) this.tx = Math.sin((t - this.t0) / 9000) * 8;      // drifts along the shops until you drag it yourself
     this.cx += (this.tx - this.cx) * Math.min(1, dt * 4);
-    this.cam.position.set(this.cx, 9.2, 13.5); this.cam.lookAt(this.cx, 1.1, -3.2); this.r.render(this.scene, this.cam)
+    const k = Math.min(1, dt * 6); this.az += (this.taz - this.az) * k; this.zm += (this.tzm - this.zm) * k; this.pc += (this.tpc - this.pc) * k;
+    const rad = 16.7 * this.zm, up = 8.1 * this.pc * this.zm;        // az = 0 is the original front view (camera at 0, 9.2, 13.5)
+    this.cam.position.set(this.cx + Math.sin(this.az) * rad, 1.1 + up, -3.2 + Math.cos(this.az) * rad); this.cam.lookAt(this.cx, 1.1, -3.2); this.r.render(this.scene, this.cam)
   }
 };
 window.MALL = MALL;

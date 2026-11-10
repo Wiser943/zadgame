@@ -104,6 +104,12 @@ const GIST = {
   },
   listen(k, ev) { if (ev) { ev.preventDefault(); ev.stopPropagation() } const s = this.sg && this.sg[k]; if (!s) return; if (!window.SONGIFY || !SONGIFY.openSong) return toast('Songify is unavailable right now.'); SONGIFY.openSong(s) },
   gamecard(g) { if (!g) return ''; return `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(g.name)}</b><small>${g.code ? 'Room code <code>' + esc(g.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.play('${esc(g.code || '')}')">${g.code ? 'Join' : 'Play'}</button></div>` },
+  birthdaycard(b, id) {
+    if (!b) return '';
+    const T = [['#ff7a59', '#ffb347'], ['#7b5cff', '#ff5ca8'], ['#00b894', '#55efc4'], ['#0984e3', '#74b9ff'], ['#e17055', '#fdcb6e']][(b.theme || 0) % 5];
+    const bits = ['🎉', '🎈', '✨', '🎊', '🎁', '⭐', '🥳', '🎂'].map((e, i) => `<i class="gbc" style="left:${6 + i * 12}%;animation-delay:${(i * .37).toFixed(2)}s">${e}</i>`).join('');
+    return `<div class="gbday" style="--a:${T[0]};--b:${T[1]}">${bits}<div class="gbt">🎂</div><div class="gbn">Happy birthday, ${esc(b.name)}!</div><div class="gbw">${esc(b.wish)}</div><div class="gmb"><button onclick="GIST.react('${id}','fire')"><i class="fa-solid fa-fire"></i> Celebrate</button><button onclick="GIST.nav('post','${id}')"><i class="fa-solid fa-comment"></i> Send a wish</button></div></div>`;
+  },
   electioncard(e, id) {
     if (!e) return '';
     const head = e.kind === 'result' ? `ELECTED ${e.title.toUpperCase()} OF ${e.scope.toUpperCase()}` : e.kind === 'campaign' ? `RUNNING FOR ${e.title.toUpperCase()} OF ${e.scope.toUpperCase()}` : `OFFICIAL · ${e.title.toUpperCase()} OF ${e.scope.toUpperCase()}`;
@@ -126,7 +132,7 @@ const GIST = {
     if (p.shared) shared = p.shared.deleted ? `<div class="gshared gone">This post is no longer available.</div>` : `<div class="gshared"><button type="button" class="gshared-open" onclick="GIST.nav('post','${p.shared.id}')" aria-label="Open original post by ${esc(p.shared.author.displayName)}"><span class="gsh"><b>${esc(p.shared.author.displayName)}${this.vb(p.shared.author)}</b><i>${p.shared.author.username ? '@' + esc(p.shared.author.username) : ''} · ${this.ago(p.shared.createdAt)}</i></span><span>Open original post <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span></button>${p.shared.text ? `<div class="gtx">${this.txt(p.shared.text)}</div>` : ''}${this.imgs(p.shared)}${this.vid(p.shared)}${this.matchcard(p.shared.match, p.shared.id)}${this.electioncard(p.shared.election, p.shared.id)}${this.gamecard(p.shared.game)}${this.songcard(p.shared.song)}</div>`;
     const em = p.myRx ? RXE[p.myRx] : '';
     // media comes right under the header, edge to edge — text moves below the action row, Instagram-style
-    const media = `${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}`;
+    const media = `${this.matchcard(p.match, p.id)}${this.birthdaycard(p.birthday, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}`;
     // caption: hashtags become small chips under the text; with media the text is a normal readable caption (4 lines, tap to expand);
     // a text-only post with a short first line gets that line as its title.
     const raw = String(p.text || '').trim(), TAG = /#[\p{L}\p{N}_]{2,30}/gu;

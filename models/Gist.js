@@ -11,6 +11,7 @@ const GistPostSchema = new Schema({
   game: { key: String, name: String, code: String },   // game reference / room link
   match: { game: String, name: String, score: String, opponent: String, result: String },  // auto-posted match win card
   election: { office: String, kind: String, slogan: String, votes: Number },   // State House cards: campaign / result / announce (see services/govService.js)
+  birthday: { name: String, wish: String, theme: Number },   // the automatic birthday card (see services/birthdays.js)
   poll: { options: { type: [PollOption], default: undefined }, endsAt: Date },
   song: { title: String, artist: String, albumArt: String, streamUrl: String },   // a Songify track shared to the feed: tapping it opens Songify and plays it
   video: { uploadId: String, assetId: String, playbackId: String, duration: Number, kind: String, mux: { assetId: String, playbackId: String, signed: Boolean, captions: Boolean }, url: String, fileId: String, mime: String, size: Number, dur: Number, poster: { url: String, thumb: String } },   // legacy Mux fields remain readable while current reels use the nested mux record

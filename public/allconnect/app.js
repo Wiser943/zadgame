@@ -134,22 +134,24 @@ function authMode(m) {
   $('tl').className = m == 'login' ? 'on' : '';
   $('tr').className = m == 'login' ? '' : 'on';
   $('fname').style.display = m == 'login' ? 'none' : 'block';
+  $('fsto').style.display = $('fscu').style.display = m == 'login' ? 'none' : 'block';
   $('abtn').textContent = m == 'login' ? 'Sign in' : 'Create account';
   $('fpw').autocomplete = m == 'login' ? 'current-password' : 'new-password';
   $('aerr').textContent = ''
 }
 if (location.hash === '#register' || location.hash === '#sign-up') authMode('register');
 async function doAuth() {
-  if (window.AGE && !AGE.ok()) return AGE.gate(() => doAuth());
+  if (window.AGE && (!AGE.ok() || (AM == 'register' && !AGE.hasFull()))) return AGE.gate(() => doAuth());   // sign-up always asks for the full date of birth
   const id = $('fid').value.trim(),
     pw = $('fpw').value,
     name = $('fname').value.trim(),
     b = $('abtn');
   $('aerr').textContent = '';
   if (!id || !pw || (AM == 'register' && !name)) return $('aerr').textContent = AM == 'register' ? 'Enter your name, email/phone and password.' : 'Enter your email/phone and password.';
+  if (AM == 'register' && (!$('fsto').value || !$('fscu').value)) return $('aerr').textContent = 'Tell us which state you are from and which state you are in now.';
   b.disabled = true;
   try {
-    await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw } });
+    await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw, stateOrigin: $('fsto').value, stateCurrent: $('fscu').value } });
     window.JUST_AUTHED = true;
     await boot();
     window.JUST_AUTHED = false

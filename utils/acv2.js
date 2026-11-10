@@ -20,5 +20,6 @@ const PACKS = [
   { id: 'biglife', icon: '💼', name: 'Big Life', coins: 700000, ngn: 10000, usd: 7, best: true },
   { id: 'legend', icon: '👑', name: 'Legend', coins: 1600000, ngn: 20000, usd: 14 }
 ];
+const NG_STATES = ["Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT (Abuja)", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara", "Outside Nigeria"];
 const clean = (s, n) => String(s == null ? '' : s).replace(/[<>]/g, '').trim().slice(0, n);
-module.exports = { TRAITS, TRAIT_IDS, PREF_DEFAULTS, PACKS, clean };
+module.exports = { NG_STATES, TRAITS, TRAIT_IDS, PREF_DEFAULTS, PACKS, clean };

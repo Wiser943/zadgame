@@ -135,6 +135,7 @@ async function hydrate(posts, uid) {
       song: p.song && p.song.streamUrl ? { title: p.song.title || 'Song', artist: p.song.artist || '', albumArt: p.song.albumArt || '', streamUrl: p.song.streamUrl } : null,
       game: p.game && p.game.key ? { key: p.game.key, name: p.game.name, code: p.game.code || '' } : null,
       match: p.match && p.match.game ? { game: p.match.game, name: p.match.name, score: p.match.score || '', opponent: p.match.opponent || '', result: p.match.result || 'win' } : null,
+      birthday: p.birthday && p.birthday.name ? { name: p.birthday.name, wish: p.birthday.wish || '', theme: p.birthday.theme || 0 } : null,
       election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
       video: normalizeVideo(p.video, playback), views: p.views || 0,
       tags: p.tags || [], pinned: !!p.pinned, edited: !!p.editedAt,

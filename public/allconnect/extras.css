@@ -203,3 +203,22 @@
 .rl-edit .rle-snd{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:3;border:0;border-radius:99px;padding:7px 14px;background:rgba(0,0,0,.62);color:#fff;font:700 12px inherit;font-family:inherit;white-space:nowrap}
 .rl-edit .rle-bar{overflow-x:auto;scrollbar-width:none;gap:2px;padding:2px 8px calc(10px + env(safe-area-inset-bottom,0px))}.rl-edit .rle-bar::-webkit-scrollbar{display:none}
 .rl-edit .rle-tb{flex:0 0 auto;width:56px;padding:6px 2px;gap:3px;font-size:10px;border-radius:12px}.rl-edit .rle-tb i{font-size:15px}.rl-edit .rle-tb.mod::after{top:4px;right:10px;width:6px;height:6px}
+
+/* mall: smaller banner and shop cards, plus the view controls */
+.mallban{top:calc(52px + var(--sat,0px));left:10px;right:10px;border-radius:15px;border-top-width:3px;padding:5px 13px 6px}
+.mallban b{font-size:9.5px}.mallban span{font-size:15px}
+.mcard{width:164px;border-bottom-width:4px;border-radius:15px;padding:9px 12px 9px}.mcard .mce{font-size:22px}.mcard b{font-size:14px;margin-top:3px}.mcard small{font-size:11px;line-height:1.28}
+.mallcards{gap:9px;padding:4px 10px 8px}
+.mallhint{position:absolute;top:calc(100px + var(--sat,0px));left:50%;transform:translateX(-50%);background:rgba(11,16,32,.72);color:#e5e9f5;border-radius:99px;padding:4px 12px;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;pointer-events:none;white-space:nowrap}
+.mallctl{position:absolute;right:10px;top:50%;transform:translateY(-60%);display:flex;flex-direction:column;gap:6px}
+.mallctl button{width:36px;height:36px;border-radius:50%;border:0;background:rgba(11,16,32,.78);color:#fff;font-size:16px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35)}.mallctl button:hover{background:rgba(40,52,80,.95)}
+@media (min-width:768px){.mallban{left:50%;right:auto;transform:translateX(-50%);min-width:300px;text-align:center;top:70px}.mallhint{top:122px}.mcard{width:190px}.mallcards{justify-content:center;bottom:20px}.mallctl{right:18px}}
+
+/* P-Gist birthday card */
+.gbday{position:relative;overflow:hidden;margin:8px 0 2px;padding:22px 16px 14px;border-radius:20px;text-align:center;color:#fff;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.gbday .gbt{font-size:46px;line-height:1;filter:drop-shadow(0 4px 8px rgba(0,0,0,.25));animation:gbpop 2.4s ease-in-out infinite}
+.gbday .gbn{font-weight:800;font-size:19px;margin-top:8px;text-shadow:0 2px 6px rgba(0,0,0,.25)}.gbday .gbw{font-size:13.5px;line-height:1.4;margin:6px auto 10px;max-width:30ch;opacity:.96}
+.gbday .gmb{display:flex;gap:8px;justify-content:center}.gbday .gmb button{border:0;border-radius:99px;padding:7px 14px;font-weight:700;background:rgba(255,255,255,.92);color:#222;cursor:pointer}
+.gbday .gbc{position:absolute;top:-18px;font-style:normal;font-size:18px;opacity:.85;animation:gbfall 4.8s linear infinite;pointer-events:none}
+@keyframes gbfall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(190px) rotate(240deg);opacity:0}}@keyframes gbpop{0%,100%{transform:scale(1)}50%{transform:scale(1.12) rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){.gbday .gbc,.gbday .gbt{animation:none}.gbday .gbc{display:none}}

@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const ACTopup = require('../models/ACTopup');
 const ensureAuth = require('../middleware/auth');
-const { TRAIT_IDS, PREF_DEFAULTS, PACKS, clean } = require('../utils/acv2');
+const { NG_STATES, TRAIT_IDS, PREF_DEFAULTS, PACKS, clean } = require('../utils/acv2');
 
 const router = express.Router();
 const webhook = express.Router();
@@ -18,11 +18,11 @@ const limited = (k, max = 8, ms = 60000) => { const now = Date.now(), a = (hits.
 
 router.get('/me', async (req, res, next) => {
   try {
-    const u = await User.findById(uid(req)).select('ac.traits ac.memories ac.prefs ac.bday email emailVerifiedAt passwordHash');
+    const u = await User.findById(uid(req)).select('ac.traits ac.memories ac.prefs ac.bday ac.stateOrigin ac.stateCurrent email emailVerifiedAt passwordHash');
     if (!u) return bad(res, 404, 'Player not found.');
     const a = u.ac || {};
     res.json({ traits: a.traits || [], prefs: { ...PREF_DEFAULTS, ...(a.prefs && a.prefs.toObject ? a.prefs.toObject() : a.prefs || {}) }, bday: a.bday || { m: 0, d: 0 },
-      memories: (a.memories || []).slice(-40).reverse(), email: mask(u.email), hasEmail: !!u.email, emailVerified: !!u.emailVerifiedAt, hasPassword: !!u.passwordHash });
+      stateOrigin: a.stateOrigin || '', stateCurrent: a.stateCurrent || '', memories: (a.memories || []).slice(-40).reverse(), email: mask(u.email), hasEmail: !!u.email, emailVerified: !!u.emailVerifiedAt, hasPassword: !!u.passwordHash });
   } catch (e) { next(e); }
 });
 
@@ -52,6 +52,16 @@ router.post('/bday', async (req, res, next) => {
     const max = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
     if (!max || !(d >= 1 && d <= max)) return bad(res, 400, 'Choose a real month and day.');
     await User.updateOne({ _id: uid(req) }, { $set: { 'ac.bday': { m, d } } });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+/* Where the player is from and where they are now. Asked at sign-up, and later from anyone who never answered. */
+router.post('/states', async (req, res, next) => {
+  try {
+    const o = String((req.body || {}).origin || ''), c = String((req.body || {}).current || '');
+    if (!NG_STATES.includes(o) || !NG_STATES.includes(c)) return bad(res, 400, 'Pick a state from the list.');
+    await User.updateOne({ _id: uid(req) }, { $set: { 'ac.stateOrigin': o, 'ac.stateCurrent': c } });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });

@@ -404,6 +404,132 @@
     lrBuild(); lampBuild(); extendWorld();
   }
 
+
+  /* ================= Port Harcourt (Rivers) and Abia (Aba / Umuahia) =================
+     Two more visitable cities built with the same pipeline as Abuja: one landmass, a broad road grid, a few named landmarks,
+     and a generic building cluster for each district. Port Harcourt sits on the Bonny River (everything south of its coast is
+     water, with a port, cranes and boats); Abia is fully inland. Nothing here is buyable as a home yet. */
+  const circ = (cx, cy, r) => Array.from({ length: 14 }, (_, i) => [cx + Math.cos(i / 14 * TAU) * r, cy + Math.sin(i / 14 * TAU) * r]);
+  const MAINLAND_PH = [[30, 30], [970, 30], [970, 800], [30, 800]];
+  const PINS_PH = [
+    ['Home', '🏠', 500, 500, 'home', 'home'],
+    ['Port Harcourt Int\'l', '✈️', 830, 130, 'airport'],
+    ['Sharks Stadium', '🏟', 150, 690, 'court'],
+    ['Genesis Centre', '🛍', 430, 470, 'hall'],
+    ['Hotel Presidential', '🏨', 560, 300, 'hotel'],
+    ['Pleasure Park', '🌳', 270, 330, 'park'],
+    ['Bonny River Cruise', '⛴️', 690, 790, 'boat'],
+    ['Trans-Amadi Refinery · Coming soon', '🛢️', 900, 600, 'refinery', 'soon-y'],
+    ['Old GRA', '🌳', 335, 190, 'oldGra', 'district', 'leafy colonial-era avenues, big old houses and quiet roads', 46],
+    ['New GRA', '🏡', 595, 415, 'newGra', 'district', 'newer estates, restaurants and the busy nightlife strip', 48],
+    ['Trans-Amadi', '🏭', 790, 440, 'transAmadi', 'district', 'oil and gas offices, depots and the industrial layout', 50],
+    ['Diobu (Mile 1)', '🛒', 645, 610, 'diobu', 'district', 'Mile 1 market: stalls, noise and the best pepper soup', 46],
+    ['Rumuola', '🚏', 200, 470, 'rumuola', 'district', 'a busy junction town of mid-rises and minibuses', 40],
+    ['D-Line', '🍽', 435, 640, 'dLine', 'district', 'restaurants, bars and the cultural centre', 38],
+    ['Rumuokoro', '🚌', 100, 270, 'rumuokoro', 'district', 'the big roundabout and a sprawl of homes', 40],
+    ['Choba (Uniport)', '🎓', 185, 100, 'choba', 'district', 'the university: lecture halls and student hostels', 42],
+    ['Waterside', '🛶', 830, 745, 'waterside', 'district', 'the river front: fishing boats and the old jetty', 40]
+  ];
+  const ZONES_PH = [
+    { x: 260, y: 140, w: 150, h: 100, c: '#bfe3b0', own: 1 }, { x: 520, y: 360, w: 150, h: 110, c: '#ead7f2', own: 1 }, { x: 720, y: 380, w: 190, h: 130, c: '#cfd2d6', own: 1 },
+    { x: 570, y: 560, w: 150, h: 100, c: '#f1e2b0', own: 1 }, { x: 140, y: 420, w: 120, h: 100, c: '#e6d3b0', own: 1 }, { x: 370, y: 590, w: 130, h: 100, c: '#c9d6e6', own: 1 },
+    { x: 40, y: 210, w: 120, h: 120, c: '#d8ead2', own: 1 }, { x: 110, y: 50, w: 150, h: 100, c: '#c9d8c4', own: 1 }, { x: 760, y: 700, w: 150, h: 80, c: '#cfe8f0', own: 1 }
+  ];
+  const MAINLAND_ABIA = [[30, 30], [970, 30], [970, 970], [30, 970]];
+  const PINS_ABIA = [
+    ['Home', '🏠', 500, 500, 'home', 'home'],
+    ['Enyimba Int\'l Stadium', '🏟', 250, 790, 'court'],
+    ['Ariaria Int\'l Market', '🛍', 730, 330, 'hall'],
+    ['Government House', '🏛', 800, 850, 'hall'],
+    ['Aba Power Plant · Coming soon', '⚡', 920, 720, 'refinery', 'soon-y'],
+    ['Ngwa Road', '🏙', 500, 500, 'ngwaRoad', 'district', 'shops, shoes and a million small factories', 60],
+    ['Ariaria', '🧵', 690, 260, 'ariaria', 'district', 'leather, garments and everything made in Aba', 50],
+    ['Osisioma', '🏭', 830, 590, 'osisioma', 'district', 'the industrial belt: factories and workshops', 44],
+    ['Umuahia', '🏢', 775, 755, 'umuahia', 'district', 'the state capital: government offices and tidy roads', 46],
+    ['Ohafia', '🥁', 200, 200, 'ohafia', 'district', 'war-dance country: villages, hills and tradition', 44],
+    ['Arochukwu', '🗿', 110, 520, 'arochukwu', 'district', 'the old Aro oracle: caves and a long history', 40],
+    ['Isiala Ngwa', '🌴', 420, 230, 'isialaNgwa', 'district', 'palm-oil country: farms and roadside stalls', 42],
+    ['Azumini', '🛶', 300, 640, 'azumini', 'district', 'the blue river: boats and riverside bars', 40]
+  ];
+  const ZONES_ABIA = [
+    { x: 400, y: 420, w: 210, h: 160, c: '#e8dcc8', own: 1 }, { x: 620, y: 200, w: 180, h: 130, c: '#f0d9a8', own: 1 }, { x: 760, y: 520, w: 170, h: 140, c: '#cfd2d6', own: 1 },
+    { x: 680, y: 690, w: 190, h: 130, c: '#cfd6de', own: 1 }, { x: 110, y: 140, w: 180, h: 130, c: '#bfe3b0', own: 1 }, { x: 40, y: 450, w: 140, h: 140, c: '#e6d3b0', own: 1 },
+    { x: 340, y: 170, w: 160, h: 120, c: '#d8ead2', own: 1 }, { x: 230, y: 590, w: 150, h: 110, c: '#bfe0b0', own: 1 }
+  ];
+  const HUTS = ['#e7c9a0', '#dcc1a8', '#f2e3c4'], PALE = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6'], ROOFS2 = ['#9c3b22', '#8c8f94', '#6d7075'];
+  Object.assign(BUILD, {
+    /* ---- Port Harcourt ---- */
+    oldGra(x, y) { [[-60, -18], [0, -18], [60, -18], [-60, 24], [0, 24], [60, 24]].forEach(([dx, dy], i) => D(x + dx, y + dy, 34, 26, 18 + (i % 2) * 6, pick(['#f1e6cf', '#e8dcc2', '#f4efe3']), pick(['#3f8f6a', '#8b2d22']), 'hip', 9)); for (let i = 0; i < 8; i++) tree(x - 90 + rnd() * 180, y - 40 + rnd() * 80, 1.1) },
+    newGra(x, y) { [[-50, -16, 70], [0, -16, 96], [50, -16, 64]].forEach(([dx, dy, h], i) => D(x + dx, y + dy, 26, 24, h, GLASS[i % 4], '#cfe6f8')); [[-40, 30], [10, 30], [56, 30]].forEach(([dx, dy]) => D(x + dx, y + dy, 30, 22, 16, pick(['#f2e9d8', '#e8d3b9']), pick(['#8b2d22', '#a4452c']), 'hip', 8)) },
+    transAmadi(x, y) { [[-60, -14], [0, -14], [60, -14]].forEach(([dx, dy]) => D(x + dx, y + dy, 50, 30, 16, '#cfd4d8', '#6d7075')); for (let i = 0; i < 4; i++) objs.push({ t: 'tank', x: x - 70 + i * 46, y: y + 34, s: 1 + (i % 2) * .15, r: 14, h: 16 }); mast(x + 84, y - 30, 90); pad(x - 90, y + 14, 190, 10, '#b4b8bd') },
+    diobu(x, y) { for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) D(x - 36 + i * 16, y - 20 + j * 13, 10, 8, 8, '#f6f1e6', pick(WARM), 'hip', 3, true); D(x + 58, y - 6, 40, 28, 18, '#e8dcc8', '#8b2d22', 'hip', 8) },
+    rumuola(x, y) { D(x + 50, y, 44, 26, 14, '#cfd4d8', '#6d7075'); for (let i = 0; i < 4; i++) D(x - 50 + i * 24, y - 14 + (i % 2) * 20, 18, 16, 16 + rnd() * 20, pick(PALE), pick(ROOFS2)) },
+    dLine(x, y) { [[-48, -10], [-8, -10], [32, -10], [-28, 28], [12, 28]].forEach(([dx, dy], i) => D(x + dx, y + dy, 28, 22, 14 + (i % 3) * 4, pick(['#f5a3c7', '#ffd24a', '#8fd3c7', '#f59a5b']), '#7a3ea1', 'hip', 7)); pad(x - 60, y + 4, 120, 8, '#f2c94c') },
+    rumuokoro(x, y) { flats.push({ c: '#b4b8bd', p: circ(x, y, 34) }); flats.push({ c: '#6fb36a', p: circ(x, y, 16) }); [[-70, -8], [64, -10], [-6, 58], [8, -56], [-60, 40], [58, 42]].forEach(([dx, dy]) => D(x + dx, y + dy, 22, 18, 14 + rnd() * 10, pick(PALE), pick(ROOFS2), 'hip', 6)) },
+    choba(x, y) { D(x, y, 56, 38, 34, '#f4f1e6', '#1f6fd0', 'dome', 20); [[-70, 34], [0, 42], [70, 34]].forEach(([dx, dy]) => D(x + dx, y + dy, 50, 16, 16, '#e8dcc2', '#8b6d44')); for (let i = 0; i < 6; i++) tree(x - 90 + rnd() * 180, y - 50 + rnd() * 24, 1) },
+    waterside(x, y) { pad(x - 80, y + 10, 160, 8, '#8b6d44'); for (let i = 0; i < 5; i++) D(x - 72 + i * 34, y - 12 + (i % 2) * 10, 18, 14, 10, pick(HUTS), pick(['#b3392b', '#6d7075']), 'hip', 4, true) },
+    /* ---- Abia ---- */
+    ngwaRoad(x, y) { for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) D(x - 60 + i * 40, y - 20 + j * 40, 28, 24, 14 + rnd() * 30, pick(PALE), pick(ROOFS2)); pad(x - 80, y + 14, 160, 8, '#b4b8bd') },
+    ariaria(x, y) { for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) D(x - 48 + i * 22, y - 22 + j * 16, 14, 10, 8, '#f6f1e6', pick(WARM), 'hip', 3, true); D(x + 74, y - 8, 40, 32, 20, '#e8dcc8', '#8b2d22', 'hip', 8) },
+    osisioma(x, y) { [[-52, -14], [4, -14], [60, -14]].forEach(([dx, dy]) => D(x + dx, y + dy, 46, 28, 16, '#cfd4d8', '#6d7075')); for (let i = 0; i < 3; i++) objs.push({ t: 'tank', x: x - 50 + i * 44, y: y + 34, s: 1, r: 14, h: 16 }); mast(x + 76, y + 20, 80) },
+    umuahia(x, y) { D(x, y, 60, 40, 32, '#f4f1e6', '#1f6fd0', 'dome', 22); D(x - 56, y + 6, 32, 28, 24, '#eceef1', '#8397ad'); D(x + 56, y + 6, 32, 28, 24, '#eceef1', '#8397ad'); pad(x - 80, y + 32, 160, 12, '#cfd2d6') },
+    ohafia(x, y) { for (let i = 0; i < 7; i++) D(x - 70 + (i % 4) * 44 + rnd() * 8, y - 24 + Math.floor(i / 4) * 42 + rnd() * 8, 20, 18, 10, pick(HUTS), '#b08a4a', 'hip', 8, true); for (let i = 0; i < 7; i++) tree(x - 90 + rnd() * 180, y - 50 + rnd() * 100, 1.2) },
+    arochukwu(x, y) { D(x, y, 40, 30, 14, '#c9bfae', '#8c8272'); D(x - 40, y + 18, 26, 22, 10, '#b9b0a0', '#8c8272'); D(x + 40, y + 16, 26, 22, 12, '#d6cbb8', '#8c8272', 'dome'); for (let i = 0; i < 5; i++) tree(x - 60 + rnd() * 120, y - 40 + rnd() * 20, 1) },
+    isialaNgwa(x, y) { [0, 1, 2].forEach(i => pad(x - 70, y - 30 + i * 24, 140, 16, i % 2 ? '#c9d38a' : '#a7c06a')); for (let i = 0; i < 6; i++) tree(x - 76 + rnd() * 152, y + 40 + rnd() * 14, 1.3); D(x + 56, y + 8, 24, 20, 12, pick(HUTS), '#b08a4a', 'hip', 8, true) },
+    azumini(x, y) { flats.push({ c: '#3d9ad8', p: [[x - 80, y - 26], [x - 10, y - 38], [x + 70, y - 16], [x + 56, y + 34], [x - 36, y + 40]] }); objs.push({ t: 'boat', x: x + 4, y: y - 2, r: 30 }); D(x + 82, y - 4, 30, 24, 14, '#f2e3c4', '#b3392b', 'hip', 6); pad(x + 48, y + 16, 32, 8, '#8b6d44') }
+  });
+  /* the one pipeline both cities use (same shape as buildAbuja) */
+  function buildCity(c) {
+    seed = c.seed; objs.length = flats.length = blocks.length = boards.length = 0;
+    ZONES.forEach(z => flats.push({ c: z.c, r: [z.x, z.y, z.w, z.h] }));
+    const ROAD = '#b4b8bd', xs = []; for (let i = 0; i < 9; i++) xs.push(100 + i * 100);
+    c.ys.forEach(y => flats.push({ c: ROAD, r: [30, y - 7, 940, 14] }));
+    xs.forEach(x => flats.push({ c: ROAD, r: [x - 7, 30, 14, c.bottom - 30] }));
+    PINS.forEach(p => { if (p[5] === 'district' || p[4] === 'home') return; const [, , x, y, k] = p, L = c.LM[k]; if (L) box(x, y, L[0], L[1], L[2], L[3], L[4], { style: L[5], rh: L[6] || 0, pin: 1, tag: k }) });
+    c.extra();
+    const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    const hitsRoad = (x0, y0, x1, y1) => flats.some(f => f.r && f.c === ROAD && x1 > f.r[0] && x0 < f.r[0] + f.r[2] && y1 > f.r[1] && y0 < f.r[1] + f.r[3]);
+    const pals = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6', '#ead4c8', '#e3e0d3', '#cfd8e0', '#f2eee2'], roofs = ['#b0b6bb', '#9c3b22', '#c0b9a6', '#a4aeb8', '#8c8f94'];
+    for (let cx = 150; cx < 970; cx += 100) {
+      for (let yi = 0; yi < c.ys.length - 1; yi++) {
+        const y0 = c.ys[yi] + 14, y1 = c.ys[yi + 1] - 14, cy = (y0 + y1) / 2;
+        if (!isLand(cx - 50, cy) || !isLand(cx + 40, cy)) continue;
+        const n = 1 + Math.floor(rnd() * 3);
+        for (let i = 0; i < n; i++) {
+          const w = 24 + rnd() * 34, d = 24 + rnd() * 30, x = cx - 40 + (i + .5) * (80 / n) + (rnd() - .5) * 6, y = cy + (rnd() - .5) * ((y1 - y0) - d - 20);
+          if (near(x, y, 60) || inZone(x, y, 10) || !isLand(x, y) || hitsRoad(x - w / 2, y - d / 2, x + w / 2, y + d / 2)) continue;
+          box(x, y, w, d, 16 + rnd() * rnd() * 60, pick(pals), pick(roofs), { style: rnd() < .22 ? 'hip' : 'flat', rh: 8 });
+        }
+      }
+    }
+    for (let i = 0; i < c.trees; i++) {
+      const x = 40 + rnd() * 920, y = 40 + rnd() * (c.maxY - 40);
+      if (!isLand(x, y) || near(x, y, 50) || inZone(x, y, 2) || hitsRoad(x - 6, y - 6, x + 6, y + 6)) continue;
+      if (blocks.some(b => x > b[0] - 6 && x < b[2] + 6 && y > b[1] - 6 && y < b[3] + 6)) continue;
+      tree(x, y, .8 + rnd() * .6);
+    }
+    PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
+    buildGrid();
+    lrBuild(); lampBuild(); extendWorld();
+  }
+  const CITY_PH = {
+    seed: 61, ys: [130, 290, 450, 610, 770], bottom: 800, trees: 200, maxY: 780,
+    LM: { airport: [132, 58, 22, '#e8edf2', '#b8c2cc', 'flat'], court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22], hotel: [40, 40, 112, '#cfe6f8', '#9fd0f2', 'flat'], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18] },
+    extra() {
+      [[760, 150, 0], [830, 175, .3]].forEach(([px, py, hdg]) => objs.push({ t: 'plane', x: px, y: py, hdg, r: 14 }));
+      pad(225, 298, 100, 66, '#8fd38a'); for (let i = 0; i < 7; i++) tree(235 + rnd() * 80, 306 + rnd() * 50, 1);                       // Pleasure Park
+      [[560, 775, 70], [610, 775, 86], [660, 775, 70]].forEach(([x, y, h]) => mast(x, y, h));                                          // the port: cranes and containers
+      [['#e8505b', 540], ['#2f6fd8', 572], ['#f2a93b', 604], ['#2fa36b', 636]].forEach(([col, x]) => pad(x, 738, 26, 14, col));
+      [[560, 860], [720, 880], [860, 840]].forEach(([bx, by]) => objs.push({ t: 'boat', x: bx, y: by, r: 30 }));
+      for (let i = 0; i < 3; i++) objs.push({ t: 'tank', x: 880 + i * 26, y: 600, s: 1, r: 14, h: 16 });                                  // the refinery that is coming soon
+    }
+  };
+  const CITY_ABIA = {
+    seed: 73, ys: [140, 320, 500, 680, 860], bottom: 970, trees: 230, maxY: 960,
+    LM: { court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18] },
+    extra() { for (let i = 0; i < 3; i++) objs.push({ t: 'tank', x: 900 + i * 26, y: 720, s: 1, r: 14, h: 16 }); pad(220, 760, 60, 60, '#8fd38a') }
+  };
+
   /* ---------- switching the active city ----------
      Lagos is who you live in (homes, hoods, the lagoon, bridges); the other tabs are places you can visit. Each
      entry reassigns every piece of geometry the rest of the file reads through the `let`s above, then reruns that
@@ -411,8 +537,12 @@
      fresh from whatever is currently assigned, so nothing here needs to know which city it's drawing. */
   const CITIES = {
     lagos: { land: [MAINLAND_LAGOS, ISLAND_LAGOS, OFFSHORE_LAGOS], bridges: BRIDGES_LAGOS, pins: PINS_LAGOS, zones: ZONES_LAGOS, plotAnchor: { x: 282, y: 410 }, build: () => buildLagos(), spawn: [470, 290] },
-    abuja: { land: [MAINLAND_ABUJA], bridges: [], pins: PINS_ABUJA, zones: ZONES_ABUJA, plotAnchor: PLOT_ANCHOR_ABUJA, build: () => buildAbuja(), spawn: [500, 540] }
+    abuja: { land: [MAINLAND_ABUJA], bridges: [], pins: PINS_ABUJA, zones: ZONES_ABUJA, plotAnchor: PLOT_ANCHOR_ABUJA, build: () => buildAbuja(), spawn: [500, 540] },
+    ph: { land: [MAINLAND_PH], bridges: [], pins: PINS_PH, zones: ZONES_PH, plotAnchor: { x: 250, y: 712 }, build: () => buildCity(CITY_PH), spawn: [500, 540] },
+    abia: { land: [MAINLAND_ABIA], bridges: [], pins: PINS_ABIA, zones: ZONES_ABIA, plotAnchor: { x: 300, y: 890 }, build: () => buildCity(CITY_ABIA), spawn: [500, 560] }
   };
+  const CITY_NAME = { lagos: 'Lagos', abuja: 'Abuja', ph: 'Port Harcourt', abia: 'Abia' };
+  const CITY_WELCOME = { lagos: '🏠 Back in Lagos', abuja: '🏛️ Welcome to Abuja — look around, nothing here is buyable as a home yet', ph: '⚓ Welcome to Port Harcourt, the Garden City on the Bonny River. Look around, nothing here is buyable as a home yet', abia: '🛍️ Welcome to Abia: Aba makes it, Umuahia runs it. Look around, nothing here is buyable as a home yet' };
   function loadCity(id) {
     const c = CITIES[id]; if (!c) return false;
     [MAINLAND, ISLAND, OFFSHORE] = [c.land[0], c.land[1] || [], c.land[2] || []];
@@ -952,7 +1082,7 @@
   }
   function setPlayers(list) {
     const keep = new Set(), net = getNET(), myName = net && net.user && net.user.displayName, myId = net && net.user && String(net.user.id || '');
-    (list || []).filter(p => playerKey(p) && String(p.id || '') !== myId && p.name !== myName).slice(0, 40).forEach(p => {
+    (list || []).filter(p => playerKey(p) && String(p.id || '') !== myId && p.name !== myName && (p.c || 'lagos') === HUD.city).slice(0, 40).forEach(p => {
       const live = Number.isFinite(p.x) && Number.isFinite(p.y);
       const key = playerKey(p); let o = M.others.get(key) || [...M.others.values()].find(x => x.name === p.name);
       if (!live && !o) return;                                   // only draw people with a real map point — no parked placeholders
@@ -973,6 +1103,7 @@
   function applyPos(p) {
     if (!p) return; const net = getNET(), myId = net && net.user && String(net.user.id || '');
     if (String(p.id || '') === myId || (p.name && net && net.user && p.name === net.user.displayName)) return;
+    if ((p.c || 'lagos') !== HUD.city) { M.others.delete(playerKey(p)); return }       // standing in a different city
     const key = playerKey(p); let o = M.others.get(key) || [...M.others.values()].find(x => x.name === p.name);
     if (!o) { setPlayers([{ ...p }]); return; }
     applyLive(o, p);
@@ -1011,7 +1142,7 @@
     const now = performance.now(); if (!force && now - lastPosAt < 70) return;
     if (!force && Math.hypot(a.x - lastSent[0], a.y - lastSent[1]) < .45 && Math.abs(a.h - lastSent[2]) < .05 && a.state === lastSent[3] && now - lastPosAt < 700) return;
     lastPosAt = now; lastSent = [a.x, a.y, a.h, a.state];
-    try { net.sock.emit('pos', { x: +a.x.toFixed(1), y: +a.y.toFixed(1), h: +a.h.toFixed(3), st: a.state }); } catch (e) {}
+    try { net.sock.emit('pos', { x: +a.x.toFixed(1), y: +a.y.toFixed(1), h: +a.h.toFixed(3), st: a.state, c: HUD.city !== 'lagos' ? HUD.city : undefined }); } catch (e) {}
   }
   function turn(a, b, k) { let d = ((b - a + Math.PI * 3) % TAU) - Math.PI; return a + d * Math.min(1, k); }
 
@@ -1364,10 +1495,12 @@
        to move the "on" highlight. */
     setCity(id, label) {
       if (id === HUD.city) return true;
-      if (!CITIES[id]) { if (g.toast) g.toast('🚧 ' + (label || 'That state') + ' is coming soon — you’re still in ' + (HUD.city === 'lagos' ? 'Lagos' : 'Abuja')); return false }
+      if (!CITIES[id]) { if (g.toast) g.toast('🚧 ' + (label || 'That state') + ' is coming soon — you’re still in ' + (CITY_NAME[HUD.city] || 'Lagos')); return false }
       loadCity(id); HUD.city = id;
       const [sx, sy] = CITIES[id].spawn; teleport(sx, sy);
-      if (g.toast) g.toast(id === 'lagos' ? '🏠 Back in Lagos' : '🏛️ Welcome to Abuja — look around, nothing here is buyable as a home yet');
+      if (M.flat) { cam.tx = sx; cam.ty = sy; M.D = M.tD = cam.D = 1100; cam.update() }                  // keep the 2D overview centred on the new city
+      M.others.clear(); M.exp = null; sendPos(true);                                    // players in other cities are not drawn here
+      if (g.toast) g.toast(CITY_WELCOME[id] || '🏠 Back in Lagos');
       return true;
     },
     /* moves the "Home" pin to the player's actual house: the numbered slot the server gave them in their chosen hood (see HUB.loadMe) */

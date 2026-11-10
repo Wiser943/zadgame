@@ -91,7 +91,9 @@ const UserSchema = new mongoose.Schema({
       showBirthday: { type: Boolean, default: false },
       marketingEmails: { type: Boolean, default: false }
     },
-    bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },   // month + day only, shown to friends only when showBirthday is on
+    bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },
+    stateOrigin: { type: String, default: '' }, stateCurrent: { type: String, default: '' },   // asked at sign-up (and later from anyone who never answered)
+    bdayPosted: { type: Number, default: 0 },                                                   // last year the birthday card was posted on P-Gist   // month + day only, shown to friends only when showBirthday is on
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },
     mapPos: { x: { type: Number }, y: { type: Number }, h: { type: Number } },
@@ -147,4 +149,5 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ 'ac.tr.vehicles.park.until': 1 }, { sparse: true });      // parking lot occupancy
 UserSchema.index({ 'ac.tr.rep': -1 }, { sparse: true });                      // public transport reputation board
 
+UserSchema.index({ 'ac.bday.m': 1, 'ac.bday.d': 1 }, { sparse: true });   // the daily birthday job looks players up by day and month
 module.exports = mongoose.model('User', UserSchema);

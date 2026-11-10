@@ -270,6 +270,10 @@ async function main() {
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   /* withdrawal seasons: tell players when a season/batch opens or is about to close (each notice is sent once) */
+  /* birthdays: post a birthday card on P-Gist for everyone whose birthday it is (checked every 30 minutes, once per player per year) */
+  const birthdays = require('./services/birthdays');
+  setTimeout(() => birthdays.tick(io).catch((e) => console.error('[birthdays]', e.message)), 45000).unref();
+  setInterval(() => birthdays.tick(io).catch((e) => console.error('[birthdays]', e.message)), 30 * 60 * 1000).unref();
   const withdrawalNotices = require('./services/withdrawalNotices');
   setTimeout(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 20000).unref();
   setInterval(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 60 * 1000).unref();
