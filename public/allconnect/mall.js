@@ -43,7 +43,7 @@ const MALL = {
     if (document.getElementById('mall')) return;
     const el = document.createElement('div'); el.id = 'mall';
     el.innerHTML = `<canvas id="mallcv" aria-label="3D mall. Tap a shop to go in." role="img"></canvas>
-      <div class="mallban"><b>AllConnect Mall</b><span>Tap a shop to go in</span></div><div class="mallhint" id="mallhint">Drag to turn · pinch or scroll to zoom</div><div class="mallctl"><button type="button" aria-label="Zoom in" onclick="MALL.view.zoom(0.85)">＋</button><button type="button" aria-label="Zoom out" onclick="MALL.view.zoom(1.18)">－</button><button type="button" aria-label="Turn left" onclick="MALL.view.turn(-0.4)">⟲</button><button type="button" aria-label="Turn right" onclick="MALL.view.turn(0.4)">⟳</button><button type="button" aria-label="Reset view" onclick="MALL.view.reset()">◎</button></div><div class="mallload" id="mallload">Opening the mall…</div>
+      <div class="mallban"><b>AllConnect Mall</b><span>Tap a shop to go in</span></div><div class="mallhint" id="mallhint">Drag to turn · pinch or scroll to zoom</div><div class="mallctl" id="mallctl"><button type="button" class="mcmain" aria-label="View controls" aria-expanded="false" onclick="MALL.ctl()"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button><div class="mcmenu"><button type="button" aria-label="Zoom in" onclick="MALL.view.zoom(0.85)">＋</button><button type="button" aria-label="Zoom out" onclick="MALL.view.zoom(1.18)">－</button><button type="button" aria-label="Turn left" onclick="MALL.view.turn(-0.4)">⟲</button><button type="button" aria-label="Turn right" onclick="MALL.view.turn(0.4)">⟳</button><button type="button" aria-label="Reset view" onclick="MALL.view.reset()">◎</button></div></div><div class="mallload" id="mallload">Opening the mall…</div>
       <div class="mallcards" id="mallcards">${this.SHOPS.map(s => `<button type="button" class="mcard" style="--c:${s.c}" onclick="MALL.go('${s.k}')"><span class="mce">${s.e}</span><b>${s.n}</b><small>${s.t}</small></button>`).join('')}</div>
       <div class="mallsheet" id="mallsheet"></div>`;
     document.getElementById('buy').appendChild(el)
@@ -96,10 +96,10 @@ const MALL = {
     [[-15, 3], [15, 3], [-4.5, -4.5], [4.5, -4.5], [-15.5, -5], [15.5, -5]].forEach(([x, z]) => { this.box(0.7, 0.7, 0.7, 0xb4683a, x, 0.35, z); const l = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2, 7), this.mat(0x2f9e5d)); l.position.set(x, 1.7, z); this.scene.add(l) });
     /* shoppers */
     const n = (navigator.hardwareConcurrency || 4) <= 4 ? 6 : 10; this.npcs = []; for (let i = 0; i < n; i++) this.npcs.push(this.spawn(true));
-    /* One finger or mouse drag turns the mall sideways (about 270 degrees in total) and tilts it a little. Pinch or wheel zooms.
+    /* One finger or mouse drag turns the mall sideways (about 180 degrees in total) and tilts it a little. Pinch or wheel zooms.
        Two fingers, right-drag or Shift-drag slides along the shops. Tap a shop sign to go in. */
     this.az = this.taz = 0; this.zm = this.tzm = 1; this.pc = this.tpc = 1;
-    const AZ = Math.PI * 0.75, ZMIN = 0.42, ZMAX = 1.55, clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), ptrs = new Map();
+    const AZ = Math.PI * 0.5, ZMIN = 0.42, ZMAX = 1.55, clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v)), ptrs = new Map();
     let moved = false, pinch0 = 0, zm0 = 1, mid0 = 0;
     const mid = () => { const q = [...ptrs.values()]; return (q[0].x + q[1].x) / 2 }, gap = () => { const q = [...ptrs.values()]; return Math.hypot(q[0].x - q[1].x, q[0].y - q[1].y) || 1 };
     cv.style.touchAction = 'none';
@@ -118,6 +118,7 @@ const MALL = {
     window.addEventListener('keydown', e => { if (!this.shown || this.m !== 'mall' || /input|textarea|select/i.test((e.target || {}).tagName || '')) return; const k = e.key; if (k === 'ArrowLeft') this.view.turn(-0.12); else if (k === 'ArrowRight') this.view.turn(0.12); else if (k === '+' || k === '=') this.view.zoom(0.88); else if (k === '-') this.view.zoom(1.14); else if (k === '0') this.view.reset() });
     window.addEventListener('resize', () => { if (this.shown && this.m === 'mall') this.size() })
   },
+  ctl(f) { const c = document.getElementById('mallctl'); if (!c) return; const on = typeof f === 'boolean' ? f : !c.classList.contains('open'); c.classList.toggle('open', on); const m = c.querySelector('.mcmain'); if (m) m.setAttribute('aria-expanded', on) },
   size() { const cv = document.getElementById('mallcv'); if (!cv || !this.r) return; const w = cv.clientWidth || 360, h = cv.clientHeight || 640; this.r.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix() },
   tap(e) {
     const cv = document.getElementById('mallcv'), b = cv.getBoundingClientRect(), ray = new THREE.Raycaster(), v = new THREE.Vector2(((e.clientX - b.left) / b.width) * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1);

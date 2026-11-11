@@ -12,7 +12,7 @@ const TRAITS = [
   { id: 'explorer', icon: '🧭', name: 'Explorer', text: 'You love seeing new corners of Lagos.' }
 ];
 const TRAIT_IDS = TRAITS.map((t) => t.id);
-const PREF_DEFAULTS = { readReceipts: true, whoCanMessage: 'everyone', whoCanSendMoney: 'anyone', showRelationships: false, showBirthday: false, marketingEmails: false };
+const PREF_DEFAULTS = { readReceipts: true, whoCanMessage: 'everyone', whoCanSendMoney: 'anyone', showRelationships: false, showBirthday: false, marketingEmails: false, freeWill: true };
 // Wallet packs. coins = game money. Prices are fixed here on the server, never taken from the browser.
 const PACKS = [
   { id: 'hustle', icon: '🍲', name: 'Hustle', coins: 50000, ngn: 1000, usd: 1 },

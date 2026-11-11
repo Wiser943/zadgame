@@ -133,3 +133,60 @@ body.v2m #map.mopen .maplg{top:calc(150px + var(--sat,0px))}body.v2m #map.mopen 
 /* rows with an icon on the left: icon box stays small, text stays next to it */
 .v2gp button .v2ic{flex:none;width:28px;text-align:center;font-size:20px;line-height:1}.v2gp button>div{flex:1;min-width:0}
 .v2sheet .avi,#v2nav .me .in .avi,.v2hd .av2 .avi{line-height:1;display:flex!important;align-items:center;justify-content:center}
+
+/* Invite app */
+.ivhero{background:linear-gradient(135deg,#3b82f6,#6d28d9);color:#fff;border-radius:20px;padding:18px 16px 14px;text-align:center}.ivhero h3{margin:4px 0 6px;font-size:17px}.ivhero p{margin:0 0 12px;font-size:13px;line-height:1.4;opacity:.92}.ivemo{font-size:34px}
+.ivcode{display:inline-block;background:rgba(255,255,255,.18);border:1px dashed rgba(255,255,255,.6);border-radius:12px;padding:8px 16px;font:800 18px/1 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.5px;margin-bottom:6px}
+.ivhero .btn.s{background:rgba(255,255,255,.16);border-color:transparent;color:#fff}
+.ivtotal{display:flex;justify-content:space-between;align-items:center;background:#e9f9f0;border-radius:16px;padding:14px 16px;margin:6px 0 10px;color:#0f5132}.ivtotal span{font-size:13px;font-weight:600}.ivtotal b{font-size:22px;color:#16a34a}
+.ivgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.ivbox{background:#fff;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:3px;box-shadow:0 1px 0 rgba(0,0,0,.04)}.ivbox b{font-size:17px}.ivbox span{font-size:12px;color:#8a93a6;font-weight:600}
+.ivsub{white-space:normal}
+
+/* ===== Bigger home + buy controls, compact event card, mall control menu ===== */
+body.v2m #v2top{top:calc(6px + var(--sat,0px));left:8px;right:8px;gap:6px}
+body.v2m .v2time{height:32px;padding:0 10px;font-size:13px;gap:5px}body.v2m .v2time .ap{font-size:8px}body.v2m .v2time .mf{font-size:16px}
+body.v2m .v2chev{width:40px;height:24px}body.v2m .v2chev svg{width:13px;height:13px}
+body.v2m .v2bal{height:32px;padding:0 3px 0 11px;font-size:12.5px;gap:6px}
+body.v2m #v2strip{left:8px;right:8px;top:calc(44px + var(--sat,0px))}
+body.v2m .v2chip{height:29px;padding:0 4px 0 8px;font-size:11px;gap:5px;max-width:calc(100% - 70px)}
+body.v2m .v2fl{height:29px;font-size:12px}body.v2m .v2gem{width:29px;height:29px;font-size:17px}
+/* event card: its width is set by the title alone. The details line wraps under it instead of stretching the card. */
+body.v2m #v2event{left:8px;right:8px;top:calc(78px + var(--sat,0px))}
+body.v2m .v2card{display:flex;width:max-content;max-width:calc(100% - 8px);gap:8px;padding:6px 10px 6px 6px;border-radius:14px;align-items:flex-start}
+body.v2m .v2card .v2ic{width:36px;height:36px;font-size:18px}
+body.v2m .v2card .v2tx{flex:0 1 auto;min-width:0;display:grid}
+body.v2m .v2card b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.v2m .v2card small{font-size:10.5px;line-height:1.3;white-space:normal;overflow:visible;text-overflow:clip;width:0;min-width:100%;margin-top:2px;overflow-wrap:anywhere}
+body.v2m .v2card .tm{font-size:10px;align-self:flex-start;margin-top:2px}
+body.v2m .v2card .x{width:24px;height:24px;font-size:10px}
+body.v2m .v2more{width:52px;height:32px;padding-top:8px;font-size:10.5px;margin-left:20px}
+/* side rail, radio, action row and bottom bar */
+body.v2m #v2rail{right:8px;bottom:calc(150px + var(--sab,0px));gap:8px}
+body.v2m #v2rail .rb{width:42px;height:42px}body.v2m #v2rail .rb svg{width:20px;height:20px}body.v2m #v2rail .rb.home{font-size:20px}
+body.v2m #v2radio{right:8px;bottom:calc(112px + var(--sab,0px));height:30px;padding:0 11px;font-size:11px;gap:4px}
+body.v2m #v2act{left:8px;right:8px;bottom:calc(64px + var(--sab,0px));gap:7px}
+body.v2m #v2act .cb{width:39px;height:39px}body.v2m #v2act .cb svg{width:19px;height:19px}
+body.v2m #v2act .pl{height:39px;padding:0 14px;font-size:12.5px;gap:6px}body.v2m #v2act .pl svg{width:16px;height:16px}
+body.v2m #v2act .wk{height:39px}body.v2m #v2act .wk button{padding:0 11px;font-size:12.5px}body.v2m #v2act .wk button svg{width:16px;height:16px}body.v2m #v2act .wk .car{font-size:15px;padding:0 9px 0 5px}
+body.v2m #v2nav{left:8px;right:8px;bottom:calc(6px + var(--sab,0px));gap:7px}
+body.v2m #v2nav .me{width:54px;height:54px}body.v2m #v2nav .me .mf{width:22px;height:22px;font-size:14px}
+body.v2m #v2nav .cap{height:48px;padding:4px}
+body.v2m #v2nav .cap button{height:40px;min-width:40px;font-size:13px;padding:0 9px}body.v2m #v2nav .cap button svg{width:21px;height:21px}
+body.v2m #v2nav .cap button.on{padding:0 16px;font-size:14px;gap:6px}body.v2m #v2nav .cap button.on svg{width:23px;height:23px}
+body.v2m #v2nav .ph{width:54px;height:54px}body.v2m #v2nav .ph svg{width:29px;height:33px}
+/* buy mode: top bar a bit bigger */
+body.v2m #buy .top .pill{font-size:12.5px;height:34px;padding:0 12px}
+body.v2m #buy .top .pill.shopseg{padding:3px}body.v2m #buy .top .pill.shopseg button{height:28px;padding:0 11px;font-size:12px}
+body.v2m #buy .top .x{width:34px;height:34px;font-size:15px}
+/* mall: one button opens the zoom / turn / reset buttons */
+.mallctl{align-items:flex-end;gap:8px}
+.mallctl .mcmain{width:46px;height:46px;border-radius:50%;border:0;background:rgba(11,16,32,.82);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:background .15s}
+.mallctl.open .mcmain{background:#3d2a63}
+.mcmenu{display:flex;flex-direction:column;gap:8px;max-height:0;overflow:hidden;opacity:0;transform:translateY(-8px) scale(.85);transform-origin:top right;pointer-events:none;transition:max-height .3s ease,opacity .2s ease,transform .25s ease}
+.mallctl.open .mcmenu{max-height:360px;opacity:1;transform:none;pointer-events:auto}
+.mallctl .mcmenu button{width:44px;height:44px;font-size:19px;border-radius:50%;border:0;background:rgba(11,16,32,.82);color:#fff;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+
+/* bottom nav: the selected tab fills the bar edge to edge, with no padding around it */
+body.v2m #v2nav .cap{padding:0;gap:0;justify-content:stretch;overflow:hidden;height:48px}
+body.v2m #v2nav .cap button{flex:1 1 0;height:48px;min-width:0;padding:0;border-radius:540.6px;transition:flex .2s ease}
+body.v2m #v2nav .cap button.on{flex:1.9 1 0;padding:0}

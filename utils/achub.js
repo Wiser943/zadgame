@@ -88,7 +88,7 @@ const PARCEL = [600, 750, 900, 1050, 1200, 1500, 2400];   // ~3% of the old amou
 const parcelFor = (n) => PARCEL[Math.min(PARCEL.length - 1, Math.max(0, n))];
 
 /* ---------- invites and welcome-back gift (first friend / group / streak rewards are missions) ---------- */
-const INVITE = { inviter: 50000, invitee: 30000, windowDays: 7 };
+const INVITE = { inviter: 50000, invitee: 30000, windowDays: 7, commissionPct: 5, commissionDays: 30 };   // commission: inviter earns this % of every shift their friend works, for commissionDays after the friend joins
 const RETURN = { minDays: 3, gift: 25000 };
 
 /* ---------- protection ---------- */

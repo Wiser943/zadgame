@@ -70,6 +70,14 @@ router.post('/work', async (req, res, next) => {
       if (m && m.blocked) return bad(res, 409, m.blocked);
       return res.status(429).json({ message: 'Still on your break. Next shift is not ready yet.', ...reply(u) });
     }
+    try {     // invite commission: whoever invited this player earns a small % of every shift, for a while after the friend joined
+      const hb = upd.ac && upd.ac.hub, INV = require('../utils/achub').INVITE;
+      if (hb && hb.invitedBy && hb.invitedAt && now - new Date(hb.invitedAt).getTime() < INV.commissionDays * 86400e3) {
+        const cut = Math.max(10, Math.round(pay * INV.commissionPct / 100));
+        const r = await User.updateOne({ _id: hb.invitedBy }, { $inc: { 'ac.cash': cut, 'ac.hub.inviteCommission': cut } });
+        if (r.modifiedCount) await User.updateOne({ _id: uid }, { $inc: { 'ac.hub.commissionGiven': cut } });
+      }
+    } catch (e) { /* commission must never block a shift */ }
     const inci = pick ? await TR.afterTrip(uid, pick.v, now) : null;      // a ticket or a small crash can follow a motor shift
     if (inci) upd = await User.findById(uid);
     const after = mine(upd), promoted = after.level > cur.level ? after.title : null;

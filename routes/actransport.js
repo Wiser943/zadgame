@@ -27,7 +27,7 @@ async function load(id, now = Date.now()) {
   await ensureAC(id);
   const today = T.dayKey(now);
   await User.updateOne({ _id: id, 'ac.tr.rep': { $exists: false } }, { $set: { 'ac.tr.rep': T.REP.start } });
-  await User.updateOne({ _id: id, 'ac.tr.day': { $ne: today } }, { $set: { 'ac.tr.day': today, 'ac.tr.signsToday': 0, 'ac.tr.lightToday': 0, 'ac.tr.rideToday': 0, 'ac.tr.rideEarn': 0, 'ac.tr.callsToday': 0 } });
+  await User.updateOne({ _id: id, 'ac.tr.day': { $ne: today } }, { $set: { 'ac.tr.day': today, 'ac.tr.signsToday': 0, 'ac.tr.lightToday': 0, 'ac.tr.rideToday': 0, 'ac.tr.rideEarn': 0, 'ac.tr.routeEarn': 0, 'ac.tr.callsToday': 0 } });
   return User.findById(id);
 }
 /* pay for something and change the player in the same atomic step */
@@ -384,11 +384,13 @@ router.post('/route/collect', wrap(async (req, res) => {
   const c = await owned(req, res); if (!c) return; const { id, now, v, ev, u: u0 } = c, tr = trOf(u0), stop = !!(req.body && req.body.stop);
   const r = v.route && v.route.id ? T.ROUTE_BY[v.route.id] : null; if (!r) return bad(res, 409, 'That vehicle is not on a route.');
   const a = T.accrue(r, v, v.route.since, now, { rep: tr.rep, ev });
+  const room = Math.max(0, T.ROUTE_DAILY_CAP - (tr.routeEarn || 0)); if (a.income > room) a.income = room;     // daily limit on route earnings
+  if (!a.income && room <= 0 && !stop) return bad(res, 429, 'You have hit the daily route earnings limit. Come back tomorrow.');
   if (!a.income && !stop && !a.limited) return bad(res, 409, 'Nothing to collect yet. Give it a few more minutes.');
   const fuelUsed = Math.min(v.fuel, a.fuelUsed), wear = Math.min(v.cond, a.wear), end = stop || !!a.limited;          // out of fuel or worn out: the route stops
   const set = end ? { 'ac.tr.vehicles.$.route.id': '', 'ac.tr.vehicles.$.route.since': null } : { 'ac.tr.vehicles.$.route.since': new Date(now) };
   const u = await User.findOneAndUpdate({ _id: id, 'ac.tr.vehicles': { $elemMatch: { id: v.id, 'route.since': new Date(v.route.since) } } },
-    { $set: set, $inc: { 'ac.cash': a.income, 'ac.tr.earned': a.income, 'ac.tr.vehicles.$.fuel': -fuelUsed, 'ac.tr.vehicles.$.cond': -wear } }, { new: true });
+    { $set: set, $inc: { 'ac.cash': a.income, 'ac.tr.earned': a.income, 'ac.tr.routeEarn': a.income, 'ac.tr.vehicles.$.fuel': -fuelUsed, 'ac.tr.vehicles.$.cond': -wear } }, { new: true });
   if (!u) return bad(res, 409, 'Already collected. Try again.');
   if (a.income) emitUser(req.app.get('io'), id, 'cash', { delta: a.income });
   let repNote = '';

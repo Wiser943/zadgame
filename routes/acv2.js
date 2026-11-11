@@ -35,7 +35,7 @@ router.post('/traits', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-const PREF_CHECK = { readReceipts: (v) => typeof v === 'boolean', whoCanMessage: (v) => ['everyone', 'friends'].includes(v), whoCanSendMoney: (v) => ['anyone', 'friends'].includes(v),
+const PREF_CHECK = { freeWill: (v) => typeof v === 'boolean', readReceipts: (v) => typeof v === 'boolean', whoCanMessage: (v) => ['everyone', 'friends'].includes(v), whoCanSendMoney: (v) => ['anyone', 'friends'].includes(v),
   showRelationships: (v) => typeof v === 'boolean', showBirthday: (v) => typeof v === 'boolean', marketingEmails: (v) => typeof v === 'boolean' };
 router.post('/prefs', async (req, res, next) => {
   try {

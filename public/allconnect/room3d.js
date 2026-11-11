@@ -16,6 +16,7 @@ window.ROOM3D = {
     try {
       const probe = document.createElement('canvas'); if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) throw 0;
       await this.load(); this.build(); this.on = true; document.getElementById('app').classList.add('r3d');
+      try { this.roomLight = localStorage.getItem('roomLight') !== 'off' } catch (e) {}
       this.page(S.page || 'home'); this.paint(S.paint); this.sync(); this.dark(!BAN.light); requestAnimationFrame(t => this.loop(t))
     } catch (e) { console.warn('3D room unavailable, using flat room', e) }
     this.loading = false;
@@ -270,6 +271,7 @@ window.ROOM3D = {
   paint(c) { this.walls.forEach(w => w.m.material.color.set(c || '#d9a93a')) },
   dark(b) { this.dark_ = !!b },
   env(dl) { this.dl = dl },
+  setLight(on) { this.roomLight = !!on; try { localStorage.setItem('roomLight', on ? 'on' : 'off') } catch (e) {} },
   power() { return !this.dark_ || (S.items || []).some(i => i.name === 'Gen Set' && i.placed !== false) },
   /* ---------- furniture: every placed item is a model on the 6x6 grid ---------- */
   cc(c) { return -2.5 + c },
@@ -490,11 +492,12 @@ window.ROOM3D = {
     this.animate(t, dt, moving);
     // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
     const dl = this.dl == null ? 1 : this.dl, kk = Math.min(1, dt * 3), C = THREE.Color, lerpC = (a, b, t) => new C(a).lerp(new C(b), t);
-    this.amb.intensity += ((.3 + .32 * dl) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
-    this.sun.intensity += (.55 * dl - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
+    const rl = this.roomLight === false ? 0 : 1, pw = this.power();   // rl: the player's own light switch (bulb button on the home screen)
+    this.amb.intensity += (((.3 + .32 * dl) * (rl ? 1 : .32) + (rl && pw ? .16 * (1 - dl) : 0)) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
+    this.sun.intensity += (.55 * dl * (rl ? 1 : .55) - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
     this.moon.intensity += (.42 * (1 - dl) - this.moon.intensity) * kk;
     this.ground.color.copy(lerpC(0x24331f, 0x93a05a, dl)); if (this.glass) this.glass.color.copy(lerpC(0x16224a, 0xbfe4ff, dl));
-    const on = this.power(); this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
+    const on = pw && rl; this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
     this.petStep(t, dt);
     this.R.render(this.scene, cam)
   }

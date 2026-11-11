@@ -287,11 +287,19 @@ function render() {
 }
 const NEEDN = ['You are getting hungry — eat something 🍛', 'Energy is getting low!', 'Your fun is running out 🎉', 'You are feeling lonely 💬', 'You need a bath 🫧', 'Nature is calling 🚽'],
   NEEDI = ['🥧', '⚡', '🎉', '💬', '🫧', '🚽'],
-  LOW = {};
+  LOW = {}, NEED_BOOT = Date.now(), LOWN = {}, needAt = () => { try { return JSON.parse(localStorage.getItem('needAlertAt') || '{}') } catch (e) { return {} } };
 setInterval(() => {
   S.min++;
   S.needs = S.needs.map(v => Math.max(0, v - .004));
-  S.needs.forEach((v, i) => { if (v < .3 && !LOW[i]) { LOW[i] = 1; if (window.PH) PH.local_(NEEDI[i], NEEDN[i], 'warn') } else if (v > .5) LOW[i] = 0 });
+  /* Need alerts (hungry, tired, bored, lonely, dirty, toilet): never on opening the game, one at a time, and each need at most once every 8 minutes (remembered across visits). */
+  const nowT = Date.now(); let said = false;
+  S.needs.forEach((v, i) => {
+    if (v > .5) { LOW[i] = 0; LOWN[i] = 0; return }
+    LOWN[i] = v < .25 ? (LOWN[i] || 0) + 1 : 0;      // only a need that is really low (under 25%) and has stayed low for a few seconds counts
+    if (said || LOWN[i] < 3 || nowT - NEED_BOOT < 60000 || nowT - (needAt()[i] || 0) < 8 * 60000) return;
+    said = true; LOW[i] = 1; const m = needAt(); m[i] = nowT; try { localStorage.setItem('needAlertAt', JSON.stringify(m)) } catch (e) {}
+    if (window.PH) PH.local_(NEEDI[i], NEEDN[i], 'warn')
+  });
   render()
 }, 3000);
 
@@ -452,6 +460,8 @@ const APPS = [
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
   ['Shop', '<i class="fa-solid fa-bag-shopping"></i>', 'linear-gradient(135deg,#34d399,#0891b2)', 1],
   ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
+  ['Help', '<i class="fa-solid fa-life-ring"></i>', 'linear-gradient(135deg,#38bdf8,#2563eb)', 1],
+  ['Invite', '<i class="fa-solid fa-user-group"></i>', 'linear-gradient(135deg,#3b82f6,#7c3aed)', 1],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
@@ -460,6 +470,8 @@ Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HU
 OPEN.Homes = "PH.open('homes')";
 OPEN.Shop = "openHub(b=>b.shop())";
 OPEN.Guide = "PH.open('guide')";
+OPEN.Help = "PH.open('help')";
+OPEN.Invite = "PH.open('invite')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Boutique', 'Songify', 'Settings'];

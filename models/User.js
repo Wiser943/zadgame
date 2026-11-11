@@ -89,7 +89,8 @@ const UserSchema = new mongoose.Schema({
       whoCanSendMoney: { type: String, enum: ['anyone', 'friends'], default: 'anyone' },
       showRelationships: { type: Boolean, default: false },
       showBirthday: { type: Boolean, default: false },
-      marketingEmails: { type: Boolean, default: false }
+      marketingEmails: { type: Boolean, default: false },
+      freeWill: { type: Boolean, default: true }
     },
     bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },
     stateOrigin: { type: String, default: '' }, stateCurrent: { type: String, default: '' },   // asked at sign-up (and later from anyone who never answered)
@@ -119,7 +120,7 @@ const UserSchema = new mongoose.Schema({
       rentUntil: { type: Date, default: null },
       licTheory: { type: Date, default: null }, licOk: { type: Date, default: null }, licLast: { type: Date, default: null }, licTries: { type: Number, default: 0 },
       rep: { type: Number, default: 20 }, repDay: { type: String, default: '' }, repToday: { type: Number, default: 0 },
-      day: { type: String, default: '' }, signsToday: { type: Number, default: 0 }, lightToday: { type: Number, default: 0 }, rideToday: { type: Number, default: 0 }, rideEarn: { type: Number, default: 0 }, callsToday: { type: Number, default: 0 },
+      day: { type: String, default: '' }, signsToday: { type: Number, default: 0 }, lightToday: { type: Number, default: 0 }, rideToday: { type: Number, default: 0 }, rideEarn: { type: Number, default: 0 }, routeEarn: { type: Number, default: 0 }, callsToday: { type: Number, default: 0 },
       assistUntil: { type: Date, default: null }, lastRide: { type: Date, default: null },
       reportsDay: { type: String, default: '' }, reportsToday: { type: Number, default: 0 }, reportPaidDay: { type: String, default: '' }, reportPaidToday: { type: Number, default: 0 }, lastReport: { type: Date, default: null },
       rides: { type: Number, default: 0 }, fines: { type: Number, default: 0 }, crashes: { type: Number, default: 0 }, earned: { type: Number, default: 0 },
@@ -133,7 +134,8 @@ const UserSchema = new mongoose.Schema({
       missionsClaimed: { type: [String], default: [] },
       parcelDay: { type: String, default: '' }, parcelCount: { type: Number, default: 0 },
       lastSeen: { type: Date, default: null }, returnGiftDay: { type: String, default: '' },
-      invitedBy: { type: String, default: '' }, invites: { type: Number, default: 0 },
+      invitedBy: { type: String, default: '' }, invites: { type: Number, default: 0 }, invitedAt: { type: Date, default: null },
+      inviteBonus: { type: Number, default: 0 }, inviteCommission: { type: Number, default: 0 }, commissionGiven: { type: Number, default: 0 },
       cards: { type: [{ _id: false, id: String, icon: String, title: String, text: String, tone: String, btn: String, lines: [{ _id: false, k: String, v: String }], at: { type: Date, default: Date.now } }], default: [] },
       timeline: { type: [{ _id: false, at: { type: Date, default: Date.now }, icon: String, text: String }], default: [] }
     }
