@@ -93,11 +93,10 @@ const HUB = {
     const t = (fa, c, name, v, badge) => `<button class="htile" onclick="HUB.view('${v}')">${UI.ic(fa, c, 44)}<b>${name}</b>${badge ? `<i>${badge}</i>` : ''}</button>`;
     const m = this.me || { missions: {}, hub: {} };
     this.sheet('Naija hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
-      ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}
-      ${t('gamepad', '#e5484d', 'Play path', 'play')}${t('map', '#6366f1', 'Map legend', 'legend')}${t('circle-question', '#64748b', 'Help desk', 'help')}${t('road', '#10b981', 'Roadmap', 'roadmap')}
-      ${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
-      <button class="htile" onclick="SHEET.close();HUB.controls()">${UI.ic('hand-pointer', '#f59e0b', 44)}<b>Controls tutorial</b></button><button class="htile" onclick="SHEET.close();HUB.cityTour()">${UI.ic('route', '#14b8a6', 44)}<b>City tour</b></button>${t('signal', '#22b573', 'Status', 'status')}
-      ${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}</div>`, { id: 'menu', back: false });
+      ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}${t('gamepad', '#e5484d', 'Play path', 'play')}
+      ${t('circle-question', '#64748b', 'Help desk', 'help')}${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
+      ${t('signal', '#22b573', 'Status', 'status')}${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}<button class="htile" onclick="SHEET.close();HUB.cityTour()">${UI.ic('route', '#14b8a6', 44)}<b>City tour</b></button>
+      ${t('map', '#6366f1', 'Map legend', 'legend')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}<button class="htile" onclick="SHEET.close();HUB.controls()">${UI.ic('hand-pointer', '#f59e0b', 44)}<b>Controls tutorial</b></button></div>`, { id: 'menu', back: false });
   },
   async view(v) {
     const f = this['v_' + v]; if (!f) return;

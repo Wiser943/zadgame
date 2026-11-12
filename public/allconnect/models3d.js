@@ -19,9 +19,8 @@
     casual: 'men/casual_character.glb', businessman: 'men/business_man.glb', hoodie: 'men/hoodie_character.glb', beach: 'men/beach_character.glb',
     farmer: 'men/farmer.glb', adventurer: 'men/adventurer.glb', king: 'men/king.glb', punk: 'men/punk.glb', swat: 'men/swat.glb', astronaut: 'men/astronaut.glb', menworker: 'men/worker.glb',
     // things
-    sportscar: 'vehicles/sports_car.glb', motorcycle: 'vehicles/motorcycle.glb', roads: 'world/road_bits.glb', office: 'world/business_building.glb', houseinterior: 'world/house_interior.glb',
-    rocks: 'nature/rocks.glb', trees: 'nature/trees.glb', palms: 'nature/palm_trees.glb', pines: 'nature/pine_trees.glb', maples: 'nature/maple_trees.glb', birches: 'nature/birch_trees.glb',
-    bushes: 'nature/bushes.glb', flowerbushes: 'nature/flower_bushes.glb', flowers: 'nature/flowers.glb', grass: 'nature/grass.glb'
+    sportscar: 'vehicles/sports_car.glb', motorcycle: 'vehicles/motorcycle.glb', office: 'world/business_building.glb', houseinterior: 'world/house_interior.glb',
+    rocks: 'nature/rocks.glb', bushes: 'nature/bushes.glb', flowerbushes: 'nature/flower_bushes.glb', flowers: 'nature/flowers.glb'
   };
   const CHARACTERS = ['casual', 'woman', 'worker', 'businessman', 'hoodie', 'beach', 'farmer', 'adventurer', 'king', 'punk', 'swat', 'astronaut', 'menworker', 'suit'];
   const CHAR_H = 1.65;                           // character height in room units (one floor cell = 1 unit)
@@ -95,7 +94,7 @@
       const clips = gl.animations || [], mixer = clips.length ? new THREE.AnimationMixer(obj) : null;
       return { root, obj, clips, mixer }
     },
-    /* one named piece of a multi-object pack, e.g. M3D.part('palms', 'PalmTree_2', { height: 3 }) */
+    /* one named piece of a multi-object pack, e.g. M3D.part('rocks', 'Rock_1', { height: 1 }) */
     async part(key, name, o) {
       o = o || {}; const gl = await this.get(key); let src = null; gl.scene.traverse(n => { if (!src && n.name === name) src = n });
       if (!src) throw new Error(name + ' not in ' + key);

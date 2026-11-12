@@ -44,7 +44,7 @@ Object.assign(PH,{
     const auto=this.me?this.me.autoPostWins!==false:true;
     this.shell('Settings','PH.close()',`<div class="abody">
       <div class="swho tap" onclick="GIST.openProfile('me',()=>PH.settings())"><div id="swav">${this.avCover(u)}</div><div class="rt"><b>${esc(u.displayName||'Player')}${this.vb(u)}</b><span>${u.username?'@'+esc(u.username):'Tap to see your profile'}</span></div><button class="pbtn blu" onclick="event.stopPropagation();PH.editProfile()"><i class="fa-solid fa-pen"></i> Edit</button></div>
-      <div class="lab2">ACCOUNT</div><div class="sgrp"><div class="trow"><span class="ti"><i class="fa-solid fa-bell"></i></span><span class="tl">Notifications<small class="nsub">Messages and updates, even when the app is closed</small></span><span id="nright">${np==='unsupported'?'<b>Not supported</b>':'<b>…</b>'}</span></div>
+      <div class="lab2">ACCOUNT</div><div class="sgrp">${this.lrow('Suggestion box','fa-regular fa-comment',"HELPAPP.suggest()")}
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
@@ -92,7 +92,7 @@ Object.assign(PH,{
   /* ----- info pages ----- */
   /* Guide app: tutorial, socials, about and legal (moved out of Settings) */
   guide(){this.view='guide';
-    this.shell('Guide','PH.close()',`<div class="abody" id="ab"><p class="hint2">Learn the app, find us online, and read the rules.</p><div class="sgrp">${this.lrow('Game tutorial','fa-solid fa-graduation-cap',"PH.sub('tutorial')")}${socialList().length?this.lrow('Join our socials','fa-solid fa-share-nodes',"PH.sub('socials')"):''}${this.lrow('About us','fa-solid fa-circle-info',"PH.sub('about')")}${this.lrow('Legal','fa-solid fa-scale-balanced',"PH.sub('legal')")}</div></div>`)},
+    this.shell('Guide','PH.close()',`<div class="abody" id="ab"><p class="hint2">Learn the app, find us online, and read the rules.</p><div class="sgrp">${this.lrow('Help & guide','fa-regular fa-lightbulb',"HUB.view('help')")}${this.lrow('Replay the walkthrough','fa-regular fa-compass',"HELPAPP.replay()")}${this.lrow('Game tutorial','fa-solid fa-graduation-cap',"PH.sub('tutorial')")}${this.lrow('Support','fa-regular fa-life-ring',"HELPAPP.support()")}${socialList().length?this.lrow('Join our socials','fa-solid fa-share-nodes',"PH.sub('socials')"):''}${this.lrow('About us','fa-solid fa-circle-info',"PH.sub('about')")}${this.lrow('Legal','fa-solid fa-scale-balanced',"PH.sub('legal')")}</div></div>`)},
   sub(name){this.view='settings-'+name;const T={socials:'Join our Socials',tutorial:'Game Tutorial',about:'About Us',legal:'Legal'}[name];
     this.shell(T,'PH.guide()',`<div class="abody" id="ab">${this.subBody(name)}</div>`);if(name==='tutorial')this.loadRules()},
   faq(q,a){return `<div class="faq"><b>${esc(q)}</b><p>${esc(a)}</p></div>`},

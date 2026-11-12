@@ -90,7 +90,9 @@ const UserSchema = new mongoose.Schema({
       showRelationships: { type: Boolean, default: false },
       showBirthday: { type: Boolean, default: false },
       marketingEmails: { type: Boolean, default: false },
-      freeWill: { type: Boolean, default: true }
+      freeWill: { type: Boolean, default: true },
+      notifMessages: { type: Boolean, default: true }, notifKnocks: { type: Boolean, default: true }, notifMoney: { type: Boolean, default: true }, notifUpdates: { type: Boolean, default: true },
+      quietOn: { type: Boolean, default: false }, quietFrom: { type: String, default: '22:00' }, quietTo: { type: String, default: '07:00' }
     },
     bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },
     stateOrigin: { type: String, default: '' }, stateCurrent: { type: String, default: '' },   // asked at sign-up (and later from anyone who never answered)
