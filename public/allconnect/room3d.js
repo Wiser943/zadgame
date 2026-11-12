@@ -72,7 +72,7 @@ window.ROOM3D = {
     cv2.addEventListener('pointerup', up); cv2.addEventListener('pointercancel', e => { this.ptr.delete(e.pointerId) });
     cv2.addEventListener('wheel', e => { e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.1 : 1 / 1.1) }, { passive: false });
     cv2.addEventListener('dblclick', () => this.reset());
-    window.addEventListener('resize', () => this.resize()); this.resize()
+    window.addEventListener('resize', () => this.resize()); try { const sh = document.getElementById('sheet'); if (sh && window.MutationObserver) new MutationObserver(() => this.refreshInset()).observe(sh, { attributes: true, attributeFilter: ['style'] }) } catch (e) {} this.resize()
   },
   /* ---------- the player's character: male / female models with walk, dance and wave ---------- */
   buildAvatar(gender, look) {
@@ -259,14 +259,17 @@ window.ROOM3D = {
     const bl = ((t % 4200) < 130 ? .1 : 1) * (this.mood === 'sleepy' ? .35 : 1); P.eyes.forEach((e, i) => { e.scale.y = (i === 0 || i === 2 ? bl * .85 : bl) });
     if (P.skirt) P.skirt.rotation.x = 0;
   },
-  resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const half = 4.3 * Math.max(this.gw || 6, this.gd || 6) / 6, asp = Math.min(w / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
-  applyShift() { const sh = this.shiftY * this.H; this.cam.setViewOffset(this.W, this.H, 0, -sh, this.W, this.H); this.cam.updateProjectionMatrix() },
+  /* desktop shop view: the catalogue panel covers the right side, so the room is fitted into the space that is left of it */
+  calcInset() { try { if (!document.body.classList.contains('dk') || this.page_ !== 'buy') return 0; const sh = document.getElementById('sheet'); return sh && sh.offsetWidth ? Math.round(sh.offsetWidth) : 0 } catch (e) { return 0 } },
+  refreshInset() { if (!this.R) return; const n = this.calcInset(); if (n !== (this.insetR || 0)) this.resize() },
+  resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.insetR = this.calcInset(); this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const effW = Math.max(240, w - this.insetR), half = 4.3 * Math.max(this.gw || 6, this.gd || 6) / 6, asp = Math.min(effW / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
+  applyShift() { const sh = this.shiftY * this.H; this.cam.setViewOffset(this.W, this.H, (this.insetR || 0) / 2, -sh, this.W, this.H); this.cam.updateProjectionMatrix() },
   zoom(f) { this.userDist = true; this.dist = Math.max(this.d0 * .35, Math.min(this.d0 * 1.5, this.dist * f)) },
   flip() { this.tAz = (this.tAz == null ? this.az : this.tAz) + Math.PI / 2 },
   reset() { this.userDist = false; this.dist = this.d0; this.pol = .95; this.tAz = Math.round((this.az - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4 },
   page(w) {
     this.page_ = w; if (!this.on) return; const show = w === 'home' || w === 'buy' || w === 'phone'; this.cv.style.display = show ? 'block' : 'none';
-    this.shiftY = w === 'buy' ? -.17 : .05; this.applyShift()
+    this.shiftY = w === 'buy' ? (document.body.classList.contains('dk') ? .02 : -.17) : .05; this.resize()
   },
   paint(c) { this.walls.forEach(w => w.m.material.color.set(c || '#d9a93a')) },
   dark(b) { this.dark_ = !!b },

@@ -495,8 +495,12 @@ function drawApps() {
     for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
     el.classList.add('h'); el.innerHTML = pages.join('')
   };
-  let cur = HOMEFIT.per; build(cur);
-  if (el.clientHeight > 0) {
+  let cur = HOMEFIT.per;
+  /* tablet / desktop frame: ONE vertically scrolling list, 3 apps per row, on the right of the clock + city card (no horizontal pages) */
+  const tabx = !!(window.matchMedia && matchMedia('(min-width:900px) and (min-height:560px)').matches);
+  el.classList.toggle('tabx', tabx);
+  if (tabx) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollLeft = 0 } else build(cur);
+  if (!tabx && el.clientHeight > 0) {
     let grew = false;
     for (let k = 0; k < 8; k++) {
       const pg = el.querySelector('.pg1'), grid = pg && pg.querySelector('.grid'), a = grid && grid.querySelector('.app'); if (!a) break;
