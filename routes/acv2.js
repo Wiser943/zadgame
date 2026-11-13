@@ -36,9 +36,7 @@ router.post('/traits', async (req, res, next) => {
 });
 
 const PREF_CHECK = { freeWill: (v) => typeof v === 'boolean', readReceipts: (v) => typeof v === 'boolean', whoCanMessage: (v) => ['everyone', 'friends'].includes(v), whoCanSendMoney: (v) => ['anyone', 'friends'].includes(v),
-  showRelationships: (v) => typeof v === 'boolean', showBirthday: (v) => typeof v === 'boolean', marketingEmails: (v) => typeof v === 'boolean',
-  notifMessages: (v) => typeof v === 'boolean', notifKnocks: (v) => typeof v === 'boolean', notifMoney: (v) => typeof v === 'boolean', notifUpdates: (v) => typeof v === 'boolean', quietOn: (v) => typeof v === 'boolean',
-  quietFrom: (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v)), quietTo: (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v)) };
+  showRelationships: (v) => typeof v === 'boolean', showBirthday: (v) => typeof v === 'boolean', marketingEmails: (v) => typeof v === 'boolean' };
 router.post('/prefs', async (req, res, next) => {
   try {
     const b = req.body || {}, set = {};

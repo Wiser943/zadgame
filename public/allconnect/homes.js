@@ -51,8 +51,10 @@ const HOMES = {
       const activeP = p && p.id === active, expired = p && p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date();
       const price = h.mode === 'rent' ? h.rent : h.price;
       const term = h.mode === 'rent' ? `Rent · ${h.rentDays} days` : 'Permanent ownership';
-      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.sizeLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
+      const comfort = h.comfort && h.comfort !== 1 ? ` · comfort x${h.comfort}` : '';
+      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}${comfort}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.sizeLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
     }
+    rows.push(`<div class="home-card"><div class="home-emoji">🎉</div><div class="home-copy"><b>Your place</b><p>Throw a house party for everyone who visits.</p></div><div class="home-actions"><button onclick="PARTY.open()">Throw a party</button></div></div>`);
     target.innerHTML = rows.join('');
   },
   /* Bedroom expansions: the server owns the sizes and prices (p.expansions); this only shows them and asks. */

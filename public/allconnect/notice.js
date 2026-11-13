@@ -8,7 +8,7 @@ const NOTICE = {
     ['Batches', 'Every season has 3 batches. Each one opens and closes at set times, has its own limited budget and its own smallest and biggest payout. Your first batch choice sets your rotation, so pick carefully.'],
     ['Missed your batch?', 'If a batch closes before you are paid, your unused eligible units roll forward to your next slot.'],
     ['Eligibility', 'Usually you need a minimum eligible balance, an account that is at least a week old, completed payout details and an account in good standing. The exact rules are listed on the Withdraw page.'],
-    ['Account verification notice', 'Accounts without properties, furniture, or cars may be flagged as potential bot accounts, resulting in temporary withdrawal holds. This ensures real players benefit.'],
+    ['Account verification notice', 'Accounts without properties, furniture, or cars — or that sit inactive for a long stretch — may be flagged as potential bot accounts, resulting in temporary withdrawal holds. This ensures real players benefit.'],
     ['After you submit', 'Your request goes to admin review: Waiting for review, then Approved, then Being paid, then Paid by bank transfer. If it is held or not approved, the reason shows on the request.']
   ],
   hidden() { try { return localStorage.getItem(this.KEY) === '1' } catch (e) { return false } },

@@ -90,9 +90,7 @@ const UserSchema = new mongoose.Schema({
       showRelationships: { type: Boolean, default: false },
       showBirthday: { type: Boolean, default: false },
       marketingEmails: { type: Boolean, default: false },
-      freeWill: { type: Boolean, default: true },
-      notifMessages: { type: Boolean, default: true }, notifKnocks: { type: Boolean, default: true }, notifMoney: { type: Boolean, default: true }, notifUpdates: { type: Boolean, default: true },
-      quietOn: { type: Boolean, default: false }, quietFrom: { type: String, default: '22:00' }, quietTo: { type: String, default: '07:00' }
+      freeWill: { type: Boolean, default: true }
     },
     bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },
     stateOrigin: { type: String, default: '' }, stateCurrent: { type: String, default: '' },   // asked at sign-up (and later from anyone who never answered)
@@ -112,6 +110,7 @@ const UserSchema = new mongoose.Schema({
     shiftDay: { type: String, default: '' },
     shiftsToday: { type: Number, default: 0 },
     bills: { type: [{ _id: false, key: String, cycle: String, amount: Number, due: Date, paidAt: { type: Date, default: null }, fee: { type: Number, default: 0 } }], default: [] },
+    billsAutopay: { type: Boolean, default: false },      // on = new bills are charged to the balance the moment they are issued, instead of waiting for a manual Pay
     questsClaimed: { type: [String], default: [] },
     streak: { type: Number, default: 0 },
     lastDaily: { type: String, default: '' },
@@ -128,6 +127,13 @@ const UserSchema = new mongoose.Schema({
       rides: { type: Number, default: 0 }, fines: { type: Number, default: 0 }, crashes: { type: Number, default: 0 }, earned: { type: Number, default: 0 },
       sess: { type: mongoose.Schema.Types.Mixed, default: null }     // the one quiz / light / okada round in progress (answers stay on the server)
     },
+    party: {                                               // House Party: see utils/acparty.js, routes/acparty.js
+      endsAt: { type: Date, default: null }, openHouse: { type: Boolean, default: false }, lastDay: { type: String, default: '' },
+      guests: { type: [{ _id: false, id: String, at: { type: Date, default: Date.now } }], default: [] },
+      settled: { type: Boolean, default: true },           // false until this party's payout has been settled
+      thrown: { type: Number, default: 0 }                 // lifetime count of parties started (Profile milestone, Visa eligibility)
+    },
+    visa: { investorAt: { type: Date, default: null } },   // Investor Permit purchase date (see utils/actransport.js VISA)
     hub: {                                                 // onboarding, missions, result cards, life timeline (see routes/achub.js)
       hood: { type: String, default: '' }, hobby: { type: String, default: '' },
       homeSlot: { type: Number, default: -1 },             // which numbered house in `hood`'s residential cluster is this player's (-1 = not assigned yet)

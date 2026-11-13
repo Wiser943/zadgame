@@ -14,6 +14,8 @@ const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
 const reelstore = require('../utils/reelstore');
+const { milestonesFor } = require('../utils/acmilestones');
+const { playerContext, CTX_FIELDS } = require('../utils/acctx');
 
 const { muxWhy, muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
 const ACVideo = require('../models/ACVideo');
@@ -616,7 +618,7 @@ router.delete('/comments/:id', async (req, res, next) => {
 });
 
 /* ---------- profiles & follows (the ONE profile used everywhere) ---------- */
-const PROFILE_FIELDS = USER_FIELDS + ' bio cover stats level bestStreak tournamentWins rating createdAt';
+const PROFILE_FIELDS = USER_FIELDS + ' bio cover stats level bestStreak tournamentWins rating createdAt' + ' ' + CTX_FIELDS;
 async function findUser(key, fields = USER_FIELDS) {
   key = String(key || '');
   return isId(key) ? User.findById(key).select(fields).lean() : User.findOne({ acUsername: normalizeUsername(key) }).select(fields).lean();
@@ -630,12 +632,13 @@ router.get('/profile/:key', async (req, res, next) => {
     // the blocked person cannot see the blocker, but the blocker can still open the profile (to unblock)
     if (id !== uid && await Friendship.exists({ requester: id, recipient: uid, status: 'blocked' })) return bad(res, 'Player not found.', 404);
     const iBlocked = id !== uid && !!(await Friendship.exists({ requester: uid, recipient: id, status: 'blocked' }));
-    const [followers, following, postsCount, isFollowing, rel, first, pinned] = await Promise.all([
+    const [followers, following, postsCount, isFollowing, rel, first, pinned, friendCount] = await Promise.all([
       GistFollow.countDocuments({ following: id }), GistFollow.countDocuments({ follower: id }), GistPost.countDocuments({ author: id }),
       GistFollow.exists({ follower: uid, following: id }),
       id === uid ? null : Friendship.findOne({ $or: [{ requester: uid, recipient: id }, { requester: id, recipient: uid }], status: { $ne: 'blocked' } }).lean(),
       page({ author: id, pinned: { $ne: true } }, req, uid),
-      GistPost.findOne({ author: id, pinned: true }).lean()]);
+      GistPost.findOne({ author: id, pinned: true }).lean(),
+      Friendship.countDocuments({ status: 'accepted', $or: [{ requester: id }, { recipient: id }] })]);
     const posts = first.posts;
     if (pinned) posts.unshift((await hydrate([pinned], uid))[0]);
     const s = u.stats || {};
@@ -645,6 +648,8 @@ router.get('/profile/:key', async (req, res, next) => {
       relation: id === uid ? 'me' : iBlocked ? 'blocked' : !rel ? 'none' : rel.status === 'accepted' ? 'friend' : (rel.requester === uid ? 'sent' : 'received'),
       online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id),
       game: { played, wins: s.wins || 0, losses: s.losses || 0, draws: s.draws || 0, winRate: played ? Math.round(((s.wins || 0) / played) * 100) : 0, level: u.level || 1, bestStreak: u.bestStreak || 0, tournamentWins: u.tournamentWins || 0, rating: u.rating || 1000, since: u.createdAt },
+      // Life milestones live on the Profile page itself, not as a separate app (see utils/acmilestones.js).
+      milestones: milestonesFor(await playerContext(id, { u, friends: friendCount, posts: postsCount, followers })),
       posts, more: first.more,
     });
   } catch (e) { next(e); }

@@ -34,6 +34,7 @@ const acVenuesRoutes = require('./routes/acvenues');
 const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
 const acLagosRoutes = require('./routes/aclagos');
+const acPartyRoutes = require('./routes/acparty');
 const acCreatorRoutes = require('./routes/accreator');
 const payoutRoutes = require('./routes/payouts');
 const acMusicRoutes = require('./routes/acmusic');
@@ -146,6 +147,7 @@ async function main() {
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/lagos', acLagosRoutes);
+  app.use('/api/ac/party', acPartyRoutes);
   app.use('/api/ac/creator', acCreatorRoutes);
   app.use('/api/ac/payouts', payoutRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
