@@ -34,7 +34,6 @@ const acVenuesRoutes = require('./routes/acvenues');
 const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
 const acLagosRoutes = require('./routes/aclagos');
-const acPartyRoutes = require('./routes/acparty');
 const acCreatorRoutes = require('./routes/accreator');
 const payoutRoutes = require('./routes/payouts');
 const acMusicRoutes = require('./routes/acmusic');
@@ -137,6 +136,7 @@ async function main() {
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
   app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
+  app.use('/api/ac/verify', require('./routes/acverify'));  // verified badge: request + paid subscription
   app.use('/api/ac/v2', require('./routes/acv2'));  // traits, memory book, privacy, password, email, wallet top-up
   app.use('/api/ac/age', acAgeRoutes);       // 18+ attestation
   app.use('/api/ac/pet', acPetRoutes);      // Pet app: needs, shop, clothes, mini-games (all paid from the main balance)
@@ -147,7 +147,6 @@ async function main() {
   app.use('/api/ac', allconnectRoutes);
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/lagos', acLagosRoutes);
-  app.use('/api/ac/party', acPartyRoutes);
   app.use('/api/ac/creator', acCreatorRoutes);
   app.use('/api/ac/payouts', payoutRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
@@ -270,6 +269,7 @@ async function main() {
   const petAlerts = require('./services/petalerts');
   setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
+  setInterval(() => require('./utils/acverify').sweep().catch((e) => console.error('[verify sweep]', e.message)), 60 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   /* withdrawal seasons: tell players when a season/batch opens or is about to close (each notice is sent once) */
   /* birthdays: post a birthday card on P-Gist for everyone whose birthday it is (checked every 30 minutes, once per player per year) */

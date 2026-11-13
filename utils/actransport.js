@@ -305,43 +305,10 @@ const newVehicle = (kind, now = Date.now()) => { const d = VEHICLES[kind]; retur
 /* the three one-time quests that live in the Lagos Life quest list */
 const questDone = (tr) => ({ licence: hasLicence(tr), ride: vehiclesOf(tr).length > 0, insure: vehiclesOf(tr).some((v) => v.insTier && v.insUntil) });
 
-// Residency / "Visa" tiers (Transport app → Residency tab). A player's own home state issues a residence-style
-// paper when they first settle in Lagos, so this plays as a document you pick up from the LASG desk inside
-// Transport rather than from a separate app. Tiers upgrade automatically as the conditions are met, except
-// Investor (a one-time fee, since it is the one you actively buy — see routes/actransport.js).
-const VISA_INVESTOR_FEE = 1350000;
-const VISA = {
-  arrival: { name: 'New Arrival Pass', blurb: 'Explore Lagos, socialise and look for work. Get hired to move up to a Work Permit.', cost: 0 },
-  work: { name: 'Work Permit', blurb: 'Granted the moment you get hired.', cost: 0 },
-  investor: { name: 'Investor Permit', blurb: 'Needed to open your own business or run a shop.', cost: VISA_INVESTOR_FEE },
-  indigene: { name: 'Lagos Indigene Status', blurb: 'Everything open. The top tier — meet any one of the requirements below.', cost: 0 }
-};
-// Every alternate path to Indigene Status (meeting ANY ONE is enough — mirrors the old "level, net worth OR
-// property" rule, broadened to also cover social life, posting, pet care and home styling as requested).
-// `ctx` is the same flat shape utils/acmilestones.js uses, plus `vetVisits`.
-function indigeneChecklist(ctx) {
-  const c = ctx || {};
-  return [
-    { id: 'wealth', label: 'Net worth of ₦50,000,000 or more', done: (c.cash || 0) >= 50000000 },
-    { id: 'property', label: 'Own a property worth ₦40,000,000 or more', done: !!c.topHome },
-    { id: 'career', label: 'Reached the top of a career ladder', done: !!c.jobTop },
-    { id: 'social', label: 'Thrown a house party or made 10+ friends', done: (c.partiesThrown || 0) >= 1 || (c.friends || 0) >= 10 },
-    { id: 'posting', label: 'Posted 50+ times on P-Gist or reached 50+ followers', done: (c.posts || 0) >= 50 || (c.followers || 0) >= 50 },
-    { id: 'pet', label: 'Taken a pet in for vet care', done: (c.vetVisits || 0) >= 1 },
-    { id: 'styling', label: 'Furnished a home with 5+ pieces', done: (c.furniture || 0) >= 5 }
-  ];
-}
-function visaStatus(ctx, investorPaid) {
-  const c = ctx || {}, list = indigeneChecklist(c), indigene = list.some((x) => x.done);
-  const tier = indigene ? 'indigene' : investorPaid ? 'investor' : c.jobId ? 'work' : 'arrival';
-  return { tier, tiers: Object.entries(VISA).map(([id, v]) => ({ id, ...v, have: id === tier || (id === 'work' && (tier === 'investor' || tier === 'indigene')) || (id === 'investor' && tier === 'indigene') })), checklist: list, indigeneEligible: indigene };
-}
-
 module.exports = {
   HOUR, DAY, dayKey, hourOf, r100, naira, VEHICLES, KINDS, MAX_VEHICLES, vdef, sellPrice, RENT, FUEL_BASE, fuelPrice, fareMult, fuelCost, serviceCost, condLabel,
   PAINTS, PAINT_BY, paintPrice, MODS, TIP_CAP, modPrice, modsFor, tipPct, INS, INS_DAYS, insDiscount, insPrice, insured, cover, ASSIST, isMember, LOTS, LOT_BY, PARK_MAX_HOURS, parked,
   TICKET, CRASH, ROUTE_DAILY_CAP, MAX_ROUTE_HOURS, ROUTE_WEAR, ROUTES, ROUTE_BY, demand, repMult, accrue, SIGNS, RULES, QUIZ, shuffle, buildQuiz, gradeQuiz, signsReward,
   LIGHT, lightPlan, lightPoints, gradeLight, lightMinElapsed, OKADA, okadaPlan, gradeOkada, okadaFare, ROADS, REPORT_KINDS, REPORTS, summarize, REP, REP_TIERS, tierOf,
-  hasLicence, vehiclesOf, rentActive, pickVehicle, incident, describe, newId, newVehicle, questDone,
-  VISA, VISA_INVESTOR_FEE, indigeneChecklist, visaStatus
+  hasLicence, vehiclesOf, rentActive, pickVehicle, incident, describe, newId, newVehicle, questDone
 };

@@ -559,20 +559,57 @@ router.post('/payouts/seasons/:id/notify', async (req, res, next) => {
     res.json({ ok: true, sent: sent.length, message: sent.length ? 'Players were notified.' : 'Nothing to announce right now. The season may be outside its dates, or no batch is open yet.' });
   } catch (e) { next(e); }
 });
+
+// ---------- Verified badge: requests, permanent grants, paid subscriptions and default prices ----------
+router.get('/verify/pricing', async (req, res, next) => { try { res.json(await require('../utils/acverify').pricing()) } catch (e) { next(e) } });
+router.put('/verify/pricing', async (req, res, next) => {
+  try {
+    const b = req.body || {}, v = { enabled: b.enabled !== false, monthly: Math.max(0, Math.round(Number(b.monthly) || 0)), yearly: Math.max(0, Math.round(Number(b.yearly) || 0)) };
+    await require('../models/ACSetting').findByIdAndUpdate('verifyPricing', { $set: { value: v } }, { upsert: true }); res.json(v);
+  } catch (e) { next(e) }
+});
+router.get('/verify', async (req, res, next) => {
+  try {
+    const status = ['pending', 'approved', 'active', 'rejected', 'expired'].includes(req.query.status) ? req.query.status : 'pending';
+    const rows = await User.find({ 'vreq.status': status }).select('displayName acUsername verified createdAt vreq').sort({ 'vreq.requestedAt': 1 }).limit(100).lean();
+    res.json({ requests: rows.map(u => ({ id: String(u._id), name: u.displayName, username: u.acUsername || '', verified: !!u.verified, joined: u.createdAt, ...u.vreq })) });
+  } catch (e) { next(e) }
+});
+// decision: permanent (free, never expires) | paid (player subscribes monthly / yearly at the price you set) | reject | revoke
+router.post('/verify/:id/decide', async (req, res, next) => {
+  try {
+    const b = req.body || {}, d = String(b.decision || ''), note = String(b.note || '').trim().slice(0, 200), now = new Date();
+    if (!['permanent', 'paid', 'reject', 'revoke'].includes(d)) return res.status(400).json({ message: 'decision must be permanent, paid, reject or revoke.' });
+    const set = { 'vreq.decidedAt': now, 'vreq.note': note };
+    let text, kind = 'info', icon = 'ℹ️';
+    if (d === 'permanent') { Object.assign(set, { verified: true, 'vreq.status': 'active', 'vreq.mode': 'permanent', 'vreq.expiresAt': null }); text = 'You are verified! Your badge is permanent.'; kind = 'good'; icon = '🎉' }
+    else if (d === 'paid') {
+      const m = Math.max(0, Math.round(Number(b.monthly) || 0)), y = Math.max(0, Math.round(Number(b.yearly) || 0));
+      Object.assign(set, { verified: false, 'vreq.status': 'approved', 'vreq.mode': 'paid', 'vreq.monthly': m, 'vreq.yearly': y, 'vreq.expiresAt': null });
+      text = 'Your verified badge request was approved! Open Manage on your profile to subscribe and get your tick.'; kind = 'good'; icon = '🎉';
+    }
+    else if (d === 'reject') { Object.assign(set, { verified: false, 'vreq.status': 'rejected', 'vreq.mode': '' }); text = 'Your verified badge request was not approved this time.' + (note ? ' ' + note : '') }
+    else { Object.assign(set, { verified: false, 'vreq.status': '', 'vreq.mode': '', 'vreq.expiresAt': null }); text = 'Your verified badge was removed.' + (note ? ' ' + note : '') }
+    const u = await User.findByIdAndUpdate(req.params.id, { $set: set }, { new: true }).select('displayName verified vreq');
+    if (!u) return res.status(404).json({ message: 'User not found.' });
+    require('../utils/acnotify').notify(req.app.get('io'), req.params.id, { icon, text, kind }).catch(() => {});
+    res.json({ id: String(u._id), name: u.displayName, verified: !!u.verified, vreq: u.vreq });
+  } catch (e) { next(e) }
+});
 // One call for the dashboard: what needs the admin's attention right now.
 router.get('/overview', async (req, res, next) => {
   try {
     const now = new Date(), day = new Date(Date.now() - 864e5);
     const safe = (p, d = 0) => p.catch(() => d);
-    const [pending, approved, reports, tourOpen, creators, appeals, newUsers, totalUsers, season] = await Promise.all([
+    const [pending, approved, reports, tourOpen, creators, vreqs, appeals, newUsers, totalUsers, season] = await Promise.all([
       safe(PayoutRequest.countDocuments({ status: { $in: ['submitted', 'held'] } })), safe(PayoutRequest.countDocuments({ status: 'approved' })),
       safe(Report.countDocuments({ status: 'open' })), safe(Tournament.countDocuments({ status: 'open' })),
-      safe(User.countDocuments({ 'creator.status': 'applied' })),
+      safe(User.countDocuments({ 'creator.status': 'applied' })), safe(User.countDocuments({ 'vreq.status': 'pending' })),
       safe(GistPostM.countDocuments({ 'moderation.status': { $in: ['review', 'appealed'] } })),
       safe(User.countDocuments({ createdAt: { $gte: day } })), safe(User.estimatedDocumentCount()),
       safe(PayoutSeason.findOne({ status: { $in: ['scheduled', 'active'] }, startsAt: { $lte: now }, endsAt: { $gte: now } }).sort({ seasonNo: -1 }).select('seasonNo name endsAt batches status').lean(), null)
     ]);
-    res.json({ pendingPayouts: pending, toPay: approved, openReports: reports, openTournaments: tourOpen, creatorApplications: creators, reelAppeals: appeals, newUsers24h: newUsers, totalUsers, onlineNow: presence.count ? presence.count() : 0, season });
+    res.json({ pendingPayouts: pending, toPay: approved, openReports: reports, openTournaments: tourOpen, creatorApplications: creators, verifyRequests: vreqs, reelAppeals: appeals, newUsers24h: newUsers, totalUsers, onlineNow: presence.count ? presence.count() : 0, season });
   } catch (e) { next(e); }
 });
 module.exports = router;

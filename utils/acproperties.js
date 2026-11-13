@@ -1,21 +1,12 @@
 // Server-authoritative catalogue for additional AllConnect homes.
-// `comfort` is a display multiplier (shown next to the price, like "comfort x1.3") that says how nice a place is to
-// live in — a flavour/prestige stat for now, the same idea as a hotel's star rating. It carries no hidden gameplay
-// effect; it is there so the Homes list reads like a proper housing ladder from a shared room to Banana Island.
 const HOMES = {
-  'mainland_room': { name: 'Mainland Room', description: 'A simple private room to make your own.', mode: 'rent', rent: 25000, rentDays: 7, paint: '#c7a17a', max: 1, comfort: 1 },
-  'self_contained': { name: 'Self-Contained', description: 'Your own compact space with room to furnish.', mode: 'buy', price: 350000, paint: '#d9a93a', max: 1, comfort: 1.1 },
-  'mini_flat': { name: 'Mini Flat', description: 'Extra space for a more comfortable setup.', mode: 'buy', price: 900000, paint: '#8eb7c8', max: 1, comfort: 1.2 },
-  'market_shop': { name: 'Market Shop', description: 'Your own shop: a counter, shelves of goods and a stock corner, with the shop building next door. Furnish the rest.', mode: 'buy', price: 3200000, paint: '#efe3c8', max: 1, layout: 'market_shop', layoutNote: 'Shop floor with a counter and shelves (fixed size)', comfort: 1.1 },
-  'two_bedroom': { name: 'Two-Bedroom Apartment', description: 'A larger home for future social gatherings.', mode: 'buy', price: 2200000, paint: '#9a8ac7', max: 1, comfort: 1.3 },
-  'family_house': { name: 'Family House', description: 'A real multi-room house: bedrooms, kitchen, bathroom and a big living room.', mode: 'buy', price: 4500000, paint: '#e6d9c0', max: 1, layout: 'family_house', layoutNote: 'Full house plan with separate rooms (fixed size)', comfort: 1.4 },
-  'lekki_apartment': { name: 'Lekki Waterfront Apartment', description: 'Floor-to-ceiling windows over the lagoon, a pool downstairs and the Phase 1 strip on your doorstep.', mode: 'buy', price: 9000000, paint: '#2f6fb0', max: 1, comfort: 1.5 },
-  'banana_island_mansion': { name: 'Banana Island Mansion', description: 'Private jetty, a long driveway and neighbours who own the street. You made it.', mode: 'buy', price: 40000000, paint: '#caa14d', max: 1, comfort: 1.85 }
+  'mainland_room': { name: 'Mainland Room', description: 'A simple private room to make your own.', mode: 'rent', rent: 25000, rentDays: 7, paint: '#c7a17a', max: 1 },
+  'self_contained': { name: 'Self-Contained', description: 'Your own compact space with room to furnish.', mode: 'buy', price: 350000, paint: '#d9a93a', max: 1 },
+  'mini_flat': { name: 'Mini Flat', description: 'Extra space for a more comfortable setup.', mode: 'buy', price: 900000, paint: '#8eb7c8', max: 1 },
+  'family_house': { name: 'Family House', description: 'A real multi-room house: bedrooms, kitchen, bathroom and a big living room.', mode: 'buy', price: 4500000, paint: '#e6d9c0', max: 1, layout: 'family_house', layoutNote: 'Full house plan with separate rooms (fixed size)' },
+  'market_shop': { name: 'Market Shop', description: 'Your own shop: a counter, shelves of goods and a stock corner, with the shop building next door. Furnish the rest.', mode: 'buy', price: 3200000, paint: '#efe3c8', max: 1, layout: 'market_shop', layoutNote: 'Shop floor with a counter and shelves (fixed size)' },
+  'two_bedroom': { name: 'Two-Bedroom Apartment', description: 'A larger home for future social gatherings.', mode: 'buy', price: 2200000, paint: '#9a8ac7', max: 1 }
 };
-// What a home is worth for the bills/insurance/weather-loss maths elsewhere: the price for anything you can own
-// outright, 0 for a rental (you never built equity in it). One source of truth instead of the same list copied
-// into three different files.
-const assetValue = (type) => { const h = HOMES[type]; return h && h.mode !== 'rent' ? h.price : 0; };
 // Bedroom expansions: an owned (bought) home can add bedrooms, up to 5 bedrooms in total. The floor plan comes from the
 // shared generator in public/allconnect/bedrooms.js (the browser draws the very same plan), and every price is decided here.
 // Each added bedroom costs a share of the home's price that rises a little with every bedroom.
@@ -39,5 +30,5 @@ const expansionOptions = (p) => { const out = [], cur = extraOf(p), t = p && p.t
 // bought), or the plain 6x6 room. The 6x6 living area always stays put at the top-left, so placed furniture never moves.
 const gridOf = (p) => { const h = HOMES[p && p.type]; if (h && h.layout) return layoutFor(h.layout) || BED.MAIN; const L = BED.layout(totalOf(p)); return L ? { ...L, blocked: new Set(L.blocked), walls: new Set(L.walls) } : BED.MAIN; };
 const isHome = (id) => Object.prototype.hasOwnProperty.call(HOMES, id);
-const publicHome = (p) => ({ id: p.id, type: p.type, name: HOMES[p.type]?.name || 'Home', description: HOMES[p.type]?.description || '', comfort: HOMES[p.type]?.comfort || 1, tenure: p.tenure, boughtAt: p.boughtAt, leaseExpiresAt: p.leaseExpiresAt, paint: p.paint, bedrooms: extraOf(p), totalBedrooms: totalOf(p), sizeLabel: BED.label(totalOf(p)), maxBedrooms: baseBedrooms(p.type) + maxExtra(p.type), expansions: expansionOptions(p), layout: HOMES[p.type]?.layout || '', insured: !!p.insured, condition: Number.isFinite(p.condition) ? p.condition : 100, items: (p.items || []).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })) });
-module.exports = { HOMES, MAX_BEDROOMS, assetValue, baseBedrooms, maxExtra, extraOf, totalOf, stepCost, expansionCost, expansionOptions, gridOf, isHome, publicHome };
+const publicHome = (p) => ({ id: p.id, type: p.type, name: HOMES[p.type]?.name || 'Home', description: HOMES[p.type]?.description || '', tenure: p.tenure, boughtAt: p.boughtAt, leaseExpiresAt: p.leaseExpiresAt, paint: p.paint, bedrooms: extraOf(p), totalBedrooms: totalOf(p), sizeLabel: BED.label(totalOf(p)), maxBedrooms: baseBedrooms(p.type) + maxExtra(p.type), expansions: expansionOptions(p), layout: HOMES[p.type]?.layout || '', insured: !!p.insured, condition: Number.isFinite(p.condition) ? p.condition : 100, items: (p.items || []).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, placed: i.placed !== false })) });
+module.exports = { HOMES, MAX_BEDROOMS, baseBedrooms, maxExtra, extraOf, totalOf, stepCost, expansionCost, expansionOptions, gridOf, isHome, publicHome };

@@ -57,7 +57,7 @@ async function peerOr(req, res) {
 async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, voice, fwd, propertyId = '' }) {
   const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(voice ? { voice } : {}), ...(fwd ? { fwd: true } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
-  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (voice ? CH.VOICE_LABEL : image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
+  if (kind === 'text') push.sendToUser(to, { cat: 'messages', title: `New message from ${req.user.displayName || 'a player'}`, body: (voice ? CH.VOICE_LABEL : image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
 }
 

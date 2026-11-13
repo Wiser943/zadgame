@@ -177,6 +177,22 @@ const VBYID = Object.fromEntries(VOTES.map((v) => [v.id, v]));
 
 /* ---------- changelog ---------- */
 const CHANGELOG = [
+  { v: '2.8', date: '2026-11-12', title: 'Frosted glass and a softer glow', items: [
+    'Pop-ups and sheets now have the same frosted-glass look as the buttons on your home screen',
+    'Switch your room light on with the bulb button for a warm, slightly brighter room',
+    'Plus everything from 2.7: Invite and earn, Free will, first-person view and more'
+  ] },
+  { v: '2.7', date: '2026-11-11', title: 'Invite and earn, plus a calmer home', items: [
+    'Invite is now its own app: your link, friends who joined, join bonuses and a 5% commission on their shifts for 30 days',
+    'Help now lives inside Guide, and the Suggestion box is in Settings. Tell us what to add any time',
+    'Free will: your Sim can look after their needs while you are away',
+    'Need alerts only show when a need is really low, and never all at once',
+    'The bulb is a light switch, and the eye button puts you inside your Sim for a first-person view',
+    'NEPA news now arrives as a notification you can tap for details',
+    'Settings: Push notifications, What reaches you (with quiet hours) and Blocked players',
+    'Smaller bottom bar, bigger top bar, tidier Naija hub and a mall that turns 180 degrees',
+    'Transport now pays the least on purpose, so every other career is worth more'
+  ] },
   { v: '2.6', date: '2026-11-08', title: 'A fresh look, and more of Nigeria', items: [
     'New phone look with smaller buttons and a character sheet: Needs, Feelings, Traits and a Memory book',
     'Pick three traits in "Who are you?" and watch how they change how you feel',

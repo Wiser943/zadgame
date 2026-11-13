@@ -71,9 +71,7 @@ function view(doc, cash) {
     land: land.map((l) => { const c = I.landOf(l.place); return { id: l.id, place: l.place, name: c ? c.name : l.place, emoji: c ? c.emoji : '🌴', paid: l.paid, worth: worthOf(l), delta: worthOf(l) - l.paid, grewWeek: I.landGrewWeek(l, now) }; }),
     market: Object.entries(I.LAND).map(([id, c]) => ({ id, name: c.name, emoji: c.emoji, price: c.price, sell: Math.floor(c.price * I.LAND_SELL_PCT), weekPct: Math.round(c.rate * 7 * 1000) / 10 })),
     businesses: Object.entries(I.BIZ).map(([key, b]) => { const r = I.rollup(ledger, now, key), own = ownedBiz.get(key);
-      return { key, name: b.name, area: b.area, emoji: b.emoji, blurb: b.blurb, price: b.price, min: b.min, max: b.max, sell: I.bizSellValue(key), owned: !!own, since: own ? own.at : null, today: r.today, week: r.week, total: tot[key] || 0,
-        staff: own ? (own.staff || 0) : 0, tier: own ? (own.tier || 'standard') : 'standard', maxStaff: I.STAFF.max, hireFee: I.STAFF.hireFee, wage: I.STAFF.wage,
-        tiers: Object.entries(I.TIERS).map(([id, t]) => ({ id, name: t.name, mult: t.mult })) }; }),
+      return { key, name: b.name, area: b.area, emoji: b.emoji, blurb: b.blurb, price: b.price, min: b.min, max: b.max, sell: I.bizSellValue(key), owned: !!own, since: own ? own.at : null, today: r.today, week: r.week, total: tot[key] || 0 }; }),
     haulage: { ...I.TRUCK, count: trucks.length, maxCount: I.MAX_TRUCKS, today: I.rollup(ledger, now, 'truck').today, week: I.rollup(ledger, now, 'truck').week, total: tot.truck || 0 },
     coming: I.COMING, limits: { land: I.MAX_LAND }
   };
@@ -142,28 +140,6 @@ router.post('/biz/sell', async (req, res, next) => {
     if (!old) return bad(res, 404, 'You don\'t own that business.');
     const v = I.bizSellValue(key); await econ.credit(id, v);
     await send(req, res, { message: `Sold for ${naira(v)}`, flash: `You sold your ${b.name} for ${naira(v)}.` });
-  } catch (e) { next(e); }
-});
-
-// Running a business yourself: hire staff (one-time fee per new hire, plus a daily wage already baked into the
-// payout) and pick a price tier. This is what makes an owned business something you actively run rather than
-// just collect from — see utils/acinvest.js STAFF/TIERS and bizDay().
-router.post('/biz/manage', async (req, res, next) => {
-  try {
-    const id = uid(req); if (limited(id)) return bad(res, 429, 'Slow down a little.');
-    const key = String((req.body && req.body.key) || ''), b = I.bizOf(key);
-    if (!b) return bad(res, 400, 'Unknown business.');
-    const tier = String((req.body && req.body.tier) || 'standard');
-    if (!I.TIERS[tier]) return bad(res, 400, 'Unknown price tier.');
-    const wanted = Number(req.body && req.body.staff);
-    if (!Number.isFinite(wanted)) return bad(res, 400, 'Bad staff count.');
-    const staff = Math.max(0, Math.min(I.STAFF.max, Math.round(wanted)));
-    const doc = await ACInvest.findOne({ user: id, 'biz.key': key });
-    if (!doc) return bad(res, 404, "You don't own that business.");
-    const cur = doc.biz.find((x) => x.key === key), addStaff = Math.max(0, staff - (cur.staff || 0));
-    if (addStaff > 0 && (await econ.debit(id, addStaff * I.STAFF.hireFee)) == null) return bad(res, 402, `Hiring costs ${naira(I.STAFF.hireFee)} per new staff member.`);
-    await ACInvest.updateOne({ user: id, 'biz.key': key }, { $set: { 'biz.$.staff': staff, 'biz.$.tier': tier } });
-    await send(req, res, { message: 'Business updated', flash: `${b.emoji} ${b.name} is now ${I.TIERS[tier].name.toLowerCase()} tier with ${staff} staff.` });
   } catch (e) { next(e); }
 });
 

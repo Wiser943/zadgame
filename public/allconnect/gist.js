@@ -413,6 +413,7 @@ const GIST = {
     const grid = [['Followers', n(S.followers), S.newFollowers ? `+${n(S.newFollowers)} this month` : ''], ['Gists', n(S.posts), S.posts30 ? `${n(S.posts30)} this month` : ''], ['Reactions', n(S.reactions), S.reactions30 ? `+${n(S.reactions30)} this month` : ''], ['Comments', n(S.comments), S.comments30 ? `+${n(S.comments30)} this month` : ''], ['Shares', n(S.shares), ''], ['Avg reactions', n(S.avgReactions), 'per gist']];
     $('ab').innerHTML = `<div class="gm">
       <div class="gmst" style="--c:${ST[1]}"><span class="gmsi"><span class="fa-solid fa-${ST[0]}"></span></span><div><h3>${ST[2]}</h3><p>${esc(ST[3])}</p></div></div>${action}
+      <div class="gmrw acr"><button class="gmrwh" onclick="GIST.verify()"><span class="gmrwi">✔️</span><span class="gmrwt"><b>Verified badge</b><small>Get the blue tick next to your name</small></span><span class="gmrwb">Open</span></button></div>
       <h4>Requirements <small>${d.metCount}/${d.total}</small></h4><div class="gmcard">${crit}</div>
       <h4>Milestones</h4>${ms}
       <h4>Your stats</h4><div class="gmgrid">${grid.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span>${x[2] ? `<small>${x[2]}</small>` : ''}</div>`).join('')}</div>
@@ -452,6 +453,36 @@ const GIST = {
       const box = $('gmrwf'); if (box) box.innerHTML = ''; this.rewards();
     } catch (e) { toast(e.message || 'Could not save'); if (btn) btn.disabled = false }
   },
+  /* ---------- Verified badge: ask for it, then subscribe monthly / yearly if the team makes it a paid badge ---------- */
+  verify() {
+    this.set('verify'); PH.shell('Verified badge', 'GIST.manage()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
+    NET.api('/api/ac/verify/status').then(d => { this.vf = d; this.vplan = this.vplan || 'monthly'; if (this.cur && this.cur.fn === 'verify') this.drawVerify() }).catch(e => { const ab = $('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>` })
+  },
+  drawVerify() {
+    const d = this.vf, n = x => '₦' + Number(x || 0).toLocaleString('en-NG'), pl = this.vplan || 'monthly', date = x => x ? new Date(x).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const ST = {
+      '': ['certificate', '#64748b', 'Not verified', 'Ask for the blue tick. The team reviews every request.'],
+      pending: ['hourglass-half', '#f59e0b', 'Under review', 'We got your request. The team will review it soon.'],
+      approved: ['circle-check', '#22b573', 'Approved!', 'Subscribe below to switch your blue tick on.'],
+      active: ['circle-check', '#1d9bf0', 'You are verified', d.mode === 'permanent' ? 'Your badge is permanent.' : `Active until ${date(d.expiresAt)} (${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'} left).`],
+      rejected: ['circle-xmark', '#e5484d', 'Not approved this time', d.note || 'You can ask again.'],
+      expired: ['clock', '#e5484d', 'Subscription ended', 'Renew to get your blue tick back.']
+    }[d.status] || ['certificate', '#64748b', 'Not verified', ''];
+    const plans = ['monthly', 'yearly'].map(k => `<button class="vplan ${pl === k ? 'on' : ''}" onclick="GIST.vplan='${k}';GIST.drawVerify()"><b>${k === 'monthly' ? 'Monthly' : 'Yearly'}</b><span>${n(d.prices[k])}</span><small>${k === 'monthly' ? 'per 30 days' : 'per year'}</small></button>`).join('');
+    let action = '';
+    if (d.canRequest) action = `<h4>Choose a plan</h4><div class="vplans">${plans}</div><textarea class="sinput" id="vrs" maxlength="300" rows="3" placeholder="Why should you be verified? (optional)"></textarea><button class="btn p" onclick="GIST.askVerify(this)">Request the badge</button><p class="gmnote">Sending a request is free. You only pay if the team approves it as a paid badge. Some accounts are given the badge for free.</p>`;
+    else if (d.canSubscribe) action = `<h4>${d.status === 'active' ? 'Renew early' : 'Subscribe'}</h4><div class="vplans">${plans}</div><button class="btn p" onclick="GIST.subVerify(this)">Pay ${n(d.prices[pl])} from wallet</button><p class="gmnote">Wallet balance ${n(d.cash)}. The tick turns off when the time runs out unless you renew.</p>`;
+    else if (!d.enabled && !d.verified && d.status !== 'pending') action = '<p class="gmnote">Verification requests are closed right now.</p>';
+    $('ab').innerHTML = `<div class="gm"><div class="gmst" style="--c:${ST[1]}"><span class="gmsi"><span class="fa-solid fa-${ST[0]}"></span></span><div><h3>${ST[2]}</h3><p>${esc(ST[3])}</p></div></div>${action}</div>`
+  },
+  async askVerify(btn) {
+    if (btn) btn.disabled = true;
+    try { this.vf = await NET.api('/api/ac/verify/request', { method: 'POST', body: { plan: this.vplan || 'monthly', reason: ($('vrs') || {}).value || '' } }); toast('Request sent'); this.drawVerify() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
+  },
+  async subVerify(btn) {
+    if (btn) btn.disabled = true;
+    try { this.vf = await NET.api('/api/ac/verify/subscribe', { method: 'POST', body: { plan: this.vplan || 'monthly' } }); toast('You are verified ✔'); this.drawVerify() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
+  },
   async applyCreator(btn) {
     if (btn) btn.disabled = true;
     try { this.cr = await NET.api('/api/ac/creator/apply', { method: 'POST' }); toast('Application sent'); this.drawManage() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
@@ -476,19 +507,13 @@ const GIST = {
     $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')" data-ph="${esc(u.cover)}" onclick="GIST.viewPhoto(this.dataset.ph)"` : ''}></div><div class="gavw" data-ph="${esc(avSrc)}" onclick="GIST.viewPhoto(this.dataset.ph)">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
-      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div>
-      ${this.milestonesHtml(r.milestones)}</div>
+      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
       <div class="gprofile-tabs" role="tablist" aria-label="Profile posts">${[['grid','Grid'],['posts','Posts'],['reels','Reels']].map(([m,n]) => `<button role="tab" aria-controls="gprofile-content" tabindex="${(this.pf.mode || 'grid') === m ? '0' : '-1'}" aria-selected="${(this.pf.mode || 'grid') === m}" class="${(this.pf.mode || 'grid') === m ? 'on' : ''}" onclick="GIST.profileMode('${m}')">${n}</button>`).join('')}</div><div id="gprofile-content" role="tabpanel">${this.profileContent(posts, more)}</div>`
   },
   /* full-screen look at a profile photo or cover; tap anywhere to close */
   viewPhoto(url) {
     if (!url) return toast('No photo to show yet');
     const o = document.createElement('div'); o.className = 'gview'; o.innerHTML = `<button class="gvx" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><img src="${esc(url)}" alt="">`; o.onclick = () => o.remove(); (PH.$a() || document.body).appendChild(o)
-  },
-  // Life milestones: part of the Profile page itself (not a separate app) — see utils/acmilestones.js.
-  milestonesHtml(m) {
-    if (!m || !m.list) return '';
-    return `<div class="acms"><div class="ggh"><i class="fa-solid fa-trophy"></i> Achievements<small>${m.done}/${m.total}</small></div><div class="acmg">${m.list.map(x => `<div class="acmi${x.done ? ' on' : ''}" title="${esc(x.desc)}"><span class="acmic">${x.done ? x.emoji : '<i class="fa-solid fa-lock"></i>'}</span><b>${esc(x.title)}</b></div>`).join('')}</div></div>`;
   },
   profileMode(mode) { if (!['grid','posts','reels'].includes(mode) || !this.pf) return; this.pf.mode = mode; this.drawProfile() },
   profileContent(posts, more) {

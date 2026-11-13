@@ -350,10 +350,7 @@ function openBank(dep) {
   window.addEventListener('offline', show); window.addEventListener('online', hide);
   if (!navigator.onLine) show()
 })();
-function toggleClean() {
-  S.clean = !S.clean;
-  nav('home', true)
-}
+function toggleClean() { S.clean = false }      // the hide-the-buttons mode was removed
 /* Phone power behavior: the physical side button and Phone navigation toggle the same device. */
 const PHONEUI = {
   busy:false,
@@ -384,10 +381,10 @@ function nav(w, keep) {
   $('buy').style.display = w == 'buy' ? 'block' : 'none';
   $('phone').style.display = w == 'phone' ? 'block' : 'none';
   $('room').style.display = (w == 'map') ? 'none' : 'block';
-  const cl = S.clean && home;
+  const cl = false && home;
   $('needsbar').style.display = (w == 'map') ? 'flex' : 'none';   /* home no longer shows the avatar + needs strip (needs live in the Goals sheet) */
   $('nav').style.display = (w == 'buy' || w == 'phone' || cl) ? 'none' : 'flex';
-  $('menubtn').style.display = cl ? 'flex' : 'none';
+  if ($('menubtn')) $('menubtn').style.display = 'none';
   $('viewctl').style.display = (home || w == 'map') ? 'flex' : 'none';
   $('app').classList.toggle('onmap', w == 'map'); try { CAMV.toggle(false) } catch (e) {}
   $('emotes').style.display = (home || w == 'map') ? 'flex' : 'none';
@@ -455,22 +452,19 @@ const APPS = [
   ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['City', '<i class="fa-solid fa-city"></i>', 'linear-gradient(135deg,#f59e0b,#e8337a)', 1],
   ['Gazette', '<i class="fa-solid fa-newspaper"></i>', 'linear-gradient(135deg,#0ea5e9,#1e3a8a)'],
-  ["What's New", '<i class="fa-solid fa-clock-rotate-left"></i>', 'linear-gradient(135deg,#f97316,#c2410c)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
   ['Shop', '<i class="fa-solid fa-bag-shopping"></i>', 'linear-gradient(135deg,#34d399,#0891b2)', 1],
   ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
-  ['Help', '<i class="fa-solid fa-life-ring"></i>', 'linear-gradient(135deg,#38bdf8,#2563eb)', 1],
   ['Invite', '<i class="fa-solid fa-user-group"></i>', 'linear-gradient(135deg,#3b82f6,#7c3aed)', 1],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
 const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", 'Play Store': "PH.open('ads')", Boutique: "PH.open('style')",
-Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
+Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')" }; 
 OPEN.Homes = "PH.open('homes')";
 OPEN.Shop = "openHub(b=>b.shop())";
 OPEN.Guide = "PH.open('guide')";
-OPEN.Help = "PH.open('help')";
 OPEN.Invite = "PH.open('invite')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
@@ -492,11 +486,15 @@ function drawApps() {
   // page 1 shows as many rows of apps as the free space allows (at least 2); the rest go to the next pages
   const build = per => {
     const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, per).join('')}</div></div>`];
-    for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
+    for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div></div>`);
     el.classList.add('h'); el.innerHTML = pages.join('')
   };
-  let cur = HOMEFIT.per; build(cur);
-  if (el.clientHeight > 0) {
+  let cur = HOMEFIT.per;
+  /* tablet / desktop frame: ONE vertically scrolling list, 3 apps per row, on the right of the clock + city card (no horizontal pages) */
+  const tabx = !!(window.matchMedia && matchMedia('(min-width:900px) and (min-height:560px)').matches);
+  el.classList.toggle('tabx', tabx);
+  if (tabx) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollLeft = 0 } else build(cur);
+  if (!tabx && el.clientHeight > 0) {
     let grew = false;
     for (let k = 0; k < 8; k++) {
       const pg = el.querySelector('.pg1'), grid = pg && pg.querySelector('.grid'), a = grid && grid.querySelector('.app'); if (!a) break;
@@ -835,6 +833,15 @@ const BAN = {
     clearTimeout(b.h);
     b.h = setTimeout(() => b.classList.remove('show'), ms) },
   light: true,
+  /* NEPA news arrives as a phone notification (tap it for the full story) instead of a banner across the screen. */
+  note(up) {
+    try { if (up && window.V2) V2.lastUp = Date.now() } catch (e) {}
+    const icon = up ? '💡' : '🕯️', title = up ? 'UP NEPA! Light don come' : 'NEPA took light', text = up ? 'Power is back in your area.' : 'Power cut. Tap to see what to do.';
+    const open = () => { try { CARD.show({ icon, title, tone: up ? 'good' : 'warn', text: up ? 'The grid is back. Your lamps, fridge and gadgets work again, and you can see in the dark.' : 'NEPA has taken the light for now. It usually comes back within a few minutes.', lines: up ? [['Room', 'Lights work again'], ['Bulb button', 'Still switches your room light'], ['Tip', 'Keep fuel for the Gen Set']] : [['Room', 'Dark until power returns'], ['Lamps', 'Stop working'], ['Gen Set', 'Keeps lights on (needs fuel)'], ['Bills', 'Pay early so supply is not cut']], btn: up ? 'Nice' : 'Check bills', go: up ? '' : "LAGOS.open('bills')" }) } catch (e) { toast(icon + ' ' + title) } };
+    if (window.PH && PH.local_) PH.local_(icon, title + '. ' + text, 'info');
+    if (window.BANNER && BANNER.show({ icon, app: 'NEPA', title, text, tap: open })) return;
+    toast(icon + ' ' + title)
+  },
   cycle() {
     clearTimeout(this.t);
     this.t = setTimeout(() => {
@@ -842,12 +849,12 @@ const BAN = {
       if (!idle) {
         if (this.light) { this.light = false;
           $('app').classList.add('blackout'); if (window.ROOM3D) ROOM3D.dark(true);
-          this.show('🕯️ NEPA took light! 🕯️');
+          this.note(false);
           this.t = setTimeout(() => this.cycle(), 20000 + Math.random() * 25000); return }
         this.light = true;
         $('app').classList.remove('blackout');
         if (window.ROOM3D) ROOM3D.dark(false);
-        this.show('💡 UP NEPA! Light don come! 💡')
+        this.note(true)
       }
       this.cycle()
     }, this.light ? 45000 + Math.random() * 75000 : 1000)
@@ -993,7 +1000,7 @@ const PREFX = {
 window.PREFX = PREFX;
 function applyTheme() {
   const p = PREFX.prefs(), dark = PREFX.nightNow(p);
-  const level = Math.max(0, Math.min(100, Number(p.darkness ?? 100)));
+  const level = 50;                                   // dark mode is fixed at 50%: the Darkness slider was removed
   const mix = (base) => Math.round(base * (1 - level / 100));
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
