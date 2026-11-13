@@ -119,7 +119,7 @@
     bulbTap() {     // the bulb is a light switch: tap to brighten the room or dim it. If NEPA has taken light, it opens the bills instead.
       const R = window.ROOM3D; if (!R) { try { LAGOS.open('bills') } catch (e) {} return }
       if (typeof BAN !== 'undefined' && BAN.light === false && !(R.power && R.power())) { toast('NEPA don carry light. Pay your bills or get a Gen Set.'); try { LAGOS.open('bills') } catch (e) {} return }
-      const on = R.roomLight === false; R.setLight(on); toast(on ? 'Lights on, nice and bright 💡' : 'Lights off 🌙'); tick() },
+      const on = R.roomLight === false; R.setLight(on); toast(on ? 'Lights on 💡' : 'Lights off 🌙'); tick() },
     outside() { try { if ((typeof DOOR!=='undefined'?DOOR:undefined) && DOOR.btn && DOOR.btn.dataset.mode === 'out') DOOR.press(); else { nav('map'); setTimeout(() => { if ((typeof MAP3D!=='undefined'?MAP3D:undefined) && MAP3D.stepOutside) MAP3D.stepOutside() }, 80) } } catch (e) { nav('map') } },
     work() { try { if ((typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) JOBS.work(); else { nav('phone'); setTimeout(() => PH.open('jobs'), 60) } } catch (e) { toast('Work is not ready yet') } },
     car() { try { nav('phone'); setTimeout(() => TR.open(), 80) } catch (e) { toast('Transport is not ready yet') } },

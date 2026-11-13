@@ -2,7 +2,7 @@
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
 const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
-const GP_DEF={theme:'light',night:'off',darkness:100,saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm'};
+const GP_DEF={theme:'light',night:'off',darkness:50,saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm'};
 /* Removed options (reduce animations, larger text, high contrast, colour-blind friendly). Wipe any saved value once, so nobody is stuck with one still on. */
 try{const o=JSON.parse(localStorage.getItem('ghPrefs')||'null');if(o&&('reducedMotion' in o||'largeText' in o||'highContrast' in o||'colorSafe' in o)){['reducedMotion','largeText','highContrast','colorSafe'].forEach(k=>delete o[k]);localStorage.setItem('ghPrefs',JSON.stringify(o))}}catch(e){}
 const GP={
@@ -27,7 +27,7 @@ Object.assign(PH,{
   nightHint(p){const m=window.PREFX&&PREFX.night(p||GP.get());return m==='auto'?`Auto: dark from 6:30 pm to 6:30 am, Naija time (${PREFX.nightNow(p)?'on':'off'} now).`:''},
   saverHint(p){const m=window.PREFX&&PREFX.saver(p||GP.get());if(m!=='auto')return m==='on'?'On: nothing loads in the background and music stays off.':'';const r=PREFX.saverReason();return `Auto: turns on when battery is low or network is slow (${PREFX.saverNow(p)?'on now'+(r?', '+r:''):'off now'}).`},
   paintDisplayHints(){const a=document.getElementById('segh-night'),b=document.getElementById('segh-saver');if(a)a.textContent=this.nightHint();if(b)b.textContent=this.saverHint()},
-  setSeg(k,v){const val=k==='camAuto'?v==='true':v;GP.set(k,val);if(k==='night'){const d=document.getElementById('darkness-box');if(d)d.hidden=v==='off'}
+  setSeg(k,v){const val=k==='camAuto'?v==='true':v;GP.set(k,val);
     const row=document.querySelector(`.segrow[data-seg="${k}"]`);if(row)row.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
     const h=document.getElementById('segh-'+k);if(h)h.textContent=k==='night'?this.nightHint():k==='saver'?this.saverHint():(val?'On: the map camera swings round to follow the way you walk.':'');
     if(k==='saver'){if(window.BGM)BGM.sync();if(window.refreshMute)refreshMute();const now=PREFX.saverNow();now?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off'),window.warmUp&&warmUp(true))}
@@ -48,7 +48,6 @@ Object.assign(PH,{
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
-        <div class="darkness-control" id="darkness-box" ${p.night==='off'?'hidden':''}><label for="darkness-level"><span><b>Darkness level</b><small>Choose charcoal, deep black, or pure black.</small></span><strong id="darkness-value">${Math.max(0,Math.min(100,Number(p.darkness)||0))}%</strong></label><input id="darkness-level" type="range" min="0" max="100" step="5" value="${Math.max(0,Math.min(100,Number(p.darkness)||0))}" oninput="PH.setDarkness(this.value)"><div class="darkness-ends"><span>Charcoal</span><span>Pure black</span></div><div class="darkness-preview" id="darkness-preview" aria-label="Darkness preview" style="background:rgb(${Math.round(22*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))},${Math.round(23*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))},${Math.round(31*(1-Math.max(0,Math.min(100,Number(p.darkness)||0))/100))})"></div></div>
         ${this.seg('camAuto','🎥','Camera turns by itself','The camera stays where you leave it. Drag to turn it.',[['false','Off'],['true','On']],String(!!p.camAuto),p.camAuto?'On: the map camera swings round to follow the way you walk.':'')}
         ${this.seg('saver','🔋','Data & battery saver','Uses less data and keeps your phone cool. Naija still looks like Naija.',[['auto','Auto'],['on','On'],['off','Off']],p.saver,this.saverHint(p))}
         ${this.lrow('Reset button & player positions','fa-solid fa-arrows-up-down-left-right',"DRAGPOS.reset();SONGIFY.resetFloat&&SONGIFY.resetFloat()")}
@@ -59,7 +58,6 @@ Object.assign(PH,{
     if(!this.me){try{this.me=(await NET.api('/api/me')).user;if(this.view==='settings')this.settings()}catch(e){}}},
   setPref(k,v){GP.set(k,v)},
   setLang(v){GP.set('lang',v);toast(v==='fr'?'Langue changée. Rechargement…':v==='en'?'Language changed. Reloading…':'Language don change. E dey reload…');setTimeout(()=>location.reload(),900)},
-  setDarkness(value){const n=Math.max(0,Math.min(100,Number(value)||0));GP.set('darkness',n);const label=document.getElementById('darkness-value');if(label)label.textContent=n+'%';const input=document.getElementById('darkness-level');if(input)input.value=n;const preview=document.getElementById('darkness-preview');if(preview)preview.style.background=`rgb(${Math.round(22*(1-n/100))},${Math.round(23*(1-n/100))},${Math.round(31*(1-n/100))})`;},
   tglAuto(){const on=!(this.me?this.me.autoPostWins!==false:true);if(this.me)this.me.autoPostWins=on;const el=document.querySelector('.trow[data-k="autoPost"] .sw2');if(el)el.classList.toggle('on',on);
     NET.api('/api/me/profile',{method:'POST',body:{autoPostWins:on}}).catch(e=>{toast(e.message);if(this.me)this.me.autoPostWins=!on;if(el)el.classList.toggle('on',!on)})},
   /* ----- edit profile: ONE screen for photo, cover, name, @username and bio ----- */

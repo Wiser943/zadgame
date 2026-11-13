@@ -176,13 +176,13 @@
           o.material = mat; o.frustumCulled = false
         });
         const g = new THREE.Group(); g.add(obj); g.scale.setScalar(m.k); g.position.set(m.tx, m.ty, m.tz);
-        room.scene.add(g); room.shellG = g; room.shellWalls = walls
+        room.scene.add(g); room.shellG = g; room.shellWalls = walls; room.shellPlane = plane; if (room.fpv) room.ceiling()
       } catch (e) {
         this.fail('house model', e);       // fallback: a bare floor the size of the plan, walls come from the blocked cells
         if (room._stok === tok && room.floor) { room.floor.geometry.dispose(); room.floor.geometry = new THREE.PlaneGeometry(L.w, L.d); room.floor.position.set(room.offX, 0, room.offZ); room.floor.material.map.repeat.set(L.w / 2, L.d / 2); room.floor.visible = true }
       }
     },
-    dropShell(room) { room._stok = (room._stok || 0) + 1; if (room.shellG && room.scene) room.scene.remove(room.shellG); room.shellG = null; room.shellWalls = null },
+    dropShell(room) { room._stok = (room._stok || 0) + 1; if (room.shellG && room.scene) room.scene.remove(room.shellG); room.shellG = null; room.shellWalls = null; room.shellPlane = null },
 
     /* ---------- the yard around the house: bushes, rocks and flowers, a ride once the home is expanded, the shop for the Family House ---------- */
     yard(room) {

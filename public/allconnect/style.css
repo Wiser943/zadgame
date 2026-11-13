@@ -1431,13 +1431,6 @@ html[data-theme="dark"] .cin2 input,
 html[data-theme="dark"] .lghd button,
 html[data-theme="dark"] .lgtabs button,
 html[data-theme="dark"] .lgbtn.ghost { background:var(--dark-panel,#000); }
-.darkness-control{padding:14px 14px 12px;border-top:1px solid rgba(130,140,170,.15)}
-.darkness-control label{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink)}
-.darkness-control label span{display:flex;flex-direction:column;gap:3px}.darkness-control label b{font-size:13.5px}.darkness-control label small{font-size:11.5px;color:var(--mut)}
-.darkness-control label strong{font-size:13px;color:#7c3aed;font-variant-numeric:tabular-nums}
-.darkness-control input[type=range]{width:100%;margin:14px 0 4px;accent-color:#075BFF;cursor:pointer}
-.darkness-ends{display:flex;justify-content:space-between;color:var(--mut);font-size:10.5px}
-.darkness-preview{height:18px;margin-top:10px;border:1px solid rgba(140,145,165,.35);border-radius:8px;background:#000;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}
 
 
 /* ---------- sign-in screen: a 3D map the camera circles around, under a sky of soft blended clouds ---------- */

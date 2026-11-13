@@ -177,9 +177,9 @@ const VBYID = Object.fromEntries(VOTES.map((v) => [v.id, v]));
 
 /* ---------- changelog ---------- */
 const CHANGELOG = [
-  { v: '2.8', date: '2026-11-12', title: 'Frosted glass and brighter lights', items: [
+  { v: '2.8', date: '2026-11-12', title: 'Frosted glass and a softer glow', items: [
     'Pop-ups and sheets now have the same frosted-glass look as the buttons on your home screen',
-    'Switch your room light on with the bulb button and the room glows brighter than before',
+    'Switch your room light on with the bulb button for a warm, slightly brighter room',
     'Plus everything from 2.7: Invite and earn, Free will, first-person view and more'
   ] },
   { v: '2.7', date: '2026-11-11', title: 'Invite and earn, plus a calmer home', items: [

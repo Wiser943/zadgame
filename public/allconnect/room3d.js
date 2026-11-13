@@ -280,9 +280,22 @@ window.ROOM3D = {
     this.fpv = on; const cam = this.cam;
     if (on) { this.fpYaw = this.avatar.rotation.y; this.fpPitch = -.08; this.fpFov = cam.fov; cam.fov = 72; cam.near = .08; this.avatar.visible = false; this.setViewOffset0 = true; try { cam.clearViewOffset() } catch (e) {} }
     else { cam.fov = this.fpFov || 30; cam.near = 1; this.avatar.visible = true; this.applyShift() }
-    cam.updateProjectionMatrix(); return this.fpv
+    cam.updateProjectionMatrix(); this.ceiling(); return this.fpv
   },
-  setLight(on) { this.roomLight = !!on; this.roomBoost = !!on;     // switching the light ON on purpose gives a brighter room than the starting level
+  /* Ceiling: only exists while you look around from inside (first person), so the top of the room is closed in instead of open sky.
+     In the normal bird's-eye view it is hidden so you can still see into the room. */
+  ceiling() {
+    if (!this.scene) return;
+    const on = !!this.fpv, y = this.WALL_H, gw = this.gw || 6, gd = this.gd || 6;
+    if (!this.ceilM) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xf6f0e4, side: THREE.DoubleSide }));
+      m.rotation.x = Math.PI / 2; m.visible = false; this.scene.add(m); this.ceilM = m
+    }
+    const m = this.ceilM; m.scale.set(this.layout ? gw : gw + .15, this.layout ? gd : gd + .15, 1); m.position.set(this.offX || 0, y, this.offZ || 0); m.visible = on;
+    // the house model is cut off at the wall tops for the bird's-eye view: in first person lift the cut so the walls reach the ceiling
+    if (this.shellPlane && this.layout && this.layout.model) this.shellPlane.constant = on ? y : this.layout.model.cutY
+  },
+  setLight(on) { this.roomLight = !!on; this.roomBoost = !!on;     // switching the light ON on purpose gives a slightly brighter room than the starting level
     try { localStorage.setItem('roomLight', on ? 'on' : 'off') } catch (e) {} },
   power() { return !this.dark_ || (S.items || []).some(i => i.name === 'Gen Set' && i.placed !== false) },
   /* ---------- furniture: every placed item is a model on the 6x6 grid ---------- */
@@ -336,7 +349,7 @@ window.ROOM3D = {
       geo(this.wE, .15, WH, lz); this.wE.position.set(ex, wy, offZ); geo(this.wS, lx, WH, .15); this.wS.position.set(offX, wy, ez);
     }
     if (this.avatar && (L || was)) { const c = L ? L.start : null; this.avatar.position.set(c ? this.cc(c[0]) : -1, 0, c ? this.cc(c[1]) : 1.2); this.path = []; this.onArrive = null }
-    this.resize()
+    this.ceiling(); this.resize()
   },
   ek(a, b) { const f = (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) ? [a, b] : [b, a]; return f[0][0] + ',' + f[0][1] + '|' + f[1][0] + ',' + f[1][1] },
   sync() {
@@ -509,11 +522,11 @@ window.ROOM3D = {
     // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
     const dl = this.dl == null ? 1 : this.dl, kk = Math.min(1, dt * 3), C = THREE.Color, lerpC = (a, b, t) => new C(a).lerp(new C(b), t);
     const rl = this.roomLight === false ? 0 : 1, pw = this.power(), bst = rl && this.roomBoost ? 1 : 0;   // rl: the player's own light switch (bulb button on the home screen)
-    this.amb.intensity += (((.3 + .32 * dl) * (rl ? 1 : .32) + (rl && pw ? .16 * (1 - dl) : 0) + .34 * bst) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
-    this.sun.intensity += (.55 * dl * (rl ? 1 : .55) * (1 + .3 * bst) - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
+    this.amb.intensity += (((.3 + .32 * dl) * (rl ? 1 : .32) + (rl && pw ? .16 * (1 - dl) : 0) + .11 * bst) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
+    this.sun.intensity += (.55 * dl * (rl ? 1 : .55) * (1 + .08 * bst) - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
     this.moon.intensity += (.42 * (1 - dl) - this.moon.intensity) * kk;
     this.ground.color.copy(lerpC(0x24331f, 0x93a05a, dl)); if (this.glass) this.glass.color.copy(lerpC(0x16224a, 0xbfe4ff, dl));
-    const on = pw && rl; this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) * (1 + .8 * bst) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
+    const on = pw && rl; this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) * (1 + .25 * bst) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
     this.petStep(t, dt);
     this.R.render(this.scene, cam)
   }

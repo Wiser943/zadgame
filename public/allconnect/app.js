@@ -1000,7 +1000,7 @@ const PREFX = {
 window.PREFX = PREFX;
 function applyTheme() {
   const p = PREFX.prefs(), dark = PREFX.nightNow(p);
-  const level = Math.max(0, Math.min(100, Number(p.darkness ?? 100)));
+  const level = 50;                                   // dark mode is fixed at 50%: the Darkness slider was removed
   const mix = (base) => Math.round(base * (1 - level / 100));
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
