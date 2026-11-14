@@ -62,8 +62,7 @@ const ROUTER = (() => {
         if (S.page !== want) nav(want);
         cur = { page: want, app: '' }; if (want === 'home' || want === 'map') base = want;
       }
-      cur.home = s.home || '';
-      if (window.HOMES && HOMES.enter) { try { HOMES.enter(cur.home, { silent: true }) } catch (e) {} }
+      cur.home = (window.S && S.activePropertyId) || '';     // never switch homes from an old history entry: the player's current home stays the current home
     } finally { applying = false }
     save();
   }

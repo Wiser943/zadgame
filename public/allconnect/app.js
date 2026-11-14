@@ -118,6 +118,7 @@ function applyAC(ac) {
   S.grid = window.homeGrid ? homeGrid(S.activeProperty) : 6;
   S.layout = window.homeLayout ? homeLayout(S.activeProperty) : null;
   if (S.activeProperty) S.paint = S.activeProperty.paint || S.legacyPaint;
+  if (window.VISIT && VISIT.on) VISIT.reapply();                 // you are visiting a friend: leave their room on screen
   else S.paint = S.legacyPaint;
   S.wish = ac.wish || [];
   S.mapPos = ac.mapPos || null;
@@ -759,6 +760,8 @@ const ENV = {
   calc(m) { const c = x => Math.max(0, Math.min(1, x)); return Math.min(c((m - 330) / 120), c((1170 - m) / 120)) },
   mix(a, b, t) { const h = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16)); const A = h(a),
       B = h(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('') },
+  /* small stars show on roughly half of the nights, picked from the date so a night is either starry or not for everybody */
+  starNight() { const d = new Date(), k = d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(), r = Math.sin(k * 12.9898) * 43758.5453; return (r - Math.floor(r)) < .5 },
   apply(min) {
     const day = min >= 390 && min < 1110,
       hi = $('hico');
@@ -777,6 +780,7 @@ const ENV = {
     a.style.setProperty('--sky1', this.mix(T[0][0], T[1][0], T[2]));
     a.style.setProperty('--sky2', this.mix(T[0][1], T[1][1], T[2]));
     a.style.setProperty('--dl', dl.toFixed(3));
+    a.style.setProperty('--stars', (this.starNight() && dl < .35 ? 1 - dl / .35 : 0).toFixed(2));
     if (window.ROOM3D) ROOM3D.env(dl)
   }
 };

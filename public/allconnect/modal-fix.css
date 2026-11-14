@@ -119,3 +119,38 @@ body.v2m #v2top .v2mus{width:34px;height:34px;font-size:14px}
 .vexp{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:12px 0 4px;padding:12px 14px;border-radius:16px;background:var(--m-chip2,#f3f4f9)}
 .vexp span{font-size:12px;color:var(--mut)}.vexp b{font:800 17px Outfit,system-ui,sans-serif;color:var(--ink)}.vexp small{margin-left:auto;font-weight:700;color:#1d9bf0}
 .vauto{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:13px;color:var(--ink)}
+
+/* ---------- night sky: a few small stars, only on some nights (decided in app.js ENV) ---------- */
+.scene::before{content:"";position:absolute;left:0;top:0;width:2px;height:2px;border-radius:50%;pointer-events:none;z-index:0;
+  background:transparent;opacity:var(--stars,0);transition:opacity 2s;
+  box-shadow:43vw 17vh 0 1px rgba(255,255,255,.9),85vw 11vh 0 0px rgba(255,255,255,.9),70vw 14vh 0 0.5px rgba(255,255,255,.9),76vw 11vh 0 0px rgba(255,255,255,.9),6vw 13vh 0 1px rgba(255,255,255,.9),55vw 12vh 0 0px rgba(255,255,255,.9),13vw 43vh 0 1px rgba(255,255,255,.9),9vw 44vh 0 0px rgba(255,255,255,.9),30vw 45vh 0 0px rgba(255,255,255,.9),75vw 45vh 0 1px rgba(255,255,255,.9),8vw 22vh 0 0px rgba(255,255,255,.9),73vw 16vh 0 0.5px rgba(255,255,255,.9),55vw 17vh 0 0px rgba(255,255,255,.9),75vw 27vh 0 0px rgba(255,255,255,.9),15vw 45vh 0 0px rgba(255,255,255,.9),49vw 14vh 0 0px rgba(255,255,255,.9),74vw 11vh 0 0px rgba(255,255,255,.9),65vw 42vh 0 1px rgba(255,255,255,.9),42vw 37vh 0 1px rgba(255,255,255,.9),48vw 27vh 0 0px rgba(255,255,255,.9),25vw 23vh 0 0px rgba(255,255,255,.9),75vw 27vh 0 1px rgba(255,255,255,.9);animation:starTw 4.5s ease-in-out infinite}
+.scene::after{content:"";position:absolute;left:0;top:0;width:1px;height:1px;border-radius:50%;pointer-events:none;z-index:0;
+  background:transparent;opacity:calc(var(--stars,0) * .8);transition:opacity 2s;
+  box-shadow:45vw 36vh 0 0.5px rgba(220,230,255,.85),79vw 12vh 0 0px rgba(220,230,255,.85),67vw 34vh 0 0px rgba(220,230,255,.85),98vw 29vh 0 0px rgba(220,230,255,.85),64vw 34vh 0 0px rgba(220,230,255,.85),87vw 12vh 0 0.5px rgba(220,230,255,.85),45vw 30vh 0 1px rgba(220,230,255,.85),76vw 37vh 0 0px rgba(220,230,255,.85),13vw 25vh 0 1px rgba(220,230,255,.85),91vw 12vh 0 0px rgba(220,230,255,.85),95vw 27vh 0 1px rgba(220,230,255,.85),38vw 32vh 0 0.5px rgba(220,230,255,.85),4vw 37vh 0 0.5px rgba(220,230,255,.85),23vw 15vh 0 1px rgba(220,230,255,.85),9vw 21vh 0 0.5px rgba(220,230,255,.85),18vw 23vh 0 1px rgba(220,230,255,.85),52vw 39vh 0 0px rgba(220,230,255,.85),23vw 36vh 0 1px rgba(220,230,255,.85),72vw 25vh 0 0px rgba(220,230,255,.85),57vw 43vh 0 0.5px rgba(220,230,255,.85),92vw 34vh 0 0.5px rgba(220,230,255,.85),89vw 32vh 0 0px rgba(220,230,255,.85),21vw 13vh 0 0px rgba(220,230,255,.85),21vw 22vh 0 0px rgba(220,230,255,.85),3vw 39vh 0 0px rgba(220,230,255,.85),35vw 26vh 0 0px rgba(220,230,255,.85);animation:starTw 6.5s ease-in-out -2s infinite}
+@keyframes starTw{0%,100%{filter:brightness(1)}50%{filter:brightness(.45)}}
+@media (prefers-reduced-motion:reduce){.scene::before,.scene::after{animation:none}}
+
+/* ---------- chat: ⋮ menu (like WhatsApp) ---------- */
+.cdots{margin-left:auto;width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:inherit;font-size:18px;display:grid;place-items:center;cursor:pointer}
+.cdots:active{background:rgba(120,130,160,.18)}
+.appview .cmenu{position:absolute;top:58px;right:12px;z-index:30;min-width:200px;padding:6px;border-radius:16px;background:#fff;color:#1b1f33;box-shadow:0 12px 34px rgba(10,16,40,.28);border:1px solid rgba(20,26,52,.08);animation:cmIn .14s ease-out;transform-origin:top right}
+html[data-theme="dark"] .appview .cmenu{background:#232a45;color:#f1f3fa;border-color:rgba(255,255,255,.12)}
+.cmenu .cmi{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:inherit;text-align:left;padding:11px 12px;border-radius:10px;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer}
+.cmenu .cmi:active,.cmenu .cmi:hover{background:rgba(120,130,160,.16)}
+.cmenu .cmi.red{color:#d93a3a}.cmenu .cmic{width:22px;text-align:center}
+.cmenu .cmsep{display:block;height:1px;margin:4px 6px;background:rgba(120,130,160,.25)}
+@keyframes cmIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+
+/* ---------- voice notes: the part already played turns blue, the rest stays grey ---------- */
+.vnw i{background:#9aa1b5;opacity:.8;transition:background .15s}
+.vnw em{display:none}
+.th .vnw i.pl,.msg.th .vnw i.pl{background:#2f6fdb;opacity:1}
+.me .vnw i{background:rgba(255,255,255,.55);opacity:1}.me .vnw i.pl{background:#fff}
+html[data-theme="dark"] .th .vnw i{background:#6f789a}html[data-theme="dark"] .th .vnw i.pl{background:#5b8cff}
+
+/* ---------- visiting a friend: see-through overlay over the real 3D room; the normal HUD is hidden ---------- */
+body.visiting #v2top,body.visiting #v2act,body.visiting #v2nav,body.visiting #v2rail,body.visiting #v2strip,body.visiting #v2event,body.visiting #v2radio,body.visiting .doorbtn{display:none!important}
+#visit.live{background:transparent!important;pointer-events:none}
+#visit.live .pill,#visit.live button{pointer-events:auto}
+#visit.live .vtools{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px}
+#visit.live .vt{width:48px;height:48px;border-radius:50%;padding:0;font-size:20px;display:grid;place-items:center}

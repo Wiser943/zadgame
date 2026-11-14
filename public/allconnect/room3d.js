@@ -278,7 +278,7 @@ window.ROOM3D = {
   setFirstPerson(on) {
     on = !!on; if (on === !!this.fpv || !this.avatar) { if (!this.avatar) return false; return this.fpv }
     this.fpv = on; const cam = this.cam;
-    if (on) { this.fpYaw = this.avatar.rotation.y; this.fpPitch = -.08; this.fpFov = cam.fov; cam.fov = 72; cam.near = .08; this.avatar.visible = false; this.setViewOffset0 = true; try { cam.clearViewOffset() } catch (e) {} }
+    if (on) { this.fpYaw = this.avatar.rotation.y; this.fpPitch = -.08; this.fpFov = cam.fov; cam.fov = 82; cam.near = .08; this.avatar.visible = false; this.setViewOffset0 = true; try { cam.clearViewOffset() } catch (e) {} }
     else { cam.fov = this.fpFov || 30; cam.near = 1; this.avatar.visible = true; this.applyShift() }
     cam.updateProjectionMatrix(); this.ceiling(); return this.fpv
   },
@@ -443,7 +443,7 @@ window.ROOM3D = {
   walkToCell(cell, exact) {
     const occ = FURN.occupied(S.items || []), a = this.avatar.position, from = this.cellFromPoint(a); occ.delete(from[0] + ',' + from[1]); if (occ.has(cell[0] + ',' + cell[1])) return false;
     const p = this.bfs(from, cell, occ); if (!p) return false;
-    this.path = p.slice(1).map(c => new THREE.Vector3(this.cc(c[0]), 0, this.cc(c[1]))); if (exact) this.path.push(new THREE.Vector3(Math.max(-2.6, Math.min(2.6, exact.x)), 0, Math.max(-2.6, Math.min(2.6, exact.z)))); return true
+    this.path = p.slice(1).map(c => new THREE.Vector3(this.cc(c[0]), 0, this.cc(c[1]))); if (exact) this.path.push(new THREE.Vector3(Math.max(-2.6, Math.min(this.gw - 3.4, exact.x)), 0, Math.max(-2.6, Math.min(this.gd - 3.4, exact.z)))); return true
   },
   /* can the avatar reach a free cell next to the cooler from the doorway? (used for the "blocks the way" warning) */
   reachesCooler(items) {
@@ -509,7 +509,8 @@ window.ROOM3D = {
     const cam = this.cam, sp = Math.sin(this.pol), px = this.dist * sp * Math.sin(this.az), pz = this.dist * sp * Math.cos(this.az), py = this.dist * Math.cos(this.pol);
     if (this.fpv && this.avatar) {      // first person: the camera sits at the Sim's eyes and you drag to look around
       const hw = this.fpHead || (this.fpHead = new THREE.Vector3()); if (this.parts && this.parts.head) this.parts.head.getWorldPosition(hw); else hw.set(this.avatar.position.x, 1.5, this.avatar.position.z);
-      const yaw = this.fpYaw, pit = this.fpPitch, cp = Math.cos(pit), ex = hw.x + Math.sin(yaw) * .1, ez = hw.z + Math.cos(yaw) * .1, ey = hw.y + .06;
+      const yaw = this.fpYaw, pit = this.fpPitch, cp = Math.cos(pit), back = .5,    // sit a little behind the head so you see the room the way your eyes would, not through a keyhole
+        ex = Math.max(-2.85, Math.min(this.gw - 3.15, hw.x - Math.sin(yaw) * back)), ez = Math.max(-2.85, Math.min(this.gd - 3.15, hw.z - Math.cos(yaw) * back)), ey = hw.y + .12;
       cam.position.set(ex, ey, ez); cam.lookAt(ex + Math.sin(yaw) * cp, ey + Math.sin(pit), ez + Math.cos(yaw) * cp);
     } else { cam.position.set(px + this.offX, py + .8, pz + this.offZ); cam.lookAt(this.offX, .8, this.offZ) }
     // walls between the camera and the room fade out

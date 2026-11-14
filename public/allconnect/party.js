@@ -8,6 +8,15 @@ const PARTY = {
     await Promise.all([this.load(), this.loadLive()]);
     clearInterval(this.tick); this.tick = setInterval(() => { if (!SHEET.isOpen('party')) return clearInterval(this.tick); this.loadLive(); }, 20000);
   },
+  /* true while you are hosting a running party, or you joined someone else's that has not ended */
+  isLive() {
+    const now = Date.now(), d = this.d, host = d && d.active && new Date(d.endsAt).getTime() > now;
+    return !!(host || (this.live || []).some((x) => x.joined && x.endsAt > now));
+  },
+  startPoll() {
+    if (this._poll) return; const go = () => { if (!window.NET || !NET.user) return; this.load().catch(() => {}); this.loadLive().catch(() => {}) };
+    setTimeout(go, 4000); this._poll = setInterval(go, 45000);
+  },
   async loadLive() {
     try { this.live = (await NET.api('/api/ac/party/live')).parties; if (SHEET.isOpen('party')) SHEET.paint(); } catch (e) { this.live = this.live || []; }
   },
@@ -57,3 +66,4 @@ const PARTY = {
   }
 };
 window.PARTY = PARTY;
+PARTY.startPoll();

@@ -16,6 +16,7 @@
     mic: '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
     sofa: '<svg viewBox="0 0 24 24"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM6 18v2M18 18v2"/></svg>',
     bag: '<svg viewBox="0 0 24 24"><path d="M9 3h6l-2 4h-2zM8 8c-3 2-5 6-5 9a4 4 0 0 0 4 4h10a4 4 0 0 0 4-4c0-3-2-7-5-9zM12 11v7M14 12.5c-.5-.7-1.3-1-2-1-1.2 0-2 .6-2 1.5 0 2 4 1 4 3 0 .9-.9 1.5-2 1.5-.8 0-1.6-.3-2-1"/></svg>',
+    eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
     inside: '<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1zM12 9v5M10 12l2 2 2-2"/></svg>',
     door: '<svg viewBox="0 0 24 24"><path d="M13 4h3a2 2 0 0 1 2 2v14M2 20h20M13 4 6 6v14h7zM10 12h.01"/></svg>',
     work: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>',
@@ -76,11 +77,10 @@
     add('v2top', `<button class="v2p v2time" onclick="V2.sheet('char')" aria-label="How you feel"><span id="v2ic">🌙</span><span id="v2clk">--:--</span><span class="ap" id="v2ap"></span><span class="mf" id="v2mf">😊</span></button><button class="v2mus" id="v2mus" onclick="V2.music()" aria-label="Mute or unmute the game song"></button><button class="v2chev" id="v2chev" aria-label="Show or hide panels" onclick="V2.fold()">${I.chev}</button><div class="v2p v2bal" role="button" tabindex="0" onclick="openBank()" aria-label="Open AllConnect Pay"><span id="v2bal">₦0</span><button class="v2plus" onclick="event.stopPropagation();openBank(true)" aria-label="Top up wallet">+</button></div>`);
     add('v2strip', '');
     add('v2event', '');
-    add('v2rail', `<button class="rb home" onclick="V2.homeTap()" aria-label="House party">🏠<i id="v2hbang" style="display:none">!</i></button><button class="rb" id="v2bulb" onclick="V2.bulbTap()" aria-label="Power"></button><button class="rb" onclick="CAMV.flip()" aria-label="Rotate view">${I.rot}</button><button class="rb" onclick="V2.pop()" aria-label="More view options">${I.dots}</button>`);
-    add('v2pop', `<button onclick="CAMV.zoom(1.2)" aria-label="Zoom in">＋</button><button onclick="CAMV.zoom(1/1.2)" aria-label="Zoom out">－</button><button onclick="CAMV.reset()" aria-label="Reset view">⟲</button><button id="v2eye" onclick="V2.eye()" aria-label="First person view">👁</button>`);
+    add('v2rail', `<button class="rb home" onclick="V2.homeTap()" aria-label="House party">🏠<i id="v2hbang" style="display:none">!</i></button><button class="rb" id="v2bulb" onclick="V2.bulbTap()" aria-label="Power"></button><button class="rb" onclick="CAMV.flip()" aria-label="Rotate view">${I.rot}</button>`);
     add('v2radio', '<span>📻</span> Radio').onclick = () => { nav('phone'); setTimeout(() => { try { SONGIFY.open() } catch (e) { toast('Radio is not ready yet') } }, 80) };
     $('v2radio').className = 'v2p'; $('v2radio').setAttribute('role', 'button');
-    add('v2act', `<button class="cb" onclick="V2.mic()" aria-label="Voice command">${I.mic}</button><button class="cb" onclick="nav('buy')" aria-label="Buy furniture">${I.sofa}</button><button class="cb" onclick="openBank()" aria-label="Wallet">${I.bag}</button><div class="wk"><button id="v2work" onclick="V2.work()">${I.work}<span>Work</span></button><button class="car" onclick="V2.car()" aria-label="Transport">🚗<span style="font-size:11px">⌃</span></button></div>`);
+    add('v2act', `<button class="cb" id="v2mic" onclick="V2.mic()" aria-label="Voice" style="display:none">${I.mic}</button><button class="cb" id="v2eye" onclick="V2.eye()" aria-label="Look around (first person)">${I.eye}</button><button class="cb" onclick="openBank()" aria-label="Wallet">${I.bag}</button><div class="wk"><button id="v2work" onclick="V2.work()">${I.work}<span>Work</span></button><button class="car" onclick="V2.car()" aria-label="Transport">🚗<span style="font-size:11px">⌃</span></button></div>`);
     add('v2nav', `<button class="me" onclick="V2.sheet('char')" aria-label="Your character"><div class="in" id="v2av"></div><span class="mf" id="v2mf2">😊</span></button><div class="cap"><button data-p="home" onclick="nav('home')">${I.home}<span class="t">Home</span></button><button data-p="outside" id="v2out" onclick="V2.outside()" aria-label="Go outside">${I.door}<span class="t">Outside</span></button><button data-p="buy" onclick="nav('buy')" aria-label="Buy mode">${I.chair}<span class="t">Buy mode</span></button><button data-p="map" onclick="nav('map')" aria-label="Map">${I.map}<span class="t">Map</span></button></div><button class="ph" onclick="PHONEUI.open()" aria-label="Phone">${I.phone}<i id="v2phdot" style="display:none"></i></button>`);
     const sh = document.createElement('div'); sh.id = 'v2sheet'; host.appendChild(sh);
     $('v2av').addEventListener('error', () => {}, true);
@@ -90,7 +90,7 @@
     document.body.classList.toggle('v2m', mq.matches); if (!mq.matches) return;
     ['home', 'map', 'buy', 'phone'].forEach(p => document.body.classList.toggle('pg-' + p, S.page === p)); document.body.classList.toggle('clean', !!S.clean);
     const clk = ($('clk') || {}).textContent || '--:--', m = clk.match(/^(\S+)\s*(AM|PM)?/i);
-    try { V2.musicIcon() } catch (e) {} $('v2clk').textContent = m ? m[1] : clk; $('v2ap').textContent = m && m[2] ? m[2].toUpperCase() : ''; $('v2ic').textContent = ($('hico') || {}).textContent || '🌙';
+    try { V2.musicIcon(); V2.micSync() } catch (e) {} $('v2clk').textContent = m ? m[1] : clk; $('v2ap').textContent = m && m[2] ? m[2].toUpperCase() : ''; $('v2ic').textContent = ($('hico') || {}).textContent || '🌙';
     const mood = FEEL.mood(); $('v2mf').textContent = mood[0]; $('v2mf2').textContent = mood[0]; const mm = $('mood'); if (mm) mm.textContent = mood[0] + ' ' + mood[1];
     $('v2bal').textContent = short(S.cash);
     try { V2.navSync() } catch (e) {}
@@ -101,7 +101,7 @@
     const q = (typeof GOALS!=='undefined'?GOALS:undefined) && GOALS.next && GOALS.next(), gem = (typeof GEM!=='undefined'?GEM:undefined) ? 1 : 0, daily = (typeof LAGOS!=='undefined'?LAGOS:undefined) && LAGOS.d && LAGOS.d.daily, streak = (daily && (daily.streak || daily.count)) || S.streak || 0;
     const sKey = 'g' + (q ? q.id || q.title : 'x') + '|' + streak + '|' + (daily && daily.claimable);
     if (strip.dataset.k !== sKey) { strip.dataset.k = sKey;
-      strip.innerHTML = (q && dis !== sKey ? `<div class="v2p v2chip" onclick="GOALS.open()"><span>🎯</span><b>${esc(q.title)}</b><button class="v2x" onclick="event.stopPropagation();V2.hideChip('${esc(sKey)}')" aria-label="Hide">✕</button></div>` : '') + (streak ? `<div class="v2fl" role="button" onclick="LAGOS.open('today')" aria-label="Daily streak">🔥${streak}${daily && daily.claimable ? '<i></i>' : ''}</div>` : '<span style="margin-left:auto"></span>') + (gem ? `<button class="v2gem" onclick="GEM.open()" aria-label="Daily gem hunt">💎</button>` : '') }
+      strip.innerHTML = (q && dis !== sKey ? `<div class="v2p v2chip" onclick="GOALS.open()"><span>🎯</span><b>${esc(q.title)}</b><button class="v2x" onclick="event.stopPropagation();V2.hideChip('${esc(sKey)}')" aria-label="Hide">✕</button></div>` : '') + '<span style="margin-left:auto"></span>' + (gem ? `<button class="v2gem" onclick="GEM.open()" aria-label="Daily gem hunt">💎</button>` : '') }
     const ck = ev ? ev.windowKey + '|' + todo + '|' + (dis === 'ev' + ev.windowKey) : '';
     if (ev && dis !== 'ev' + ev.windowKey) { const left = timeLeft(ev.endsAt - Date.now()), title = ((typeof NG!=='undefined'?NG:undefined) && NG.pcm && NG.pcm()) ? ev.pidgin : ev.title;
       card.innerHTML = `<div class="v2card" onclick="LAGOS.open()"><span class="v2ic" style="background:${esc(ev.color || '#b57416')}">${esc(ev.icon || '🎉')}</span><div class="v2tx"><b>${esc(title)}</b><small>${esc(ev.text || '')}</small></div><span class="tm">🕒 ${left}</span><button class="x" onclick="event.stopPropagation();V2.hideEv('${ev.windowKey}')" aria-label="Hide">✕</button></div>${todo ? `<button class="v2more" onclick="LAGOS.open()">+${todo}</button>` : ''}` } else if (card.innerHTML) card.innerHTML = '';
@@ -116,9 +116,11 @@
     hideEv(k) { LS.set('v2dis', 'ev' + k); tick() },
     /* mute / unmute the game song (music only: effects and voices keep their own switches in Settings) */
     music() { const on = !(window.GP && GP.get().music !== false); try { GP.set('music', on); if (window.BGM) BGM.sync() } catch (e) {} this.musicIcon(); toast(on ? '🎵 Game song on' : '🔇 Game song off') },
+    /* the voice button is only for talking at a house party or while you are visiting a friend's home */
+    micSync() { const b = $('v2mic'); if (!b) return; const show = !!(window.VISIT && VISIT.on) || !!(window.PARTY && PARTY.isLive && PARTY.isLive()); b.style.display = show ? '' : 'none' },
     musicIcon() { const b = $('v2mus'); if (!b) return; const on = !(window.GP && GP.get().music === false); b.innerHTML = on ? '<i class="fa-solid fa-music"></i>' : '<i class="fa-solid fa-volume-xmark"></i>'; b.classList.toggle('off', !on); b.setAttribute('aria-pressed', String(!on)) },
-    eye() { const R = window.ROOM3D; if (!R || !R.avatar) { toast('Look around works inside your home'); return } const on = R.setFirstPerson(!R.fpv); const b = $('v2eye'); if (b) b.classList.toggle('on', !!on); this.pop(false); toast(on ? 'First person: drag to look around 👁' : 'Back to the room view') },
-    pop(f) { const p = $('v2pop'); p.classList.toggle('on', typeof f === 'boolean' ? f : !p.classList.contains('on')) },
+    eye() { const R = window.ROOM3D; if (!R || !R.avatar) { toast('Look around works inside your home'); return } const on = R.setFirstPerson(!R.fpv); const b = $('v2eye'); if (b) b.classList.toggle('on', !!on); toast(on ? 'First person: drag to look around 👁' : 'Back to the room view') },
+    pop() { },                                  // the little zoom/reset toolbar was removed; kept so old callers do nothing
     homeTap() { try { PARTY.open() } catch (e) { toast('House parties are not available right now') } },
     bulbTap() {     // the bulb is a light switch: tap to brighten the room or dim it. If NEPA has taken light, it opens the bills instead.
       const R = window.ROOM3D; if (!R) { try { LAGOS.open('bills') } catch (e) {} return }
@@ -138,7 +140,7 @@
     outsideGo() { try { if ((typeof DOOR!=='undefined'?DOOR:undefined) && DOOR.btn && DOOR.btn.dataset.mode === 'out') DOOR.press(); else { nav('map'); setTimeout(() => { if ((typeof MAP3D!=='undefined'?MAP3D:undefined) && MAP3D.stepOutside) MAP3D.stepOutside() }, 80) } } catch (e) { nav('map') } },
     work() { try { if ((typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) JOBS.work(); else { nav('phone'); setTimeout(() => PH.open('jobs'), 60) } } catch (e) { toast('Work is not ready yet') } },
     car() { try { nav('phone'); setTimeout(() => TR.open(), 80) } catch (e) { toast('Transport is not ready yet') } },
-    mic() { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return toast("Voice commands aren't supported in this browser."); try { const r = new SR(); r.lang = 'en-NG'; r.onresult = e => { const t = e.results[0][0].transcript; toast('🎙️ ' + t); try { VCMD.handle(t) } catch (x) {} }; r.onerror = () => toast('I could not hear you. Try again.'); r.start(); toast('Listening…') } catch (e) { toast('Voice is not available right now.') } }
+    mic() { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return toast("Voice commands aren't supported in this browser."); try { const r = new SR(); r.lang = 'en-NG'; r.onresult = e => { const t = e.results[0][0].transcript; toast('🎙️ ' + t); if (window.VISIT && VISIT.on) { VISIT.tell(t); return } try { VCMD.handle(t) } catch (x) {} }; r.onerror = () => toast('I could not hear you. Try again.'); r.start(); toast('Listening…') } catch (e) { toast('Voice is not available right now.') } }
   });
 
   /* ============ Bottom sheets ============ */

@@ -136,8 +136,7 @@ const PH={
       <div class="qr">${['How far? 👋','I dey o 😄','Wetin dey happen?'].map(t=>`<button onclick="PH.send('${t}')">${t}</button>`).join('')}</div>
       <div class="emo" id="emo" style="display:none">${['😂','😍','🙏🏾','🔥','👏🏾','😭','🎉','🍛'].map(e=>`<button onclick="PH.emoji('${e}')">${e}</button>`).join('')}</div>
       <div id="crep"></div><div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><button class="ebtn" onclick="CHATX.pick()" aria-label="Send a photo"><span class="fa-solid fa-image"></span></button><input id="cinput" placeholder="Message ${n}…" maxlength="300" autocomplete="off" onkeydown="if(event.key==='Enter')PH.sendInput()"><button class="sbtn vnmic" data-vn="chat" aria-label="Send, or hold to record a voice note"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`,
-      `<div class="csub">🔒 Private · only you and ${n} can see this</div><div class="chips2">
-        <button class="c3" onclick="PH.payUser('${id}','${esc(this.peer.username||'')}','PH.chat(\\'${id}\\')')">💸 Send money</button>${fr?`<button class="c1" onclick="PH.invite()">🏠 Invite over</button><button class="c2" onclick="PH.visit()">🚪 Visit them</button><button class="c4" onclick="PH.foodSheet()">🍛 Buy food</button>`:''}<button class="c5" onclick="PH.blockSheet()">🚫 Block</button><button class="c5" onclick="PH.reportSheet()">⚑ Report</button></div>`);
+      `<div class="csub">🔒 Private · only you and ${n} can see this</div>`,`<button class="cdots" onclick="PH.chatMenu(event)" aria-label="More options"><span class="fa-solid fa-ellipsis-vertical"></span></button>`);
     const cmEl=document.getElementById('cm');if(cmEl){cmEl.addEventListener('click',e=>this.tapMsg(e));if(window.CHATX)CHATX.bind(cmEl)}
     this.drawMsgs();this.applyPending(!hit);this.refreshBadges()},
   /* "New messages" divider: first incoming message that was unread when the chat was opened */
@@ -167,6 +166,16 @@ const PH={
     if(focus!==false){if(navigator.vibrate)navigator.vibrate(15);const i=document.getElementById('cinput');if(i)i.focus()}},
   cancelReply(){this.replyTo=null;const r=document.getElementById('crep');if(r)r.innerHTML=''},
   async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST',body:{propertyId:S.activePropertyId||''}})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
+  /* WhatsApp-style ⋮ menu: Send money, Invite, Visit, Buy food, Block and Report live here instead of crowding the top of the chat */
+  chatMenu(e){
+    if(e)e.stopPropagation();const av=this.$a(),old=document.getElementById('cmenu');if(old){old.remove();return}
+    const id=this.chatId,fr=this.isFriend;
+    const it=(ic,t,go,cls)=>`<button class=\"cmi ${cls||''}\" onclick=\"PH.closeChatMenu();${go}\"><span class=\"cmic\">${ic}</span>${t}</button>`;
+    const m=document.createElement('div');m.id='cmenu';m.className='cmenu';m.setAttribute('role','menu');
+    m.innerHTML=it('💸','Send money',`PH.payUser('${id}','${esc(this.peer.username||'')}','PH.chat(\\'${id}\\')')`)+(fr?it('🏠','Invite over','PH.invite()')+it('🚪','Visit them','PH.visit()')+it('🍛','Buy food','PH.foodSheet()'):'')+'<i class=\"cmsep\"></i>'+it('🚫','Block','PH.blockSheet()','red')+it('⚑','Report','PH.reportSheet()','red');
+    av.appendChild(m);setTimeout(()=>document.addEventListener('click',PH.closeChatMenu,{once:true}),0)
+  },
+  closeChatMenu(){const m=document.getElementById('cmenu');if(m)m.remove()},
   foodSheet(){this.sheet(`<h3>Buy food 🍛</h3><p class="hint2">Fills their hunger bar. You pay.</p>${FOOD.map(f=>`<button class="fopt" onclick="PH.buyFood('${f[0]}')"><span>${f[1]} ${f[2]}</span><b>₦${Math.round(f[3]*(window.LAGOS?LAGOS.foodMult():1)).toLocaleString('en-NG')}</b></button>`).join('')}`)},
   async buyFood(k){try{const r=await NET.api('/api/ac/buy-food/'+this.chatId,{method:'POST',body:{item:k}});S.cash=r.cash;render();this.closeSheet();this.push(r.message);toast('Food delivered 🍛')}catch(e){toast(e.message)}},
   blockSheet(){this.sheet(`<h3>Block ${this.name(this.peer)}?</h3><p class="hint2">They won't be able to find you, message you or send you money. You can unblock later.</p><button class="fopt red" onclick="PH.block()"><span>🚫 Block</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
@@ -198,10 +207,49 @@ const PH={
 };
 const fmtCash=n=>'₦'+Number(n).toLocaleString('en-NG');
 /* ----- visiting a friend's place ----- */
-function openVisit(h){const v=document.getElementById('visit');
-  let s=document.getElementById('room').outerHTML.replace(/ id="room"/,'').replace(/ onclick="walk\(event\)"/,'').replace(/ id="[a-z]+"/g,'').replace('class="room"','class="room vroom"');
-  v.style.setProperty('--wall',h.paint);v.innerHTML=`${s}<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div><div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items===1?'':'s'} · ${esc(h.propertyName||'Home')}</div>`;v.style.display='block'}
-function closeVisit(){document.getElementById('visit').style.display='none'}
+/* Visiting a friend: the real 3D room is loaded with THEIR live home (the one they are in right now) and your character walks into it.
+   Your own home is put back exactly as it was when you leave. */
+const VISIT = {
+  on: false, saved: null, v: null,
+  open(h) {
+    if (!window.ROOM3D) { toast('The 3D room is not ready yet. Try again in a moment.'); return }
+    if (this.on) this.close(true);
+    const p = h.property || null;
+    this.saved = { items: S.items, grid: S.grid, layout: S.layout, paint: S.paint };
+    this.v = { items: h.placed || [], grid: p ? homeGrid(p) : 6, layout: p ? homeLayout(p) : null, paint: h.paint, host: h };
+    this.on = true; document.body.classList.add('visiting');
+    try { if (PH.view) PH.close() } catch (e) {}
+    if (S.page !== 'home') nav('home');
+    this.apply(); setTimeout(() => { if (this.on) this.apply() }, 180);      // again once the Home screen has finished switching on
+    const el = document.getElementById('visit');
+    el.className = 'live';
+    el.innerHTML = `<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div>
+      <div class="vtools"><button class="pill vt" onclick="VISIT.look()" aria-label="Look around">${'👁'}</button><button class="pill vt" onclick="VISIT.say()" aria-label="Say something">🎙️</button></div>
+      <div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items === 1 ? '' : 's'} · ${esc(h.propertyName || 'Home')}</div>`;
+    el.style.display = 'block';
+  },
+  apply() { S.items = this.v.items; S.grid = this.v.grid; S.layout = this.v.layout; try { setPaint(this.v.paint) } catch (e) {} ROOM3D.sync() },
+  /* the game reloaded your own data in the background (applyAC): keep the friend's room on screen, remember your own for later */
+  reapply() { if (!this.on) return; this.saved = { ...this.saved, items: S.items, grid: S.grid, layout: S.layout, paint: S.paint }; this.apply() },
+  look() { try { ROOM3D.setFirstPerson(!ROOM3D.fpv) } catch (e) {} },
+  say() { try { V2.mic() } catch (e) { toast('Voice is not available here.') } },
+  /* what you said goes to your friend in your private chat */
+  async tell(text) {
+    const h = this.v && this.v.host; if (!h || !text) return;
+    try { await NET.api('/api/ac/messages/' + h.id, { method: 'POST', body: { text: '🎤 ' + text } }); toast('Sent to ' + h.name + ' 🎙️') } catch (e) { toast(e.message || 'Could not send that.') }
+  },
+  close(silent) {
+    if (!this.on) return; const sv = this.saved; this.on = false; this.v = null;
+    document.body.classList.remove('visiting');
+    try { ROOM3D.setFirstPerson(false) } catch (e) {}
+    if (sv) { S.items = sv.items; S.grid = sv.grid; S.layout = sv.layout; try { setPaint(sv.paint) } catch (e) {} }
+    this.saved = null; if (window.ROOM3D) ROOM3D.sync();
+    const el = document.getElementById('visit'); if (el) { el.style.display = 'none'; el.className = ''; el.innerHTML = '' }
+  }
+};
+window.VISIT = VISIT;
+function openVisit(h) { VISIT.open(h) }
+function closeVisit() { VISIT.close() }
 
 /* Desktop: Esc steps back (visit -> GameHub -> phone app) */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const vis=document.getElementById('visit'),hub=document.getElementById('hub');

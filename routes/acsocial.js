@@ -309,16 +309,21 @@ router.get('/visit/:id', async (req, res, next) => {
     const f = await friendOr(req, res); if (!f) return;
     await ensureAC(f.other);
     const host = await User.findById(f.other).select('displayName acUsername ac');
-    const propertyId = String(req.query.propertyId || '').slice(0, 32);
-    let paint = host.ac.paint, items = host.ac.items || [], propertyName = 'Starter Room';
+    // with no home named, show the home the host is living in RIGHT NOW (their live home), not the Starter Room
+    let propertyId = String(req.query.propertyId || '').slice(0, 80);
+    if (!propertyId) propertyId = String(host.ac.activeProperty || '').slice(0, 80);
+    const A = require('../utils/acproperties');
+    let paint = host.ac.paint, items = host.ac.items || [], propertyName = 'Starter Room', property = null;
     if (propertyId) {
-      const property = (host.ac.properties || []).find(x => x.id === propertyId);
-      if (!property || (property.tenure === 'rent' && property.leaseExpiresAt && new Date(property.leaseExpiresAt) <= new Date())) return bad(res, 404, 'That home is no longer available.');
-      paint = property.paint || paint; items = property.items || [];
-      propertyName = require('../utils/acproperties').HOMES[property.type]?.name || 'Home';
+      property = (host.ac.properties || []).find(x => x.id === propertyId) || null;
+      const gone = !property || (property.tenure === 'rent' && property.leaseExpiresAt && new Date(property.leaseExpiresAt) <= new Date());
+      if (gone && req.query.propertyId) return bad(res, 404, 'That home is no longer available.');
+      if (gone) { property = null; propertyId = '' }       // their live home ran out: fall back to the Starter Room
     }
+    if (property) { paint = property.paint || paint; items = property.items || []; propertyName = (A.HOMES[property.type] && A.HOMES[property.type].name) || 'Home' }
+    const plain = (it) => ({ id: it.id, name: it.name, x: it.x, z: it.z, rot: it.rot || 0, placed: it.placed !== false });
     notify(io(req), f.other, { icon: '👋', text: `${label(req.user)} visited your place`, kind: 'friend' }).catch(() => {});
-    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName } });
+    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName, property: property ? A.publicHome(property) : null, placed: items.map(plain) } });
   } catch (e) { next(e); }
 });
 router.post('/buy-food/:id', async (req, res, next) => {
