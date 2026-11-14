@@ -110,8 +110,6 @@ function applyAC(ac) {
   Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
   S.legacyItems = ac.items || []; S.legacyPaint = ac.paint; S.properties = ac.properties || [];
-  /* first load after opening or refreshing the game: go back into the home the player entered last (saved on the server) */
-  if (!S.homeSynced) { S.homeSynced = true; let saved = ac.activeProperty; if (saved === undefined) { try { saved = localStorage.getItem('ac:home') || '' } catch (e) { saved = '' } } if (saved && !S.activePropertyId) S.activePropertyId = saved }
   S.activeProperty = S.activePropertyId ? S.properties.find(p => p.id === S.activePropertyId) || null : null;
   if (!S.activeProperty) S.activePropertyId = '';
   S.items = S.activeProperty ? S.activeProperty.items : S.legacyItems;
@@ -134,24 +132,21 @@ function authMode(m) {
   $('tl').className = m == 'login' ? 'on' : '';
   $('tr').className = m == 'login' ? '' : 'on';
   $('fname').style.display = m == 'login' ? 'none' : 'block';
-  $('fsto').style.display = $('fscu').style.display = m == 'login' ? 'none' : 'block';
   $('abtn').textContent = m == 'login' ? 'Sign in' : 'Create account';
   $('fpw').autocomplete = m == 'login' ? 'current-password' : 'new-password';
   $('aerr').textContent = ''
 }
 if (location.hash === '#register' || location.hash === '#sign-up') authMode('register');
 async function doAuth() {
-  if (window.AGE && (!AGE.ok() || (AM == 'register' && !AGE.hasFull()))) return AGE.gate(() => doAuth());   // sign-up always asks for the full date of birth
   const id = $('fid').value.trim(),
     pw = $('fpw').value,
     name = $('fname').value.trim(),
     b = $('abtn');
   $('aerr').textContent = '';
   if (!id || !pw || (AM == 'register' && !name)) return $('aerr').textContent = AM == 'register' ? 'Enter your name, email/phone and password.' : 'Enter your email/phone and password.';
-  if (AM == 'register' && (!$('fsto').value || !$('fscu').value)) return $('aerr').textContent = 'Tell us which state you are from and which state you are in now.';
   b.disabled = true;
   try {
-    await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw, stateOrigin: $('fsto').value, stateCurrent: $('fscu').value } });
+    await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw } });
     window.JUST_AUTHED = true;
     await boot();
     window.JUST_AUTHED = false
@@ -175,13 +170,11 @@ async function boot() {
     render();
     if (window.PH) PH.init();
     if (window.PUSH) PUSH.init();
-    if (window.AGE) AGE.sync();
     warmUp()
   }
   catch (e) {
     $('auth').style.display = 'block';
     $('resume').style.display = 'none';
-    if (window.AGE && !AGE.ok()) AGE.gate();
     if (e.status && e.status !== 401) $('aerr').textContent = e.message;
     else if (!e.status) $('aerr').textContent = 'Cannot reach the server. Check your connection and try again.';
     else if (window.JUST_AUTHED) $('aerr').textContent = 'Signed in, but your session was not saved. Allow cookies for this site and try again.'
@@ -216,23 +209,18 @@ function hubQuiet(cb) {
   first ? f.addEventListener('load', () => hubRun(cb), { once: true }) : hubRun(cb)
 }
 
-/* Shop tab safety net: loads /allconnect/mall.js on demand (cache-busted) if the page came up without it */
-function loadMallScript() {
-  if (window.MALL) return Promise.resolve(true);
-  return new Promise(res => { const s = document.createElement('script'); s.src = '/allconnect/mall.js?v=' + Date.now(); s.onload = () => res(!!window.MALL); s.onerror = () => res(false); document.head.appendChild(s) })
-}
 /* Drive opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
 function openLagosRun() {
   const f = $('lrf');
   if (f.getAttribute('src') !== '/lagosrun/') f.src = '/lagosrun/'; /* closing sets it to about:blank, so each open starts the game fresh */
   $('lagosrun').style.display = 'block';
-  try { if (window.BGM) { BGM.hold('drive', true); BGM.pause() } } catch (e) {}
+  try { if (window.BGM) BGM.pause() } catch (e) {}
   try { document.documentElement.requestFullscreen && !document.fullscreenElement && /Android|iPad/.test(navigator.userAgent) && document.documentElement.requestFullscreen().catch(() => {}) } catch (e) {}
 }
 function closeLagosRun() {
   const f = $('lrf'); $('lagosrun').style.display = 'none'; f.removeAttribute('src'); f.src = 'about:blank';
   try { if (document.fullscreenElement) document.exitFullscreen() } catch (e) {}
-  try { if (window.BGM) { BGM.hold('drive', false); BGM.sync() } } catch (e) {}
+  try { if (window.BGM) BGM.sync() } catch (e) {}
   nav('home')
 }
 
@@ -287,19 +275,11 @@ function render() {
 }
 const NEEDN = ['You are getting hungry — eat something 🍛', 'Energy is getting low!', 'Your fun is running out 🎉', 'You are feeling lonely 💬', 'You need a bath 🫧', 'Nature is calling 🚽'],
   NEEDI = ['🥧', '⚡', '🎉', '💬', '🫧', '🚽'],
-  LOW = {}, NEED_BOOT = Date.now(), LOWN = {}, needAt = () => { try { return JSON.parse(localStorage.getItem('needAlertAt') || '{}') } catch (e) { return {} } };
+  LOW = {};
 setInterval(() => {
   S.min++;
   S.needs = S.needs.map(v => Math.max(0, v - .004));
-  /* Need alerts (hungry, tired, bored, lonely, dirty, toilet): never on opening the game, one at a time, and each need at most once every 8 minutes (remembered across visits). */
-  const nowT = Date.now(); let said = false;
-  S.needs.forEach((v, i) => {
-    if (v > .5) { LOW[i] = 0; LOWN[i] = 0; return }
-    LOWN[i] = v < .25 ? (LOWN[i] || 0) + 1 : 0;      // only a need that is really low (under 25%) and has stayed low for a few seconds counts
-    if (said || LOWN[i] < 3 || nowT - NEED_BOOT < 60000 || nowT - (needAt()[i] || 0) < 8 * 60000) return;
-    said = true; LOW[i] = 1; const m = needAt(); m[i] = nowT; try { localStorage.setItem('needAlertAt', JSON.stringify(m)) } catch (e) {}
-    if (window.PH) PH.local_(NEEDI[i], NEEDN[i], 'warn')
-  });
+  S.needs.forEach((v, i) => { if (v < .3 && !LOW[i]) { LOW[i] = 1; if (window.PH) PH.local_(NEEDI[i], NEEDN[i], 'warn') } else if (v > .5) LOW[i] = 0 });
   render()
 }, 3000);
 
@@ -350,7 +330,10 @@ function openBank(dep) {
   window.addEventListener('offline', show); window.addEventListener('online', hide);
   if (!navigator.onLine) show()
 })();
-function toggleClean() { S.clean = false }      // the hide-the-buttons mode was removed
+function toggleClean() {
+  S.clean = !S.clean;
+  nav('home', true)
+}
 /* Phone power behavior: the physical side button and Phone navigation toggle the same device. */
 const PHONEUI = {
   busy:false,
@@ -362,14 +345,14 @@ window.PHONEUI=PHONEUI;
 
 const NAV = [
   ['home', 'Home', '<path d="M4 11l8-7 8 7v9H4z"/>'],
-  ['buy', 'Shop', '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6.5a3 3 0 016 0V8"/>'],
+  ['buy', 'Buy', '<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M6 9V7a2 2 0 012-2h8a2 2 0 012 2v2M7 17v2M17 17v2"/>'],
   ['map', 'Map', '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>'],
   ['phone', 'Phone', '<rect x="7" y="3" width="10" height="18" rx="2"/>']
 ];
 
 function nav(w, keep) {
   if (w === 'phone' && S.page === 'phone') { if (window.PHONEUI) PHONEUI.close(); else nav('home'); return; }
-  if (S.page === 'buy' && w !== 'buy') { if (window.BUY) BUY.leave(); if (window.MALL) MALL.leave() }
+  if (S.page === 'buy' && w !== 'buy' && window.BUY) BUY.leave();
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
@@ -381,10 +364,10 @@ function nav(w, keep) {
   $('buy').style.display = w == 'buy' ? 'block' : 'none';
   $('phone').style.display = w == 'phone' ? 'block' : 'none';
   $('room').style.display = (w == 'map') ? 'none' : 'block';
-  const cl = false && home;
+  const cl = S.clean && home;
   $('needsbar').style.display = (w == 'map') ? 'flex' : 'none';   /* home no longer shows the avatar + needs strip (needs live in the Goals sheet) */
   $('nav').style.display = (w == 'buy' || w == 'phone' || cl) ? 'none' : 'flex';
-  if ($('menubtn')) $('menubtn').style.display = 'none';
+  $('menubtn').style.display = cl ? 'flex' : 'none';
   $('viewctl').style.display = (home || w == 'map') ? 'flex' : 'none';
   $('app').classList.toggle('onmap', w == 'map'); try { CAMV.toggle(false) } catch (e) {}
   $('emotes').style.display = (home || w == 'map') ? 'flex' : 'none';
@@ -403,8 +386,8 @@ function nav(w, keep) {
   if (window.GEM && typeof NET !== 'undefined' && NET.user) GEM.boot();
   if (window.GOALS && typeof NET !== 'undefined' && NET.user) GOALS.boot();
   if (w == 'buy') {
-    if (window.MALL) MALL.enter();   /* Shop tab: the 3D mall, or "My Home" (the old Buy mode) */
-    else loadMallScript().then(ok => { if (S.page !== 'buy') return; if (ok && window.MALL) MALL.enter(); else { $('room').style.top = '44px'; BUY.enter() } })   /* mall.js did not load (old cached page, missing file): fetch it fresh once before giving up and showing the old house */
+    $('room').style.top = '44px';
+    BUY.enter()
   } else $('room').style.top = '';
   if (w == 'map') {
     if (window.ADS) ADS.paintMap()
@@ -444,31 +427,28 @@ const APPS = [
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
   ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
   ['Homes', '🏠', 'linear-gradient(135deg,#34d399,#0ea5a5)', 1],
-  ['Play Store', '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="#00c3ff" d="M4 3 12.5 12 4 21z"/><path fill="#00e676" d="M4 3 17.3 10.5 12.5 12z"/><path fill="#ffc400" d="M17.3 10.5 21 12 17.3 13.5 12.5 12z"/><path fill="#ff3d57" d="M12.5 12 17.3 13.5 4 21z"/></svg>', 'linear-gradient(135deg,#ffffff,#dbe7ff)', 1],
-  ['Boutique', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
+  ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
+  ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
   ['Pet', '🐱', 'linear-gradient(135deg,#fcd34d,#f97316)', 1],
-  ['Health', '💊', 'linear-gradient(135deg,#34d399,#0f766e)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['City', '<i class="fa-solid fa-city"></i>', 'linear-gradient(135deg,#f59e0b,#e8337a)', 1],
   ['Gazette', '<i class="fa-solid fa-newspaper"></i>', 'linear-gradient(135deg,#0ea5e9,#1e3a8a)'],
+  ["What's New", '<i class="fa-solid fa-clock-rotate-left"></i>', 'linear-gradient(135deg,#f97316,#c2410c)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
   ['Shop', '<i class="fa-solid fa-bag-shopping"></i>', 'linear-gradient(135deg,#34d399,#0891b2)', 1],
   ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
-  ['Invite', '<i class="fa-solid fa-user-group"></i>', 'linear-gradient(135deg,#3b82f6,#7c3aed)', 1],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", 'Play Store': "PH.open('ads')", Boutique: "PH.open('style')",
-Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')" }; 
+const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
 OPEN.Homes = "PH.open('homes')";
 OPEN.Shop = "openHub(b=>b.shop())";
 OPEN.Guide = "PH.open('guide')";
-OPEN.Invite = "PH.open('invite')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
-const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Boutique', 'Songify', 'Settings'];
+const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
 const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
@@ -486,15 +466,11 @@ function drawApps() {
   // page 1 shows as many rows of apps as the free space allows (at least 2); the rest go to the next pages
   const build = per => {
     const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, per).join('')}</div></div>`];
-    for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div></div>`);
+    for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
     el.classList.add('h'); el.innerHTML = pages.join('')
   };
-  let cur = HOMEFIT.per;
-  /* tablet / desktop frame: ONE vertically scrolling list, 3 apps per row, on the right of the clock + city card (no horizontal pages) */
-  const tabx = !!(window.matchMedia && matchMedia('(min-width:900px) and (min-height:560px)').matches);
-  el.classList.toggle('tabx', tabx);
-  if (tabx) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollLeft = 0 } else build(cur);
-  if (!tabx && el.clientHeight > 0) {
+  let cur = HOMEFIT.per; build(cur);
+  if (el.clientHeight > 0) {
     let grew = false;
     for (let k = 0; k < 8; k++) {
       const pg = el.querySelector('.pg1'), grid = pg && pg.querySelector('.grid'), a = grid && grid.querySelector('.app'); if (!a) break;
@@ -602,7 +578,7 @@ async function start(n) {
   try { localStorage.setItem('ac:last:' + ((NET.user && NET.user.id) || 'x'), String(Date.now())) } catch (e) {}
   const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
-  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac); if (window.DRAGPOS) DRAGPOS.reset(true) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
+  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
   render();
   nav('home');
   if (window.PH) setTimeout(() => PH.openDeepLink && PH.openDeepLink(), 80);
@@ -833,15 +809,6 @@ const BAN = {
     clearTimeout(b.h);
     b.h = setTimeout(() => b.classList.remove('show'), ms) },
   light: true,
-  /* NEPA news arrives as a phone notification (tap it for the full story) instead of a banner across the screen. */
-  note(up) {
-    try { if (up && window.V2) V2.lastUp = Date.now() } catch (e) {}
-    const icon = up ? '💡' : '🕯️', title = up ? 'UP NEPA! Light don come' : 'NEPA took light', text = up ? 'Power is back in your area.' : 'Power cut. Tap to see what to do.';
-    const open = () => { try { CARD.show({ icon, title, tone: up ? 'good' : 'warn', text: up ? 'The grid is back. Your lamps, fridge and gadgets work again, and you can see in the dark.' : 'NEPA has taken the light for now. It usually comes back within a few minutes.', lines: up ? [['Room', 'Lights work again'], ['Bulb button', 'Still switches your room light'], ['Tip', 'Keep fuel for the Gen Set']] : [['Room', 'Dark until power returns'], ['Lamps', 'Stop working'], ['Gen Set', 'Keeps lights on (needs fuel)'], ['Bills', 'Pay early so supply is not cut']], btn: up ? 'Nice' : 'Check bills', go: up ? '' : "LAGOS.open('bills')" }) } catch (e) { toast(icon + ' ' + title) } };
-    if (window.PH && PH.local_) PH.local_(icon, title + '. ' + text, 'info');
-    if (window.BANNER && BANNER.show({ icon, app: 'NEPA', title, text, tap: open })) return;
-    toast(icon + ' ' + title)
-  },
   cycle() {
     clearTimeout(this.t);
     this.t = setTimeout(() => {
@@ -849,12 +816,12 @@ const BAN = {
       if (!idle) {
         if (this.light) { this.light = false;
           $('app').classList.add('blackout'); if (window.ROOM3D) ROOM3D.dark(true);
-          this.note(false);
+          this.show('🕯️ NEPA took light! 🕯️');
           this.t = setTimeout(() => this.cycle(), 20000 + Math.random() * 25000); return }
         this.light = true;
         $('app').classList.remove('blackout');
         if (window.ROOM3D) ROOM3D.dark(false);
-        this.note(true)
+        this.show('💡 UP NEPA! Light don come! 💡')
       }
       this.cycle()
     }, this.light ? 45000 + Math.random() * 75000 : 1000)
@@ -1000,7 +967,7 @@ const PREFX = {
 window.PREFX = PREFX;
 function applyTheme() {
   const p = PREFX.prefs(), dark = PREFX.nightNow(p);
-  const level = 50;                                   // dark mode is fixed at 50%: the Darkness slider was removed
+  const level = Math.max(0, Math.min(100, Number(p.darkness ?? 100)));
   const mix = (base) => Math.round(base * (1 - level / 100));
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');

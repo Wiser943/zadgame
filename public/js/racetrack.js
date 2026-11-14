@@ -1,71 +1,62 @@
-/* Drive Race: the track. One definition used by the game screen (to draw it) and by the server (lap length, bends for the bots, item boxes).
-   The track is a loop of 200-unit segments, each with a bend and a height, so both sides always agree on exactly where everything is. */
+/* Drive Race: the circuits. Each one is a closed loop in 3D (position, height, bends), cut into 200-unit segments.
+   The game screen draws the loop in 3D from these segments; the server uses the same segments (lap length, bends for the bots, item boxes, boost pads),
+   so both sides always agree on where everything is.
+   A circuit is a closed curve r(angle) around a centre, so it can never cross itself; harmonics give it bends, and the same trick gives it hills. */
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.RaceTrack = factory(); })(typeof self !== 'undefined' ? self : this, function () {
-  const SEG = 200, ROAD = 2000, RUMBLE = 3, MAXV = 11000;
-  const ZONES = [
-    { id: 'marina', name: 'Marina', from: 0,    grass: ['#2f9a5a', '#2a8d52'], road: ['#5b5f6a', '#555966'], sky: ['#6ab6ee', '#cdeafc'], water: false },
-    { id: 'island', name: 'Lekki Beach', from: .25, grass: ['#e8d28f', '#dcc682'], road: ['#5d606a', '#575a66'], sky: ['#78c2f0', '#d6f0fb'], water: false },
-    { id: 'market', name: 'Mile 12 Market', from: .5, grass: ['#b88b57', '#ad814e'], road: ['#585b66', '#525561'], sky: ['#8cbfe0', '#e6e2d2'], water: false },
-    { id: 'bridge', name: 'Third Mainland', from: .75, grass: ['#2b82b8', '#2778ab'], road: ['#62666f', '#5c606a'], sky: ['#5fa9e6', '#c4e4f8'], water: true }
-  ];
+  const SEG = 200, ROAD = 2000, RUMBLE = 3, MAXV = 11000, CURVE_K = 150;
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-  const easeIn = (a, b, p) => a + (b - a) * p * p;
-  const easeInOut = (a, b, p) => a + (b - a) * ((-Math.cos(p * Math.PI) / 2) + .5);
 
-  let cached = null;
-  function build() {
-    if (cached) return cached;
-    const segs = [], K = 1.35;
-    let lastY = 0;
-    const add = (curve, y) => { segs.push({ i: segs.length, curve, y1: lastY, y2: y }); lastY = y; };
-    // [enter, hold, leave, curve, hill]: the hills add up to zero, so the loop closes at the same height
-    const road = (en, hold, lv, curve, hill) => {
-      en = Math.round(en * K); hold = Math.round(hold * K); lv = Math.round(lv * K);
-      const y0 = lastY, y1 = y0 + hill * SEG, tot = en + hold + lv;
-      for (let n = 0; n < en; n++) add(easeIn(0, curve, n / en), easeInOut(y0, y1, n / tot));
-      for (let n = 0; n < hold; n++) add(curve, easeInOut(y0, y1, (en + n) / tot));
-      for (let n = 0; n < lv; n++) add(easeInOut(curve, 0, n / lv), easeInOut(y0, y1, (en + hold + n) / tot));
-    };
-    road(50, 0, 0, 0, 0);            // the grid
-    road(25, 25, 25, 2, 0);          // gentle right
-    road(20, 30, 20, 0, 40);         // climb
-    road(30, 40, 30, -4, 0);         // tight left
-    road(25, 25, 25, 3, -20);        // S
-    road(25, 25, 25, -3, 0);
-    road(30, 120, 30, 0, -20);       // long straight with boost pads
-    road(40, 60, 40, 4, 10);         // right sweeper
-    road(30, 30, 30, -2, -30);       // downhill
-    road(15, 15, 15, 3, 0);          // chicane
-    road(15, 15, 15, -3, 0);
-    road(15, 15, 15, 3, 0);
-    road(50, 80, 50, -3, 0);         // long left
-    road(40, 100, 40, 0, 20);        // the finishing straight
-    const n = segs.length;
-    // colour and scenery
-    const R = rng(20261102), zoneOf = (i) => { const f = i / n; let z = ZONES[0]; for (const q of ZONES) if (f >= q.from) z = q; return z; };
-    segs.forEach((s) => {
-      s.zone = zoneOf(s.i); s.spr = [];
-      const z = s.zone.id;
-      if (s.i % 4 === 0 && R() < .8) {
-        const side = R() < .5 ? -1 : 1, off = side * (1.35 + R() * 1.9), r = R();
-        let k;
-        if (z === 'marina') k = r < .35 ? 'tower' : r < .6 ? 'lamp' : r < .8 ? 'palm' : 'board';
-        else if (z === 'island') k = r < .5 ? 'palm' : r < .7 ? 'umbrella' : r < .85 ? 'hut' : 'board';
-        else if (z === 'market') k = r < .35 ? 'shack' : r < .6 ? 'stall' : r < .8 ? 'lamp' : r < .9 ? 'busstop' : 'board';
-        else k = r < .55 ? 'lamp' : r < .75 ? 'pillar' : 'rail';
-        if (z === 'bridge' && (k === 'rail')) { s.spr.push({ k: 'rail', o: -1.12 }, { k: 'rail', o: 1.12 }); } else s.spr.push({ k, o: off });
-      }
-    });
-    // item boxes: rows of three, one row about every 150 segments
-    const boxes = []; for (let seg = 100, row = 0; seg < n - 60; seg += 150, row++) [-.55, 0, .55].forEach((o, j) => boxes.push({ id: boxes.length, seg, o, row }));
-    // boost pads
-    const pads = [{ seg: Math.round(n * .27), len: 6, o: .0 }, { seg: Math.round(n * .46), len: 6, o: -.45 }, { seg: Math.round(n * .66), len: 6, o: .45 }, { seg: Math.round(n * .83), len: 6, o: 0 }];
-    pads.forEach((p) => { for (let k = 0; k < p.len; k++) segs[p.seg + k].pad = p.o; });
-    cached = { SEG, ROAD, RUMBLE, MAXV, n, L: n * SEG, segs, boxes, pads, ZONES, name: 'Lagos Grand Prix',
-      at(z) { return segs[((Math.floor(z / SEG) % n) + n) % n]; },
+  /* name, look, size, the bends [harmonic, size, phase], the hills [harmonic, height, phase], which side the sea is on */
+  const DEFS = {
+    harbor: { name: 'Harbor Run', theme: 'harbor', R: 56000, bends: [[2, .17, .4], [3, .11, 1.7], [5, .05, 2.2], [7, .03, .5]], hills: [[1, 3900, .6], [2, 1900, 1.3], [3, 1100, 2.1]], sea: 'outer', seed: 11, laps: 3 },
+    beach: { name: 'Palm Beach', theme: 'beach', R: 60000, bends: [[2, .21, 1.2], [3, .07, .1], [4, .05, 2.5], [6, .025, 1.1]], hills: [[1, 2200, 2.2], [2, 1500, .4], [4, 800, 1.7]], sea: 'outer', seed: 23, laps: 3 },
+    market: { name: 'Mile 12 Market', theme: 'market', R: 52000, bends: [[3, .15, .9], [4, .09, 2.6], [6, .05, .3], [2, .06, 1.9]], hills: [[2, 1500, .2], [3, 1000, 1.4]], sea: 'none', seed: 37, laps: 3 }
+  };
+
+  const cache = {};
+  function build(id) {
+    id = DEFS[id] ? id : 'harbor'; if (cache[id]) return cache[id];
+    const D = DEFS[id], M = 7200, P = [];
+    for (let k = 0; k < M; k++) {
+      const th = k / M * Math.PI * 2; let r = 1; for (const [h, a, ph] of D.bends) r += a * Math.cos(h * th + ph);
+      let y = 0; for (const [h, a, ph] of D.hills) y += a * Math.sin(h * th + ph);
+      r *= D.R; P.push([Math.cos(th) * r, y, Math.sin(th) * r * .82]);
+    }
+    let len = 0; const cum = [0]; for (let k = 1; k <= M; k++) { const a = P[k - 1], b = P[k % M]; len += Math.hypot(b[0] - a[0], b[2] - a[2]); cum.push(len); }
+    const N = Math.round(len / SEG), sc = N * SEG / len;                         // scale so a lap is exactly N segments of 200 units
+    for (const p of P) { p[0] *= sc; p[2] *= sc; }
+    for (let k = 0; k <= M; k++) cum[k] *= sc; len *= sc;
+    const pts = []; let j = 0;
+    for (let i = 0; i < N; i++) { const d = i * SEG; while (j < M - 1 && cum[j + 1] < d) j++; const a = P[j], b = P[(j + 1) % M], f = (d - cum[j]) / ((cum[j + 1] - cum[j]) || 1); pts.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]); }
+    const hd = pts.map((p, i) => { const q = pts[(i + 1) % N]; return Math.atan2(q[2] - p[2], q[0] - p[0]); });
+    const turn = hd.map((h, i) => { let d = hd[(i + 1) % N] - h; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; });
+    const sm = turn.map((_, i) => { let s = 0; for (let k = -3; k <= 3; k++) s += turn[(i + k + N) % N]; return s / 7; });
+    // put the start/finish line on a straight bit near the beginning
+    let best = 0, bv = 9; for (let i = 0; i < N * .3; i++) { let m = 0; for (let k = -25; k <= 25; k++) m = Math.max(m, Math.abs(sm[(i + k + N) % N])); if (m < bv) { bv = m; best = i; } }
+    const rot = (a) => a.map((_, i) => a[(i + best) % N]);
+    const pos = rot(pts), hdr = rot(hd), smr = rot(sm);
+    const segs = [];
+    for (let i = 0; i < N; i++) {
+      const p = pos[i], h = hdr[i], curve = Math.max(-5, Math.min(5, smr[i] * CURVE_K));   // + is a right-hand bend when looking along the road
+      segs.push({ i, x: p[0], y: p[1], z: p[2], hd: h, fx: Math.cos(h), fz: Math.sin(h), rx: -Math.sin(h), rz: Math.cos(h), curve, turn: smr[i] });
+    }
+    const boxes = []; for (let seg = 100, row = 0; seg < N - 60; seg += 150, row++) [-.55, 0, .55].forEach((o) => boxes.push({ id: boxes.length, seg, o, row }));
+    const pads = [], lanes = [0, -.45, .45, 0];
+    for (let k = 0; k < 4; k++) { const want = Math.round(N * (.18 + .21 * k)); let bs = want, bm = 9; for (let s = want - 60; s <= want + 60; s++) { let m = 0; for (let q = 0; q < 8; q++) m = Math.max(m, Math.abs(segs[(s + q + N) % N].curve)); if (m < bm) { bm = m; bs = (s + N) % N; } } pads.push({ seg: bs, len: 6, o: lanes[k] }); }
+    pads.forEach((p) => { for (let q = 0; q < p.len; q++) segs[(p.seg + q) % N].pad = p.o; });
+    const T = {
+      id, SEG, ROAD, RUMBLE, MAXV, n: N, L: N * SEG, segs, boxes, pads, name: D.name, theme: D.theme, sea: D.sea, def: D, laps: D.laps,
+      at(z) { return segs[((Math.floor(z / SEG) % N) + N) % N]; },
       curveAt(z) { return this.at(z).curve; },
-      zoneAt(z) { return this.at(z).zone; } };
-    return cached;
+      /* a point on the road: s = distance along the lap, lat = side to side in road widths (-1 left edge ... 1 right edge) */
+      point(s, lat = 0) {
+        const f = (((s / SEG) % N) + N) % N, i = Math.floor(f), t = f - i, a = segs[i], b = segs[(i + 1) % N];
+        const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t, z = a.z + (b.z - a.z) * t; let h = b.hd - a.hd; while (h > Math.PI) h -= 2 * Math.PI; while (h < -Math.PI) h += 2 * Math.PI; const hd = a.hd + h * t;
+        const rx = -Math.sin(hd), rz = Math.cos(hd);
+        return { x: x + rx * lat * ROAD, y, z: z + rz * lat * ROAD, hd, fx: Math.cos(hd), fz: Math.sin(hd), rx, rz };
+      }
+    };
+    cache[id] = T; return T;
   }
-  return { build, SEG, ROAD, MAXV, rng };
+  return { build, list: () => Object.keys(DEFS).map((k) => ({ id: k, name: DEFS[k].name, theme: DEFS[k].theme })), DEFS, SEG, ROAD, MAXV, rng };
 });

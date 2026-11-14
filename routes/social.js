@@ -8,9 +8,7 @@ const challenges=require('../utils/challenges');
 const Match=require('../models/Match');
 const {rankFor}=require('../utils/rank');
 const {achievementsFor}=require('../utils/achievements');
-const {notify}=require('../utils/acnotify');
 const router=express.Router(); router.use(ensureAuth);
-const nm=u=>(u&&(u.acUsername?'@'+u.acUsername:u.displayName))||'Someone';
 const uid=req=>String(req.user._id||req.user.id);
 
 const pub=(u)=>({id:String(u._id),displayName:u.displayName,avatar:u.avatar,level:u.level||1,stats:u.stats||{},online:presence.isOnline(u._id)});
@@ -88,8 +86,8 @@ router.get('/relation/:id',async(req,res,next)=>{try{
   if(row){ if(row.status==='accepted')relation='friend'; else if(row.status==='blocked')relation=row.requester===me?'blocked':'none'; else relation=row.requester===me?'sent':'received'; }
   res.json({relation});
 }catch(e){next(e);}});
-router.post('/friends/:id/request',async(req,res,next)=>{try{const me=uid(req),other=String(req.params.id);if(me===other)return res.status(400).json({message:'You cannot add yourself.'});if(await Friendship.exists({requester:other,recipient:me,status:'blocked'}))return res.status(403).json({message:'You cannot send this request.'});const row=await Friendship.findOneAndUpdate({$or:[{requester:me,recipient:other},{requester:other,recipient:me}]},{$setOnInsert:{requester:me,recipient:other,status:'pending'}},{upsert:true,new:true});if(row&&row.status==='pending'&&String(row.requester)===me)notify(req.app.get('io'),other,{icon:'👋',text:nm(req.user)+' sent you a friend request',kind:'friend',ref:'u:'+me,from:me}).catch(()=>{});res.json({friendship:row});}catch(e){next(e);}});
-router.post('/friends/:id/accept',async(req,res,next)=>{try{const row=await Friendship.findOneAndUpdate({requester:String(req.params.id),recipient:uid(req),status:'pending'},{$set:{status:'accepted'}},{new:true});if(!row)return res.status(404).json({message:'Request not found.'});notify(req.app.get('io'),String(req.params.id),{icon:'🤝',text:nm(req.user)+' accepted your friend request',kind:'friend'}).catch(()=>{});res.json({friendship:row});}catch(e){next(e);}});
+router.post('/friends/:id/request',async(req,res,next)=>{try{const me=uid(req),other=String(req.params.id);if(me===other)return res.status(400).json({message:'You cannot add yourself.'});if(await Friendship.exists({requester:other,recipient:me,status:'blocked'}))return res.status(403).json({message:'You cannot send this request.'});const row=await Friendship.findOneAndUpdate({$or:[{requester:me,recipient:other},{requester:other,recipient:me}]},{$setOnInsert:{requester:me,recipient:other,status:'pending'}},{upsert:true,new:true});res.json({friendship:row});}catch(e){next(e);}});
+router.post('/friends/:id/accept',async(req,res,next)=>{try{const row=await Friendship.findOneAndUpdate({requester:String(req.params.id),recipient:uid(req),status:'pending'},{$set:{status:'accepted'}},{new:true});if(!row)return res.status(404).json({message:'Request not found.'});res.json({friendship:row});}catch(e){next(e);}});
 router.delete('/friends/:id',async(req,res,next)=>{try{await Friendship.deleteMany({$or:[{requester:uid(req),recipient:String(req.params.id)},{requester:String(req.params.id),recipient:uid(req)}]});res.json({ok:true});}catch(e){next(e);}});
 router.post('/block/:id',async(req,res,next)=>{try{await Friendship.deleteMany({$or:[{requester:String(req.params.id),recipient:uid(req)},{requester:uid(req),recipient:String(req.params.id),status:{$ne:'blocked'}}]});await Friendship.findOneAndUpdate({requester:uid(req),recipient:String(req.params.id)},{$set:{status:'blocked'}},{upsert:true});res.json({ok:true});}catch(e){next(e);}});
 router.post('/report',async(req,res,next)=>{try{const target=String(req.body?.target||'');if(!target)return res.status(400).json({message:'Target is required.'});const report=await Report.create({reporter:uid(req),target,roomCode:String(req.body?.roomCode||'').slice(0,8),reason:String(req.body?.reason||'Unspecified').slice(0,240)});res.json({reportId:report.id});}catch(e){next(e);}});

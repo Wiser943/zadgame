@@ -15,19 +15,9 @@ async function mux(method, path, body) {
   try {
     const r = await fetch('https://api.mux.com' + path, { method, signal: ctl.signal, headers: { Authorization: 'Basic ' + Buffer.from(k.id + ':' + k.sec).toString('base64'), 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { const er = new Error((j.error && (j.error.messages || [j.error.type]).join(' ')) || 'Mux error ' + r.status); er.status = r.status; throw er; }
+    if (!r.ok) throw new Error((j.error && (j.error.messages || [j.error.type]).join(' ')) || 'Mux error ' + r.status);
     return j.data;
   } finally { clearTimeout(t); }
-}
-
-/* Plain-English reason a Mux call failed, so the owner can fix it without reading server logs. */
-function muxWhy(e) {
-  const m = String((e && e.message) || ''), st = e && e.status;
-  if (st === 401 || st === 403) return 'Mux rejected the access token. Check MUX_TOKEN_ID and MUX_TOKEN_SECRET (an Access Token with Mux Video permission) on the host, then restart.';
-  if (/limit|quota|plan|free|exceed|billing|upgrade/i.test(m)) return 'Mux plan limit reached: ' + m;
-  if (e && (e.name === 'AbortError' || /abort|timed? ?out/i.test(m))) return 'Mux did not answer in time.';
-  if (/fetch failed|ENOTFOUND|ECONN|network/i.test(m)) return 'The server could not reach Mux.';
-  return 'Mux said: ' + m.slice(0, 160);
 }
 
 /* ---------- signed playback (RS256 JWT, no extra packages) ---------- */
@@ -121,4 +111,4 @@ async function removeUserVideos(uid) {
   return n;
 }
 
-module.exports = { muxWhy, muxOn, mux, muxVideo, playback, signingOn, createUpload, verifyWebhook, fill, syncPending, startSweep, removeUserVideos, env, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS };
+module.exports = { muxOn, mux, muxVideo, playback, signingOn, createUpload, verifyWebhook, fill, syncPending, startSweep, removeUserVideos, env, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS };

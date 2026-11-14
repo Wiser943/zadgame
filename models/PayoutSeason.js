@@ -34,7 +34,6 @@ const S = new mongoose.Schema({
   batches: { type: [BatchSchema], default: [] },
   createdBy: { type: String, default: '' },
   publishedAt: { type: Date, default: null },
-  announced: { type: [String], default: [] },   // which player notices were already sent (season open, batch open, closing soon): each goes out once
   updatedBy: { type: String, default: '' }
 }, { timestamps: true });
 S.index({ status: 1, startsAt: 1 });

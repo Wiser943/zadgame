@@ -68,9 +68,9 @@ test('routes: valid kinds, 12 hour cap, fuel and wear limit what a route earns',
   assert.ok(T.accrue(r, v, noon - 2 * T.HOUR, noon, { ev: { mult: { fare: 1.5 } } }).income > a2.income);
   assert.ok(T.demand(17, 'bus') > T.demand(2, 'bus') && T.demand(7, 'van') > T.demand(2, 'van'));
 });
-test('a bus pays for itself slowly on purpose: transport is the lowest-paying way to earn (about 8 to 14 months of full days)', () => {
+test('a bus pays for itself in a sensible time (about 2 to 5 months of full days)', () => {
   const r = T.ROUTE_BY['oshodi-yaba'], v = { kind: 'bus', cond: 100, fuel: 70, mods: [] }, day = T.accrue(r, v, NOW - 12 * T.HOUR, NOW).income * 2;
-  const days = T.VEHICLES.bus.price / day; assert.ok(days > 240 && days < 420, 'payback ' + days);
+  const days = T.VEHICLES.bus.price / day; assert.ok(days > 30 && days < 150, 'payback ' + days);
 });
 test('quizzes: right sizes, shuffled options, grading rejects bad input', () => {
   for (const kind of ['signs', 'licence']) {

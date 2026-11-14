@@ -9,15 +9,12 @@ const ensureAuth = require('../middleware/auth');
 const { normalizeUsername } = require('../utils/allconnect');
 const { notify } = require('../utils/acnotify');
 const { checkReel } = require('../utils/contentCheck');
-const MOD = require('../utils/modCategories');
 const acPresence = require('../utils/acpresence');
 const ghPresence = require('../utils/presence');
 const GOV = require('../utils/acgov');
 const reelstore = require('../utils/reelstore');
-const { milestonesFor } = require('../utils/acmilestones');
-const { playerContext, CTX_FIELDS } = require('../utils/acctx');
 
-const { muxWhy, muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
+const { muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
 const ACVideo = require('../models/ACVideo');
 const { normalizeVideo } = require('../utils/gistVideo');
 
@@ -137,12 +134,10 @@ async function hydrate(posts, uid) {
       song: p.song && p.song.streamUrl ? { title: p.song.title || 'Song', artist: p.song.artist || '', albumArt: p.song.albumArt || '', streamUrl: p.song.streamUrl } : null,
       game: p.game && p.game.key ? { key: p.game.key, name: p.game.name, code: p.game.code || '' } : null,
       match: p.match && p.match.game ? { game: p.match.game, name: p.match.name, score: p.match.score || '', opponent: p.match.opponent || '', result: p.match.result || 'win' } : null,
-      birthday: p.birthday && p.birthday.name ? { name: p.birthday.name, wish: p.birthday.wish || '', theme: p.birthday.theme || 0 } : null,
       election: p.election && GOV.OFFICES[p.election.office] ? { office: p.election.office, kind: p.election.kind || 'announce', title: GOV.OFFICES[p.election.office].title, scope: GOV.OFFICES[p.election.office].scope, icon: GOV.OFFICES[p.election.office].icon, color: GOV.OFFICES[p.election.office].color, slogan: p.election.slogan || '', votes: p.election.votes || 0 } : null,
       video: normalizeVideo(p.video, playback), views: p.views || 0,
       tags: p.tags || [], pinned: !!p.pinned, edited: !!p.editedAt,
-      ...(p.author === uid && p.moderation && p.moderation.status ? { moderation: (() => { const m = p.moderation, c = MOD.CATS[m.category] || null; return { status: m.status, reason: m.reason || '', reviewNote: m.reviewNote || '', category: m.category || '', learn: c ? { title: c.title, why: c.why, fix: c.fix } : null, canAppeal: m.status === 'flagged' }; })() } : {}),
-      commentsOff: p.allowComments === false, noReuse: p.allowReuse === false, ...(p.author === uid ? { visibility: p.visibility || 'public' } : {}),
+      ...(p.author === uid && p.moderation && p.moderation.status ? { moderation: { status: p.moderation.status, reason: p.moderation.reason || '', reviewNote: p.moderation.reviewNote || '' } } : {}),
       likes: Math.max(0, p.likes || 0), rx: p.rx || {}, comments: Math.max(0, p.comments || 0), shares: Math.max(0, p.shares || 0),
       myRx: liked.get(id) || '', liked: liked.has(id), saved: savedIds.has(id), createdAt: p.createdAt,
     };
@@ -156,20 +151,8 @@ async function hydrate(posts, uid) {
   return posts.map((p) => shape(p, true));
 }
 
-/* who may see a post: public ones, your own, and followers-only posts from people you follow. Private posts are for their author only. */
-async function visCond(uid) {
-  const f = await GistFollow.find({ follower: uid }).select('following').lean();
-  return { $or: [{ visibility: { $in: [null, 'public'] } }, { author: uid }, { visibility: 'followers', author: { $in: f.map((x) => x.following) } }] };
-}
-async function canSee(p, uid) {
-  if (!p || p.author === uid) return !!p;
-  if (p.hidden) return false;
-  if (!p.visibility || p.visibility === 'public') return true;
-  if (p.visibility === 'followers') return !!(await GistFollow.exists({ follower: uid, following: p.author }));
-  return false;
-}
 async function page(filter, req, uid, extra = {}, size = PAGE) {
-  const q = { ...filter }; if (String(q.author) !== uid) { q.hidden = { $ne: true }; q.$and = [...(q.$and || []), await visCond(uid)]; }   // posts with 3+ reports are hidden from everyone but their author
+  const q = { ...filter }; if (String(q.author) !== uid) q.hidden = { $ne: true };   // posts with 3+ reports are hidden from everyone but their author
   if (req.query.before && !isNaN(Date.parse(req.query.before))) q.createdAt = { $lt: new Date(req.query.before) };
   const rows = await GistPost.find(q).sort({ createdAt: -1 }).limit(size + 1).lean();
   const more = rows.length > size; if (more) rows.pop();
@@ -197,7 +180,7 @@ router.get('/feed', async (req, res, next) => {
     if (tab === 'trending' && !tag) {
       const off = Math.max(0, parseInt(req.query.offset, 10) || 0), since = new Date(Date.now() - 7 * 86400000);
       const rows = await GistPost.aggregate([
-        { $match: { ...filter, hidden: { $ne: true }, $and: [await visCond(uid)], createdAt: { $gte: since } } },
+        { $match: { ...filter, hidden: { $ne: true }, createdAt: { $gte: since } } },
         { $addFields: { score: { $add: ['$likes', { $multiply: ['$comments', 2] }, { $multiply: ['$shares', 3] }] } } },
         { $sort: { score: -1, createdAt: -1 } }, { $skip: off }, { $limit: PAGE + 1 }]);
       const more = rows.length > PAGE; if (more) rows.pop();
@@ -216,7 +199,7 @@ router.get('/search', limit('search', 60, 60000), async (req, res, next) => {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), tagQuery = q.replace(/^#/, '').toLowerCase();
     const userFilter = { $or: [{ acUsername: rx }, { displayName: rx }] };
     if (hidden.length) userFilter._id = { $nin: hidden };
-    const postFilter = { hidden: { $ne: true }, $and: [await visCond(uid)], $or: [{ $text: { $search: q } }, { tags: tagQuery }] };
+    const postFilter = { hidden: { $ne: true }, $or: [{ $text: { $search: q } }, { tags: tagQuery }] };
     if (hidden.length) postFilter.author = { $nin: hidden };
     const [people, rows] = await Promise.all([
       User.find(userFilter).select(USER_FIELDS).limit(8).lean(),
@@ -305,22 +288,17 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
       if (!isId(b.sharedFrom)) return bad(res, 'Invalid post.');
       let orig = await GistPost.findById(b.sharedFrom).lean();
       if (!orig) return bad(res, 'That post was deleted.', 404);
-      if (orig.allowReuse === false && orig.author !== uid) return bad(res, 'The creator turned off reposting for this post.', 403);
-      if (!(await canSee(orig, uid))) return bad(res, 'That post was deleted.', 404);
       if (orig.sharedFrom && isId(orig.sharedFrom)) { const root = await GistPost.findById(orig.sharedFrom).lean(); if (root) orig = root; }
       sharedFrom = String(orig._id); origAuthor = orig.author;
       await GistPost.updateOne({ _id: orig._id }, { $inc: { shares: 1 } });
     }
     if (!text && !images.length && !game && !sharedFrom && !poll && !video && !song) return bad(res, 'Write something or add a photo first.');
     const tags = parseTags(text), mentions = await parseMentions(text);
-    // post settings from the reel details step (who can watch, comments, reuse)
-    const st = b.settings && typeof b.settings === 'object' ? b.settings : {};
-    const settings = { visibility: ['public', 'followers', 'private'].includes(st.visibility) ? st.visibility : 'public', allowComments: st.allowComments !== false, allowReuse: st.allowReuse !== false };
-    // every video goes live as "under review" so an admin can check it; the originality check can hold it straight away. A flagged video is saved but hidden from everyone except its author.
+    // originality check: a flagged reel is saved but hidden from everyone except its author until an admin clears it
     let verdict = { flagged: false };
     if (video && video.kind === 'mux') verdict = await checkReel({ uid, text, fingerprint: String(b.fingerprint || ''), playbackId: video.mux && video.mux.playbackId });
-    const mod = verdict.flagged ? { hidden: true, moderation: { status: 'flagged', category: MOD.cat(verdict.category || 'other'), reason: verdict.reason, source: verdict.source, flaggedAt: new Date(), videoUrl: (video && video.url) || '' } } : video ? { moderation: { status: 'review', submittedAt: new Date(), videoUrl: video.url || '' } } : {};
-    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, song, sharedFrom, tags, mentions, fingerprint: video && /^[a-f0-9]{16,64}$/i.test(String(b.fingerprint || '')) ? String(b.fingerprint) : '', ...settings, ...mod });
+    const mod = verdict.flagged ? { hidden: true, moderation: { status: 'flagged', reason: verdict.reason, source: verdict.source, flaggedAt: new Date(), videoUrl: (video && video.url) || '' } } : {};
+    const post = await GistPost.create({ author: uid, text, images, game, poll, video: video || undefined, song, sharedFrom, tags, mentions, fingerprint: video && /^[a-f0-9]{16,64}$/i.test(String(b.fingerprint || '')) ? String(b.fingerprint) : '', ...mod });
     if (video && video.fileId) await reelstore.markUsed(video.fileId).catch(() => {});
     const pid = String(post._id), who = label(req.user);
     if (origAuthor) ping(req, origAuthor, `${who} reshared your gist`, { icon: '🔁', ref: sharedFrom, key: 'rs:' + uid + sharedFrom });
@@ -329,9 +307,8 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
       notify(req.app.get('io'), uid, { icon: '🚩', text: 'Your reel was held for review: ' + verdict.reason + ' Open it to appeal.', kind: 'gist', ref: pid }).catch(() => {});
       return res.json({ post: (await hydrate([post.toObject()], uid))[0], flagged: { reason: verdict.reason, source: verdict.source } });
     }
-    if (video) notify(req.app.get('io'), uid, { icon: '🕵️', text: 'Your video is posted and under review. If it passes you will not need to do anything. We will tell you if something is wrong.', kind: 'gist', ref: pid }).catch(() => {});
-    const io = req.app.get('io'); if (io && settings.visibility === 'public') io.of('/ac').emit('gist:new', { id: pid, author: uid });
-    res.json({ post: (await hydrate([post.toObject()], uid))[0], ...(video ? { reviewing: true } : {}) });
+    const io = req.app.get('io'); if (io) io.of('/ac').emit('gist:new', { id: pid, author: uid });
+    res.json({ post: (await hydrate([post.toObject()], uid))[0] });
   } catch (e) { next(e); }
 });
 
@@ -353,7 +330,7 @@ router.get('/posts/:id', async (req, res, next) => {
   try {
     if (!isId(req.params.id)) return bad(res, 'Invalid post.');
     const p = await GistPost.findById(req.params.id).lean();
-    if (!p || !(await canSee(p, me(req)))) return bad(res, 'This post was deleted.', 404);
+    if (!p) return bad(res, 'This post was deleted.', 404);
     res.json({ post: (await hydrate([p], me(req)))[0] });
   } catch (e) { next(e); }
 });
@@ -461,7 +438,7 @@ router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, 
     const { d, cc } = await createUpload(uid, origin);
     await ACVideo.create({ user: uid, uploadId: d.id, status: 'pending', cc });   // saved now, so it is never lost if the app closes mid-upload
     res.json({ uploadId: d.id, url: d.url });
-  } catch (e) { console.error('[mux upload]', e.status || '', e.message); bad(res, 'Could not start the upload. ' + muxWhy(e), 502); }
+  } catch (e) { console.error('[mux upload]', e.message); bad(res, 'Could not start the upload. Please try again.', 502); }
 });
 router.get('/reels/mux-status/:uploadId', async (req, res, next) => {
   try {
@@ -508,7 +485,7 @@ router.get('/reels', async (req, res, next) => {
     if (tab === 'following') out = await page(filter, req, uid, {}, REEL_PAGE);
     else {
       const off = Math.max(0, parseInt(req.query.offset, 10) || 0);
-      const rows = await GistPost.find({ ...filter, hidden: { $ne: true }, $and: [await visCond(uid)] }).sort({ createdAt: -1 }).limit(200).lean();
+      const rows = await GistPost.find({ ...filter, hidden: { $ne: true } }).sort({ createdAt: -1 }).limit(200).lean();
       rows.forEach((p) => { p._s = reelScore(p, follows); }); rows.sort((a, b) => b._s - a._s);
       const slice = rows.slice(off, off + REEL_PAGE);
       out = { posts: await hydrate(slice, uid), more: rows.length > off + REEL_PAGE, next: off + slice.length };
@@ -569,9 +546,8 @@ router.post('/posts/:id/comments', limit('comment', 20, 60000), async (req, res,
   try {
     const uid = me(req), id = req.params.id, text = String((req.body && req.body.text) || '').trim().slice(0, 300);
     if (!text) return bad(res, 'Write a comment first.');
-    const post = await GistPost.findById(isId(id) ? id : null).select('author allowComments hidden visibility').lean();
-    if (!post || !(await canSee(post, uid))) return bad(res, 'This post was deleted.', 404);
-    if (post.allowComments === false) return bad(res, 'The creator turned off comments on this post.', 403);
+    const post = await GistPost.findById(isId(id) ? id : null).select('author').lean();
+    if (!post) return bad(res, 'This post was deleted.', 404);
     let parent = '', parentAuthor = '';
     if (req.body.parent) {
       const pc = isId(req.body.parent) ? await GistComment.findById(req.body.parent).lean() : null;
@@ -618,7 +594,7 @@ router.delete('/comments/:id', async (req, res, next) => {
 });
 
 /* ---------- profiles & follows (the ONE profile used everywhere) ---------- */
-const PROFILE_FIELDS = USER_FIELDS + ' bio cover stats level bestStreak tournamentWins rating createdAt' + ' ' + CTX_FIELDS;
+const PROFILE_FIELDS = USER_FIELDS + ' bio cover stats level bestStreak tournamentWins rating createdAt';
 async function findUser(key, fields = USER_FIELDS) {
   key = String(key || '');
   return isId(key) ? User.findById(key).select(fields).lean() : User.findOne({ acUsername: normalizeUsername(key) }).select(fields).lean();
@@ -632,13 +608,12 @@ router.get('/profile/:key', async (req, res, next) => {
     // the blocked person cannot see the blocker, but the blocker can still open the profile (to unblock)
     if (id !== uid && await Friendship.exists({ requester: id, recipient: uid, status: 'blocked' })) return bad(res, 'Player not found.', 404);
     const iBlocked = id !== uid && !!(await Friendship.exists({ requester: uid, recipient: id, status: 'blocked' }));
-    const [followers, following, postsCount, isFollowing, rel, first, pinned, friendCount] = await Promise.all([
+    const [followers, following, postsCount, isFollowing, rel, first, pinned] = await Promise.all([
       GistFollow.countDocuments({ following: id }), GistFollow.countDocuments({ follower: id }), GistPost.countDocuments({ author: id }),
       GistFollow.exists({ follower: uid, following: id }),
       id === uid ? null : Friendship.findOne({ $or: [{ requester: uid, recipient: id }, { requester: id, recipient: uid }], status: { $ne: 'blocked' } }).lean(),
       page({ author: id, pinned: { $ne: true } }, req, uid),
-      GistPost.findOne({ author: id, pinned: true }).lean(),
-      Friendship.countDocuments({ status: 'accepted', $or: [{ requester: id }, { recipient: id }] })]);
+      GistPost.findOne({ author: id, pinned: true }).lean()]);
     const posts = first.posts;
     if (pinned) posts.unshift((await hydrate([pinned], uid))[0]);
     const s = u.stats || {};
@@ -648,8 +623,6 @@ router.get('/profile/:key', async (req, res, next) => {
       relation: id === uid ? 'me' : iBlocked ? 'blocked' : !rel ? 'none' : rel.status === 'accepted' ? 'friend' : (rel.requester === uid ? 'sent' : 'received'),
       online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id),
       game: { played, wins: s.wins || 0, losses: s.losses || 0, draws: s.draws || 0, winRate: played ? Math.round(((s.wins || 0) / played) * 100) : 0, level: u.level || 1, bestStreak: u.bestStreak || 0, tournamentWins: u.tournamentWins || 0, rating: u.rating || 1000, since: u.createdAt },
-      // Life milestones live on the Profile page itself, not as a separate app (see utils/acmilestones.js).
-      milestones: milestonesFor(await playerContext(id, { u, friends: friendCount, posts: postsCount, followers })),
       posts, more: first.more,
     });
   } catch (e) { next(e); }

@@ -6,8 +6,7 @@ async function notify(io, userId, { icon = '🔔', text, kind = 'info', ref = ''
   const doc = await ACUpdate.create({ user: userId ? String(userId) : null, icon, text: String(text).slice(0, 240), kind, ref: String(ref || ''), from: String(from || '') });
   const v = view(doc);
   if (io) { const nsp = io.of('/ac'); if (userId) nsp.to('u:' + userId).emit('update', v); else nsp.emit('update', v); }
-  const cat = /money|cash|pay|gift|transfer|bonus|invest|salary|wage|payout|refund/i.test(kind + ' ' + text) ? 'money' : /knock|visit|door/i.test(kind) ? 'knocks' : 'updates';
-  const payload = { cat, title: 'AllConnect update', body: v.text, icon: v.icon, target: v.ref ? (v.ref.startsWith('u:') ? { type: 'updates' } : { type: 'gist', ref: v.ref }) : { type: 'updates' } };
+  const payload = { title: 'AllConnect update', body: v.text, icon: v.icon, target: v.ref ? (v.ref.startsWith('u:') ? { type: 'updates' } : { type: 'gist', ref: v.ref }) : { type: 'updates' } };
   (userId ? push.sendToUser(userId, payload) : push.sendGlobal(payload)).catch((e) => console.error('[push notify]', e.message));
   return v;
 }

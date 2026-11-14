@@ -104,12 +104,6 @@ const GIST = {
   },
   listen(k, ev) { if (ev) { ev.preventDefault(); ev.stopPropagation() } const s = this.sg && this.sg[k]; if (!s) return; if (!window.SONGIFY || !SONGIFY.openSong) return toast('Songify is unavailable right now.'); SONGIFY.openSong(s) },
   gamecard(g) { if (!g) return ''; return `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(g.name)}</b><small>${g.code ? 'Room code <code>' + esc(g.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.play('${esc(g.code || '')}')">${g.code ? 'Join' : 'Play'}</button></div>` },
-  birthdaycard(b, id) {
-    if (!b) return '';
-    const T = [['#ff7a59', '#ffb347'], ['#7b5cff', '#ff5ca8'], ['#00b894', '#55efc4'], ['#0984e3', '#74b9ff'], ['#e17055', '#fdcb6e']][(b.theme || 0) % 5];
-    const bits = ['🎉', '🎈', '✨', '🎊', '🎁', '⭐', '🥳', '🎂'].map((e, i) => `<i class="gbc" style="left:${6 + i * 12}%;animation-delay:${(i * .37).toFixed(2)}s">${e}</i>`).join('');
-    return `<div class="gbday" style="--a:${T[0]};--b:${T[1]}">${bits}<div class="gbt">🎂</div><div class="gbn">Happy birthday, ${esc(b.name)}!</div><div class="gbw">${esc(b.wish)}</div><div class="gmb"><button onclick="GIST.react('${id}','fire')"><i class="fa-solid fa-fire"></i> Celebrate</button><button onclick="GIST.nav('post','${id}')"><i class="fa-solid fa-comment"></i> Send a wish</button></div></div>`;
-  },
   electioncard(e, id) {
     if (!e) return '';
     const head = e.kind === 'result' ? `ELECTED ${e.title.toUpperCase()} OF ${e.scope.toUpperCase()}` : e.kind === 'campaign' ? `RUNNING FOR ${e.title.toUpperCase()} OF ${e.scope.toUpperCase()}` : `OFFICIAL · ${e.title.toUpperCase()} OF ${e.scope.toUpperCase()}`;
@@ -132,7 +126,7 @@ const GIST = {
     if (p.shared) shared = p.shared.deleted ? `<div class="gshared gone">This post is no longer available.</div>` : `<div class="gshared"><button type="button" class="gshared-open" onclick="GIST.nav('post','${p.shared.id}')" aria-label="Open original post by ${esc(p.shared.author.displayName)}"><span class="gsh"><b>${esc(p.shared.author.displayName)}${this.vb(p.shared.author)}</b><i>${p.shared.author.username ? '@' + esc(p.shared.author.username) : ''} · ${this.ago(p.shared.createdAt)}</i></span><span>Open original post <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></span></button>${p.shared.text ? `<div class="gtx">${this.txt(p.shared.text)}</div>` : ''}${this.imgs(p.shared)}${this.vid(p.shared)}${this.matchcard(p.shared.match, p.shared.id)}${this.electioncard(p.shared.election, p.shared.id)}${this.gamecard(p.shared.game)}${this.songcard(p.shared.song)}</div>`;
     const em = p.myRx ? RXE[p.myRx] : '';
     // media comes right under the header, edge to edge — text moves below the action row, Instagram-style
-    const media = `${this.matchcard(p.match, p.id)}${this.birthdaycard(p.birthday, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}`;
+    const media = `${this.matchcard(p.match, p.id)}${this.electioncard(p.election, p.id)}${this.imgs(p)}${this.vid(p, o.detail)}${this.pollHtml(p)}${this.gamecard(p.game)}${this.songcard(p.song)}${shared}`;
     // caption: hashtags become small chips under the text; with media the text is a normal readable caption (4 lines, tap to expand);
     // a text-only post with a short first line gets that line as its title.
     const raw = String(p.text || '').trim(), TAG = /#[\p{L}\p{N}_]{2,30}/gu;
@@ -160,11 +154,9 @@ const GIST = {
   /* shown only to the author of a reel the originality check held back */
   modBanner(p) {
     const m = p.moderation; if (!m || !p.mine) return '';
-    const learn = `<button onclick="RL.learnMore('${p.id}')">Learn more</button>`;
-    if (m.status === 'review') return `<div class="gmod rev"><b>Under review</b><span>Your video is live while the team checks it. We will tell you if anything is wrong.</span></div>`;
-    if (m.status === 'flagged') return `<div class="gmod"><b>Flagged · only you can see this</b><span>${esc((m.learn && m.learn.title) || m.reason || 'This video may break the rules.')}</span>${learn}</div>`;
-    if (m.status === 'appealed') return `<div class="gmod"><b>Review requested</b><span>An admin will watch the video and decide. Only you can see it until then.</span>${learn}</div>`;
-    if (m.status === 'rejected') return `<div class="gmod"><b>Hidden after review</b><span>${esc(m.reviewNote || 'This video stays hidden.')}</span>${learn}</div>`;
+    if (m.status === 'flagged') return `<div class="gmod"><b>Held for review</b><span>${esc(m.reason || 'This video may not be original.')}</span><button onclick="RL.appealSheet('${p.id}',${esc(JSON.stringify(m.reason || ''))})">Appeal</button></div>`;
+    if (m.status === 'appealed') return `<div class="gmod"><b>Appeal under review</b><span>An admin will watch the video and decide.</span></div>`;
+    if (m.status === 'rejected') return `<div class="gmod"><b>Hidden after review</b><span>${esc(m.reviewNote || 'This reel stays hidden.')}</span></div>`;
     return ''
   },
   list(arr) { return arr.map(p => this.card(p)).join('') },
@@ -178,7 +170,7 @@ const GIST = {
     const kinds = home ? `<div class="gkinds" id="gkinds">${this.kindsHtml()}</div>` : '';
     const composer = home ? `<div class="gtease"><button class="gme" onclick="GIST.nav('profile','me')" aria-label="My profile">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}</button><button class="gwhat" onclick="GIST.nav('compose')">Share a moment, ${esc((u.displayName || 'player').split(' ')[0])}…</button><button class="gphoto" onclick="GIST.nav('compose','photos')" aria-label="Add photo"><i class="fa-solid fa-image"></i></button><button class="gphoto" onclick="GIST.nav('compose','video')" aria-label="Post a reel"><i class="fa-solid fa-video"></i></button></div>` : '';
     const discover = disc ? `<div class="gdiscover"><form role="search" onsubmit="event.preventDefault();GIST.searchOpen($('gsearch').value)"><label class="sr-only" for="gsearch">Search people, posts, or hashtags</label><input id="gsearch" type="search" maxlength="60" placeholder="Search people, posts, #tags" autocomplete="off"><button type="submit" aria-label="Search P-Gist"><i class="fa-solid fa-magnifying-glass"></i></button></form><button class="gsaved-link" onclick="GIST.savedOpen()" aria-label="Saved posts"><i class="fa-regular fa-bookmark"></i><span>Saved</span></button></div>` : '';
-    PH.shell(home ? '' : this.tagF ? '#' + esc(this.tagF) : 'Discover', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>${composer}${kinds}${discover}${disc ? NOTICE.html() : ''}${disc ? this.catChips() : ''}
+    PH.shell(home ? '' : this.tagF ? '#' + esc(this.tagF) : 'Discover', this.tagF ? 'GIST.untag()' : 'GIST.back()', `<div class="abody" id="ab"><div id="gnew"></div>${composer}${kinds}${discover}${disc ? this.catChips() : ''}
       <div id="gtrend">${disc ? this.trendHtml() : ''}</div><div id="gpeople">${disc ? this.discoverMore() : ''}</div>
       <div id="gfeed">${F.ok ? this.feedHtml(F) : this.skeleton()}</div></div>`, sub, segH);
     this.loadTrend(); this.showPill(); this.loadFeed(true); if (F.ok) this.watchMore()
@@ -413,12 +405,11 @@ const GIST = {
     const grid = [['Followers', n(S.followers), S.newFollowers ? `+${n(S.newFollowers)} this month` : ''], ['Gists', n(S.posts), S.posts30 ? `${n(S.posts30)} this month` : ''], ['Reactions', n(S.reactions), S.reactions30 ? `+${n(S.reactions30)} this month` : ''], ['Comments', n(S.comments), S.comments30 ? `+${n(S.comments30)} this month` : ''], ['Shares', n(S.shares), ''], ['Avg reactions', n(S.avgReactions), 'per gist']];
     $('ab').innerHTML = `<div class="gm">
       <div class="gmst" style="--c:${ST[1]}"><span class="gmsi"><span class="fa-solid fa-${ST[0]}"></span></span><div><h3>${ST[2]}</h3><p>${esc(ST[3])}</p></div></div>${action}
-      <div class="gmrw acr"><button class="gmrwh" onclick="GIST.verify()"><span class="gmrwi">✔️</span><span class="gmrwt"><b>Verified badge</b><small>Get the blue tick next to your name</small></span><span class="gmrwb">Open</span></button></div>
       <h4>Requirements <small>${d.metCount}/${d.total}</small></h4><div class="gmcard">${crit}</div>
       <h4>Milestones</h4>${ms}
       <h4>Your stats</h4><div class="gmgrid">${grid.map(x => `<div><b>${x[1]}</b><span>${x[0]}</span>${x[2] ? `<small>${x[2]}</small>` : ''}</div>`).join('')}</div>
       ${S.top ? `<div class="gmtop"><small>Top gist</small><p>${esc(S.top.text) || 'Photo or poll gist'}</p><span><span class="fa-solid fa-bolt"></span> ${n(S.top.likes)} &nbsp; <span class="fa-solid fa-comment"></span> ${n(S.top.comments)}</span></div>` : ''}
-      <h4>Creator Academy &amp; tools</h4><div class="gmrw acr" id="gmrw"><button class="gmrwh" onclick="GIST.nav('academy')"><span class="gmrwi">🎓</span><span class="gmrwt"><b>Creator Academy</b><small>Lessons, caption helper, posting checklist and more</small></span><span class="gmrwb">Open</span></button></div>
+      <h4>Rewards &amp; payouts</h4><div class="gmrw" id="gmrw"><button class="gmrwh" onclick="GIST.rewards()"><span class="gmrwi">💰</span><span class="gmrwt"><b>Rewards and Payouts</b><small>Confirm your details so you are ready when we launch</small></span><span class="gmrwb">E dey come soon</span></button><div id="gmrwf"></div></div>
       <h4>Earnings</h4><div class="gmpay"><span class="fa-solid fa-wallet"></span><div><b>Real-money payouts</b><p>${esc(d.payouts.text)}</p></div></div>
     </div>`;
   },
@@ -453,36 +444,6 @@ const GIST = {
       const box = $('gmrwf'); if (box) box.innerHTML = ''; this.rewards();
     } catch (e) { toast(e.message || 'Could not save'); if (btn) btn.disabled = false }
   },
-  /* ---------- Verified badge: ask for it, then subscribe monthly / yearly if the team makes it a paid badge ---------- */
-  verify() {
-    this.set('verify'); PH.shell('Verified badge', 'GIST.manage()', `<div class="abody" id="ab"><p class="empty">Loading…</p></div>`);
-    NET.api('/api/ac/verify/status').then(d => { this.vf = d; this.vplan = this.vplan || 'monthly'; if (this.cur && this.cur.fn === 'verify') this.drawVerify() }).catch(e => { const ab = $('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message)}</p>` })
-  },
-  drawVerify() {
-    const d = this.vf, n = x => '₦' + Number(x || 0).toLocaleString('en-NG'), pl = this.vplan || 'monthly', date = x => x ? new Date(x).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-    const ST = {
-      '': ['certificate', '#64748b', 'Not verified', 'Ask for the blue tick. The team reviews every request.'],
-      pending: ['hourglass-half', '#f59e0b', 'Under review', 'We got your request. The team will review it soon.'],
-      approved: ['circle-check', '#22b573', 'Approved!', 'Subscribe below to switch your blue tick on.'],
-      active: ['circle-check', '#1d9bf0', 'You are verified', d.mode === 'permanent' ? 'Your badge is permanent.' : `Active until ${date(d.expiresAt)} (${d.daysLeft} day${d.daysLeft === 1 ? '' : 's'} left).`],
-      rejected: ['circle-xmark', '#e5484d', 'Not approved this time', d.note || 'You can ask again.'],
-      expired: ['clock', '#e5484d', 'Subscription ended', 'Renew to get your blue tick back.']
-    }[d.status] || ['certificate', '#64748b', 'Not verified', ''];
-    const plans = ['monthly', 'yearly'].map(k => `<button class="vplan ${pl === k ? 'on' : ''}" onclick="GIST.vplan='${k}';GIST.drawVerify()"><b>${k === 'monthly' ? 'Monthly' : 'Yearly'}</b><span>${n(d.prices[k])}</span><small>${k === 'monthly' ? 'per 30 days' : 'per year'}</small></button>`).join('');
-    let action = '';
-    if (d.canRequest) action = `<h4>Choose a plan</h4><div class="vplans">${plans}</div><textarea class="sinput" id="vrs" maxlength="300" rows="3" placeholder="Why should you be verified? (optional)"></textarea><button class="btn p" onclick="GIST.askVerify(this)">Request the badge</button><p class="gmnote">Sending a request is free. You only pay if the team approves it as a paid badge. Some accounts are given the badge for free.</p>`;
-    else if (d.canSubscribe) action = `<h4>${d.status === 'active' ? 'Renew early' : 'Subscribe'}</h4><div class="vplans">${plans}</div><button class="btn p" onclick="GIST.subVerify(this)">Pay ${n(d.prices[pl])} from wallet</button><p class="gmnote">Wallet balance ${n(d.cash)}. The tick turns off when the time runs out unless you renew.</p>`;
-    else if (!d.enabled && !d.verified && d.status !== 'pending') action = '<p class="gmnote">Verification requests are closed right now.</p>';
-    $('ab').innerHTML = `<div class="gm"><div class="gmst" style="--c:${ST[1]}"><span class="gmsi"><span class="fa-solid fa-${ST[0]}"></span></span><div><h3>${ST[2]}</h3><p>${esc(ST[3])}</p></div></div>${action}</div>`
-  },
-  async askVerify(btn) {
-    if (btn) btn.disabled = true;
-    try { this.vf = await NET.api('/api/ac/verify/request', { method: 'POST', body: { plan: this.vplan || 'monthly', reason: ($('vrs') || {}).value || '' } }); toast('Request sent'); this.drawVerify() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
-  },
-  async subVerify(btn) {
-    if (btn) btn.disabled = true;
-    try { this.vf = await NET.api('/api/ac/verify/subscribe', { method: 'POST', body: { plan: this.vplan || 'monthly' } }); toast('You are verified ✔'); this.drawVerify() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
-  },
   async applyCreator(btn) {
     if (btn) btn.disabled = true;
     try { this.cr = await NET.api('/api/ac/creator/apply', { method: 'POST' }); toast('Application sent'); this.drawManage() } catch (e) { toast(e.message); if (btn) btn.disabled = false }
@@ -503,30 +464,11 @@ const GIST = {
     const btns = r.isMe ? `<div class="gpb"><button class="btn p" onclick="PH.editProfile('GIST.openProfile(\\'me\\')')"><i class="fa-solid fa-pen"></i> Edit profile</button><button class="btn s" onclick="GIST.nav('compose')"><i class="fa-solid fa-plus"></i> New gist</button></div>`
       : r.relation === 'blocked' ? `<div class="gpb"><button class="btn p" id="gmb2" onclick="GIST.unblock()"><i class="fa-solid fa-lock-open"></i> Unblock</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`
       : `<div class="gpb"><button class="btn ${r.isFollowing ? 's' : 'p'}" id="gfb" onclick="GIST.follow()">${r.isFollowing ? 'Following ✓' : 'Follow'}</button><button class="btn s" id="gmb2" onclick="GIST.message()"><i class="fa-solid fa-comment"></i> Message</button><button class="btn s gdots2" onclick="GIST.userMenu()" aria-label="More">⋯</button></div>`;
-    const avSrc = (/src="([^"]+)"/.exec(PH.av({ avatar: u.avatar, displayName: '', username: '' })) || [])[1] || '';
-    $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')" data-ph="${esc(u.cover)}" onclick="GIST.viewPhoto(this.dataset.ph)"` : ''}></div><div class="gavw" data-ph="${esc(avSrc)}" onclick="GIST.viewPhoto(this.dataset.ph)">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
+    $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')"` : ''}></div><div class="gavw">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
-      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div>
-      ${this.milestonesHtml(r.milestones)}</div>
+      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
       <div class="gprofile-tabs" role="tablist" aria-label="Profile posts">${[['grid','Grid'],['posts','Posts'],['reels','Reels']].map(([m,n]) => `<button role="tab" aria-controls="gprofile-content" tabindex="${(this.pf.mode || 'grid') === m ? '0' : '-1'}" aria-selected="${(this.pf.mode || 'grid') === m}" class="${(this.pf.mode || 'grid') === m ? 'on' : ''}" onclick="GIST.profileMode('${m}')">${n}</button>`).join('')}</div><div id="gprofile-content" role="tabpanel">${this.profileContent(posts, more)}</div>`
-  },
-  /* full-screen look at a profile photo or cover; tap anywhere to close */
-  viewPhoto(url) {
-    if (!url) return toast('No photo to show yet');
-    const o = document.createElement('div'); o.className = 'gview'; o.innerHTML = `<button class="gvx" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><img src="${esc(url)}" alt="">`; o.onclick = () => o.remove(); (PH.$a() || document.body).appendChild(o)
-  },
-  // Life milestones: part of the Profile page itself (not a separate app) — see utils/acmilestones.js.
-  milestonesHtml(m) {
-    if (!m || !m.list) return '';
-    const open = !!this.acmOpen, more = m.list.length > 3;
-    return `<div class="acms${open ? ' open' : ''}" id="acms"><div class="ggh"><i class="fa-solid fa-trophy"></i> Achievements<small>${m.done}/${m.total}</small></div><div class="acmg">${m.list.map((x, i) => `<div class="acmi${x.done ? ' on' : ''}${i > 2 ? ' acx' : ''}" title="${esc(x.desc)}"><span class="acmic">${x.done ? x.emoji : '<i class="fa-solid fa-lock"></i>'}</span><b>${esc(x.title)}</b></div>`).join('')}</div>${more ? `<button type="button" class="acmmore" onclick="GIST.toggleAchievements(this)">${open ? 'See less' : `View more (${m.list.length - 3})`}</button>` : ''}</div>`;
-  },
-  // show the first 3 achievements; "View more" reveals the rest, "See less" folds them again
-  toggleAchievements(btn) {
-    const box = document.getElementById('acms'); if (!box) return;
-    this.acmOpen = !box.classList.contains('open'); box.classList.toggle('open', this.acmOpen);
-    const hidden = box.querySelectorAll('.acx').length; btn.textContent = this.acmOpen ? 'See less' : `View more (${hidden})`;
   },
   profileMode(mode) { if (!['grid','posts','reels'].includes(mode) || !this.pf) return; this.pf.mode = mode; this.drawProfile() },
   profileContent(posts, more) {
@@ -647,12 +589,10 @@ const GIST = {
     if (C.sharedId && !C.shared) this.api('/posts/' + encodeURIComponent(C.sharedId)).then(r => { if (this.C === C && r.post) { C.shared = r.post; this.put([r.post]); this.attDraw() } }).catch(() => {});
     if (mode === 'share' && arg) { C.shared = this.cache.get(arg) || null }
     if (mode === 'image' && arg && !C.images.some(i => i.url === arg.url)) C.images.push(arg);
-    if (!C.set) C.set = { visibility: 'public', allowComments: true, allowReuse: true };
-    const who = `<span class="gcwho2">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></span>`;
-    PH.shell(C.shared ? 'Share post' : 'New post', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp">${C.restoredDraft ? '<p class="gdraft-note" role="status">Draft restored from this device.</p>' : ''}
-      <div class="gcrow"><div class="gcin2"><textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'Write a caption… Use #hashtags and @mentions'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div></div><div class="gcthumb" id="gc_thumb"></div></div>
-      <div id="gc_att"></div><div class="gtools" id="gc_tools"><button data-k="photos" onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button data-k="poll" onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button data-k="video" onclick="RL.pick()"><i class="fa-solid fa-video"></i> Video</button><button data-k="game" onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
-      <div class="aerr" id="gc_e" role="alert" aria-live="polite"></div><button class="btn p" id="gc_b" onclick="GIST.submit()" aria-live="polite">${C.shared ? 'Share' : 'Post'}</button></div></div>`, '', who);
+    PH.shell(C.shared ? 'Share post' : 'New post', 'GIST.cancelCompose()', `<div class="abody" id="ab"><div class="gcomp">${C.restoredDraft ? '<p class="gdraft-note" role="status">Draft restored from this device.</p>' : ''}<div class="gcwho">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username })}<b>${esc(u.displayName || 'You')}</b></div>
+      <textarea id="gc_t" maxlength="500" placeholder="${C.shared ? 'Add a comment…' : 'Write a caption… Use #hashtags and @mentions'}" oninput="GIST.cc()">${esc(C.text)}</textarea><div class="gcount" id="gcc"></div>
+      <div id="gc_att"></div><div class="gtools"><button onclick="GIST.pickOpen()"><i class="fa-solid fa-image"></i> Photos</button><button onclick="GIST.pollSheet()"><i class="fa-solid fa-chart-simple"></i> Poll</button><button onclick="RL.pick()"><i class="fa-solid fa-video"></i> Video</button><button onclick="GIST.gameSheet()"><i class="fa-solid fa-gamepad"></i> Game</button></div>
+      <div class="aerr" id="gc_e" role="alert" aria-live="polite"></div><button class="btn p" id="gc_b" onclick="GIST.submit()" aria-live="polite">${C.shared ? 'Share' : 'Post'}</button></div></div>`);
     this.attDraw(); this.cc(); if (mode === 'photos') this.pickOpen(); else if (mode === 'video') RL.pick(); else if (!('ontouchstart' in window)) $('gc_t').focus()
   },
   cancelCompose() { const t = $('gc_t'); if (this.C) this.C.text = t ? t.value : ''; this.saveDraft(); if (this.C && this.C.video && !this.C.text) { RL.rm() } const C = this.C; if (C && (C.text || C.images.length || C.game || C.song || C.poll || C.video) && !C.shared) { PH.sheet(`<h3>Discard this gist?</h3><button class="fopt red out" onclick="PH.closeSheet();GIST.clearDraft();GIST.C=null;GIST.back()"><span>Discard</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Keep writing</span></button>`) } else { this.C = null; this.clearDraft(); this.back() } },
@@ -660,28 +600,11 @@ const GIST = {
   btn() { const C = this.C, b = $('gc_b'); if (!b) return; b.disabled = C.busy || !(C.text.trim() || C.images.length || C.game || C.shared || C.poll || C.song || C.video); b.textContent = C.shared ? 'Share' : 'Post' },
   attDraw() {
     const C = this.C, a = $('gc_att'); if (!a) return;
-    const has = !!(C.video || C.images.length), th = $('gc_thumb'), row = document.querySelector('.gcrow');
-    if (th) th.innerHTML = RL.thumbHtml(C); if (row) row.classList.toggle('media', has);
-    a.innerHTML = RL.editHtml(C) + (C.images.length > 1 ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button class="ed" onclick="GIST.editImg(${i})" aria-label="Edit photo"><i class="fa-solid fa-pen"></i></button><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
+    a.innerHTML = RL.prevHtml(C) + (C.images.length ? `<div class="gprev">${C.images.map((im, i) => `<div><img src="${esc(im.thumb || im.url)}" alt=""><button onclick="GIST.rmImg(${i})" aria-label="Remove"><i class="fa-solid fa-xmark"></i></button></div>`).join('')}</div>` : '') +
       (C.poll ? `<div class="gpollp"><b><i class="fa-solid fa-chart-simple"></i> Poll · ${C.poll.hours >= 24 ? C.poll.hours / 24 + 'd' : C.poll.hours + 'h'}</b>${C.poll.options.map(o => `<span>${esc(o)}</span>`).join('')}<button onclick="GIST.C.poll=null;GIST.attDraw()" aria-label="Remove poll"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.game ? `<div class="ggame"><span class="gg"><i class="fa-solid fa-gamepad"></i></span><div><b>${esc(C.game.name)}</b><small>${C.game.code ? 'Room code <code>' + esc(C.game.code) + '</code>' : 'Open in GameHub'}</small></div><button onclick="GIST.C.game=null;GIST.attDraw()"><i class="fa-solid fa-xmark"></i></button></div>` : '') +
       (C.song ? this.songcard(C.song, true) : '') +
-      (C.shared ? `<div class="gshared"><div class="gsh"><b>${esc(C.shared.author.displayName)}</b></div>${C.shared.text ? `<div class="gtx">${this.txt(C.shared.text.slice(0, 200))}</div>` : ''}${this.imgs(C.shared)}</div>` : RL.setHtml(C));
-    /* a post cannot hold a video and photos at once, so the other choice goes away */
-    const tb = $('gc_tools'); if (tb) { const q = k => tb.querySelector('[data-k="' + k + '"]'); q('photos').style.display = C.video ? 'none' : ''; q('video').style.display = (C.video || C.images.length) ? 'none' : '' }
-    this.btn(); this.saveDraft()
-  },
-  /* tap a photo in the strip to edit it again (crop, rotate, filters...) */
-  /* re-encode an edited picture to a normal JPEG (max 1600px) so it always fits the upload limits */
-  shrinkImg(data, max = 1600, q = .86) { return new Promise(res => { const im = new Image(); im.onload = () => { try { const k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.width * k)); c.height = Math.max(1, Math.round(im.height * k)); const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', q)) } catch (e) { res(data) } }; im.onerror = () => res(data); im.src = data }) },
-  async editImg(i) {
-    const im = this.C.images[i]; if (!im) return;
-    try {
-      const blob = await (await fetch(im.url, { credentials: 'same-origin' })).blob(), data = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob) });
-      const out0 = await RL.editPhoto(data, 'Edit photo', 'Step 1 of 2'); if (!out0 || out0 === data) return; toast('Saving…'); const out = await this.shrinkImg(out0);
-      const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: out } }); if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo);
-      this.C.images[i] = { src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }; this.pk.mine = null; this.attDraw()
-    } catch (e) { toast(e && e.status ? e.message : 'This photo cannot be edited. Remove it and add it again from your device.') }
+      (C.shared ? `<div class="gshared"><div class="gsh"><b>${esc(C.shared.author.displayName)}</b></div>${C.shared.text ? `<div class="gtx">${this.txt(C.shared.text.slice(0, 200))}</div>` : ''}${this.imgs(C.shared)}</div>` : ''); this.btn(); this.saveDraft()
   },
   rmImg(i) { this.C.images.splice(i, 1); this.attDraw() },
   pollSheet() {
@@ -695,7 +618,7 @@ const GIST = {
   submit() {
     const C = this.C; if (C.busy) return; if (C.video) return RL.publish(); C.text = ($('gc_t').value || ''); const u = NET.user || {}, orig = C.shared && C.shared.id;
     const body = { text: C.text, images: C.images.map(i => i.src === 'mine' ? { src: 'mine', id: i.id } : { src: 'platform', url: i.url }) };
-    if (C.game) body.game = { key: C.game.key, code: C.game.code }; if (C.shared) body.sharedFrom = C.shared.id; if (C.poll) body.poll = C.poll; if (C.song) body.song = C.song; if (!C.shared && C.set) body.settings = C.set;
+    if (C.game) body.game = { key: C.game.key, code: C.game.code }; if (C.shared) body.sharedFrom = C.shared.id; if (C.poll) body.poll = C.poll; if (C.song) body.song = C.song;
     const tmp = { id: 'tmp' + Date.now(), author: { id: u.id, displayName: u.displayName || 'You', username: u.username || '', avatar: u.avatar || '', verified: !!u.verified }, mine: true, text: C.text.trim(), images: C.images.map(i => ({ url: i.url, thumb: i.thumb || i.url })), game: C.game ? { key: C.game.key, name: C.game.name, code: C.game.code } : null, song: C.song || null, match: null, election: null, tags: [], pinned: false, edited: false, likes: 0, rx: {}, comments: 0, shares: 0, myRx: '', liked: false, createdAt: new Date().toISOString(), shared: C.shared || undefined,
       poll: C.poll ? { options: C.poll.options.map(t => ({ text: t, votes: 0 })), total: 0, endsAt: new Date(Date.now() + C.poll.hours * 3600000).toISOString(), ended: false, myVote: -1 } : undefined };
     this.C = null; this.stack = []; this.tab = 'latest'; this.tagF = ''; this.cache.set(tmp.id, tmp); ['latest', 'following', 'me'].forEach(k => { if (this.F[k] && this.F[k].ok) this.F[k].p.unshift(tmp) }); this.F.latest = this.F.latest || { p: [tmp], more: false, ok: true, next: 0 }; this.F.latest.ok = true; if (!this.F.latest.p.includes(tmp)) this.F.latest.p.unshift(tmp);
@@ -721,14 +644,10 @@ const GIST = {
   },
   pickToggle(tab, i) { const L = tab === 'mine' ? this.pk.mine : this.pk.plat, p = L[i], C = this.C; const at = C.images.findIndex(x => (x.id && x.id === p.id) || (x.url && x.url === p.url)); if (at >= 0) C.images.splice(at, 1); else { if (C.images.length >= 10) return toast('You can add up to 10 photos'); C.images.push(tab === 'mine' ? { src: 'mine', id: p.id, url: p.url, thumb: p.thumb || p.url } : { src: 'platform', url: p.url, thumb: p.thumb || p.url }) } this.pickDraw() },
   async pickFiles(inp) {
-    const files = [...inp.files].filter(f => f.type.startsWith('image/')); inp.value = ''; const k = this.pk; if (!files.length) return;
-    PH.closeSheet(); let n = 0;
-    for (const f of files) { if (this.C.images.length >= 10) { toast('You can add up to 10 photos'); break } n++;
-      try {
-        const raw = await PH.resize(f, 1600, .88), data = await RL.editPhoto(raw, 'Edit photo', files.length > 1 ? 'Photo ' + n + ' of ' + files.length : 'Step 1 of 2'); if (data === null) continue;
-        toast('Uploading…'); const r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: await this.shrinkImg(data) } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }); this.attDraw()
-      } catch (e) { this.err(e); break } }
-    this.attDraw()
+    const files = [...inp.files]; inp.value = ''; const k = this.pk; if (!files.length) return; k.busy = true; this.pickDraw();
+    for (const f of files) { if (this.C.images.length >= 10) { toast('You can add up to 10 photos'); break } if (!f.type.startsWith('image/')) continue;
+      try { const data = await PH.resize(f, 1600, .88), r = await NET.api('/api/ac/photos', { method: 'POST', body: { image: data } }); k.mine = null; if (window.CAM && CAM.photos) CAM.photos.unshift(r.photo); this.C.images.push({ src: 'mine', id: r.photo.id, url: r.photo.url, thumb: r.photo.thumb || r.photo.url }) } catch (e) { this.err(e); break } }
+    k.busy = false; this.pickDraw(); this.attDraw()
   },
   /* ---------- game link picker ---------- */
   async gameSheet() { if (!this.games) { try { this.games = (await this.api('/games')).games } catch (e) { return this.err(e) } } this.gsel = this.C.game ? this.C.game.key : null; PH.sheet(`<h3>Attach a game</h3><p class="hint2">Pick a game. Add a room code if you already created a room so friends can join in one tap.</p><div class="pre" id="gg_list"></div><input class="sinput" id="gg_code" placeholder="Room code or invite link (optional)" autocapitalize="characters" autocomplete="off" value="${esc(this.C.game && this.C.game.code || '')}"><div class="aerr" id="gg_e"></div><button class="btn p" onclick="GIST.gameAttach()">Attach</button>`); this.gameDraw() },

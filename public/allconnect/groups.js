@@ -142,7 +142,7 @@ Object.assign(PH, {
     const inChat = (this.view === 'group' || this.view === 'groupinfo') && this.gid === (p.group || p.id);
     if (ev === 'gmsg') {
       if (inChat && this.g) { this.gpush(p); if (this.view === 'group') NET.api('/api/ac/groups/' + this.gid).catch(() => {}); return }
-      if (p.kind === 'text' && p.from !== NET.user.id) { this.badges.messages++; this.banner({ icon: '👥', app: 'Groups', title: 'New group message', text: String(p.text || 'Open the group to read it').slice(0, 140), tap: () => this.bannerOpen('group', p.group || p.id) }); this.drawBadges() }
+      if (p.kind === 'text' && p.from !== NET.user.id) { this.badges.messages++; toast('👥 New group message'); this.drawBadges() }
     } else if (ev === 'group') {
       if (p.type === 'removed' && inChat) { toast('You are no longer in that group'); return this.messages('chats') }
       if (inChat && p.type !== 'new') this.gRefresh()

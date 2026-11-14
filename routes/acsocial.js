@@ -49,7 +49,7 @@ async function friendOr(req, res) {
 async function peerOr(req, res) {
   const me = uid(req), other = String(req.params.id);
   if (!isId(other) || other === me) { bad(res, 400, 'Invalid player.'); return null; }
-  const target = await User.findById(other).select('displayName avatar acUsername ac.prefs');
+  const target = await User.findById(other).select('displayName avatar acUsername');
   if (!target) { bad(res, 404, 'Player not found.'); return null; }
   if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
   return { me, other, target, friend: !!(await areFriends(me, other)) };
@@ -57,7 +57,7 @@ async function peerOr(req, res) {
 async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, voice, fwd, propertyId = '' }) {
   const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(voice ? { voice } : {}), ...(fwd ? { fwd: true } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
-  if (kind === 'text') push.sendToUser(to, { cat: 'messages', title: `New message from ${req.user.displayName || 'a player'}`, body: (voice ? CH.VOICE_LABEL : image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
+  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (voice ? CH.VOICE_LABEL : image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
 }
 
@@ -206,15 +206,13 @@ router.get('/messages/:id', async (req, res, next) => {
     const rows = await ACMessage.find({ $or: [{ from: f.me, to: f.other }, { from: f.other, to: f.me }], hidden: { $ne: f.me } }).sort({ at: -1 }).limit(60).lean();
     await ACMessage.updateMany({ from: f.other, to: f.me, read: false }, { $set: { read: true } });
     emitUser(io(req), f.other, 'seen', { by: f.me });
-    const noRead = f.target.ac && f.target.ac.prefs && f.target.ac.prefs.readReceipts === false;   // they turned read receipts off: you never see their blue ticks
-    res.json({ messages: rows.reverse().map((m) => { const v = mv(m); if (noRead && m.from === f.me) v.read = false; return v; }), peer: pub(f.target), isFriend: f.friend });
+    res.json({ messages: rows.reverse().map(mv), peer: pub(f.target), isFriend: f.friend });
   } catch (e) { next(e); }
 });
 router.post('/messages/:id', async (req, res, next) => {
   try {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
     const f = await peerOr(req, res); if (!f) return;
-    if (!f.friend && f.target.ac && f.target.ac.prefs && f.target.ac.prefs.whoCanMessage === 'friends') return bad(res, 403, `${label(f.target)} only takes messages from friends. Send a friend request first.`);
     const b = req.body || {};
     let text = profanity.clean(String(b.text || '').trim().slice(0, 300)), image = null, voice = null, fwd = false;
     if (b.forward) {   // forward: the server copies the original so it cannot be faked

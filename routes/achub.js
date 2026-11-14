@@ -333,21 +333,7 @@ router.post('/vote', async (req, res, next) => {
 
 /* ---------- invite a friend (co-op onboarding) ---------- */
 router.get('/invite', async (req, res, next) => {
-  try {
-    const me = uid(req), u = await ensureAC(me), hub = u.ac.hub || {}, now = Date.now();
-    const rows = await User.find({ 'ac.hub.invitedBy': me }).sort({ 'ac.hub.invitedAt': -1 }).limit(50).select('displayName acUsername avatar ac.hub.invitedAt ac.hub.commissionGiven createdAt').lean();
-    const friends = rows.map((x) => {
-      const at = (x.ac && x.ac.hub && x.ac.hub.invitedAt) || x.createdAt, left = Math.max(0, Math.ceil((new Date(at).getTime() + H.INVITE.commissionDays * 86400e3 - now) / 86400e3));
-      return { id: String(x._id), name: x.acUsername ? '@' + x.acUsername : x.displayName, avatar: x.avatar || '', joinedAt: at, online: presence.isOnline(x._id), commission: (x.ac && x.ac.hub && x.ac.hub.commissionGiven) || 0, daysLeft: left };
-    });
-    const bonus = hub.inviteBonus || (hub.invites || 0) * H.INVITE.inviter, commission = hub.inviteCommission || 0;
-    const ago = (d) => now - new Date(d).getTime();
-    res.json({
-      code: u.acUsername || String(u._id), invites: hub.invites || 0, ...H.INVITE,
-      stats: { friends: friends.length, active: friends.filter((f) => f.daysLeft > 0).length, online: friends.filter((f) => f.online).length, bonus, commission, total: bonus + commission, thisWeek: friends.filter((f) => ago(f.joinedAt) < 7 * 86400e3).length },
-      friends
-    });
-  } catch (e) { next(e); }
+  try { const u = await ensureAC(uid(req)); res.json({ code: u.acUsername || String(u._id), invites: (u.ac.hub && u.ac.hub.invites) || 0, ...H.INVITE }); } catch (e) { next(e); }
 });
 router.post('/invite/redeem', async (req, res, next) => {
   try {
@@ -359,9 +345,9 @@ router.post('/invite/redeem', async (req, res, next) => {
     const inviter = mongoose.isValidObjectId(code) ? await User.findById(code) : await User.findOne({ acUsername: code });
     if (!inviter) return bad(res, 404, 'No player has that invite code.');
     if (String(inviter._id) === me) return bad(res, 400, "You can't invite yourself.");
-    const claim = await User.updateOne({ _id: me, 'ac.hub.invitedBy': '' }, { $set: { 'ac.hub.invitedBy': String(inviter._id), 'ac.hub.invitedAt': new Date(now) }, $inc: { 'ac.cash': H.INVITE.invitee } });
+    const claim = await User.updateOne({ _id: me, 'ac.hub.invitedBy': '' }, { $set: { 'ac.hub.invitedBy': String(inviter._id) }, $inc: { 'ac.cash': H.INVITE.invitee } });
     if (!claim.modifiedCount) return bad(res, 409, 'You already used an invite.');
-    await User.updateOne({ _id: inviter._id }, { $inc: { 'ac.cash': H.INVITE.inviter, 'ac.hub.invites': 1, 'ac.hub.inviteBonus': H.INVITE.inviter } });
+    await User.updateOne({ _id: inviter._id }, { $inc: { 'ac.cash': H.INVITE.inviter, 'ac.hub.invites': 1 } });
     await pay(req, me, H.INVITE.invitee, 'Invite bonus'); await ACTxn.create({ user: String(inviter._id), type: 'credit', amount: H.INVITE.inviter, cpName: 'AllConnect', cpNum: '', note: 'Friend joined with your invite', ref: makeRef(), kind: 'reward' });
     emitUser(io(req), String(inviter._id), 'cash', { delta: H.INVITE.inviter });
     queueCard(io(req), String(inviter._id), { icon: '🤝', title: 'Your friend joined!', text: `${u.displayName} joined Lagos with your invite. You both get a bonus.`, lines: [['Bonus', naira(H.INVITE.inviter)]], tone: 'gold' }).catch(() => {});
