@@ -6,6 +6,8 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
   phone: { type: String, unique: true, sparse: true, trim: true },
   passwordHash: { type: String },
+  emailVerifiedAt: { type: Date, default: null },
+  emailCode: { hash: { type: String, default: '' }, expires: { type: Date, default: null }, tries: { type: Number, default: 0 }, sentAt: { type: Date, default: null } },
   displayName: { type: String, default: 'Player' },
   avatar: { type: String, default: '' },
   cover: { type: String, default: '' },                 // profile cover photo (small JPEG data URI)
@@ -57,6 +59,15 @@ const UserSchema = new mongoose.Schema({
     status: { type: String, enum: ['', 'applied', 'approved', 'rejected', 'suspended'], default: '' },
     appliedAt: { type: Date, default: null }, approvedAt: { type: Date, default: null }, decidedAt: { type: Date, default: null }, note: { type: String, default: '' }
   },
+  vreq: {                                                // verified badge: request -> admin review -> permanent grant OR paid subscription
+    status: { type: String, enum: ['', 'pending', 'approved', 'active', 'rejected', 'expired'], default: '' },
+    mode: { type: String, enum: ['', 'permanent', 'paid'], default: '' },
+    plan: { type: String, enum: ['', 'monthly', 'yearly'], default: '' },        // plan the player asked for / is on
+    reason: { type: String, default: '' }, note: { type: String, default: '' },
+    autoRenew: { type: Boolean, default: false },                                  // charge the wallet again automatically when a paid badge runs out
+    monthly: { type: Number, default: 0 }, yearly: { type: Number, default: 0 },  // per-player price set by the admin (0 = use the default price)
+    requestedAt: { type: Date, default: null }, decidedAt: { type: Date, default: null }, paidAt: { type: Date, default: null }, expiresAt: { type: Date, default: null }
+  },
   acUsername: { type: String, unique: true, sparse: true, lowercase: true, trim: true }, // @handle used to find friends
   // ONE balance for the whole platform: ac.cash is the AllConnect balance AND the GameHub balance (₦). Changed only by the server.
   ac: {
@@ -74,6 +85,27 @@ const UserSchema = new mongoose.Schema({
       level: { type: Number, default: 0, min: 0, max: 2 }, bedrooms: { type: Number, default: 0, min: 0, max: 5 }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
       items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },
     wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
+    activeProperty: { type: String, default: '' },         // the home the player last entered ('' = the Starter Room), so it loads again after a refresh
+    health: { type: mongoose.Schema.Types.Mixed, default: null },   // Health app: { ill, checked, last } (see utils/achealth.js)
+    ageAt: { type: Date, default: null },                  // when the player attested they are 18 or older
+    birthYear: { type: Number, default: null },            // year they entered in the age check (the full date is never stored)
+    // Character sheet, memory book and privacy choices (see routes/acv2.js)
+    traits: { type: [String], default: [] },                // exactly three trait ids once chosen
+    memories: { type: [{ _id: false, id: String, icon: String, title: String, text: String, mood: Number, at: { type: Date, default: Date.now } }], default: [] },
+    prefs: {
+      readReceipts: { type: Boolean, default: true },
+      whoCanMessage: { type: String, enum: ['everyone', 'friends'], default: 'everyone' },
+      whoCanSendMoney: { type: String, enum: ['anyone', 'friends'], default: 'anyone' },
+      showRelationships: { type: Boolean, default: false },
+      showBirthday: { type: Boolean, default: false },
+      marketingEmails: { type: Boolean, default: false },
+      freeWill: { type: Boolean, default: true },
+      notifMessages: { type: Boolean, default: true }, notifKnocks: { type: Boolean, default: true }, notifMoney: { type: Boolean, default: true }, notifUpdates: { type: Boolean, default: true },
+      quietOn: { type: Boolean, default: false }, quietFrom: { type: String, default: '22:00' }, quietTo: { type: String, default: '07:00' }
+    },
+    bday: { m: { type: Number, default: 0 }, d: { type: Number, default: 0 } },
+    stateOrigin: { type: String, default: '' }, stateCurrent: { type: String, default: '' },   // asked at sign-up (and later from anyone who never answered)
+    bdayPosted: { type: Number, default: 0 },                                                   // last year the birthday card was posted on P-Gist   // month + day only, shown to friends only when showBirthday is on
     needs: { type: [Number], default: [.9, .9, .9, .9, .9, .9] },
     min: { type: Number, default: 1140 },
     mapPos: { x: { type: Number }, y: { type: Number }, h: { type: Number } },
@@ -89,6 +121,7 @@ const UserSchema = new mongoose.Schema({
     shiftDay: { type: String, default: '' },
     shiftsToday: { type: Number, default: 0 },
     bills: { type: [{ _id: false, key: String, cycle: String, amount: Number, due: Date, paidAt: { type: Date, default: null }, fee: { type: Number, default: 0 } }], default: [] },
+    billsAutopay: { type: Boolean, default: false },      // on = new bills are charged to the balance the moment they are issued, instead of waiting for a manual Pay
     questsClaimed: { type: [String], default: [] },
     streak: { type: Number, default: 0 },
     lastDaily: { type: String, default: '' },
@@ -99,12 +132,19 @@ const UserSchema = new mongoose.Schema({
       rentUntil: { type: Date, default: null },
       licTheory: { type: Date, default: null }, licOk: { type: Date, default: null }, licLast: { type: Date, default: null }, licTries: { type: Number, default: 0 },
       rep: { type: Number, default: 20 }, repDay: { type: String, default: '' }, repToday: { type: Number, default: 0 },
-      day: { type: String, default: '' }, signsToday: { type: Number, default: 0 }, lightToday: { type: Number, default: 0 }, rideToday: { type: Number, default: 0 }, rideEarn: { type: Number, default: 0 }, callsToday: { type: Number, default: 0 },
+      day: { type: String, default: '' }, signsToday: { type: Number, default: 0 }, lightToday: { type: Number, default: 0 }, rideToday: { type: Number, default: 0 }, rideEarn: { type: Number, default: 0 }, routeEarn: { type: Number, default: 0 }, callsToday: { type: Number, default: 0 },
       assistUntil: { type: Date, default: null }, lastRide: { type: Date, default: null },
       reportsDay: { type: String, default: '' }, reportsToday: { type: Number, default: 0 }, reportPaidDay: { type: String, default: '' }, reportPaidToday: { type: Number, default: 0 }, lastReport: { type: Date, default: null },
       rides: { type: Number, default: 0 }, fines: { type: Number, default: 0 }, crashes: { type: Number, default: 0 }, earned: { type: Number, default: 0 },
       sess: { type: mongoose.Schema.Types.Mixed, default: null }     // the one quiz / light / okada round in progress (answers stay on the server)
     },
+    party: {                                               // House Party: see utils/acparty.js, routes/acparty.js
+      endsAt: { type: Date, default: null }, openHouse: { type: Boolean, default: false }, lastDay: { type: String, default: '' },
+      guests: { type: [{ _id: false, id: String, at: { type: Date, default: Date.now } }], default: [] },
+      settled: { type: Boolean, default: true },           // false until this party's payout has been settled
+      thrown: { type: Number, default: 0 }                 // lifetime count of parties started (Profile milestone, Visa eligibility)
+    },
+    visa: { investorAt: { type: Date, default: null } },   // Investor Permit purchase date (see utils/actransport.js VISA)
     hub: {                                                 // onboarding, missions, result cards, life timeline (see routes/achub.js)
       hood: { type: String, default: '' }, hobby: { type: String, default: '' },
       homeSlot: { type: Number, default: -1 },             // which numbered house in `hood`'s residential cluster is this player's (-1 = not assigned yet)
@@ -113,7 +153,8 @@ const UserSchema = new mongoose.Schema({
       missionsClaimed: { type: [String], default: [] },
       parcelDay: { type: String, default: '' }, parcelCount: { type: Number, default: 0 },
       lastSeen: { type: Date, default: null }, returnGiftDay: { type: String, default: '' },
-      invitedBy: { type: String, default: '' }, invites: { type: Number, default: 0 },
+      invitedBy: { type: String, default: '' }, invites: { type: Number, default: 0 }, invitedAt: { type: Date, default: null },
+      inviteBonus: { type: Number, default: 0 }, inviteCommission: { type: Number, default: 0 }, commissionGiven: { type: Number, default: 0 },
       cards: { type: [{ _id: false, id: String, icon: String, title: String, text: String, tone: String, btn: String, lines: [{ _id: false, k: String, v: String }], at: { type: Date, default: Date.now } }], default: [] },
       timeline: { type: [{ _id: false, at: { type: Date, default: Date.now }, icon: String, text: String }], default: [] }
     }
@@ -129,4 +170,5 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ 'ac.tr.vehicles.park.until': 1 }, { sparse: true });      // parking lot occupancy
 UserSchema.index({ 'ac.tr.rep': -1 }, { sparse: true });                      // public transport reputation board
 
+UserSchema.index({ 'ac.bday.m': 1, 'ac.bday.d': 1 }, { sparse: true });   // the daily birthday job looks players up by day and month
 module.exports = mongoose.model('User', UserSchema);

@@ -3363,11 +3363,8 @@
   <div id="toast" role="status"></div>
   <script src="/js/renderer-manager.js"></script>
   <script src="/js/snakes.js"></script>
-  <script src="/js/gl3d.js"></script>
   <script src="/js/racetrack.js"></script>
-  <script src="/js/racegfx.js"></script>
   <script src="/js/driverace.js"></script>
-  <script src="/js/racemenu.js"></script>
   <script>
     /* ============================================================
    SERVER CONTRACT — the only place you need to edit if your
@@ -4688,7 +4685,7 @@
         lbTop = lbRes.leaderboard || [];
         try { const fresh = await api('/api/me'); Object.assign(me, fresh.user || fresh); applyTheme(); } catch {}
       } catch { toast('Could not load games'); }
-      if (!games.some(g => (g.key || g.id) === 'driverace')) games.push({ key: 'driverace', name: 'Drive Race', description: '3D kart racing for up to 10 players: career, garage upgrades, power-ups and weekly championships.', available: true, playerCounts: [10], race: true });
+      if (!games.some(g => (g.key || g.id) === 'driverace')) games.push({ key: 'driverace', name: 'Drive Race', description: 'Landscape kart racing for up to 10 players. Power-ups, boost pads and drift boosts.', available: true, playerCounts: [10], race: true });
       GAMES = games;
       games.forEach(g => { if (Array.isArray(g.rules) && g.rules.length) RULES[g.key || g.id] = g.rules; });
       dockBusy = false;

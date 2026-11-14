@@ -51,7 +51,8 @@ const HOMES = {
       const activeP = p && p.id === active, expired = p && p.tenure === 'rent' && p.leaseExpiresAt && new Date(p.leaseExpiresAt) <= new Date();
       const price = h.mode === 'rent' ? h.rent : h.price;
       const term = h.mode === 'rent' ? `Rent · ${h.rentDays} days` : 'Permanent ownership';
-      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.sizeLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
+      const comfort = h.comfort && h.comfort !== 1 ? ` · comfort x${h.comfort}` : '';
+      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}${comfort}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.sizeLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
     }
     target.innerHTML = rows.join('');
   },
@@ -137,6 +138,8 @@ const HOMES = {
     if (window.ROOM3D) ROOM3D.sync();
     if (window.BUY && BUY.active) BUY.draw();
     if (window.ROUTER && ROUTER.onHome) ROUTER.onHome(S.activePropertyId);   // remember this across refresh
+    try { localStorage.setItem('ac:home', S.activePropertyId) } catch (e) {}
+    if (!opts.silent) NET.api('/api/ac/properties/active', { method: 'POST', body: { id: S.activePropertyId } }).catch(() => {});   // and on the server, so it follows the player to any phone
     if (opts.silent) return;
     this.close();
     const nm = p && (p.name || (((this.data && this.data.catalogue) || []).find(c => c.id === p.type) || {}).name || 'your home');

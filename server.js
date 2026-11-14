@@ -45,6 +45,8 @@ const acTransportRoutes = require('./routes/actransport');
 const acGovRoutes = require('./routes/acgov');
 const acGemRoutes = require('./routes/acgem');
 const acPetRoutes = require('./routes/acpet');
+const acHealthRoutes = require('./routes/achealth');
+const acAgeRoutes = require('./routes/acage');
 const acFeatureRoutes = require('./routes/acfeatures');
 const reportRoutes = require('./routes/reports');
 const developerRoutes = require('./routes/developers');
@@ -89,6 +91,7 @@ async function main() {
   });
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
   app.use('/api/ac/gist/mux-webhook', express.raw({ type: '*/*', limit: '1mb' })); // Mux webhooks must reach the signature check untouched
+  app.use('/api/ac/v2/topup/webhook', express.raw({ type: '*/*', limit: '200kb' }), require('./routes/acv2').webhook); // Paystack webhook: needs the raw body for its signature
   app.use('/api/ac/voice', express.json({ limit: '1.4mb' })); // voice notes arrive as base64 JSON
   app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
@@ -132,6 +135,11 @@ async function main() {
   app.use('/api/ac/invest', acInvestRoutes);
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
+  app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
+  app.use('/api/ac/verify', require('./routes/acverify'));  // verified badge: request + paid subscription
+  app.use('/api/ac/party', require('./routes/acparty'));  // house parties
+  app.use('/api/ac/v2', require('./routes/acv2'));  // traits, memory book, privacy, password, email, wallet top-up
+  app.use('/api/ac/age', acAgeRoutes);       // 18+ attestation
   app.use('/api/ac/pet', acPetRoutes);      // Pet app: needs, shop, clothes, mini-games (all paid from the main balance)
   app.use('/api/ac/features', acFeatureRoutes); // saved, scheduled and collaborative cross-app features
   app.use('/api/ac/gov', acGovRoutes);          // State House: elections, announcements, policies
@@ -262,7 +270,23 @@ async function main() {
   const petAlerts = require('./services/petalerts');
   setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
+  setInterval(async () => {          // pay out house parties that have ended, even if the host never opens the app again
+    try {
+      const User = require('./models/User'), party = require('./routes/acparty');
+      const due = await User.find({ 'ac.party.settled': false, 'ac.party.endsAt': { $lte: new Date() } }).select('_id').limit(50).lean();
+      for (const d of due) await party.settleIfDue(String(d._id), Date.now(), app.get('io'));
+    } catch (e) { console.error('[party sweep]', e.message); }
+  }, 60 * 1000).unref();
+  setInterval(() => require('./utils/acverify').sweep(app.get('io')).catch((e) => console.error('[verify sweep]', e.message)), 60 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
+  /* withdrawal seasons: tell players when a season/batch opens or is about to close (each notice is sent once) */
+  /* birthdays: post a birthday card on P-Gist for everyone whose birthday it is (checked every 30 minutes, once per player per year) */
+  const birthdays = require('./services/birthdays');
+  setTimeout(() => birthdays.tick(io).catch((e) => console.error('[birthdays]', e.message)), 45000).unref();
+  setInterval(() => birthdays.tick(io).catch((e) => console.error('[birthdays]', e.message)), 30 * 60 * 1000).unref();
+  const withdrawalNotices = require('./services/withdrawalNotices');
+  setTimeout(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 20000).unref();
+  setInterval(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 60 * 1000).unref();
   require('./utils/mux').startSweep();   // tidies uploads that never finished (only when Mux is configured)
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);

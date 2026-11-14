@@ -10,6 +10,7 @@ const { effectiveGames, effectiveGame, saveGameSettings } = require('../config/g
 const { PayoutSeason, PayoutRequest, PayoutAccount, DEFAULT_RULES, dec, statusMessage, naira } = require('../utils/payout');
 const { notify } = require('../utils/acnotify');
 const { queueCard } = require('../utils/accards');
+const withdrawalNotices = require('../services/withdrawalNotices');
 const router = express.Router();
 // Hosting dashboards often leave stray spaces/newlines or quotes around values: clean them so login still matches.
 const clean = (v) => String(v == null ? '' : v).trim().replace(/^["']|["']$/g, '').trim();
@@ -52,7 +53,7 @@ router.get('/users', async (req, res, next) => {
   try {
     const q = String(req.query.q || '').trim();
     const filter = q ? { $or: [{ displayName: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }, { phone: q }, { email: q.toLowerCase() }] } : {};
-    const users = await User.find(filter).select('displayName phone email ac.cash stats suspendedUntil penaltyPoints adminNote createdAt verified acUsername').sort({ createdAt: -1 }).limit(100).lean();
+    const users = await User.find(filter).select('displayName phone email ac.cash stats suspendedUntil penaltyPoints adminNote createdAt verified acUsername bio xp level creator.status').sort({ createdAt: -1 }).limit(100).lean();
     res.json({ users: users.map(u => ({ ...u, coins: (u.ac && u.ac.cash) || 0, id: String(u._id) })) });   // coins = the shared ₦ balance
   } catch (err) { next(err); }
 });
@@ -71,6 +72,84 @@ router.post('/users/:id/penalize', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+
+/* Edit almost everything about a player. Only the fields that are sent change. Empty string clears optional text fields. */
+router.put('/users/:id', async (req, res, next) => {
+  try {
+    const b = req.body || {}, set = {}, unset = {};
+    const str = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
+    if (b.displayName !== undefined) { const v = str(b.displayName, 40); if (!v) return res.status(400).json({ message: 'Display name cannot be empty.' }); set.displayName = v; }
+    if (b.acUsername !== undefined) { const v = str(b.acUsername, 16).toLowerCase().replace(/^@/, ''); if (v && !/^[a-z0-9_]{3,16}$/.test(v)) return res.status(400).json({ message: 'Username: 3 to 16 letters, numbers or underscores.' }); v ? set.acUsername = v : unset.acUsername = ''; }
+    if (b.email !== undefined) { const v = str(b.email, 120).toLowerCase(); if (v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return res.status(400).json({ message: 'That email does not look right.' }); v ? set.email = v : unset.email = ''; }
+    if (b.phone !== undefined) { const v = str(b.phone, 24).replace(/[\s-]/g, ''); v ? set.phone = v : unset.phone = ''; }
+    if (b.bio !== undefined) set.bio = str(b.bio, 160);
+    if (b.adminNote !== undefined) set.adminNote = str(b.adminNote, 240);
+    if (typeof b.verified === 'boolean') set.verified = b.verified;
+    if (b.xp !== undefined) set.xp = Math.max(0, Math.min(1e9, Math.floor(Number(b.xp)) || 0));
+    if (b.level !== undefined) set.level = Math.max(1, Math.min(1000, Math.floor(Number(b.level)) || 1));
+    if (b.penaltyPoints !== undefined) set.penaltyPoints = Math.max(0, Math.min(1000, Math.floor(Number(b.penaltyPoints)) || 0));
+    if (b.liftSuspension === true) set.suspendedUntil = null;
+    if (b.creatorStatus !== undefined) { if (!['', 'applied', 'approved', 'rejected', 'suspended'].includes(b.creatorStatus)) return res.status(400).json({ message: 'Unknown creator status.' }); set['creator.status'] = b.creatorStatus; }
+    if (b.clearAvatar === true) set.avatar = '';
+    if (b.clearCover === true) set.cover = '';
+    if (!Object.keys(set).length && !Object.keys(unset).length) return res.status(400).json({ message: 'Nothing to change.' });
+    const upd = {}; if (Object.keys(set).length) upd.$set = set; if (Object.keys(unset).length) upd.$unset = unset;
+    const u = await User.findByIdAndUpdate(req.params.id, upd, { new: true, runValidators: true }).select('displayName phone email acUsername bio xp level verified penaltyPoints suspendedUntil adminNote creator.status ac.cash');
+    if (!u) return res.status(404).json({ message: 'User not found.' });
+    console.log('[admin]', JSON.stringify({ action: 'edit_user', user: String(u._id), fields: Object.keys(set).concat(Object.keys(unset)), at: new Date().toISOString() }));
+    res.json({ user: { id: u.id, displayName: u.displayName, acUsername: u.acUsername || '', email: u.email || '', phone: u.phone || '', bio: u.bio || '', xp: u.xp, level: u.level, verified: !!u.verified, penaltyPoints: u.penaltyPoints, suspendedUntil: u.suspendedUntil, adminNote: u.adminNote, creatorStatus: (u.creator && u.creator.status) || '', coins: (u.ac && u.ac.cash) || 0 } });
+  } catch (err) { if (err && err.code === 11000) return res.status(409).json({ message: 'Another player already uses that ' + Object.keys(err.keyPattern || {})[0] + '.' }); next(err); }
+});
+/* Set a new password for a player (they can sign in with it straight away). The password is never logged. */
+router.post('/users/:id/password', async (req, res, next) => {
+  try {
+    const pw = String(req.body && req.body.password || '');
+    if (pw.length < 6 || pw.length > 100) return res.status(400).json({ message: 'Use a password of at least 6 characters.' });
+    const u = await User.findByIdAndUpdate(req.params.id, { $set: { passwordHash: await bcrypt.hash(pw, 10) } }, { new: true }).select('displayName');
+    if (!u) return res.status(404).json({ message: 'User not found.' });
+    console.log('[admin]', JSON.stringify({ action: 'set_password', user: String(u._id), at: new Date().toISOString() }));
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+/* Add, deduct or set a player's balance. Deducting is clamped at 0. It lands on the bank statement as a debit by AllConnect. */
+router.post('/users/:id/balance', async (req, res, next) => {
+  try {
+    const mode = String(req.body && req.body.mode || ''), coins = Math.floor(Number(req.body && req.body.coins));
+    const reason = String(req.body && req.body.reason || '').trim().slice(0, 240);
+    if (!['add', 'deduct', 'set'].includes(mode)) return res.status(400).json({ message: 'Choose add, deduct or set.' });
+    if (!Number.isFinite(coins) || coins < (mode === 'set' ? 0 : 1) || coins > 1e12) return res.status(400).json({ message: mode === 'set' ? 'Enter the new balance.' : 'Enter an amount.' });
+    const user = await User.findById(req.params.id).select('displayName ac.cash');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    const eco = require('../utils/economy'), before = Number((user.ac && user.ac.cash) || 0);
+    const delta = mode === 'add' ? coins : mode === 'deduct' ? -coins : coins - before;
+    const cash = delta ? await eco.adjust(user.id, delta) : before;
+    if (cash == null) return res.status(409).json({ message: 'Could not update that balance. Try again.' });
+    const moved = Math.abs(cash - before);
+    if (moved) await require('../models/ACTxn').create({ user: String(user.id), type: cash > before ? 'credit' : 'debit', amount: moved, cpName: 'AllConnect', cpNum: '', note: reason || (cash > before ? 'Added by AllConnect' : 'Adjusted by AllConnect'), ref: require('../utils/acbank').makeRef(), kind: 'admin' });
+    await User.updateOne({ _id: user.id }, { $set: { adminNote: ({ add: 'Added ', deduct: 'Deducted ', set: 'Balance set to ' }[mode] + coins + (reason ? ': ' + reason : '')).slice(0, 240) } });
+    try { require('../utils/acnotify').emitUser(req.app.get('io'), String(user.id), 'cash', { delta: cash - before }); } catch (e) { /* the phone catches up on its next refresh */ }
+    console.log('[admin]', JSON.stringify({ action: 'balance_' + mode, user: String(user.id), before, after: cash, at: new Date().toISOString() }));
+    res.json({ user: { id: user.id, displayName: user.displayName, coins: cash, before } });
+  } catch (err) { next(err); }
+});
+
+/* Adds coins to a player's main balance. It lands on their bank statement as a credit from AllConnect and the phone updates live. */
+router.post('/users/:id/credit', async (req, res, next) => {
+  try {
+    const coins = Math.max(0, Math.min(1000000000, Math.floor(Number(req.body?.coins)) || 0));
+    const reason = String(req.body?.reason || '').trim().slice(0, 240);
+    if (coins < 1) return res.status(400).json({ message: 'Enter how many coins to add.' });
+    const user = await User.findById(req.params.id).select('displayName ac.cash');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    const cash = await require('../utils/economy').adjust(user.id, coins);
+    if (cash == null) return res.status(409).json({ message: 'Could not update that balance. Try again.' });
+    await require('../models/ACTxn').create({ user: String(user.id), type: 'credit', amount: coins, cpName: 'AllConnect', cpNum: '', note: reason || 'Added by AllConnect', ref: require('../utils/acbank').makeRef(), kind: 'admin' });
+    await User.updateOne({ _id: user.id }, { $set: { adminNote: ('Added ' + coins + ' coins' + (reason ? ': ' + reason : '')).slice(0, 240) } });
+    try { require('../utils/acnotify').emitUser(req.app.get('io'), String(user.id), 'cash', { delta: coins }); } catch (e) { /* the phone catches up on its next refresh */ }
+    res.json({ user: { id: user.id, displayName: user.displayName, coins: cash } });
+  } catch (err) { next(err); }
+});
+
 // ---------- analytics (privacy-conscious: aggregate counts only, no message content) ----------
 // Photo storage health (imgbb) - shows the real reason when uploads fail
 const acPhotos = require('./acphotos');
@@ -78,6 +157,22 @@ router.get('/ac/photo-status', (req, res) => {
   const k = acPhotos.keyInfo(); res.json({ configured: !!k.key, variable: k.name, keyPreview: k.key ? k.key.slice(0, 4) + '…' + k.key.slice(-3) + ` (${k.key.length} characters)` : '', last: acPhotos.status });
 });
 router.post('/ac/photo-test', async (req, res, next) => { try { res.json(await acPhotos.testUpload()); } catch (e) { next(e); } });
+
+// Video storage (Mux): shows whether the keys exist and what Mux says when we try to use them.
+router.get('/ac/video-status', (req, res) => {
+  const m = require('../utils/mux'), id = m.env('MUX_TOKEN_ID'), sec = m.env('MUX_TOKEN_SECRET');
+  res.json({ configured: !!(id && sec), idPreview: id ? id.slice(0, 4) + '…' + id.slice(-3) : '', secretSet: !!sec, captions: m.env('MUX_CAPTIONS') === 'true', maxMB: m.MUX_MAX_MB, maxSec: m.MUX_MAX_SEC });
+});
+router.post('/ac/video-test', async (req, res) => {
+  const m = require('../utils/mux');
+  if (!m.muxOn()) return res.json({ ok: false, message: 'MUX_TOKEN_ID and MUX_TOKEN_SECRET are not both set on the host.' });
+  try {
+    await m.mux('GET', '/video/v1/uploads?limit=1');
+    const u = await m.createUpload('admin-test', '*');   // the same call the app makes when a player posts a video
+    try { await m.mux('PUT', '/video/v1/uploads/' + u.d.id + '/cancel'); } catch (e) { /* a test upload that never receives a file just expires */ }
+    res.json({ ok: true, message: 'Mux accepted the keys and created a test upload. Video posting should work.' });
+  } catch (e) { res.json({ ok: false, status: e.status || 0, message: m.muxWhy(e) }); }
+});
 
 // Social links for the login footer + Settings (empty = nothing shown to players)
 const ACSetting = require('../models/ACSetting');
@@ -110,6 +205,29 @@ router.post('/ac/elections', ensureAdmin, async (req, res, next) => {
 });
 router.post('/ac/elections/:n/cancel', ensureAdmin, async (req, res, next) => {
   try { res.json(await require('../services/govService').cancelRound(req.params.n)); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+
+router.get('/ac/gov-settings', ensureAdmin, async (req, res, next) => { try { res.json(await require('../services/govService').getOfficeSettings()); } catch (e) { next(e); } });
+router.post('/ac/gov-settings', ensureAdmin, async (req, res, next) => {
+  try { res.json(await require('../services/govService').saveOfficeSettings(req.body && req.body.offices)); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+router.put('/ac/elections/:n', ensureAdmin, async (req, res, next) => {
+  try { const b = req.body || {}; res.json(await require('../services/govService').updateRound(req.params.n, { start: b.start, shortlistAt: b.shortlistAt, end: b.end })); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+router.delete('/ac/elections/:n', ensureAdmin, async (req, res, next) => {
+  try { res.json(await require('../services/govService').deleteRound(req.app.get('io'), req.params.n)); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+router.get('/ac/elections/:n/campaigns', ensureAdmin, async (req, res, next) => { try { res.json(await require('../services/govService').listCampaigns(req.params.n)); } catch (e) { next(e); } });
+router.put('/ac/elections/:n/campaigns/:office/:user', ensureAdmin, async (req, res, next) => {
+  try { res.json(await require('../services/govService').editCampaign(req.params.n, req.params.office, req.params.user, req.body && req.body.slogan)); }
+  catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
+});
+router.delete('/ac/elections/:n/campaigns/:office/:user', ensureAdmin, async (req, res, next) => {
+  try { res.json(await require('../services/govService').removeCampaign(req.app.get('io'), req.params.n, req.params.office, req.params.user)); }
   catch (e) { if (e && e.expose) return res.status(e.code || 400).json({ message: e.message }); next(e); }
 });
 
@@ -191,30 +309,55 @@ router.post('/reports/:id/action', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 // ---------- reel appeals: reels flagged by the originality check; creators appeal, the admin watches the video URL and decides ----------
-const GistPostM = require('../models/Gist');
+const GistModels = require('../models/Gist'), GistPostM = GistModels.GistPost;
+const MOD = require('../utils/modCategories');
+const bcrypt = require('bcryptjs');
 router.get('/reel-appeals', async (req, res, next) => {
   try {
-    const st = ['appealed', 'flagged', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : 'appealed';
-    const rows = await GistPostM.find({ 'moderation.status': st }).sort({ 'moderation.appealedAt': -1, 'moderation.flaggedAt': -1 }).limit(100).lean();
+    const st = ['review', 'appealed', 'flagged', 'approved', 'rejected'].includes(req.query.status) ? req.query.status : 'review';
+    const rows = await GistPostM.find({ 'moderation.status': st }).sort({ 'moderation.appealedAt': -1, 'moderation.flaggedAt': -1, 'moderation.submittedAt': -1, createdAt: -1 }).limit(100).lean();
     const ids = [...new Set(rows.map(r => r.author))].filter(x => /^[a-f\d]{24}$/i.test(x));
     const users = await User.find({ _id: { $in: ids } }).select('displayName acUsername').lean(), nm = new Map(users.map(u => [String(u._id), u]));
-    res.json({ appeals: rows.map(r => ({ id: String(r._id), status: r.moderation.status, reason: r.moderation.reason || '', source: r.moderation.source || '', caption: r.text || '',
-      appealText: r.moderation.appealText || '', videoUrl: r.moderation.videoUrl || (r.video && r.video.url) || '', flaggedAt: r.moderation.flaggedAt, appealedAt: r.moderation.appealedAt || null,
+    const vurl = r => (r.video && (r.video.url || (r.video.mux && r.video.mux.playbackId ? 'https://stream.mux.com/' + r.video.mux.playbackId + '.m3u8' : ''))) || r.moderation.videoUrl || '';
+    res.json({ categories: MOD.LIST, appeals: rows.map(r => ({ id: String(r._id), status: r.moderation.status, category: r.moderation.category || '', reason: r.moderation.reason || '', source: r.moderation.source || '', caption: r.text || '',
+      appealText: r.moderation.appealText || '', videoUrl: vurl(r), flaggedAt: r.moderation.flaggedAt, submittedAt: r.moderation.submittedAt || r.createdAt, appealedAt: r.moderation.appealedAt || null,
       author: { id: r.author, name: nm.get(r.author)?.displayName || 'Unknown', username: nm.get(r.author)?.acUsername || '' }, reviewNote: r.moderation.reviewNote || '' })) });
   } catch (err) { next(err); }
 });
+/* decision: approve (posted) | flag (hide from everyone but the poster; needs a category) | reject (final hide after an appeal) | delete (removes the post) */
 router.post('/reel-appeals/:id/decide', async (req, res, next) => {
   try {
-    const decision = String(req.body?.decision || ''), note = String(req.body?.note || '').trim().slice(0, 240);
-    if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ message: 'Unknown decision.' });
+    const decision = String(req.body?.decision || ''), note = String(req.body?.note || '').trim().slice(0, 240), io = req.app.get('io');
+    if (!['approve', 'reject', 'flag', 'delete'].includes(decision)) return res.status(400).json({ message: 'Unknown decision.' });
     const p = await GistPostM.findById(req.params.id);
-    if (!p || !p.moderation || !['flagged', 'appealed'].includes(p.moderation.status)) return res.status(404).json({ message: 'Nothing to review on this reel.' });
-    p.moderation.status = decision === 'approve' ? 'approved' : 'rejected'; p.moderation.reviewedAt = new Date(); p.moderation.reviewNote = note;
-    p.hidden = decision !== 'approve'; p.markModified('moderation'); await p.save();
-    notify(req.app.get('io'), p.author, { icon: decision === 'approve' ? '✅' : '🚫', kind: 'gist', ref: String(p._id),
-      text: decision === 'approve' ? 'Your appeal was approved. Your reel is now live.' : 'Your appeal was reviewed and the reel stays hidden.' + (note ? ' ' + note : '') }).catch(() => {});
-    if (decision === 'approve') { const io = req.app.get('io'); if (io) io.of('/ac').emit('gist:new', { id: String(p._id), author: p.author }); }
-    console.log('[moderation]', JSON.stringify({ reel: String(p._id), decision, author: p.author, at: p.moderation.reviewedAt }));
+    if (!p) return res.status(404).json({ message: 'That post no longer exists.' });
+    if (decision === 'delete') {
+      const id = String(p._id), { GistLike, GistComment, GistCommentLike, GistVote, GistSave } = GistModels;
+      const cids = (await GistComment.find({ post: id }).select('_id').lean()).map(c => String(c._id));
+      await Promise.all([GistLike.deleteMany({ post: id }), GistComment.deleteMany({ post: id }), GistVote.deleteMany({ post: id }), GistSave.deleteMany({ post: id }), GistCommentLike.deleteMany({ comment: { $in: cids } })]);
+      await GistPostM.deleteOne({ _id: p._id });
+      notify(io, p.author, { icon: '🗑️', kind: 'gist', text: 'Your video was removed by the team.' + (note ? ' ' + note : '') }).catch(() => {});
+      console.log('[moderation]', JSON.stringify({ reel: id, decision, author: p.author, at: new Date().toISOString() }));
+      return res.json({ ok: true, status: 'deleted' });
+    }
+    p.moderation = p.moderation || {};
+    if (decision === 'flag') {
+      const category = MOD.cat(String(req.body?.category || 'other'));
+      Object.assign(p.moderation, { status: 'flagged', category, reason: MOD.reasonText(category, note), source: 'admin', flaggedAt: new Date(), reviewNote: note });
+      p.hidden = true;
+    } else {
+      p.moderation.status = decision === 'approve' ? 'approved' : 'rejected'; p.moderation.reviewedAt = new Date(); p.moderation.reviewNote = note;
+      p.hidden = decision !== 'approve';
+    }
+    p.markModified('moderation'); await p.save();
+    const T = {
+      approve: ['✅', 'Your video passed review and is now posted.'],
+      reject: ['🚫', 'Your review request was checked and the video stays hidden. Open it to learn more.' + (note ? ' ' + note : '')],
+      flag: ['🚩', 'Your video was flagged: ' + MOD.CATS[p.moderation.category].title + '. Only you can see it now. Open it to learn more or request a review.']
+    }[decision];
+    notify(io, p.author, { icon: T[0], kind: 'gist', ref: String(p._id), text: T[1] }).catch(() => {});
+    if (decision === 'approve' && io) io.of('/ac').emit('gist:new', { id: String(p._id), author: p.author });
+    console.log('[moderation]', JSON.stringify({ reel: String(p._id), decision, author: p.author, at: new Date().toISOString() }));
     res.json({ ok: true, status: p.moderation.status });
   } catch (err) { next(err); }
 });
@@ -313,7 +456,8 @@ router.post('/payouts/seasons/:id/batches/:n/status', async (req, res, next) => 
     if (!['draft', 'open', 'paused', 'closed'].includes(status) || ![1, 2, 3].includes(n)) return res.status(400).json({ message: 'Choose a batch (1-3) and a status.' });
     const r = await PayoutSeason.updateOne({ _id: req.params.id, 'batches.number': n }, { $set: { 'batches.$.status': status, updatedBy: 'admin' } });
     if (!r.matchedCount) return res.status(404).json({ message: 'Season or batch not found.' });
-    res.json({ ok: true });
+    const notified = status === 'open' ? await withdrawalNotices.afterAdminChange(req.app.get('io'), req.params.id, { batch: n }).catch(() => []) : [];
+    res.json({ ok: true, notified: notified.length > 0 });
   } catch (e) { next(e); }
 });
 // Manual payment: the team needs the full account number to make the transfer. Only for an approved request, never in lists, and every look is logged (without the number).
@@ -356,6 +500,116 @@ router.post('/payouts/requests/:id/action', async (req, res, next) => {
     res.json({ request: r });
   } catch (e) { next(e); }
 });
-router.post('/payouts/seasons', async (req, res, next) => { try { const b = req.body || {}, batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); if (!Number.isFinite(new Date(b.startsAt).getTime()) || !Number.isFinite(new Date(b.endsAt).getTime()) || new Date(b.endsAt) <= new Date(b.startsAt) || batches.some(x => !Number.isFinite(x.opensAt.getTime()) || !Number.isFinite(x.closesAt.getTime()) || x.closesAt <= x.opensAt)) return res.status(400).json({ message: 'Every season and batch needs valid dates.' }); const s = await PayoutSeason.create({ seasonNo: Math.max(1, Math.floor(Number(b.seasonNo) || 1)), name: String(b.name || `Season ${b.seasonNo || 1}`).slice(0, 80), startsAt: new Date(b.startsAt), endsAt: new Date(b.endsAt), status: ['draft','scheduled','active','paused','closed'].includes(b.status) ? b.status : 'draft', maxPayoutsPerSeason: Number(b.maxPayoutsPerSeason) === 1 ? 1 : 2, rules: pRules(b.rules), batches, createdBy: 'admin' }); res.json({ season: s }); } catch (e) { if (e.code === 11000) return res.status(409).json({ message: 'That season number already exists.' }); next(e); } });
-router.put('/payouts/seasons/:id', async (req, res, next) => { try { const b = req.body || {}, set = {}; for (const k of ['name','status','startsAt','endsAt','maxPayoutsPerSeason']) if (b[k] !== undefined) set[k] = k === 'maxPayoutsPerSeason' ? (Number(b[k]) === 1 ? 1 : 2) : (k === 'startsAt' || k === 'endsAt' ? new Date(b[k]) : b[k]); if (b.rules) set.rules = pRules(b.rules); if (b.batches) set.batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); const s = await PayoutSeason.findByIdAndUpdate(req.params.id, { $set: { ...set, updatedBy: 'admin' } }, { new: true }); if (!s) return res.status(404).json({ message: 'Season not found.' }); res.json({ season: s }); } catch (e) { next(e); } });
+router.post('/payouts/seasons', async (req, res, next) => { try { const b = req.body || {}, batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); if (!Number.isFinite(new Date(b.startsAt).getTime()) || !Number.isFinite(new Date(b.endsAt).getTime()) || new Date(b.endsAt) <= new Date(b.startsAt) || batches.some(x => !Number.isFinite(x.opensAt.getTime()) || !Number.isFinite(x.closesAt.getTime()) || x.closesAt <= x.opensAt)) return res.status(400).json({ message: 'Every season and batch needs valid dates.' }); const s = await PayoutSeason.create({ seasonNo: Math.max(1, Math.floor(Number(b.seasonNo) || 1)), name: String(b.name || `Season ${b.seasonNo || 1}`).slice(0, 80), startsAt: new Date(b.startsAt), endsAt: new Date(b.endsAt), status: ['draft','scheduled','active','paused','closed'].includes(b.status) ? b.status : 'draft', maxPayoutsPerSeason: Number(b.maxPayoutsPerSeason) === 1 ? 1 : 2, rules: pRules(b.rules), batches, createdBy: 'admin' }); const notified = (s.status === 'active' || s.status === 'scheduled') ? await withdrawalNotices.tick(req.app.get('io')).catch(() => []) : []; res.json({ season: s, notified: notified.length > 0 }); } catch (e) { if (e.code === 11000) return res.status(409).json({ message: 'That season number already exists.' }); next(e); } });
+router.put('/payouts/seasons/:id', async (req, res, next) => { try { const b = req.body || {}, set = {}; for (const k of ['name','status','startsAt','endsAt','maxPayoutsPerSeason']) if (b[k] !== undefined) set[k] = k === 'maxPayoutsPerSeason' ? (Number(b[k]) === 1 ? 1 : 2) : (k === 'startsAt' || k === 'endsAt' ? new Date(b[k]) : b[k]); if (b.rules) set.rules = pRules(b.rules); if (b.batches) set.batches = [1,2,3].map(n => pBatch((b.batches || []).find(x => Number(x.number) === n), n)); const s = await PayoutSeason.findByIdAndUpdate(req.params.id, { $set: { ...set, updatedBy: 'admin' } }, { new: true }); if (!s) return res.status(404).json({ message: 'Season not found.' }); const notified = (b.status === 'active' || b.status === 'scheduled') ? await withdrawalNotices.afterAdminChange(req.app.get('io'), s._id, { season: true }).catch(() => []) : []; res.json({ season: s, notified: notified.length > 0 }); } catch (e) { next(e); } });
+
+/* Edit ONE batch without touching the other two. Only the fields that are sent change. */
+router.put('/payouts/seasons/:id/batches/:n', async (req, res, next) => {
+  try {
+    const n = Number(req.params.n); if (![1, 2, 3].includes(n)) return res.status(400).json({ message: 'Batch must be 1, 2 or 3.' });
+    const s = await PayoutSeason.findById(req.params.id); if (!s) return res.status(404).json({ message: 'Season not found.' });
+    const cur = s.batches.find(x => Number(x.number) === n); if (!cur) return res.status(404).json({ message: 'Batch not found.' });
+    const b = req.body || {}, merged = pBatch({ ...cur.toObject(), ...b }, n);
+    if (!Number.isFinite(merged.opensAt.getTime()) || !Number.isFinite(merged.closesAt.getTime()) || merged.closesAt <= merged.opensAt) return res.status(400).json({ message: 'The batch must close after it opens.' });
+    if (merged.minPayout > merged.maxPayout) return res.status(400).json({ message: 'Min payout cannot be higher than max payout.' });
+    s.batches = s.batches.map(x => Number(x.number) === n ? merged : x); s.updatedBy = 'admin'; s.markModified('batches'); await s.save();
+    res.json({ season: s });
+  } catch (e) { next(e); }
+});
+/* Batches are the three fixed slots of the rotation, so they cannot be removed. Reset puts one back to a clean draft with default amounts. */
+router.post('/payouts/seasons/:id/batches/:n/reset', async (req, res, next) => {
+  try {
+    const n = Number(req.params.n); if (![1, 2, 3].includes(n)) return res.status(400).json({ message: 'Batch must be 1, 2 or 3.' });
+    const s = await PayoutSeason.findById(req.params.id); if (!s) return res.status(404).json({ message: 'Season not found.' });
+    const cur = s.batches.find(x => Number(x.number) === n); if (!cur) return res.status(404).json({ message: 'Batch not found.' });
+    const live = await PayoutRequest.countDocuments({ season: s._id, batch: n, status: { $in: ['approved', 'processing', 'paid'] } });
+    if (live) return res.status(409).json({ message: 'This batch already has approved or paid requests, so it cannot be reset. Close it instead.' });
+    const fresh = pBatch({ opensAt: cur.opensAt, closesAt: cur.closesAt, status: 'draft' }, n);
+    s.batches = s.batches.map(x => Number(x.number) === n ? fresh : x); s.updatedBy = 'admin'; s.markModified('batches'); await s.save();
+    res.json({ season: s });
+  } catch (e) { next(e); }
+});
+/* Delete a season. Refused once money has been approved or paid in it. Draft, held, rejected and rolled-over requests go with it. */
+router.delete('/payouts/seasons/:id', async (req, res, next) => {
+  try {
+    const s = await PayoutSeason.findById(req.params.id).lean(); if (!s) return res.status(404).json({ message: 'Season not found.' });
+    const money = await PayoutRequest.countDocuments({ season: s._id, status: { $in: ['approved', 'processing', 'paid'] } });
+    if (money) return res.status(409).json({ message: `Season ${s.seasonNo} has ${money} approved or paid request(s), so it cannot be deleted. Close it instead.` });
+    const r = await PayoutRequest.deleteMany({ season: s._id });
+    await PayoutSeason.deleteOne({ _id: s._id });
+    console.log('[payout]', JSON.stringify({ season: String(s._id), action: 'delete_season', requestsRemoved: r.deletedCount, at: new Date().toISOString() }));
+    res.json({ ok: true, requestsRemoved: r.deletedCount });
+  } catch (e) { next(e); }
+});
+/* Remove a request that is not approved or paid (clears junk and frees the player's slot). */
+router.delete('/payouts/requests/:id', async (req, res, next) => {
+  try {
+    const r = await PayoutRequest.findById(req.params.id); if (!r) return res.status(404).json({ message: 'Payout request not found.' });
+    if (['approved', 'processing', 'paid'].includes(r.status)) return res.status(409).json({ message: 'Approved or paid requests are kept as a record. Roll it over or reject it first if it was a mistake.' });
+    await PayoutRequest.deleteOne({ _id: r._id }); console.log('[payout]', JSON.stringify({ request: String(r._id), action: 'delete_request', at: new Date().toISOString() }));
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+// Re-send the "season / batch is open" notices to every player (use sparingly: it is a push to everyone).
+router.post('/payouts/seasons/:id/notify', async (req, res, next) => {
+  try {
+    const s = await PayoutSeason.findById(req.params.id).lean(); if (!s) return res.status(404).json({ message: 'Season not found.' });
+    if (!['scheduled', 'active'].includes(s.status)) return res.status(409).json({ message: 'Set the season to Scheduled or Active first. Players are only told about seasons that can accept withdrawals.' });
+    const sent = await withdrawalNotices.afterAdminChange(req.app.get('io'), s._id, { season: true, batch: Number(req.body?.batch) || 0 });
+    res.json({ ok: true, sent: sent.length, message: sent.length ? 'Players were notified.' : 'Nothing to announce right now. The season may be outside its dates, or no batch is open yet.' });
+  } catch (e) { next(e); }
+});
+
+// ---------- Verified badge: requests, permanent grants, paid subscriptions and default prices ----------
+router.get('/verify/pricing', async (req, res, next) => { try { res.json(await require('../utils/acverify').pricing()) } catch (e) { next(e) } });
+router.put('/verify/pricing', async (req, res, next) => {
+  try {
+    const b = req.body || {}, v = { enabled: b.enabled !== false, monthly: Math.max(0, Math.round(Number(b.monthly) || 0)), yearly: Math.max(0, Math.round(Number(b.yearly) || 0)) };
+    await require('../models/ACSetting').findByIdAndUpdate('verifyPricing', { $set: { value: v } }, { upsert: true }); res.json(v);
+  } catch (e) { next(e) }
+});
+router.get('/verify', async (req, res, next) => {
+  try {
+    const status = ['pending', 'approved', 'active', 'rejected', 'expired'].includes(req.query.status) ? req.query.status : 'pending';
+    const rows = await User.find({ 'vreq.status': status }).select('displayName acUsername verified createdAt vreq').sort({ 'vreq.requestedAt': 1 }).limit(100).lean();
+    res.json({ requests: rows.map(u => ({ id: String(u._id), name: u.displayName, username: u.acUsername || '', verified: !!u.verified, joined: u.createdAt, ...u.vreq })) });
+  } catch (e) { next(e) }
+});
+// decision: permanent (free, never expires) | paid (player subscribes monthly / yearly at the price you set) | reject | revoke
+router.post('/verify/:id/decide', async (req, res, next) => {
+  try {
+    const b = req.body || {}, d = String(b.decision || ''), note = String(b.note || '').trim().slice(0, 200), now = new Date();
+    if (!['permanent', 'paid', 'reject', 'revoke'].includes(d)) return res.status(400).json({ message: 'decision must be permanent, paid, reject or revoke.' });
+    const set = { 'vreq.decidedAt': now, 'vreq.note': note };
+    let text, kind = 'info', icon = 'ℹ️';
+    if (d === 'permanent') { Object.assign(set, { verified: true, 'vreq.status': 'active', 'vreq.mode': 'permanent', 'vreq.expiresAt': null }); text = 'You are verified! Your badge is permanent.'; kind = 'good'; icon = '🎉' }
+    else if (d === 'paid') {
+      const m = Math.max(0, Math.round(Number(b.monthly) || 0)), y = Math.max(0, Math.round(Number(b.yearly) || 0));
+      Object.assign(set, { verified: false, 'vreq.status': 'approved', 'vreq.mode': 'paid', 'vreq.monthly': m, 'vreq.yearly': y, 'vreq.expiresAt': null });
+      text = 'Your verified badge request was approved! Open Manage on your profile to subscribe and get your tick.'; kind = 'good'; icon = '🎉';
+    }
+    else if (d === 'reject') { Object.assign(set, { verified: false, 'vreq.status': 'rejected', 'vreq.mode': '' }); text = 'Your verified badge request was not approved this time.' + (note ? ' ' + note : '') }
+    else { Object.assign(set, { verified: false, 'vreq.status': '', 'vreq.mode': '', 'vreq.expiresAt': null }); text = 'Your verified badge was removed.' + (note ? ' ' + note : '') }
+    const u = await User.findByIdAndUpdate(req.params.id, { $set: set }, { new: true }).select('displayName verified vreq');
+    if (!u) return res.status(404).json({ message: 'User not found.' });
+    require('../utils/acnotify').notify(req.app.get('io'), req.params.id, { icon, text, kind }).catch(() => {});
+    res.json({ id: String(u._id), name: u.displayName, verified: !!u.verified, vreq: u.vreq });
+  } catch (e) { next(e) }
+});
+// One call for the dashboard: what needs the admin's attention right now.
+router.get('/overview', async (req, res, next) => {
+  try {
+    const now = new Date(), day = new Date(Date.now() - 864e5);
+    const safe = (p, d = 0) => p.catch(() => d);
+    const [pending, approved, reports, tourOpen, creators, vreqs, appeals, newUsers, totalUsers, season] = await Promise.all([
+      safe(PayoutRequest.countDocuments({ status: { $in: ['submitted', 'held'] } })), safe(PayoutRequest.countDocuments({ status: 'approved' })),
+      safe(Report.countDocuments({ status: 'open' })), safe(Tournament.countDocuments({ status: 'open' })),
+      safe(User.countDocuments({ 'creator.status': 'applied' })), safe(User.countDocuments({ 'vreq.status': 'pending' })),
+      safe(GistPostM.countDocuments({ 'moderation.status': { $in: ['review', 'appealed'] } })),
+      safe(User.countDocuments({ createdAt: { $gte: day } })), safe(User.estimatedDocumentCount()),
+      safe(PayoutSeason.findOne({ status: { $in: ['scheduled', 'active'] }, startsAt: { $lte: now }, endsAt: { $gte: now } }).sort({ seasonNo: -1 }).select('seasonNo name endsAt batches status').lean(), null)
+    ]);
+    res.json({ pendingPayouts: pending, toPay: approved, openReports: reports, openTournaments: tourOpen, creatorApplications: creators, verifyRequests: vreqs, reelAppeals: appeals, newUsers24h: newUsers, totalUsers, onlineNow: presence.count ? presence.count() : 0, season });
+  } catch (e) { next(e); }
+});
 module.exports = router;

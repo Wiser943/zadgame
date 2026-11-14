@@ -2,6 +2,7 @@
    Walls that face the camera fade out so you can always see inside. Falls back to the flat SVG room if WebGL or the library is unavailable. */
 window.ROOM3D = {
   on: false, loading: false, T: null, az: Math.PI / 4, pol: 0.95, dist: 30, d0: 30, tAz: null, W: 0, H: 0, shiftY: 0, dark_: false, page_: 'home',
+  WALL_H: 2.4,   // box-room wall height (was 3 — shorter walls so the room reads less tall/boxy)
   walls: [], gw: 6, gd: 6, offX: 0, offZ: 0, layout: null, roomKey: 6, extras: null, avatar: null, goal: null, ptr: new Map(), pinch: 0, drag: false, down: null, last: 0,
   load() {
     return new Promise((ok, no) => {
@@ -15,6 +16,7 @@ window.ROOM3D = {
     try {
       const probe = document.createElement('canvas'); if (!(probe.getContext('webgl') || probe.getContext('experimental-webgl'))) throw 0;
       await this.load(); this.build(); this.on = true; document.getElementById('app').classList.add('r3d');
+      try { const st = localStorage.getItem('roomLight'); this.roomLight = st !== 'off'; this.roomBoost = st === 'on' } catch (e) {}
       this.page(S.page || 'home'); this.paint(S.paint); this.sync(); this.dark(!BAN.light); requestAnimationFrame(t => this.loop(t))
     } catch (e) { console.warn('3D room unavailable, using flat room', e) }
     this.loading = false;
@@ -46,12 +48,13 @@ window.ROOM3D = {
     this.floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshLambertMaterial({ map: tx })); this.floor.rotation.x = -Math.PI / 2; sc.add(this.floor);
     // four walls (the ones facing the camera fade away)
     const W = (w, h, d, x, z, out) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: S.paint, transparent: true })); m.position.set(x, h / 2, z); sc.add(m); this.walls.push({ m, out }); return m };
-    this.wW = W(.15, 3, 6.15, -3.075, 0, [-1, 0]); this.wN = W(6.15, 3, .15, 0, -3.075, [0, -1]); this.wE = W(.15, 3, 6.15, 3.075, 0, [1, 0]); this.wS = W(6.15, 3, .15, 0, 3.075, [0, 1]);
+    const WH = this.WALL_H;
+    this.wW = W(.15, WH, 6.15, -3.075, 0, [-1, 0]); this.wN = W(6.15, WH, .15, 0, -3.075, [0, -1]); this.wE = W(.15, WH, 6.15, 3.075, 0, [1, 0]); this.wS = W(6.15, WH, .15, 0, 3.075, [0, 1]);
     const n0 = sc.children.length;
-    // door + poster + lamp on the west wall, window + AC + lamp on the north wall
+    // door + poster + lamp on the west wall, window + AC + lamp on the north wall (y's are hand-placed to clear WH's ceiling)
     this.box(.12, 2.1, 1.1, 0x5a2c14, -2.95, 1.05, 1.6); this.box(.1, .9, .7, 0xf2f2f2, -2.97, 1.8, -1.5);
     this.box(1.5, 1.0, .12, 0x80868a, 1.6, 1.7, -2.94); this.walls.glass = this.box(1.3, .8, .1, 0xbfe4ff, 1.6, 1.7, -2.9).material; Object.assign(this.walls.glass, { transparent: true, opacity: .7 }); this.box(1.3, .08, .12, 0x555a5c, 1.6, 1.7, -2.88);
-    this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.4, -2.8);
+    this.box(1.1, .4, .35, 0xf1f1f1, -0.6, 2.05, -2.8);
     this.glass = this.walls.glass; this.shellDecor = sc.children.slice(n0);
     this.moon = new THREE.DirectionalLight(0x7f9bff, 0); this.moon.position.set(-6, 10, -4); sc.add(this.moon); this.lamps = [];
     this.itemsGroup = new THREE.Group(); sc.add(this.itemsGroup); this.ghostG = null; this.ring = null; this.path = [];
@@ -63,13 +66,13 @@ window.ROOM3D = {
     cv2.addEventListener('pointermove', e => {
       const p = this.ptr.get(e.pointerId); if (!p) return;
       if (this.ptr.size === 2) { p.x = e.clientX; p.y = e.clientY; const [a, b] = [...this.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (this.pinch) this.zoom(this.pinch / d); this.pinch = d; this.drag = true }
-      else { const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; if (this.down && Math.abs(e.clientX - this.down.x) + Math.abs(e.clientY - this.down.y) > 8) this.drag = true; if (this.drag) { this.tAz = null; this.az -= dx * .0085; this.pol = Math.max(.35, Math.min(1.35, this.pol - dy * .006)) } }
+      else { const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; if (this.down && Math.abs(e.clientX - this.down.x) + Math.abs(e.clientY - this.down.y) > 8) this.drag = true; if (this.drag) { if (this.fpv) { this.fpYaw -= dx * .006; this.fpPitch = Math.max(-.9, Math.min(.9, this.fpPitch - dy * .004)) } else { this.tAz = null; this.az -= dx * .0085; this.pol = Math.max(.35, Math.min(1.35, this.pol - dy * .006)) } } }
     });
     const up = e => { const was = this.ptr.size === 1 && !this.drag && this.down && Date.now() - this.down.t < 450; this.ptr.delete(e.pointerId); this.pinch = 0; if (was) this.tap(e.clientX, e.clientY) };
     cv2.addEventListener('pointerup', up); cv2.addEventListener('pointercancel', e => { this.ptr.delete(e.pointerId) });
     cv2.addEventListener('wheel', e => { e.preventDefault(); this.zoom(e.deltaY > 0 ? 1.1 : 1 / 1.1) }, { passive: false });
     cv2.addEventListener('dblclick', () => this.reset());
-    window.addEventListener('resize', () => this.resize()); this.resize()
+    window.addEventListener('resize', () => this.resize()); try { const sh = document.getElementById('sheet'); if (sh && window.MutationObserver) new MutationObserver(() => this.refreshInset()).observe(sh, { attributes: true, attributeFilter: ['style'] }) } catch (e) {} this.resize()
   },
   /* ---------- the player's character: male / female models with walk, dance and wave ---------- */
   buildAvatar(gender, look) {
@@ -256,18 +259,44 @@ window.ROOM3D = {
     const bl = ((t % 4200) < 130 ? .1 : 1) * (this.mood === 'sleepy' ? .35 : 1); P.eyes.forEach((e, i) => { e.scale.y = (i === 0 || i === 2 ? bl * .85 : bl) });
     if (P.skirt) P.skirt.rotation.x = 0;
   },
-  resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const half = 4.3 * Math.max(this.gw || 6, this.gd || 6) / 6, asp = Math.min(w / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
-  applyShift() { const sh = this.shiftY * this.H; this.cam.setViewOffset(this.W, this.H, 0, -sh, this.W, this.H); this.cam.updateProjectionMatrix() },
-  zoom(f) { this.userDist = true; this.dist = Math.max(this.d0 * .35, Math.min(this.d0 * 1.5, this.dist * f)) },
+  /* desktop shop view: the catalogue panel covers the right side, so the room is fitted into the space that is left of it */
+  calcInset() { try { if (!document.body.classList.contains('dk') || this.page_ !== 'buy') return 0; const sh = document.getElementById('sheet'); return sh && sh.offsetWidth ? Math.round(sh.offsetWidth) : 0 } catch (e) { return 0 } },
+  refreshInset() { if (!this.R) return; const n = this.calcInset(); if (n !== (this.insetR || 0)) this.resize() },
+  resize() { if (!this.R) return; const a = document.getElementById('app'), w = a.clientWidth, h = a.clientHeight; if (!w || !h) return; this.insetR = this.calcInset(); this.W = w; this.H = h; this.R.setSize(w, h, false); this.cam.aspect = w / h; const effW = Math.max(240, w - this.insetR), half = 4.3 * Math.max(this.gw || 6, this.gd || 6) / 6, asp = Math.min(effW / h, 1.4); this.d0 = half / (Math.tan(this.cam.fov * Math.PI / 360) * asp); if (!this.userDist) this.dist = this.d0; this.applyShift() },
+  applyShift() { if (this.fpv) return; const sh = this.shiftY * this.H; this.cam.setViewOffset(this.W, this.H, (this.insetR || 0) / 2, -sh, this.W, this.H); this.cam.updateProjectionMatrix() },
+  zoom(f) { if (this.fpv) return; this.userDist = true; this.dist = Math.max(this.d0 * .35, Math.min(this.d0 * 1.5, this.dist * f)) },
   flip() { this.tAz = (this.tAz == null ? this.az : this.tAz) + Math.PI / 2 },
   reset() { this.userDist = false; this.dist = this.d0; this.pol = .95; this.tAz = Math.round((this.az - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4 },
   page(w) {
+    if (w !== 'home' && this.fpv) this.setFirstPerson(false);
     this.page_ = w; if (!this.on) return; const show = w === 'home' || w === 'buy' || w === 'phone'; this.cv.style.display = show ? 'block' : 'none';
-    this.shiftY = w === 'buy' ? -.17 : .05; this.applyShift()
+    this.shiftY = w === 'buy' ? (document.body.classList.contains('dk') ? .02 : -.17) : .05; this.resize()
   },
   paint(c) { this.walls.forEach(w => w.m.material.color.set(c || '#d9a93a')) },
   dark(b) { this.dark_ = !!b },
   env(dl) { this.dl = dl },
+  setFirstPerson(on) {
+    on = !!on; if (on === !!this.fpv || !this.avatar) { if (!this.avatar) return false; return this.fpv }
+    this.fpv = on; const cam = this.cam;
+    if (on) { this.fpYaw = this.avatar.rotation.y; this.fpPitch = -.08; this.fpFov = cam.fov; cam.fov = 72; cam.near = .08; this.avatar.visible = false; this.setViewOffset0 = true; try { cam.clearViewOffset() } catch (e) {} }
+    else { cam.fov = this.fpFov || 30; cam.near = 1; this.avatar.visible = true; this.applyShift() }
+    cam.updateProjectionMatrix(); this.ceiling(); return this.fpv
+  },
+  /* Ceiling: only exists while you look around from inside (first person), so the top of the room is closed in instead of open sky.
+     In the normal bird's-eye view it is hidden so you can still see into the room. */
+  ceiling() {
+    if (!this.scene) return;
+    const on = !!this.fpv, y = this.WALL_H, gw = this.gw || 6, gd = this.gd || 6;
+    if (!this.ceilM) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xf6f0e4, side: THREE.DoubleSide }));
+      m.rotation.x = Math.PI / 2; m.visible = false; this.scene.add(m); this.ceilM = m
+    }
+    const m = this.ceilM; m.scale.set(this.layout ? gw : gw + .15, this.layout ? gd : gd + .15, 1); m.position.set(this.offX || 0, y, this.offZ || 0); m.visible = on;
+    // the house model is cut off at the wall tops for the bird's-eye view: in first person lift the cut so the walls reach the ceiling
+    if (this.shellPlane && this.layout && this.layout.model) this.shellPlane.constant = on ? y : this.layout.model.cutY
+  },
+  setLight(on) { this.roomLight = !!on; this.roomBoost = !!on;     // switching the light ON on purpose gives a slightly brighter room than the starting level
+    try { localStorage.setItem('roomLight', on ? 'on' : 'off') } catch (e) {} },
   power() { return !this.dark_ || (S.items || []).some(i => i.name === 'Gen Set' && i.placed !== false) },
   /* ---------- furniture: every placed item is a model on the 6x6 grid ---------- */
   cc(c) { return -2.5 + c },
@@ -315,11 +344,12 @@ window.ROOM3D = {
       const lx = gw + .15, lz = gd + .15, ex = gw - 3 + .075, ez = gd - 3 + .075, geo = (m, w, h, d) => { m.geometry.dispose(); m.geometry = new THREE.BoxGeometry(w, h, d) };
       this.floor.geometry.dispose(); this.floor.geometry = new THREE.PlaneGeometry(gw, gd); this.floor.position.set(offX, 0, offZ); this.floor.material.map.repeat.set(gw / 2, gd / 2);
       geo(this.slab, gw + .5, .3, gd + .5); this.slab.position.set(offX, -.15, offZ);
-      geo(this.wW, .15, 3, lz); this.wW.position.set(-3.075, 1.5, offZ); geo(this.wN, lx, 3, .15); this.wN.position.set(offX, 1.5, -3.075);
-      geo(this.wE, .15, 3, lz); this.wE.position.set(ex, 1.5, offZ); geo(this.wS, lx, 3, .15); this.wS.position.set(offX, 1.5, ez);
+      const WH = this.WALL_H, wy = WH / 2;
+      geo(this.wW, .15, WH, lz); this.wW.position.set(-3.075, wy, offZ); geo(this.wN, lx, WH, .15); this.wN.position.set(offX, wy, -3.075);
+      geo(this.wE, .15, WH, lz); this.wE.position.set(ex, wy, offZ); geo(this.wS, lx, WH, .15); this.wS.position.set(offX, wy, ez);
     }
     if (this.avatar && (L || was)) { const c = L ? L.start : null; this.avatar.position.set(c ? this.cc(c[0]) : -1, 0, c ? this.cc(c[1]) : 1.2); this.path = []; this.onArrive = null }
-    this.resize()
+    this.ceiling(); this.resize()
   },
   ek(a, b) { const f = (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) ? [a, b] : [b, a]; return f[0][0] + ',' + f[0][1] + '|' + f[1][0] + ',' + f[1][1] },
   sync() {
@@ -332,8 +362,8 @@ window.ROOM3D = {
       const [w, d] = FURN.footprint(it.name, it.rot), g = this.model(it.name); g.position.set(this.cc(it.x) + (w - 1) / 2, 0, this.cc(it.z) + (d - 1) / 2); g.rotation.y = it.rot * Math.PI / 180; g.userData.id = it.id; g.userData.name = it.name; ig.add(g); this.byId[it.id] = g;
       if (g.userData.lamp) lamp(g.position.x, g.userData.lamp.y, g.position.z, false)
     }
-    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .35, 0x222222, bx, 2.82, bz, ig); lamp(bx, 2.6, bz, true) }
-    if (own('Wall Lamp') && !this.layout) { this.box(.12, .2, .22, 0x555555, -2.93, 2.2, .2, ig); lamp(-2.8, 2.2, .2); this.box(.22, .2, .12, 0x555555, 1.2, 2.2, -2.93, ig); lamp(1.2, 2.2, -2.8) }
+    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .35, 0x222222, bx, this.WALL_H - .18, bz, ig); lamp(bx, this.WALL_H - .4, bz, true) }
+    if (own('Wall Lamp') && !this.layout) { const ly = this.WALL_H - .8; this.box(.12, .2, .22, 0x555555, -2.93, ly, .2, ig); lamp(-2.8, ly, .2); this.box(.22, .2, .12, 0x555555, 1.2, ly, -2.93, ig); lamp(1.2, ly, -2.8) }
     this.ensureAvatarFree(); if (this.selId) this.select(this.selId); if (this.ghostInfo) this.ghost(this.ghostInfo.name, this.ghostInfo.x, this.ghostInfo.z, this.ghostInfo.rot, this.ghostInfo.valid)
   },
   /* ---------- her pet cat (from the Pet app, when "Show in my room" is on): a small cat that wanders the floor ---------- */
@@ -477,9 +507,13 @@ window.ROOM3D = {
     const dt = Math.min(.05, (t - this.last) / 1000 || .016); if (isSaver() && t - this.last < 33) return; this.last = t;
     if (this.tAz != null) { const d = this.tAz - this.az; this.az += d * Math.min(1, dt * 8); if (Math.abs(d) < .002) { this.az = this.tAz; this.tAz = null } }
     const cam = this.cam, sp = Math.sin(this.pol), px = this.dist * sp * Math.sin(this.az), pz = this.dist * sp * Math.cos(this.az), py = this.dist * Math.cos(this.pol);
-    cam.position.set(px + this.offX, py + .8, pz + this.offZ); cam.lookAt(this.offX, .8, this.offZ);
+    if (this.fpv && this.avatar) {      // first person: the camera sits at the Sim's eyes and you drag to look around
+      const hw = this.fpHead || (this.fpHead = new THREE.Vector3()); if (this.parts && this.parts.head) this.parts.head.getWorldPosition(hw); else hw.set(this.avatar.position.x, 1.5, this.avatar.position.z);
+      const yaw = this.fpYaw, pit = this.fpPitch, cp = Math.cos(pit), ex = hw.x + Math.sin(yaw) * .1, ez = hw.z + Math.cos(yaw) * .1, ey = hw.y + .06;
+      cam.position.set(ex, ey, ez); cam.lookAt(ex + Math.sin(yaw) * cp, ey + Math.sin(pit), ez + Math.cos(yaw) * cp);
+    } else { cam.position.set(px + this.offX, py + .8, pz + this.offZ); cam.lookAt(this.offX, .8, this.offZ) }
     // walls between the camera and the room fade out
-    this.walls.forEach(w => { if (this.layout) return; const side = px * w.out[0] + pz * w.out[1], want = side > 2.2 ? .08 : 1, m = w.m.material; m.opacity += (want - m.opacity) * Math.min(1, dt * 8); m.depthWrite = m.opacity > .6; w.m.visible = m.opacity > .02 });
+    this.walls.forEach(w => { if (this.layout) return; const side = px * w.out[0] + pz * w.out[1], want = !this.fpv && side > 2.2 ? .08 : 1, m = w.m.material; m.opacity += (want - m.opacity) * Math.min(1, dt * 8); m.depthWrite = m.opacity > .6; w.m.visible = m.opacity > .02 });
     // avatar walking along the path
     const a = this.avatar; let moving = false;
     if (this.act && performance.now() - this.act.t0 >= this.act.dur) this.endAct(false);
@@ -487,11 +521,12 @@ window.ROOM3D = {
     this.animate(t, dt, moving);
     // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
     const dl = this.dl == null ? 1 : this.dl, kk = Math.min(1, dt * 3), C = THREE.Color, lerpC = (a, b, t) => new C(a).lerp(new C(b), t);
-    this.amb.intensity += ((.3 + .32 * dl) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
-    this.sun.intensity += (.55 * dl - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
+    const rl = this.roomLight === false ? 0 : 1, pw = this.power(), bst = rl && this.roomBoost ? 1 : 0;   // rl: the player's own light switch (bulb button on the home screen)
+    this.amb.intensity += (((.3 + .32 * dl) * (rl ? 1 : .32) + (rl && pw ? .16 * (1 - dl) : 0) + .11 * bst) - this.amb.intensity) * kk; this.amb.color.copy(lerpC(0x8a9bd6, 0xffffff, dl));
+    this.sun.intensity += (.55 * dl * (rl ? 1 : .55) * (1 + .08 * bst) - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
     this.moon.intensity += (.42 * (1 - dl) - this.moon.intensity) * kk;
     this.ground.color.copy(lerpC(0x24331f, 0x93a05a, dl)); if (this.glass) this.glass.color.copy(lerpC(0x16224a, 0xbfe4ff, dl));
-    const on = this.power(); this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
+    const on = pw && rl; this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) * (1 + .25 * bst) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
     this.petStep(t, dt);
     this.R.render(this.scene, cam)
   }

@@ -27,7 +27,9 @@ const DRAGPOS = {
     const [x, y] = this.clamp(el, p.x * A.width, p.y * A.height); this.set(el, x, y);
   },
   apply(page) { if (page) this.page = page === 'map' ? 'map' : 'home'; this.mount(); document.querySelectorAll('[data-dp]').forEach(el => this.applyOne(el)) },
-  reset() { for (const pg of ['home', 'map']) for (const el of document.querySelectorAll('[data-dp]')) { try { localStorage.removeItem(this.key(el._dpId, pg)) } catch (e) {} } document.querySelectorAll('[data-dp]').forEach(el => this.set(el, 0, 0)); if (typeof toast === 'function') toast('Buttons are back in their original places') },
+  /* silent: true skips the toast — used when a "new life" reset clears positions as one of several resets happening at once,
+     so players don't see a second, separately-timed confirmation on top of the new-life transition itself. */
+  reset(silent) { for (const pg of ['home', 'map']) for (const el of document.querySelectorAll('[data-dp]')) { try { localStorage.removeItem(this.key(el._dpId, pg)) } catch (e) {} } document.querySelectorAll('[data-dp]').forEach(el => this.set(el, 0, 0)); if (!silent && typeof toast === 'function') toast('Buttons are back in their original places') },
   /* give every matching button an id (quests by their own class, emotes by order) and the drag behaviour */
   mount() {
     for (const [sel, base] of this.targets) {

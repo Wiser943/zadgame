@@ -8,11 +8,11 @@
 const ROUTER = (() => {
   const KEY = 'ac:route', TTL = 2 * 3600e3, TABS = ['home', 'map', 'buy', 'phone'];
   const APPS = ['contacts', 'messages', 'settings', 'bank', 'camera', 'police', 'gist', 'jobs', 'invest', 'venues', 'style', 'ads'];
-  let cur = { page: 'home', app: '', home: '' }, base = 'home', applying = false, live = false, started = false;
+  let cur = { page: 'home', app: '' }, base = 'home', applying = false, live = false, started = false;
   /* cur.home is the id of the property HOMES.enter() last put the player in ('' = starter/legacy room), saved and
      restored the same way the page/app are, so a refresh puts the player back in the home they'd actually entered
      instead of always resetting to the starter room. */
-  const snap = () => ({ ac: 1, page: cur.page, app: cur.app, base, home: cur.home || '' });
+  const snap = () => ({ ac: 1, page: cur.page, app: cur.app, base, home: (cur.home != null ? cur.home : (window.S && S.activePropertyId)) || '' });   // never record the Starter Room when the player is in another home
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ ...snap(), t: Date.now() })) } catch (e) {} };
   const urlOf = st => '/play/' + (st.page === 'phone' && st.app ? 'phone/' + st.app : st.page);
   const fromPath = () => {
@@ -113,7 +113,7 @@ window.ROUTER = ROUTER;
   if (_clr) window.closeLagosRun = function () {
     const f = document.getElementById('lrf'); document.getElementById('lagosrun').style.display = 'none'; f.removeAttribute('src'); f.src = 'about:blank';
     try { if (document.fullscreenElement) document.exitFullscreen() } catch (e) {}
-    try { if (window.BGM) BGM.sync() } catch (e) {}
+    try { if (window.BGM) { BGM.hold('drive', false); BGM.sync() } } catch (e) {}
     nav(ROUTER.back());
   };
   /* start() is where the splash hands over to the game */

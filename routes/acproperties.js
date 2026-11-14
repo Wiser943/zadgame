@@ -7,7 +7,7 @@ const ensureAuth = require('../middleware/auth');
 const F = require('../utils/furniture');
 const { publicAC } = require('../utils/allconnect');
 const { ensureAC } = require('./allconnect');
-const { HOMES, isHome, publicHome, gridOf, extraOf, baseBedrooms, maxExtra, expansionCost, totalOf } = require('../utils/acproperties');
+const { HOMES, isHome, publicHome, gridOf, extraOf, baseBedrooms, maxExtra, expansionCost, totalOf, assetValue } = require('../utils/acproperties');
 const router = express.Router();
 router.use(ensureAuth);
 const bad = (res, message, status = 400) => res.status(status).json({ message });
@@ -31,6 +31,15 @@ const getOwned = async (req) => {
 };
 router.get('/', async (req, res, next) => {
   try { const u = await ensureAC(req.user.id); res.json({ catalogue: Object.entries(HOMES).map(([id, h]) => ({ id, ...h, baseBedrooms: baseBedrooms(id), maxBedrooms: baseBedrooms(id) + maxExtra(id) })), properties: (u.ac.properties || []).map(publicHome), cash: u.ac.cash, homesApi: 2 }); } catch (e) { next(e); }
+});
+/* Remembers which home the player entered last. It only accepts a home they own (or rent with time left); '' is the Starter Room. */
+router.post('/active', async (req, res, next) => {
+  try {
+    const id = String(req.body?.id || '').slice(0, 80);
+    const u = await rawUpdate(req.user.id, id ? activePropertyFilter(id) : {}, { $set: { 'ac.activeProperty': id } });
+    if (!u) return bad(res, 'You do not have access to that home.', 409);
+    res.json({ activeProperty: id });
+  } catch (err) { next(err); }
 });
 router.post('/acquire', async (req, res, next) => {
   try {
@@ -133,7 +142,7 @@ router.post('/:id/insurance', async (req, res, next) => {
   try {
     const c = await getOwned(req); if (!c.p) return bad(res, c.expired ? 'This rental has expired.' : 'Home not found.', 404);
     if (c.p.insured) return res.json({ message: 'This property is already insured.', property: publicHome(c.p) });
-    const premium = Math.max(5000, Math.round((({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[c.p.type] || 250000) * 0.025) / 100) * 100);
+    const premium = Math.max(5000, Math.round(((assetValue(c.p.type) || 250000) * 0.025) / 100) * 100);
     const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: premium }, 'ac.properties': { $elemMatch: { id: req.params.id, insured: { $ne: true } } } }, { $inc: { 'ac.cash': -premium }, $set: { 'ac.properties.$[p].insured': true } }, { new: true, arrayFilters: [{ 'p.id': req.params.id }] });
     if (!u) return bad(res, 'Not enough money for the insurance premium, or the property status changed.', 409);
     res.json({ message: 'Property insurance activated for the current weather cycle.', premium, property: publicHome((u.ac.properties || []).find(p => p.id === req.params.id)), cash: u.ac.cash });

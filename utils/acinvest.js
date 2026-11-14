@@ -43,11 +43,15 @@ const BIZ = {
 const TRUCK = { name: 'Mack Haulage Trailer', emoji: '🚛', price: 60000000, sellOne: 6000000, min: 117000, max: 209000, driver: 30000, repair: 95000, breakdown: 0.10,
   blurb: 'Hauls containers from the port to the whole country.' };
 
-// Two bigger businesses that open as their own mini-apps later.
+// One bigger business that opens as its own mini-app later.
 const COMING = [
-  { key: 'shop', emoji: '🏢', title: 'Open a shop', cost: 50000, blurb: 'Staff, prices, customers every evening.' },
   { key: 'bus',  emoji: '🚌', title: 'Eko express', cost: 0,     blurb: '1 bus between the cities. Open Bus Co. to run them.' }
 ];
+
+// Running a street business yourself, instead of just owning it: hire staff and pick a price tier. Applies on
+// top of a BIZ entry's usual [min, max] daily range (see bizDay below).
+const STAFF = { max: 3, wage: 2500, boostPerStaff: 0.15, hireFee: 15000 };
+const TIERS = { budget: { name: 'Budget', mult: 0.85 }, standard: { name: 'Standard', mult: 1 }, premium: { name: 'Premium', mult: 1.2 } };
 
 const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 const landOf = (k) => (has(LAND, k) ? LAND[k] : null);
@@ -73,9 +77,13 @@ function boundariesBetween(after, upTo, cap = MAX_CATCHUP_DAYS) {
 const rand = (uid, key, at) => parseInt(crypto.createHash('sha1').update(`${uid}|${key}|${at}`).digest('hex').slice(0, 8), 16) / 0xffffffff;
 
 // What does one item earn on one evening? Returns { pre (before tax), tax, net, gross, cost, broke }.
-function bizDay(uid, key, at) {
-  const b = BIZ[key]; const gross = round100(b.min + rand(uid, 'b:' + key, at) * (b.max - b.min));
-  const tax = Math.round(gross * TAX); return { gross, cost: 0, pre: gross, tax, net: gross - tax, broke: false };
+// `staff` (0..STAFF.max) and `tier` ('budget'|'standard'|'premium') are how a player actively runs a business
+// they own, instead of just collecting a fixed range — defaults keep old callers' behaviour identical.
+function bizDay(uid, key, at, staff = 0, tier = 'standard') {
+  const b = BIZ[key], n = Math.min(STAFF.max, Math.max(0, staff || 0)), mult = (TIERS[tier] || TIERS.standard).mult * (1 + n * STAFF.boostPerStaff);
+  const gross = round100((b.min + rand(uid, 'b:' + key, at) * (b.max - b.min)) * mult), cost = n * STAFF.wage;
+  const pre = gross - cost, tax = pre > 0 ? Math.round(pre * TAX) : 0;
+  return { gross, cost, pre, tax, net: pre - tax, broke: false };
 }
 function truckDay(uid, id, at) {
   const gross = round100(TRUCK.min + rand(uid, 't:' + id, at) * (TRUCK.max - TRUCK.min));
@@ -90,7 +98,7 @@ function settle(uid, inv, last, now) {
   const bounds = boundariesBetween(last, now), entries = []; let net = 0;
   for (const B of bounds) {
     const k = lagosDay(B - 1);
-    for (const b of inv.biz || []) if (bizOf(b.key) && B - b.at >= MIN_HOLD_MS) { const d = bizDay(uid, b.key, B); entries.push({ k, item: b.key, pre: d.pre, tax: d.tax, net: d.net, broke: false }); net += d.net; }
+    for (const b of inv.biz || []) if (bizOf(b.key) && B - b.at >= MIN_HOLD_MS) { const d = bizDay(uid, b.key, B, b.staff, b.tier); entries.push({ k, item: b.key, pre: d.pre, tax: d.tax, net: d.net, broke: false }); net += d.net; }
     for (const t of inv.trucks || []) if (B - t.at >= MIN_HOLD_MS) { const d = truckDay(uid, t.id, B); entries.push({ k, item: 'truck', pre: d.pre, tax: d.tax, net: d.net, broke: d.broke }); net += d.net; }
   }
   const newLast = bounds.length ? bounds[bounds.length - 1] : last;
@@ -112,6 +120,6 @@ function rollup(ledger, now, item) {
     todayNet: sum(rows.filter((e) => e.k === today).map((e) => e.net)), weekNet: sum(rows.filter((e) => week.has(e.k)).map((e) => e.net)) };
 }
 
-module.exports = { DAY_MS, PAYOUT_UTC_HOUR, TAX, MIN_HOLD_MS, MAX_LAND, MAX_TRUCKS, LAND_SELL_PCT, BIZ_SELL_PCT, LAND, BIZ, TRUCK, COMING,
+module.exports = { DAY_MS, PAYOUT_UTC_HOUR, TAX, MIN_HOLD_MS, MAX_LAND, MAX_TRUCKS, LAND_SELL_PCT, BIZ_SELL_PCT, LAND, BIZ, TRUCK, COMING, STAFF, TIERS,
   landOf, bizOf, bizSellValue, lagosDay, lastBoundary, nextBoundary, boundariesBetween, rand, bizDay, truckDay, settle,
   daysHeld, landGrowth, landGrewWeek, landWorth, rollup };

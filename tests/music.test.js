@@ -53,7 +53,7 @@ test('Songify “play …” search starts the first result through the official
   }
   const local = new Map();
   const context = {
-    window: { addEventListener() {} }, NET: { user: { id: 'test' } }, Audio: FakeAudio,      // songify.js now listens for window resizes when it loads
+    window: {}, NET: { user: { id: 'test' } }, Audio: FakeAudio,
     localStorage: { getItem: (k) => local.get(k) || null, setItem: (k, v) => local.set(k, v) },
     document: { getElementById: () => null, querySelector: () => null }, location: { origin: 'https://allconnect.example' },
     console, setTimeout, clearTimeout, URLSearchParams, fetch, Promise

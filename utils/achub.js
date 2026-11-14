@@ -88,7 +88,7 @@ const PARCEL = [600, 750, 900, 1050, 1200, 1500, 2400];   // ~3% of the old amou
 const parcelFor = (n) => PARCEL[Math.min(PARCEL.length - 1, Math.max(0, n))];
 
 /* ---------- invites and welcome-back gift (first friend / group / streak rewards are missions) ---------- */
-const INVITE = { inviter: 50000, invitee: 30000, windowDays: 7 };
+const INVITE = { inviter: 50000, invitee: 30000, windowDays: 7, commissionPct: 5, commissionDays: 30 };   // commission: inviter earns this % of every shift their friend works, for commissionDays after the friend joins
 const RETURN = { minDays: 3, gift: 25000 };
 
 /* ---------- protection ---------- */
@@ -155,7 +155,7 @@ const HELP = [
 /* ---------- roadmap + feature voting ---------- */
 const ROADMAP = [
   /* lane: 'Now' = building today / 'Next' = planned, up next / 'Later' = planned, further out. Shown in What's new -> Building and Planned. */
-  { id: 'r_pay', lane: 'Now', title: 'Real top-up and withdrawals', note: 'Deposit and bank transfer are coming soon.' },
+  { id: 'r_pay', lane: 'Now', title: 'Real top-up and withdrawals', note: 'Top-up is built and goes live when payments are switched on. Withdrawals follow the withdrawal seasons.' },
   { id: 'r_prop', lane: 'Now', title: 'Home upkeep and weather', note: 'Repairs, storm damage and insurance for the place you live in.' },
   { id: 'r_econ', lane: 'Now', title: 'Living costs that move', note: 'Prices and light, water and waste bills that follow what is happening in the city.' },
   { id: 'r_cars', lane: 'Next', title: 'Car ownership', note: 'Servicing, fuel, insurance and fines for your own car.' },
@@ -177,6 +177,35 @@ const VBYID = Object.fromEntries(VOTES.map((v) => [v.id, v]));
 
 /* ---------- changelog ---------- */
 const CHANGELOG = [
+  { v: '2.8', date: '2026-11-12', title: 'Frosted glass and a softer glow', items: [
+    'Pop-ups and sheets now have the same frosted-glass look as the buttons on your home screen',
+    'Switch your room light on with the bulb button for a warm, slightly brighter room',
+    'Plus everything from 2.7: Invite and earn, Free will, first-person view and more'
+  ] },
+  { v: '2.7', date: '2026-11-11', title: 'Invite and earn, plus a calmer home', items: [
+    'Invite is now its own app: your link, friends who joined, join bonuses and a 5% commission on their shifts for 30 days',
+    'Help now lives inside Guide, and the Suggestion box is in Settings. Tell us what to add any time',
+    'Free will: your Sim can look after their needs while you are away',
+    'Need alerts only show when a need is really low, and never all at once',
+    'The bulb is a light switch, and the eye button puts you inside your Sim for a first-person view',
+    'NEPA news now arrives as a notification you can tap for details',
+    'Settings: Push notifications, What reaches you (with quiet hours) and Blocked players',
+    'Smaller bottom bar, bigger top bar, tidier Naija hub and a mall that turns 180 degrees',
+    'Transport now pays the least on purpose, so every other career is worth more'
+  ] },
+  { v: '2.6', date: '2026-11-08', title: 'A fresh look, and more of Nigeria', items: [
+    'New phone look with smaller buttons and a character sheet: Needs, Feelings, Traits and a Memory book',
+    'Pick three traits in "Who are you?" and watch how they change how you feel',
+    'Top up your wallet in Naira or USD (live as soon as payments are switched on)',
+    'Catalogue: search, price filter and Pick several',
+    'Privacy: read receipts, who can message you or send you money, change password and verify email',
+    'Map: tap an icon to see its name and an Open button. On a computer the map is a flat 2D plan that shows where things are happening, and the 3D streets are there when you step outside',
+    'Two new cities to visit: Port Harcourt and Abia',
+    'The mall: turn it sideways, zoom in and out, and meet shoppers who look like the people in your home',
+    'Tell us your home state, the state you are in now and your birthday. On your birthday we post a card for you on P-Gist',
+    'Hair colour now shows on your character before you pay',
+    'Uploads now tell you what went wrong'
+  ] },
   { v: '2.5', date: '2026-11-01', title: 'Your screen, your way', items: ['Floating Songify player can be dragged anywhere on the screen', 'Hold any home or map button, then drag it where you like', 'Settings: new Reset button & player positions', 'Settings: removed Reduce animations, Larger text, High contrast and Colour-blind friendly', 'What\'s new now shows what is added, being built and planned'] },
   { v: '2.4', date: '2026-10-09', title: 'Welcome to Lagos hub', items: ['New player setup: area, job, hobby and username', 'What can I do now? button on the home screen', 'Beginner missions with visible rewards', 'City newspaper, ticker, help desk, roadmap and voting', 'Result cards for work, promotions and investment payouts', 'Fixed the Manage requirements list overlap'] },
   { v: '2.3', date: '2026-10-05', title: 'Lagos Life', items: ['City events every 12 hours', 'Weekly bills and power cuts', 'Starter quests and the daily streak', 'Creator programme screen'] },

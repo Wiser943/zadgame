@@ -15,6 +15,9 @@ const DEFAULT_RULES = [
   { key: 'noSuspension', label: 'Account in good standing', enabled: true, value: 1, description: 'Suspended or fraud-held accounts cannot withdraw.' },
   { key: 'posts', label: 'Minimum P-Gist posts', enabled: false, value: 0, description: 'Optional activity requirement set by the admin.' }
 ];
+// 3,000,000 -> "3m", 1,250,000 -> "1.25m", 12,500 -> "12.5k". Rounds down (up for "left") so nobody is shown more than they have.
+const abbr = (n, up) => { n = Number(n) || 0; const a = Math.abs(n), r = (v) => { const k = Math.pow(10, 2); const x = up ? Math.ceil(v * k - 1e-9) / k : Math.floor(v * k + 1e-9) / k; return String(x); };
+  if (a >= 1e12) return r(n / 1e12) + 't'; if (a >= 1e9) return r(n / 1e9) + 'b'; if (a >= 1e6) return r(n / 1e6) + 'm'; if (a >= 1e4) return r(n / 1e3) + 'k'; return Number(n).toLocaleString('en-NG'); };
 const rulesFor = season => season.rules && season.rules.length ? season.rules : DEFAULT_RULES;
 const userPostCount = async userId => { try { const Post = require('../models/Gist').GistPost; return Post.countDocuments({ author: String(userId), hidden: { $ne: true } }); } catch (_) { return 0; } };
 async function eligibility(user, season) {
@@ -23,13 +26,33 @@ async function eligibility(user, season) {
   const results = [];
   for (const r of rulesFor(season)) {
     if (!r.enabled) continue;
-    let ok = true, actual = '';
-    if (r.key === 'minBalance') { ok = units >= Number(r.value || 0); actual = units.toLocaleString('en-NG') + ' units'; }
-    if (r.key === 'accountAgeDays') { const days = Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000); ok = days >= Number(r.value || 0); actual = days + ' day(s)'; }
-    if (r.key === 'legalDetails') { ok = !!(user.rewardsInterest && user.rewardsInterest.legalName && user.rewardsInterest.country && user.rewardsInterest.over18); actual = ok ? 'completed' : 'not completed'; }
-    if (r.key === 'noSuspension') { ok = !(user.suspendedUntil && new Date(user.suspendedUntil) > new Date()); actual = ok ? 'good standing' : 'suspended'; }
-    if (r.key === 'posts') { const count = await userPostCount(user._id); ok = count >= Number(r.value || 0); actual = count + ' post(s)'; }
-    results.push({ key: r.key, label: r.label, ok, actual, description: r.description });
+    let ok = true, actual = '', have = null, need = null, left = null, unit = '', detail = '';
+    const fmt = n => Number(n).toLocaleString('en-NG'), plural = (n, w) => fmt(n) + ' ' + w + (Number(n) === 1 ? '' : 's');
+    if (r.key === 'minBalance') {
+      need = Number(r.value || 0); have = units; ok = have >= need; left = Math.max(0, need - have); unit = 'units'; actual = fmt(units) + ' units';
+      detail = ok ? `You have ${abbr(have)} units. The minimum is ${abbr(need)}.` : `You have ${abbr(have)} of the ${abbr(need)} units needed. You still need ${abbr(left, true)} more units.`;
+    }
+    if (r.key === 'accountAgeDays') {
+      need = Number(r.value || 0); have = Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000); ok = have >= need; left = Math.max(0, need - have); unit = 'days'; actual = have + ' day(s)';
+      const when = new Date(new Date(user.createdAt).getTime() + need * 86400000).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+      detail = ok ? `Your account is ${plural(have, 'day')} old. It needs to be at least ${plural(need, 'day')}.` : `Your account is ${plural(have, 'day')} old and must be ${plural(need, 'day')} old. ${plural(left, 'day')} to go. You qualify from ${when}.`;
+    }
+    if (r.key === 'legalDetails') {
+      const ri = user.rewardsInterest || {}, missing = []; if (!ri.legalName) missing.push('your full legal name'); if (!ri.country) missing.push('your country'); if (!ri.over18) missing.push('the 18+ confirmation');
+      need = 3; have = 3 - missing.length; left = missing.length; ok = !missing.length; unit = 'details'; actual = ok ? 'completed' : 'not completed';
+      detail = ok ? 'Your payout registration is complete.' : `Still missing: ${missing.join(', ')}. Open PGist, tap the menu, then Rewards & payouts to finish it.`;
+    }
+    if (r.key === 'noSuspension') {
+      const until = user.suspendedUntil && new Date(user.suspendedUntil) > new Date() ? new Date(user.suspendedUntil) : null; ok = !until; actual = ok ? 'good standing' : 'suspended';
+      if (until) { const hrs = Math.max(1, Math.ceil((until - Date.now()) / 3600000)); detail = `Your account is suspended until ${until.toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} (about ${plural(hrs, 'hour')} left). You can withdraw again once it ends.`; }
+      else detail = 'Your account is in good standing. Keep it that way: suspended or fraud-held accounts cannot withdraw.';
+    }
+    if (r.key === 'posts') {
+      const count = await userPostCount(user._id); need = Number(r.value || 0); have = count; ok = have >= need; left = Math.max(0, need - have); unit = 'posts'; actual = count + ' post(s)';
+      detail = ok ? `You have ${plural(have, 'post')} on P-Gist. The minimum is ${fmt(need)}.` : `You have ${plural(have, 'post')} of the ${fmt(need)} needed. Make ${plural(left, 'more post')} on P-Gist.`;
+    }
+    const progress = need ? Math.max(0, Math.min(1, have / need)) : (ok ? 1 : 0);
+    results.push({ key: r.key, label: r.label, ok, actual, description: r.description, have, need, left, unit, detail, progress });
   }
   const failed = results.filter(x => !x.ok);
   return { eligible: failed.length === 0, units, rules: results, failed, account: a || null };
@@ -51,4 +74,4 @@ function statusMessage(action, r, note = '', ref = '') {
     default: return null;
   }
 }
-module.exports = { enc, dec, DEFAULT_RULES, rulesFor, eligibility, scheduleFor, rawFor, statusMessage, naira, PayoutAccount, PayoutRequest, PayoutSeason };
+module.exports = { abbr, enc, dec, DEFAULT_RULES, rulesFor, eligibility, scheduleFor, rawFor, statusMessage, naira, PayoutAccount, PayoutRequest, PayoutSeason };

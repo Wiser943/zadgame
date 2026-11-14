@@ -7,7 +7,7 @@
 //   3. Copyrighted music (optional): set AUDD_API_TOKEN (https://audd.io) and the soundtrack is matched against known songs.
 //      It reads  https://stream.mux.com/<playbackId>/low.mp4  so MP4 renditions must be enabled on the Mux asset; if not, this step is skipped.
 // A flag is not a punishment: the reel is hidden from others and the creator can appeal; an admin makes the final call.
-const GistPost = require('../models/Gist');
+const { GistPost } = require('../models/Gist');
 
 const REPOST_WORDS = /\b(tiktok|repost(?:ed)?|re-?upload(?:ed)?|not my (?:own )?(?:video|content|clip)|i (?:do not|don'?t) own|no copyright intended|all rights (?:go )?to)\b/i;
 
@@ -27,11 +27,11 @@ async function checkReel({ uid, text, fingerprint, playbackId }) {
   try {
     if (/^[a-f0-9]{16,64}$/i.test(fingerprint || '')) {
       const dup = await GistPost.findOne({ fingerprint, author: { $ne: uid }, 'moderation.status': { $nin: ['flagged', 'appealed', 'rejected'] } }).select('_id').lean();
-      if (dup) return { flagged: true, source: 'duplicate', reason: 'This video matches a reel another creator already posted.' };
+      if (dup) return { flagged: true, source: 'duplicate', category: 'unoriginal', reason: 'This video matches a reel another creator already posted.' };
     }
-    if (REPOST_WORDS.test(String(text || ''))) return { flagged: true, source: 'caption', reason: 'The caption suggests this video is a repost or not your own content.' };
+    if (REPOST_WORDS.test(String(text || ''))) return { flagged: true, source: 'caption', category: 'unoriginal', reason: 'The caption suggests this video is a repost or not your own content.' };
     const m = await musicMatch(playbackId);
-    if (m) return { flagged: true, source: 'music', reason: `Copyrighted music detected: "${m.title}"${m.artist ? ' by ' + m.artist : ''}.` };
+    if (m) return { flagged: true, source: 'music', category: 'copyright_music', reason: `Copyrighted music detected: "${m.title}"${m.artist ? ' by ' + m.artist : ''}.` };
   } catch (e) { console.error('[contentCheck]', e.message); }
   return { flagged: false };
 }

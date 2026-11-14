@@ -1,0 +1,121 @@
+/* =====================================================================================================
+   modal-fix.css  (loaded LAST)
+   1. Every modal / sheet follows the theme (Night mode off = light card + dark text, on = dark card + light text).
+      The old rules forced a dark card on phones and used 50% see-through glass, so text blended into the background.
+   2. Modal scrollbars are hidden (the content still scrolls).
+   3. Action sheet (Sit / Rest / Sleep ...) cards are smaller.
+   ===================================================================================================== */
+
+/* ---------- 1. theme tokens for every modal surface ---------- */
+.lgcard,.rcard,.shcard,.sheet,.mcard,.wn-card,.sgn-card,.ucard,.v2sheet{
+  --ink:#1b1f33;--mut:#4f5770;--m-chip:#e9ecf5;--m-chip2:#f2f4fa;--m-line:rgba(20,26,52,.12)}
+html[data-theme="dark"] .lgcard,html[data-theme="dark"] .rcard,html[data-theme="dark"] .shcard,html[data-theme="dark"] .sheet,
+html[data-theme="dark"] .mcard,html[data-theme="dark"] .wn-card,html[data-theme="dark"] .sgn-card,html[data-theme="dark"] .ucard,html[data-theme="dark"] .v2sheet{
+  --ink:#f1f3fa;--mut:#b5bbd1;--m-chip:rgba(255,255,255,.12);--m-chip2:rgba(255,255,255,.07);--m-line:rgba(255,255,255,.14)}
+
+/* card surface: nearly opaque so the text never fights the picture behind it (also beats body.v2m's forced dark card) */
+html body .lgcard,html body.v2m .lgm .lgcard,html body .rcard,html body .shcard,html body .sheet,html body .mcard,html body .wn-card,html body .sgn-card,html body .ucard{
+  background:rgba(255,255,255,.96);color:#1b1f33;border-color:rgba(20,26,52,.1)}
+html[data-theme="dark"] body .lgcard,html[data-theme="dark"] body.v2m .lgm .lgcard,html[data-theme="dark"] body .rcard,html[data-theme="dark"] body .shcard,
+html[data-theme="dark"] body .sheet,html[data-theme="dark"] body .mcard,html[data-theme="dark"] body .wn-card,html[data-theme="dark"] body .sgn-card,html[data-theme="dark"] body .ucard{
+  background:rgba(24,28,46,.97);color:#f1f3fa;border-color:rgba(255,255,255,.14)}
+html body.v2m .lgm .lghd b,html body .lghd b{color:inherit}
+html body .v2sheet{background:rgba(255,255,255,.96);color:#1b1f33}
+html[data-theme="dark"] body .v2sheet{background:rgba(22,26,40,.97);color:#fff}
+
+/* headings, hints, small print */
+.lgcard .hsub,.lgcard .lab2,.lgcard .empty,.lgcard small,.lgcard .mtd,.lgcard .lgnote,.lgbody h4{color:var(--mut)}
+.lgcard b,.lgcard h3,.lgcard .tl,.lgcard .trow{color:var(--ink)}
+
+/* tabs, chips and small buttons */
+html body .lgtabs button:not(.on),.lgcard .mtc,.lgcard .trchips button:not(.on),.lgcard .mtr>button,.lgcard .mts button,.lghd button{
+  background:var(--m-chip);color:var(--ink);-webkit-backdrop-filter:none;backdrop-filter:none}
+html body .lgtabs button:not(.on){color:var(--ink)}
+html body .lgtabs button.on,.lgcard .trchips button.on{background:#1b1f33;color:#fff}
+html[data-theme="dark"] body .lgtabs button.on,html[data-theme="dark"] .lgcard .trchips button.on{background:#3f77ff;color:#fff}
+
+/* light panels inside a modal: tinted in light mode, dim in dark mode, text always the theme colour */
+.lgcard .sgrp,.lgcard .mtc2,.lgcard .mtl,.lgcard .trv,.lgcard .tropt,.lgcard .lgsum,.lgcard .gmcard,.lgcard .htile,.lgcard .kbrow kbd{
+  background:var(--m-chip2);color:var(--ink)}
+.lgcard .sgrp>*+*,.lgcard .mtr,.lgcard .lgq,.lgcard .lgb,.lgcard .gmc,.lgcard .kbrow{border-color:var(--m-line)!important}
+.lgcard .mtl,.lgcard .mtc2{color:var(--ink)}
+.lgcard .lgev p,.lgcard .lgev small{color:var(--mut)}
+.lgcard .lgev h3{color:var(--ink)}
+html[data-theme="dark"] .lgcard .lgwarn{background:rgba(255,196,0,.14);color:#ffd77a}
+html[data-theme="dark"] .lgcard .lgwarn.good,html[data-theme="dark"] .lgcard .lgfx .good{background:rgba(52,211,120,.16);color:#7be8ab}
+html[data-theme="dark"] .lgcard .lgfx .bad{background:rgba(255,99,99,.16);color:#ff9d9d}
+html[data-theme="dark"] .lgcard .lgfx span{background:var(--m-chip)}
+
+/* switches: visible in both themes (the "off" ones used to disappear in dark mode) */
+.sw2{background:#b8bfd0}
+.sw2 i{background:#fff}
+html[data-theme="dark"] .sw2{background:#59618a}
+html[data-theme="dark"] .sw2 i{background:#fff}
+.sw2.on,html[data-theme="dark"] .sw2.on{background:var(--grn,#075BFF)}
+.sw2.on i,html[data-theme="dark"] .sw2.on i{background:#fff}
+
+/* ---------- 2. no scrollbars inside modals (they still scroll) ---------- */
+.lgcard,.lgbody,.lgm,.rcard,.shcard,.sheet,.mcard,.ucard,.v2sheet,.v2bd,.wn-card,.lgtabs{scrollbar-width:none;-ms-overflow-style:none}
+.lgcard::-webkit-scrollbar,.lgbody::-webkit-scrollbar,.lgm::-webkit-scrollbar,.rcard::-webkit-scrollbar,.shcard::-webkit-scrollbar,.sheet::-webkit-scrollbar,
+.mcard::-webkit-scrollbar,.ucard::-webkit-scrollbar,.v2sheet::-webkit-scrollbar,.v2bd::-webkit-scrollbar,.wn-card::-webkit-scrollbar,.lgtabs::-webkit-scrollbar{display:none;width:0;height:0}
+.lgbody{padding-right:18px}
+
+/* ---------- 3. action sheet (Sit / Rest / Sleep ...): smaller cards, more breathing room ---------- */
+#use .sheet.usesheet{padding:16px 18px calc(20px + var(--sab,0px));max-height:none}
+.usesheet h2{font-size:19px}
+.usesheet .usesub{margin:2px 0 14px;font-size:13px}
+.uacts{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:12px}
+.uact{min-height:0;padding:10px 12px;gap:5px;border-radius:14px;background:var(--m-chip2)}
+.uact .u1{gap:4px}
+.uact b{font-size:15px;color:var(--ink)}
+.uact i{padding:2px 8px;font-size:10.5px;background:var(--m-chip);color:var(--mut)}
+.uact .u2{font-size:12px}
+.uact em{padding:3px 8px;font-size:12px;background:var(--m-chip);color:var(--ink)}
+
+/* ---------- verified badge screen ---------- */
+.vplans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 12px}
+.vplan{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:2px solid var(--m-line,rgba(20,26,52,.14));background:var(--m-chip2,#f3f4f9);color:var(--ink);border-radius:16px;padding:12px 14px;font:inherit;text-align:left;cursor:pointer}
+.vplan b{font-size:14px}.vplan span{font:800 18px Outfit,system-ui,sans-serif}.vplan small{color:var(--mut);font-size:11.5px}
+.vplan.on{border-color:#1d9bf0;box-shadow:0 0 0 3px rgba(29,155,240,.18)}
+
+/* ---------- game-song mute button next to the time pill ---------- */
+#v2top .v2mus{pointer-events:auto;width:32px;height:32px;flex:none;border:0;border-radius:50%;background:var(--v2-pill);color:#fff;display:grid;place-items:center;font-size:13px;padding:0;box-shadow:0 2px 7.5px rgba(0,0,0,.3);cursor:pointer}
+#v2top .v2mus.off{color:#ff9d9d;opacity:.9}
+body.v2m #v2top .v2mus{width:34px;height:34px;font-size:14px}
+
+/* ---------- Transport: info chips stay on ONE line (scroll sideways if needed); shop buttons line up ---------- */
+.lgfx.trfx{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.lgfx.trfx::-webkit-scrollbar{display:none}
+.lgfx.trfx span{flex:none;white-space:nowrap;padding:5px 10px;font-size:12px}
+.lgq>.lgbtn,.lgb>.lgbtn{flex:none;width:122px;text-align:center;padding:10px 6px;font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
+.lgq>div,.lgb>div:nth-child(2){min-width:0;overflow-wrap:anywhere}
+
+/* ---------- Boutique on phones: small preview pinned at the top, only the options scroll, so you always see your changes ---------- */
+@media (max-width:767.98px){
+  html:root body .screen.light .appview .abody.stx{display:flex;flex-direction:column;overflow:hidden;padding:0;min-height:0}
+  html:root body .abody.stx>.stleft{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 2px}
+  html:root body .abody.stx .stpv{width:auto;height:min(27vh,210px);aspect-ratio:3/4;margin:0 auto;border-radius:18px}
+  html:root body .abody.stx .stdesc{max-width:92%;font-size:12px;line-height:1.35;max-height:2.8em;overflow:hidden}
+  html:root body .abody.stx>.sttabs{flex:none;position:static;flex-wrap:nowrap;overflow-x:auto;padding:6px 14px 6px}
+  html:root body .abody.stx>#stBody{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 14px 18px;scrollbar-width:none;overscroll-behavior:contain}
+  html:root body .abody.stx>#stBody::-webkit-scrollbar{display:none}
+}
+
+/* ---------- small spinner inside a button while its request is running ---------- */
+.is-busy{position:relative;pointer-events:none;color:transparent!important;text-shadow:none!important;cursor:progress}
+.is-busy>*{opacity:0!important}
+.is-busy::after{content:"";position:absolute;left:50%;top:50%;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
+  border:2.2px solid var(--bb-c,#fff);border-top-color:transparent;opacity:.9;animation:bbspin .7s linear infinite;box-sizing:border-box}
+@keyframes bbspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.is-busy::after{animation-duration:1.6s}}
+
+.lgauto{display:flex;align-items:center;gap:10px;width:100%;border:0;background:var(--m-chip2,#f3f4f9);color:var(--ink);border-radius:16px;padding:12px 14px;margin:8px 0;text-align:left;font:inherit;cursor:pointer}
+.lgauto .tl{flex:1;font-weight:700;font-size:14px}.lgauto .sub{display:block;font-weight:500;font-size:12px;color:var(--mut);margin-top:2px}
+
+/* ---------- profile achievements: first 3, then View more / See less ---------- */
+.acms .acx{display:none}.acms.open .acx{display:block}
+.acmmore{display:block;margin:10px auto 0;border:0;border-radius:999px;padding:8px 18px;font:700 13px Outfit,system-ui,sans-serif;background:var(--m-chip,#e9ecf5);color:var(--ink);cursor:pointer}
+
+.vexp{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:12px 0 4px;padding:12px 14px;border-radius:16px;background:var(--m-chip2,#f3f4f9)}
+.vexp span{font-size:12px;color:var(--mut)}.vexp b{font:800 17px Outfit,system-ui,sans-serif;color:var(--ink)}.vexp small{margin-left:auto;font-weight:700;color:#1d9bf0}
+.vauto{display:flex;align-items:center;gap:8px;margin:10px 2px 0;font-size:13px;color:var(--ink)}

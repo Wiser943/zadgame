@@ -1,0 +1,224 @@
+/* ===== extras: notice banner, age check, Messages tabs, Health app, Play Store (loaded after style.css) ===== */
+
+/* ---- notice banner (the yellowish card) ---- */
+.nbn{margin:8px 0 12px;border-radius:18px;background:#fdeed6;border:1px solid #f4d9ab;padding:11px 14px 10px;color:#5b3a12;text-align:left;-webkit-user-select:none;user-select:none}
+.nbn .nbh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.nbn .nbh b{font:800 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.05em;color:#c2410c}
+.nbn .nbh button{border:0;background:none;color:#8a6a42;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;padding:2px 0 2px 8px;cursor:pointer}
+.nbn .nbh button i{font-style:normal;font-size:10px}
+.nbn .nbc{margin-top:6px;min-height:104px}
+.nbn .nbt{font:800 14.5px Outfit,'Plus Jakarta Sans',system-ui,sans-serif;color:#7c2d12;margin-bottom:3px}
+.nbn p{margin:0;font:500 13.5px/1.42 'Plus Jakarta Sans',system-ui,sans-serif;color:#5b3a12}
+.nbn .nbd{display:flex;justify-content:center;gap:7px;margin-top:8px}
+.nbn .nbd button{width:8px;height:8px;border-radius:50%;border:0;padding:0;background:#f5b866;transition:width .2s,background .2s}
+.nbn .nbd button.on{width:20px;border-radius:5px;background:#ea580c}
+.nbn.off{background:none;border:0;padding:0;margin:6px 0 8px}
+.nbn .nbmini{border:0;background:#fdeed6;border:1px solid #f4d9ab;color:#7c2d12;border-radius:999px;padding:7px 13px;font:700 12.5px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer}
+.nbn .nbmini u{text-decoration:none;color:#b45309;margin-left:6px;font-weight:600}
+.gdiscover+.nbn,.nbn.ingist{margin-left:12px;margin-right:12px}
+
+/* ---- age check ---- */
+.agb{position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.agc{width:100%;max-width:380px;background:#fff;color:#111827;border-radius:28px;padding:26px 22px 22px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.agc .agi{font-size:38px;line-height:1}.agc h2{font:800 26px Outfit,system-ui,sans-serif;margin:10px 0 2px;color:#111827}
+.agc .agp{margin:6px 0 12px;color:#6b7280;font:500 15px 'Plus Jakarta Sans',system-ui,sans-serif}.agc>p:not(.agp){color:#4b5563;font:500 15px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
+.agc .agr{display:flex;gap:8px;margin-bottom:12px}.agc .ags{flex:1;min-width:0;display:block}
+.agc select{width:100%;appearance:none;-webkit-appearance:none;border:0;background:#f1f3f8 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;border-radius:16px;padding:15px 28px 15px 14px;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;color:#111827}
+.agc .agk{display:flex;align-items:flex-start;gap:11px;text-align:left;background:#f4f6fb;border-radius:16px;padding:12px 14px;margin-bottom:10px;font:500 14.5px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;color:#374151}
+.agc .agk input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:#16a34a}.agc .agk a{color:#2563eb;text-decoration:underline;cursor:pointer}
+.agc .agm{text-align:left;background:#fff8e6;border-radius:12px;padding:10px 12px;margin:0 0 10px;font:500 13px/1.45 'Plus Jakarta Sans',system-ui,sans-serif;color:#5b3a12}
+.agc .aerr{min-height:18px;color:#dc2626;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif;margin:0 0 6px}
+.agc .btn{width:100%}.agc .btn:disabled{opacity:.45}
+
+/* ---- Messages: one row of tabs, no header ---- */
+.appview.nohead .ahead{display:none}
+.mtabs{display:flex;gap:2px;background:#eceef4;border-radius:16px;padding:4px;margin:6px 14px 4px;flex:none}
+.mtabs button{flex:1 1 auto;min-width:0;border:0;background:none;border-radius:12px;padding:10px 7px;font:600 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#6b7280;position:relative;white-space:nowrap;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mtabs button.on{background:#fff;color:#111827;box-shadow:0 1px 3px rgba(20,30,60,.14)}
+.mtabs em{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:8px;background:#ef4444;color:#fff;font:700 10px/16px system-ui;font-style:normal;text-align:center;padding:0 4px}
+.screen.light .home{pointer-events:auto;cursor:pointer}
+.screen.light .home::before{content:"";position:absolute;inset:-16px -40px}
+
+/* ---- Health app ---- */
+.hl{padding-bottom:26px}
+.hlcard{border-radius:28px;padding:20px 20px 18px;color:#fff;margin-bottom:10px}
+.hlcard.mild{background:linear-gradient(135deg,#f59e0b,#ea580c)}.hlcard.serious{background:linear-gradient(135deg,#ef4444,#9f1239)}.hlcard.fine{background:linear-gradient(135deg,#22c55e,#0f766e)}
+.hlcard .hle{font-size:40px;line-height:1}.hlcard h3{font:800 26px Outfit,system-ui,sans-serif;margin:6px 0 2px;color:#fff}.hlcard .hls{margin:0 0 8px;opacity:.92;font:600 15px 'Plus Jakarta Sans',system-ui,sans-serif}.hlcard p{margin:0 0 6px;font:500 15px/1.4 'Plus Jakarta Sans',system-ui,sans-serif;color:#fff}.hlcard small{opacity:.9;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.hlpet{background:#fff4d6;border-radius:14px;padding:10px 14px;margin-bottom:6px;font:600 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#7c2d12}
+.hlrow{display:flex;align-items:center;gap:13px;width:100%;text-align:left;border:0;background:none;padding:14px 4px;border-bottom:1px solid #eceef4;cursor:pointer;color:#111827}
+.hlrow .hlic,.hlhead .hlic{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:26px;background:#f1f3f9;flex:none}.hlic.grn{background:#16a34a}
+.hlrow .hlt{flex:1;min-width:0}.hlrow .hlt b{display:block;font:700 17px 'Plus Jakarta Sans',system-ui,sans-serif;color:#111827}.hlrow .hlt small{display:block;color:#6b7280;font:500 13.5px/1.35 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:2px}.hlrow .hlt em{display:block;font-style:normal;color:#0f766e;font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:3px}.hlrow>i{font-style:normal;color:#9ca3af;font-size:22px}
+.hlrow.shop{background:#f3f4f9;border:0;border-radius:22px;padding:14px;margin-bottom:10px}
+.hlfoot{color:#6b7280;font:500 14px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;margin:14px 2px 0}
+.hlsub{padding:0 18px 4px;color:#6b7280;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif}
+.hlback{border:0;background:none;color:#2563eb;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif;padding:4px 0 10px}
+.hlhead{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#16a34a,#0f2a2a);color:#fff;border-radius:26px;padding:14px;margin-bottom:12px}.hlhead .hlic{background:rgba(255,255,255,.2)}.hlhead b{display:block;font:800 19px Outfit,system-ui,sans-serif;color:#fff}.hlhead small{color:#d1fae5;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif}
+.hlseg{display:flex;background:#eceef4;border-radius:14px;padding:3px;margin:4px 0 10px}.hlseg button{flex:1;border:0;background:none;border-radius:11px;padding:9px;font:700 13.5px 'Plus Jakarta Sans',system-ui,sans-serif;color:#6b7280}.hlseg .on{background:#fff;color:#111827;box-shadow:0 1px 3px rgba(20,30,60,.14)}
+.hlgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hlitem{position:relative;background:#f3f4f9;border-radius:24px;padding:14px;display:flex;flex-direction:column;gap:2px}
+.hlitem em{position:absolute;top:10px;right:10px;font-style:normal;background:#fff;border-radius:999px;padding:3px 9px;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;color:#374151}
+.hlitem .hli{font-size:34px;line-height:1.1;margin-bottom:6px}.hlitem b{font:700 15.5px/1.2 'Plus Jakarta Sans',system-ui,sans-serif;color:#111827}.hlitem small{color:#6b7280;font:500 13px 'Plus Jakarta Sans',system-ui,sans-serif;margin:4px 0}
+.hlitem strong{font:800 21px Outfit,system-ui,sans-serif;color:#0a7a4b;margin-bottom:8px}.hlitem button{border:0;border-radius:999px;background:#22b573;color:#fff;padding:12px;font:800 15.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:auto}.hlitem button:disabled{background:#cbd5e1;color:#64748b}
+.hlwallet{text-align:center;color:#6b7280;font:600 14.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin:14px 0 0}
+.hlm{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #eceef4}.hlm>span{flex:1;min-width:0;font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif}.hlm small{display:block;color:#6b7280;font:500 12px system-ui}.hlm input{width:78px;border:1px solid #d6dae6;border-radius:10px;padding:8px;font:700 14px system-ui}.hlm button{border:0;background:#eef2ff;color:#3730a3;border-radius:10px;padding:8px 10px;font:700 13px system-ui}
+.fopt small{display:block;color:var(--mut,#6b7280);font:500 12px system-ui;margin-top:1px}
+
+/* ---- Play Store ---- */
+.pstabs{margin-top:2px}
+.pshero{padding:10px 4px 6px}.pshero b{display:block;font:800 20px Outfit,system-ui,sans-serif;color:#111827}.pshero small{color:#6b7280;font:500 13.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.psrow{display:flex;align-items:center;gap:13px;padding:11px 4px;border-bottom:1px solid #eceef4}
+.psic{width:56px;height:56px;border-radius:16px;background:#f1f3f9;display:grid;place-items:center;font-size:28px;overflow:hidden;flex:none}.psic img{width:100%;height:100%;object-fit:cover}
+.psrow .rt{flex:1;min-width:0}.psrow .rt b{display:block;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.psrow .rt span{color:#6b7280;font:500 13px 'Plus Jakarta Sans',system-ui,sans-serif}
+.psget{border:0;border-radius:999px;background:#01875f;color:#fff;padding:9px 20px;font:700 14px 'Plus Jakarta Sans',system-ui,sans-serif;cursor:pointer}
+.psempty{text-align:center;padding:34px 18px;color:#4b5563}.psempty div{font-size:46px}.psempty h3{margin:8px 0 4px;font:800 21px Outfit,system-ui,sans-serif;color:#111827}.psempty p{margin:0 0 16px;font:500 14.5px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
+
+/* ---- Shop tab: the 3D mall + the My Home switch ---- */
+#buy .top .shopseg{display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.94);border-radius:999px}
+#buy .top .shopseg button{border:0;background:none;border-radius:999px;padding:8px 13px;font:700 13px 'Plus Jakarta Sans',system-ui,sans-serif;color:#4b5563;cursor:pointer}
+#buy .top .shopseg button.on{background:#111827;color:#fff}
+#buy.mallmode #catbtn,#buy.mallmode #sheet,#buy.mallmode #bpanel{display:none!important}
+#mall{position:absolute;inset:0;display:none;background:#0b1020;overflow:hidden;pointer-events:auto;z-index:1}
+#mall canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#buy .top{z-index:3}
+.mallban{position:absolute;top:calc(60px + var(--sat,0px));left:12px;right:12px;background:#fff;border-radius:22px;border-top:4px solid #f97316;padding:9px 16px 10px;pointer-events:none;box-shadow:0 6px 22px rgba(0,0,0,.25)}
+.mallban b{display:block;font:800 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#b45309}.mallban span{font:800 21px Outfit,system-ui,sans-serif;color:#111827}
+.mallload{position:absolute;left:0;right:0;top:46%;text-align:center;color:#cbd5e1;font:600 15px 'Plus Jakarta Sans',system-ui,sans-serif;padding:0 30px}
+.mallcards{position:absolute;left:0;right:0;bottom:calc(14px + var(--sab,0px));display:flex;gap:12px;overflow-x:auto;padding:4px 14px 10px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}.mallcards::-webkit-scrollbar{display:none}
+.mcard{flex:none;width:214px;text-align:left;background:#fff;border:0;border-bottom:5px solid var(--c,#16a34a);border-radius:22px;padding:13px 15px 12px;scroll-snap-align:start;cursor:pointer;color:#111827;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.mcard .mce{display:block;font-size:30px;line-height:1.1}.mcard b{display:block;font:800 18px Outfit,system-ui,sans-serif;margin-top:5px}.mcard small{display:block;color:#6b7280;font:500 13.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:2px}
+.mallsheet{position:absolute;left:0;right:0;bottom:0;max-height:72%;overflow:auto;background:#fff;color:#111827;border-radius:26px 26px 0 0;padding:16px 16px calc(22px + var(--sab,0px));transform:translateY(105%);transition:transform .26s ease;z-index:6;box-shadow:0 -12px 40px rgba(0,0,0,.35)}.mallsheet.on{transform:none}
+.mallsheet .mgrip{width:44px;height:5px;border-radius:3px;background:#d1d5db;margin:0 auto 10px}.mallsheet .mclose{position:absolute;top:12px;right:14px;width:34px;height:34px;border-radius:50%;border:0;background:#f1f3f9;font-size:15px;cursor:pointer}
+.mallsheet h3{margin:4px 0 2px;font:800 22px Outfit,system-ui,sans-serif}.mallsheet .hint2{color:#6b7280;margin:0 0 10px;font:500 14px/1.4 'Plus Jakarta Sans',system-ui,sans-serif}
+.mallsheet .fopt{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;border:0;background:#f3f4f9;border-radius:16px;padding:13px 14px;margin-bottom:8px;font:700 15px 'Plus Jakarta Sans',system-ui,sans-serif;color:#111827;cursor:pointer}.mallsheet .fopt b{color:#0a7a4b}
+#buy.mallmode .homes-open{display:none}
+#buy .top .homes-open{padding:8px 11px;font-size:12.5px}
+@media (max-width:400px){#buy:not(.mallmode) .top #bal2{display:none}}
+
+/* ---- Bank > Withdraw ---- */
+.wdh{border-radius:26px;padding:18px 18px 16px;margin-bottom:14px;color:#fff;background:linear-gradient(140deg,#1e3a8a,#4338ca 55%,#7c3aed);box-shadow:0 10px 28px rgba(67,56,202,.28)}
+.wdh .wdt{display:flex;align-items:center;justify-content:space-between;gap:10px}.wdh .wdt span{font:800 19px Outfit,system-ui,sans-serif}
+.wdp{font-style:normal;font:700 12px 'Plus Jakarta Sans',system-ui,sans-serif;border-radius:999px;padding:5px 11px}.wdp.todo{background:rgba(251,191,36,.22);color:#fde68a}.wdp.met{background:rgba(52,211,153,.25);color:#a7f3d0}
+.wdbal{margin:14px 0 8px}.wdbal small{display:block;opacity:.8;font:600 13px 'Plus Jakarta Sans',system-ui,sans-serif}.wdbal b{font:800 34px Outfit,system-ui,sans-serif;letter-spacing:-.01em}.wdbal u{text-decoration:none;opacity:.8;font:600 14px 'Plus Jakarta Sans',system-ui,sans-serif;margin-left:6px}
+.wdmeta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.wdmeta span{background:rgba(255,255,255,.14);border-radius:999px;padding:5px 11px;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.wdsum{height:8px;border-radius:5px;background:rgba(255,255,255,.2);overflow:hidden}.wdsum i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#34d399,#a7f3d0)}.wdsl{display:block;margin-top:7px;opacity:.9;font:600 12.5px 'Plus Jakarta Sans',system-ui,sans-serif}
+.wdq{display:block;width:auto;height:auto;border-radius:20px;color:inherit;background:var(--card,#fff);border:1px solid rgba(120,130,160,.18);border-left:5px solid #f87171;border-radius:20px;padding:14px 14px 12px;margin-bottom:10px}.wdq.met{border-left-color:#22c55e}
+.wdqh{display:flex;gap:11px;align-items:flex-start}.wdqi{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;font:800 14px system-ui;color:#fff;background:#ef4444}.wdq.met .wdqi{background:#22c55e}
+.wdqh b{display:block;font:700 16px 'Plus Jakarta Sans',system-ui,sans-serif}.wdqh small{display:block;opacity:.7;font:500 13px/1.35 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:1px}
+.wdqbar{height:8px;border-radius:5px;background:rgba(120,130,160,.22);overflow:hidden;margin:12px 0 9px}.wdqbar i{display:block;height:100%;border-radius:5px;background:#f59e0b}.wdq.met .wdqbar i{background:#22c55e}
+.wdqn{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.wdqn span{background:rgba(120,130,160,.12);border-radius:12px;padding:7px 9px}.wdqn em{display:block;font-style:normal;opacity:.7;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.03em}.wdqn b{font:800 15px Outfit,system-ui,sans-serif;word-break:break-word}
+.wdqu{text-align:right;opacity:.6;font:600 11.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:3px}
+.wdqd{margin:8px 0 0;font:500 13.5px/1.45 'Plus Jakarta Sans',system-ui,sans-serif;opacity:.88}
+.wdnote{margin:6px 4px 14px;opacity:.75;font:500 13.5px/1.45 'Plus Jakarta Sans',system-ui,sans-serif}
+
+/* ---- Updates: unread first, marked NEW ---- */
+.upd.isnew .ub{box-shadow:0 0 0 1.5px rgba(96,165,250,.7)}
+.upd .nwt{display:inline-block;background:#3b82f6;color:#fff;border-radius:6px;padding:1px 6px;margin-right:4px;font:800 10px system-ui;letter-spacing:.04em}
+
+/* ---- iPhone-style notification banner ---- */
+.ntb{position:fixed;z-index:100001;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;margin:0 auto;max-width:420px;display:flex;gap:11px;align-items:flex-start;padding:12px 14px 15px;border-radius:26px;color:#111827;background:rgba(246,246,249,.86);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:0 14px 40px rgba(0,0,0,.32),0 0 0 .5px rgba(0,0,0,.08);transform:translateY(-190%);transition:transform .52s cubic-bezier(.2,1.15,.3,1);touch-action:none;cursor:pointer;-webkit-user-select:none;user-select:none}
+.ntb.in{transform:translateY(0)}.ntb.drag{transition:none}.ntb.out{transform:translateY(-200%);transition:transform .34s cubic-bezier(.4,0,1,1)}
+.ntb::after{content:"";position:absolute;left:50%;bottom:5px;width:36px;height:4px;border-radius:2px;margin-left:-18px;background:rgba(60,60,67,.3)}
+.ntb-i{width:40px;height:40px;border-radius:10px;flex:none;display:grid;place-items:center;font-size:23px;background:linear-gradient(135deg,#e0e7ff,#c7d2fe)}
+.ntb-t{min-width:0;flex:1}.ntb-h{display:flex;justify-content:space-between;gap:8px;font:600 12px 'Plus Jakarta Sans',system-ui,sans-serif;color:#6b7280;text-transform:uppercase;letter-spacing:.02em}.ntb-h time{text-transform:none;letter-spacing:0}
+.ntb-t b{display:block;font:700 15.5px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ntb-t p{margin:1px 0 0;font:500 14.5px/1.3 'Plus Jakarta Sans',system-ui,sans-serif;color:#374151;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (prefers-color-scheme:dark){.ntb{background:rgba(44,44,50,.88);color:#fff}.ntb-t p{color:#d1d5db}.ntb-h{color:#9ca3af}.ntb::after{background:rgba(255,255,255,.35)}}
+
+/* ---- Messages: back button beside the tabs ---- */
+.mtop{display:flex;align-items:center;gap:4px;margin:6px 10px 4px 6px;flex:none}
+.mtop .mtabs{flex:1;min-width:0;margin:0}.mtop .mtabs button{font-size:12.5px;padding:10px 5px}
+.mback{flex:none;width:36px;height:40px;border:0;background:none;color:#2563eb;font:400 38px/1 system-ui,sans-serif;padding:0 0 4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* withdrawal requirement boxes: abbreviated numbers never wrap or stretch the grid */
+.wdqn{grid-template-columns:repeat(3,minmax(0,1fr))}.wdqn span{min-width:0;overflow:hidden}.wdqn b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wdbal b{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+
+/* requirement cards: --card was never defined, so the card fell back to white while dark-theme text is light (white on white). Use the app's own surface + ink colours. */
+.wdq{background:var(--sf);color:var(--ink)}.wdqh small{color:var(--mut);opacity:1}.wdqn span{background:rgba(120,130,160,.2)}.wdqn em{color:var(--mut);opacity:1}.wdqn b{color:var(--ink)}.wdqu{color:var(--mut);opacity:1}.wdqd{color:var(--ink)}
+/* reel editor: icon buttons stay small, title stays on one line, chips wrap instead of being cut off */
+.rl-edit{--ac:#c6ff3d}.rl-edit .rle-top{padding:calc(12px + env(safe-area-inset-top,0px)) 14px 8px;justify-content:space-between}
+.rl-edit .rle-top .rle-ib{flex:none;width:auto;min-width:0;height:38px;padding:0 16px;border:0;border-radius:99px;background:rgba(128,138,160,.24);color:inherit;font:700 14px inherit;font-family:inherit;display:grid;place-items:center}
+.rl-edit .rle-top .rle-ib.sq{width:38px;padding:0}.rl-edit .rle-top b{flex:1;text-align:center;white-space:nowrap;display:flex;flex-direction:column;line-height:1.15;font-size:16px}.rl-edit .rle-top b .rle-step{font-size:12px;font-weight:600;opacity:.7}
+.rl-edit .rle-row{flex-wrap:wrap;overflow:visible;gap:6px}.rl-edit .rle-row>label{width:44px}.rl-edit .rle-row button{padding:6px 11px;font-size:12.5px}
+.rl-edit input[type=range]{accent-color:var(--ac)}.rl-edit .rle-go button{height:46px}
+
+/* CapCut-style editor: toolbar at the bottom, tapping a tool opens only its options */
+.rl-edit .rle-panel{display:none;margin:0 14px 8px;padding:12px 14px 14px;border-radius:18px;background:rgba(128,138,160,.18)}.rl-edit .rle-panel.open{display:block}
+.rl-edit .rle-ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.rl-edit .rle-ph b{font-size:15px}.rl-edit .rle-ph .rle-ib{height:32px;width:32px;border:0;border-radius:50%;background:var(--ac);color:#111;display:grid;place-items:center}
+.rl-edit .rle-chips{display:flex;flex-wrap:wrap;gap:8px}.rl-edit .rle-chips button,.rl-edit .rle-reset{border:0;border-radius:99px;padding:8px 14px;background:rgba(128,138,160,.28);color:inherit;font:700 13px inherit;font-family:inherit}.rl-edit .rle-chips button.on{background:var(--ac);color:#111}
+.rl-edit .rle-sl{display:flex;align-items:center;gap:10px;margin:8px 0}.rl-edit .rle-sl label{width:78px;flex:none;font-size:12.5px;opacity:.8}.rl-edit .rle-sl input{flex:1;min-width:0}.rl-edit .rle-sl span{width:40px;flex:none;text-align:right;font-size:12.5px}.rl-edit .rle-hint{margin:10px 0 0;font-size:12px;opacity:.65}.rl-edit .rle-reset{margin-top:6px}
+.rl-edit .rle-bar{display:flex;gap:4px;padding:4px 10px}.rl-edit .rle-tb{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;border:0;background:none;color:inherit;padding:9px 2px;border-radius:14px;font:600 11.5px inherit;font-family:inherit}.rl-edit .rle-tb i{font-size:19px}
+.rl-edit .rle-tb.on{background:rgba(198,255,61,.16);color:var(--ac)}.rl-edit .rle-tb.mod::after{content:'';position:absolute;top:7px;right:calc(50% - 20px);width:7px;height:7px;border-radius:50%;background:var(--ac)}
+.rl-edit .rle-go{padding:6px 14px calc(14px + env(safe-area-inset-bottom,0px))}.rl-edit .rle-go button{width:100%}
+
+/* ================= composer: author in the header, caption + cover side by side, audience settings ================= */
+.ahead .gcwho2{margin-left:auto;display:flex;align-items:center;gap:7px;max-width:48%;min-width:0}.gcwho2 .avi{width:30px!important;height:30px!important;font-size:12px}.gcwho2 b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gcomp .gcrow{display:flex;gap:12px;align-items:stretch}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gcomp .gcin2{flex:1 1 100%;min-width:0;display:flex;flex-direction:column}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gcomp .gcrow.media .gcin2{flex:0 0 calc(65% - 6px)}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gcomp .gcin2 textarea{flex:1;width:100%;box-sizing:border-box;min-height:150px;margin:0;resize:none}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gcomp .gcthumb{flex:1 1 0;min-width:0}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gcomp .gcthumb:empty{display:none}
+.gct{position:relative;display:block;width:100%;height:100%;min-height:150px;border:0;padding:0;border-radius:14px;overflow:hidden;background:#0b0d12;cursor:pointer}.gct img,.gct video{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0}
+.gct-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:grid;place-items:center;font-size:13px}
+.gct small{position:absolute;left:6px;bottom:6px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;font:700 11px inherit;font-family:inherit}
+.gct-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;font-size:12px}
+.gct-ed{position:absolute;right:6px;bottom:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;font-size:11px}
+.gedit{display:flex;align-items:center;gap:8px;width:100%;margin:10px 0 0;padding:11px 14px;border:0;border-radius:14px;background:rgba(128,138,160,.16);color:inherit;font:700 13.5px inherit;font-family:inherit}.gedit small{margin-left:auto;opacity:.65;font-weight:600}
+.gprev button.ed{top:auto!important;bottom:3px;right:3px!important}
+.rl-set{margin:14px 0 6px;display:grid;gap:8px}.rl-set .lab2{margin:0 2px 2px}
+.rl-set .sr{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:rgba(128,138,160,.14);min-height:56px}.rl-set .sr>span{flex:1;min-width:0}
+.rl-set .sr b{display:block;font-size:14px;line-height:1.25}.rl-set .sr small{display:block;margin-top:2px;font-size:12px;line-height:1.3;opacity:.68}
+.rl-set select{flex:none;max-width:118px;border:0;border-radius:10px;padding:8px 8px;background:rgba(128,138,160,.24);color:inherit;font:600 13px inherit;font-family:inherit}
+.rlsw{position:relative;flex:none;display:block;width:46px;height:28px;margin:0;padding:0;background:none}.rlsw input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;z-index:2;cursor:pointer}
+.rlsw i{position:absolute;inset:0;border-radius:99px;background:rgba(128,138,160,.5);transition:background .18s}.rlsw i::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .18s}
+.rlsw input:checked+i{background:#22b573}.rlsw input:checked+i::after{transform:translateX(18px)}
+.rl-pvw video{width:100%;max-height:64vh;border-radius:14px;background:#000;display:block;margin-bottom:10px}
+
+/* ================= profile: tighter spacing, tap photo / cover to see it full ================= */
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof{padding:4px 14px 6px!important}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .gcover{height:100px!important;margin:0 -14px!important}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .gavw{margin-top:-42px!important}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof h3{margin-top:6px!important}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .gun{margin:0 0 6px!important}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .gbio{margin:0 8px 8px!important}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .gstats{margin:6px 0 !important;padding:6px 0!important}
+:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .gpb{padding:6px 0!important}:is(html,html[data-theme]) #appview.pgist-social.pgist-social .gprof .ggs{margin-top:8px!important}
+.gavw,.gcover[data-ph]{cursor:pointer}
+.gview{position:absolute;inset:0;z-index:80;background:rgba(0,0,0,.95);display:grid;place-items:center;padding:12px}.gview img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+.gvx{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:16px;display:grid;place-items:center}
+
+/* ================= reels: author line, long-press menu, full screen ================= */
+.rl-card{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.rl-info .rl-who{margin-bottom:6px;gap:10px;align-items:center}.rl-info .rl-nm b{font-size:15px}
+.appview.rlfs .rl-top,.appview.rlfs .rl-info,.appview.rlfs .rl-act,.appview.rlfs .rl-snd,.appview.rlfs .rl-no,.appview.rlfs .rl-cc,.appview.rlfs .rl-wash,.appview.rlfs .rl-bar,.appview.rlfs .rl-fol{display:none!important}
+#appview.rlfs .tkdock{display:none!important}.appview.rlfs .rl-v{object-fit:contain!important;background:#000}
+.screen:has(.appview.rlfs) .sb,.screen:has(.appview.rlfs) .home{display:none!important}
+.rl-fsx{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;z-index:90;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:16px;display:grid;place-items:center}
+
+/* ================= request-review sheet ================= */
+.rl-sh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}.rl-sh h3{margin:0}
+.rl-x{flex:none;width:34px;height:34px;border-radius:50%;border:0;background:rgba(128,138,160,.22);color:inherit;display:grid;place-items:center}
+.rl-why{margin:8px 0 14px;line-height:1.45;font-size:14px}.rl-lab{display:block;font-size:12.5px;font-weight:700;margin:0 0 6px;opacity:.8}
+.rl-ta{display:block;width:100%;box-sizing:border-box;min-height:104px;padding:12px 14px;border-radius:14px;border:1.5px solid rgba(128,138,160,.38);background:rgba(128,138,160,.12);color:inherit;font:500 14.5px/1.45 inherit;font-family:inherit;resize:none;outline:none;transition:border-color .15s,box-shadow .15s}
+.rl-ta::placeholder{color:inherit;opacity:.45}.rl-ta:focus{border-color:#a3c520;box-shadow:0 0 0 3px rgba(163,197,32,.22)}
+.rl-send{width:100%;margin-top:12px;height:48px;display:flex;align-items:center;justify-content:center;gap:8px}.rl-fine{margin:10px 0 0;font-size:12px;opacity:.65;text-align:center}
+
+/* ================= editor: smaller scrolling toolbar, Next at the top ================= */
+.rl-edit .rle-top .rle-ib.nx{width:auto;padding:0 14px;gap:5px;background:var(--ac);color:#111}.rl-edit .rle-top .rle-ib.nx i{font-size:11px}.rl-edit .rle-top .rle-ib:disabled{opacity:.6}
+.rl-edit .rle-box{position:relative;overflow:hidden}.rl-edit .rle-box>img,.rl-edit .rle-box>video{position:absolute;left:50%;top:50%;max-width:none;object-fit:cover;display:block}
+.rl-edit .rle-snd{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:3;border:0;border-radius:99px;padding:7px 14px;background:rgba(0,0,0,.62);color:#fff;font:700 12px inherit;font-family:inherit;white-space:nowrap}
+.rl-edit .rle-bar{overflow-x:auto;scrollbar-width:none;gap:2px;padding:2px 8px calc(10px + env(safe-area-inset-bottom,0px))}.rl-edit .rle-bar::-webkit-scrollbar{display:none}
+.rl-edit .rle-tb{flex:0 0 auto;width:56px;padding:6px 2px;gap:3px;font-size:10px;border-radius:12px}.rl-edit .rle-tb i{font-size:15px}.rl-edit .rle-tb.mod::after{top:4px;right:10px;width:6px;height:6px}
+
+/* mall: smaller banner and shop cards, plus the view controls */
+.mallban{top:calc(52px + var(--sat,0px));left:10px;right:10px;border-radius:15px;border-top-width:3px;padding:5px 13px 6px}
+.mallban b{font-size:9.5px}.mallban span{font-size:15px}
+.mcard{width:164px;border-bottom-width:4px;border-radius:15px;padding:9px 12px 9px}.mcard .mce{font-size:22px}.mcard b{font-size:14px;margin-top:3px}.mcard small{font-size:11px;line-height:1.28}
+.mallcards{gap:9px;padding:4px 10px 8px}
+.mallhint{position:absolute;top:calc(100px + var(--sat,0px));left:50%;transform:translateX(-50%);background:rgba(11,16,32,.72);color:#e5e9f5;border-radius:99px;padding:4px 12px;font:600 11px 'Plus Jakarta Sans',system-ui,sans-serif;pointer-events:none;white-space:nowrap}
+.mallctl{position:absolute;right:10px;top:50%;transform:translateY(-60%);display:flex;flex-direction:column;gap:6px}
+.mallctl button{width:36px;height:36px;border-radius:50%;border:0;background:rgba(11,16,32,.78);color:#fff;font-size:16px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.35)}.mallctl button:hover{background:rgba(40,52,80,.95)}
+@media (min-width:768px){.mallban{left:50%;right:auto;transform:translateX(-50%);min-width:300px;text-align:center;top:70px}.mallhint{top:122px}.mcard{width:190px}.mallcards{justify-content:center;bottom:20px}.mallctl{right:18px}}
+
+/* P-Gist birthday card */
+.gbday{position:relative;overflow:hidden;margin:8px 0 2px;padding:22px 16px 14px;border-radius:20px;text-align:center;color:#fff;background:linear-gradient(135deg,var(--a),var(--b));box-shadow:0 10px 26px rgba(0,0,0,.22)}
+.gbday .gbt{font-size:46px;line-height:1;filter:drop-shadow(0 4px 8px rgba(0,0,0,.25));animation:gbpop 2.4s ease-in-out infinite}
+.gbday .gbn{font-weight:800;font-size:19px;margin-top:8px;text-shadow:0 2px 6px rgba(0,0,0,.25)}.gbday .gbw{font-size:13.5px;line-height:1.4;margin:6px auto 10px;max-width:30ch;opacity:.96}
+.gbday .gmb{display:flex;gap:8px;justify-content:center}.gbday .gmb button{border:0;border-radius:99px;padding:7px 14px;font-weight:700;background:rgba(255,255,255,.92);color:#222;cursor:pointer}
+.gbday .gbc{position:absolute;top:-18px;font-style:normal;font-size:18px;opacity:.85;animation:gbfall 4.8s linear infinite;pointer-events:none}
+@keyframes gbfall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(190px) rotate(240deg);opacity:0}}@keyframes gbpop{0%,100%{transform:scale(1)}50%{transform:scale(1.12) rotate(-4deg)}}
+@media (prefers-reduced-motion:reduce){.gbday .gbc,.gbday .gbt{animation:none}.gbday .gbc{display:none}}

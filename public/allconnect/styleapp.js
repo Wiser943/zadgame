@@ -131,7 +131,7 @@ const STYLE = {
   /* ---------- the app ---------- */
   async open() {
     PH.view = 'style'; if (PH.TINT && !PH.TINT.style) PH.TINT.style = '#ffffff';
-    PH.shell('Style', 'STYLE.close()', `<div class="abody stx" id="ab"><div class="stleft"><div class="stpv"><canvas id="stCv" width="300" height="400" role="img" aria-label="Your avatar"></canvas><div class="sttry" id="stTry" style="display:none"><span></span><button onclick="STYLE.resetTry()">Reset</button></div></div><div id="stDesc" class="stdesc" style="display:none"></div></div><div class="sttabs" id="stTabs"></div><div id="stBody"><p class="empty">Loading…</p></div></div>`);
+    PH.shell('Boutique', 'STYLE.close()', `<div class="abody stx" id="ab"><div class="stleft"><div class="stpv"><canvas id="stCv" width="300" height="400" role="img" aria-label="Your avatar"></canvas><div class="sttry" id="stTry" style="display:none"><span></span><button onclick="STYLE.resetTry()">Reset</button></div></div><div id="stDesc" class="stdesc" style="display:none"></div></div><div class="sttabs" id="stTabs"></div><div id="stBody"><p class="empty">Loading…</p></div></div>`);
     if (!this.D) { try { await this.load() } catch (e) { toast(e.message); return } }
     if (PH.view !== 'style') return; this.mountPreview(); this.paint(true);
   },
@@ -253,7 +253,7 @@ const STYLE = {
       <div class="stcard"><div class="stmain"><div class="stnm">Facial glow</div><div class="stsub">Fresh for 3 days</div></div><div class="stact"><button class="stb buy" onclick="STYLE.salon('spa')">${this.money(C.salon.spa)}</button></div></div></div>
       ${s.history.length ? `<div class="lab2">RECENT VISITS</div><div class="sgrp">${s.history.slice(0, 5).map(h => `<div class="trow"><span class="tl">${esc(h.name)}</span><span class="stsub">${this.money(h.cost)}</span></div>`).join('')}</div>` : ''}`;
   },
-  pickHC(c) { this.hc = c; this.paint() },
+  pickHC(c) { this.hc = c; this.paint(); const r = JSON.parse(JSON.stringify(S.render)); r.hair = Object.assign({}, r.hair, { color: c }); this.tried = 'hair'; if (this.pv) this.pv.look(r); const b = document.getElementById('stTry'); if (b) { b.style.display = 'flex'; b.querySelector('span').textContent = 'Trying this hair colour' } },
   tryHair(id) { const r = JSON.parse(JSON.stringify(S.render)); r.hair = { style: id, color: this.hc || r.hair.color }; this.tried = 'hair'; this.pv && this.pv.look(r); const b = document.getElementById('stTry'); if (b) { b.style.display = 'flex'; b.querySelector('span').textContent = 'Trying ' + this.D.catalog.hair.find(h => h.id === id).name } },
   async salon(svc, extra) {
     const body = Object.assign({ svc }, extra || {}); if (svc === 'style' && this.hc) body.color = this.hc;

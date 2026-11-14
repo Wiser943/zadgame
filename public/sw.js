@@ -3,7 +3,7 @@
 // exist — its presence + the manifest is what makes Chrome/Edge/Android
 // consider the site "installable" and fire beforeinstallprompt.
 try { importScripts('/config.js'); } catch (e) {}   // defines self.API_BASE (empty when the API is on the same host)
-const CACHE = 'gamehub-shell-v7';
+const CACHE = 'gamehub-shell-v8';
 const SHELL = ['/', '/offline.html', '/manifest.webmanifest', '/icon-192.png', '/pwa-192.png', '/logo.png'];
 
 self.addEventListener('install', (e) => {

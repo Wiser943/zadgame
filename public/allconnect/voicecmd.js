@@ -12,7 +12,7 @@ const VCMD = {
     'music': 'Songify', 'songs': 'Songify', 'money': 'Bank', 'wallet': 'Bank', 'bank': 'Bank',
     'chat': 'Messages', 'chats': 'Messages', 'texts': 'Messages', 'messages': 'Messages', 'message': 'Messages', 'friends': 'Contacts',
     'work': 'Jobs', 'job': 'Jobs', 'my pet': 'Pet', 'cat': 'Pet', 'government': 'State House', 'house': 'Homes', 'houses': 'Homes',
-    'investments': 'Invest', 'adverts': 'Ads', 'search': 'Search', 'camera': 'Camera', 'photos': 'Camera', 'cop': 'Police', 'cops': 'Police'
+    'investments': 'Invest', 'adverts': 'Play Store', 'ads': 'Play Store', 'store': 'Play Store', 'play store': 'Play Store', 'playstore': 'Play Store', 'style': 'Boutique', 'boutique': 'Boutique', 'clothes': 'Boutique', 'health': 'Health', 'chemist': 'Health', 'pharmacy': 'Health', 'hospital': 'Health', 'doctor': 'Health', 'search': 'Search', 'camera': 'Camera', 'photos': 'Camera', 'cop': 'Police', 'cops': 'Police'
   },
   on() { try { return (PET.vp().cmds !== false) } catch (e) { return true } },
   norm(t) { return String(t || '').toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9₦ ]+/g, ' ').replace(/\s+/g, ' ').trim() },
