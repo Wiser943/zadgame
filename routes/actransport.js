@@ -12,6 +12,7 @@ const L = require('../utils/aclagos');
 const profanity = require('../utils/profanity');
 const { queueCard, timeline } = require('../utils/accards');
 const { emitUser } = require('../utils/acnotify');
+const { playerContext } = require('../utils/acctx');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -444,6 +445,24 @@ router.get('/top', wrap(async (req, res) => {
   const rows = await User.find({ ...has, 'ac.tr.rep': { $gt: 0 } }).sort({ 'ac.tr.rep': -1, _id: 1 }).limit(10).select('acUsername displayName ac.tr.rep').lean();
   const rank = (await User.countDocuments({ ...has, 'ac.tr.rep': { $gt: mine } })) + 1;
   res.json({ top: rows.map((r, i) => ({ rank: i + 1, name: r.acUsername ? '@' + r.acUsername : r.displayName || 'Driver', rep: Math.floor(r.ac.tr.rep), tier: T.tierOf(r.ac.tr.rep).name, me: String(r._id) === me })), mine: { rank, rep: Math.floor(mine) } });
+}));
+
+/* ================= residency / visa ================= */
+// Picked up from the Transport app rather than a separate Visa app: your home state's residency paper is one
+// more thing the LASG desk hands you while you are getting your licence sorted.
+router.get('/visa', wrap(async (req, res) => {
+  const id = uid(req), ctx = await playerContext(id);
+  if (!ctx) return bad(res, 404, 'Player not found.');
+  res.json(T.visaStatus(ctx, ctx.investorPaid));
+}));
+router.post('/visa/investor', wrap(async (req, res) => {
+  const id = uid(req), now = Date.now();
+  const u = await User.findById(id).select('ac.visa.investorAt');
+  if (u && u.ac && u.ac.visa && u.ac.visa.investorAt) return bad(res, 409, 'You already hold an Investor Permit.');
+  const hit = await pay(id, T.VISA_INVESTOR_FEE, {}, { $set: { 'ac.visa.investorAt': new Date(now) } });
+  if (!hit) return bad(res, 402, `You need ${money(T.VISA_INVESTOR_FEE)} for the Investor Permit fee.`);
+  const ctx = await playerContext(id, { u: hit });
+  res.json(T.visaStatus(ctx, true));
 }));
 
 module.exports = router;

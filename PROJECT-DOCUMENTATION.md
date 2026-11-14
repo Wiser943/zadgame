@@ -780,3 +780,8 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - **Elections admin:** filing fee, allowance, min account age/followers editable (`ACSetting govOffices`); edit/delete elections; edit/remove campaigns.
 - **Background music (`public/js/bgm.js`):** fixed level; pauses for reels/videos, voice notes, mic use, audio over ~6s, Drive. `BGM.hold(key, on)` for manual holds.
 - **Withdraw numbers** are abbreviated (3,000,000 -> 3m).
+
+
+## Merged features (v20)
+- **Verified badge** (routes/acverify.js, utils/acverify.js, admin "Verified badges" page): request, admin decides permanent or paid, monthly/yearly subscription from the wallet, hourly expiry sweep.
+- **House Party** (routes/acparty.js, utils/acparty.js, public/allconnect/party.js), **Residency / Visa** tab in Transport, **business staff + price tiers** (POST /api/ac/invest/biz/manage), **bills auto-pay** (POST /api/ac/lagos/bills/autopay, toggle on the Bills screen), **profile milestones** (utils/acmilestones.js, utils/acctx.js) and tiered **home comfort** (Lekki apartment, Banana Island mansion) were merged in from the older zadgame-main-updated build.

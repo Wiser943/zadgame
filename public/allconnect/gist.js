@@ -507,13 +507,26 @@ const GIST = {
     $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')" data-ph="${esc(u.cover)}" onclick="GIST.viewPhoto(this.dataset.ph)"` : ''}></div><div class="gavw" data-ph="${esc(avSrc)}" onclick="GIST.viewPhoto(this.dataset.ph)">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
-      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div></div>
+      <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div>
+      ${this.milestonesHtml(r.milestones)}</div>
       <div class="gprofile-tabs" role="tablist" aria-label="Profile posts">${[['grid','Grid'],['posts','Posts'],['reels','Reels']].map(([m,n]) => `<button role="tab" aria-controls="gprofile-content" tabindex="${(this.pf.mode || 'grid') === m ? '0' : '-1'}" aria-selected="${(this.pf.mode || 'grid') === m}" class="${(this.pf.mode || 'grid') === m ? 'on' : ''}" onclick="GIST.profileMode('${m}')">${n}</button>`).join('')}</div><div id="gprofile-content" role="tabpanel">${this.profileContent(posts, more)}</div>`
   },
   /* full-screen look at a profile photo or cover; tap anywhere to close */
   viewPhoto(url) {
     if (!url) return toast('No photo to show yet');
     const o = document.createElement('div'); o.className = 'gview'; o.innerHTML = `<button class="gvx" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><img src="${esc(url)}" alt="">`; o.onclick = () => o.remove(); (PH.$a() || document.body).appendChild(o)
+  },
+  // Life milestones: part of the Profile page itself (not a separate app) — see utils/acmilestones.js.
+  milestonesHtml(m) {
+    if (!m || !m.list) return '';
+    const open = !!this.acmOpen, more = m.list.length > 3;
+    return `<div class="acms${open ? ' open' : ''}" id="acms"><div class="ggh"><i class="fa-solid fa-trophy"></i> Achievements<small>${m.done}/${m.total}</small></div><div class="acmg">${m.list.map((x, i) => `<div class="acmi${x.done ? ' on' : ''}${i > 2 ? ' acx' : ''}" title="${esc(x.desc)}"><span class="acmic">${x.done ? x.emoji : '<i class="fa-solid fa-lock"></i>'}</span><b>${esc(x.title)}</b></div>`).join('')}</div>${more ? `<button type="button" class="acmmore" onclick="GIST.toggleAchievements(this)">${open ? 'See less' : `View more (${m.list.length - 3})`}</button>` : ''}</div>`;
+  },
+  // show the first 3 achievements; "View more" reveals the rest, "See less" folds them again
+  toggleAchievements(btn) {
+    const box = document.getElementById('acms'); if (!box) return;
+    this.acmOpen = !box.classList.contains('open'); box.classList.toggle('open', this.acmOpen);
+    const hidden = box.querySelectorAll('.acx').length; btn.textContent = this.acmOpen ? 'See less' : `View more (${hidden})`;
   },
   profileMode(mode) { if (!['grid','posts','reels'].includes(mode) || !this.pf) return; this.pf.mode = mode; this.drawProfile() },
   profileContent(posts, more) {

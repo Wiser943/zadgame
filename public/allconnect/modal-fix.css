@@ -108,3 +108,10 @@ body.v2m #v2top .v2mus{width:34px;height:34px;font-size:14px}
   border:2.2px solid var(--bb-c,#fff);border-top-color:transparent;opacity:.9;animation:bbspin .7s linear infinite;box-sizing:border-box}
 @keyframes bbspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.is-busy::after{animation-duration:1.6s}}
+
+.lgauto{display:flex;align-items:center;gap:10px;width:100%;border:0;background:var(--m-chip2,#f3f4f9);color:var(--ink);border-radius:16px;padding:12px 14px;margin:8px 0;text-align:left;font:inherit;cursor:pointer}
+.lgauto .tl{flex:1;font-weight:700;font-size:14px}.lgauto .sub{display:block;font-weight:500;font-size:12px;color:var(--mut);margin-top:2px}
+
+/* ---------- profile achievements: first 3, then View more / See less ---------- */
+.acms .acx{display:none}.acms.open .acx{display:block}
+.acmmore{display:block;margin:10px auto 0;border:0;border-radius:999px;padding:8px 18px;font:700 13px Outfit,system-ui,sans-serif;background:var(--m-chip,#e9ecf5);color:var(--ink);cursor:pointer}

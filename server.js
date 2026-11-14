@@ -137,6 +137,7 @@ async function main() {
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
   app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
   app.use('/api/ac/verify', require('./routes/acverify'));  // verified badge: request + paid subscription
+  app.use('/api/ac/party', require('./routes/acparty'));  // house parties
   app.use('/api/ac/v2', require('./routes/acv2'));  // traits, memory book, privacy, password, email, wallet top-up
   app.use('/api/ac/age', acAgeRoutes);       // 18+ attestation
   app.use('/api/ac/pet', acPetRoutes);      // Pet app: needs, shop, clothes, mini-games (all paid from the main balance)
@@ -269,6 +270,13 @@ async function main() {
   const petAlerts = require('./services/petalerts');
   setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
+  setInterval(async () => {          // pay out house parties that have ended, even if the host never opens the app again
+    try {
+      const User = require('./models/User'), party = require('./routes/acparty');
+      const due = await User.find({ 'ac.party.settled': false, 'ac.party.endsAt': { $lte: new Date() } }).select('_id').limit(50).lean();
+      for (const d of due) await party.settleIfDue(String(d._id), Date.now(), app.get('io'));
+    } catch (e) { console.error('[party sweep]', e.message); }
+  }, 60 * 1000).unref();
   setInterval(() => require('./utils/acverify').sweep().catch((e) => console.error('[verify sweep]', e.message)), 60 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
   /* withdrawal seasons: tell players when a season/batch opens or is about to close (each notice is sent once) */
