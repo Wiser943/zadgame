@@ -1,0 +1,73 @@
+/* 3D street world (world3d.js / worldhud.js) */
+#world{display:none;position:absolute;inset:0;z-index:5;background:#0b1230;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#f2f6f5}
+#world #wcv{position:absolute;inset:0;width:100%;height:100%;display:block;outline:0;cursor:grab}
+#world #wcv:active{cursor:grabbing}
+#world button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* the old home / map / buy chrome is out of the way while the street is up */
+#app.inworld #room,#app.inworld #roomLoad,#app.inworld #map,#app.inworld #hud,#app.inworld #nav,#app.inworld #chips,#app.inworld #needsbar,#app.inworld .quest,#app.inworld .hu-bottom,#app.inworld #viewctl,#app.inworld #emotes,#app.inworld #menubtn,#app.inworld .doorbtn,#app.inworld .maphud,#app.inworld .mapmore,#app.inworld .maplg,#app.inworld .maptour,#app.inworld .walkyaba{display:none!important}
+#app.inworld #homeUI{display:none!important}
+.wchip,#wRadio,#wUse,#wGoal{background:rgba(13,27,31,.84);color:#f2f6f5;border:1px solid rgba(255,255,255,.13);border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-weight:700;font-size:14px}
+#wLoad{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#17304a,#080d1c);z-index:30;font-weight:800;font-size:16px}
+#wLoad i{width:22px;height:22px;border-radius:50%;border:3px solid rgba(255,255,255,.2);border-top-color:#22c55e;animation:wspin .8s linear infinite}
+@keyframes wspin{to{transform:rotate(360deg)}}
+#wChips{position:absolute;left:14px;top:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;z-index:6}
+body.dk #wChips{top:92px}
+#wChips .wchip{padding:8px 14px;display:flex;gap:6px;align-items:center}
+#wRc{position:absolute;right:14px;top:14px;display:flex;gap:10px;align-items:flex-start;z-index:6}
+body.dk #wRc{top:78px}
+#wRc .wcol{display:flex;flex-direction:column;gap:2px;padding:6px;background:rgba(13,27,31,.84);border:1px solid rgba(255,255,255,.13);border-radius:22px;backdrop-filter:blur(10px)}
+#wRc .wcol button{width:38px;height:38px;border:0;border-radius:50%;background:none;color:#f2f6f5;font-size:17px}
+#wRc .wcol button:hover{background:rgba(255,255,255,.12)}
+#wMini{width:112px;height:112px;border-radius:22px;border:2px solid rgba(255,255,255,.7);box-shadow:0 6px 20px rgba(0,0,0,.4);background:#1d5a85}
+#wGoal{display:none;position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:8px 16px;z-index:6;align-items:center}
+body.dk #wGoal{top:70px}
+#wBot{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:6}
+body.dk #wBot{bottom:86px}
+body.dk #app.driving #wBot{bottom:14px}
+#wRadio{padding:9px 16px}
+#wSpeed{min-width:76px;height:76px;border-radius:38px;background:rgba(13,27,31,.88);border:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 14px;line-height:1.05}
+#wSpeed b{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+#wSpeed small{font-size:11px;font-weight:700;color:#9db0ad;margin-top:-1px}
+#wSpeed em{font-style:normal;font-size:11.5px;font-weight:700;color:#d6e4e1;margin-top:2px;white-space:nowrap}
+#world:not(.drv) #wSpeed{height:auto;min-height:34px;border-radius:999px;padding:6px 14px}
+#world:not(.drv) #wSpeed b,#world:not(.drv) #wSpeed small{display:none}
+#world:not(.drv) #wSpeed em{margin:0;font-size:13px}
+#wUse{position:absolute;left:50%;bottom:150px;transform:translateX(-50%) translateY(10px);padding:10px 18px 10px 12px;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:.18s;z-index:7;background:linear-gradient(180deg,#1f9d55,#15803d);border-color:rgba(255,255,255,.25)}
+#wUse.on{opacity:1;transform:translateX(-50%);pointer-events:auto}
+#wUse kbd{background:rgba(0,0,0,.28);border-radius:8px;padding:2px 8px;font:800 13px inherit}
+body.dk #wUse{bottom:172px}
+#wHelp{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:12px;font-weight:600;color:rgba(255,255,255,.75);background:rgba(0,0,0,.35);padding:5px 12px;border-radius:999px;transition:opacity 1s;pointer-events:none;white-space:nowrap}
+body.dk #wHelp{bottom:150px}
+#world.wtouch #wHelp{display:none}
+/* mobile top bar (the desktop pill is not built on small screens) */
+#wMob{display:none;position:absolute;left:12px;top:12px;align-items:center;gap:8px;z-index:6}
+body:not(.dk) #wMob{display:flex}
+#wMob button{width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(13,27,31,.84);color:#fff;font-size:18px}
+#wMob span{font-weight:800;font-size:13px;background:rgba(13,27,31,.84);padding:8px 12px;border-radius:999px}
+body:not(.dk) #wChips{top:66px}
+/* touch stick (walking) */
+#wJoy{display:none;position:absolute;left:22px;bottom:34px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.28);z-index:6;touch-action:none}
+#wJoy i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;background:rgba(255,255,255,.45)}
+#world.wtouch:not(.drv) #wJoy{display:block}
+/* driving controls */
+#wCar{display:none}
+#world.drv #wCar{display:block}
+#wSteer{position:absolute;left:16px;bottom:26px;width:214px;height:94px;border-radius:24px;border:2px solid rgba(255,255,255,.85);background:rgba(10,20,26,.35);display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:6;touch-action:none;color:#fff}
+#wSteer b{font-size:26px;pointer-events:none}
+#wSteer i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(30,60,80,.9);pointer-events:none;transition:transform .05s}
+#wRight{position:absolute;right:16px;bottom:16px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;z-index:6}
+body.dk #wRight{bottom:118px}
+#wRight .wtop{display:flex;gap:10px;align-items:center}
+#wHorn{width:48px;height:48px;border-radius:50%;border:2px solid #fff;background:rgba(40,40,44,.85);color:#fff;font-weight:800;font-size:10px}
+#wOut{background:rgba(13,27,31,.88);color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:12px 18px;font-weight:700;font-size:14px}
+#wRight .wped{display:flex;gap:10px;align-items:flex-end}
+#wBrake,#wGas{border:0;border-radius:18px;color:#fff;font-weight:800;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:8px;touch-action:none}
+#wBrake{width:66px;height:112px;background:linear-gradient(180deg,#c13030,#8b1c1c)}
+#wBrake small{font-size:9px;opacity:.9}
+#wGas{width:78px;height:150px;background:linear-gradient(180deg,#27c463,#16883f)}
+#wBrake.dn,#wGas.dn{filter:brightness(1.25);transform:scale(.97)}
+#world.drv #wChips .wchip#wRace{display:flex}
+#app.driving #dkDock,#app.driving #dkMe{display:none}
+body.dk #app.inworld #dkRadio{display:none}
+body.dk #app.inworld #dkAct .dka{height:40px}
+@media (max-width:899px){#wRc{top:12px}#wMini{width:96px;height:96px}#wUse{bottom:170px}}
