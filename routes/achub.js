@@ -142,10 +142,11 @@ pub.post('/recover', async (req, res, next) => {
 router.use(ensureAuth);
 
 // Static-ish content for every hub screen (one call, cached by the client)
-router.get('/content', (req, res) => {
+router.get('/content', async (req, res, next) => {
   const now = Date.now();
+  let st = ''; try { const me = await User.findById(uid(req)).select('ac.stateCurrent').lean(); st = (me && me.ac && me.ac.stateCurrent) || '' } catch (e) { /* fall back to Lagos areas */ }
   res.json({
-    promise: H.PROMISE, hoods: H.NEIGHBOURHOODS, hobbies: H.HOBBIES, steps: H.ONBOARD_STEPS, theme: H.weeklyTheme(now),
+    stateName: st && st !== 'Outside Nigeria' ? st.replace(' (Abuja)', '') : '', promise: H.PROMISE, hoods: H.hoodsFor(st), hobbies: H.HOBBIES, steps: H.ONBOARD_STEPS, theme: H.weeklyTheme(now),
     jobs: J.catalogue().filter((j) => H.STARTER_JOBS.includes(j.id)), help: H.HELP, roadmap: H.ROADMAP, votes: H.VOTES, changelog: H.CHANGELOG, lore: H.LORE, anthem: H.ANTHEM,
     protect: { days: H.PROTECT_DAYS, transferMax: H.PROTECT.transferMax, investMax: H.PROTECT.investMax }, invite: H.INVITE
   });

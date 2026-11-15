@@ -279,8 +279,10 @@ const GIST = {
     if (document.querySelector('.asheet')) PH.closeSheet();
     const was = !!p.saved; p.saved = !was; this.redraw(id); if (typeof RL !== 'undefined') RL.sync(id);
     if (!p.saved && this.cur && this.cur.fn === 'saved' && this.savedPage) { this.savedPage.posts = this.savedPage.posts.filter(x => x.id !== id); this.savedPage.more = true; const ab = $('ab'); if (ab) ab.innerHTML = this.savedPage.posts.length ? this.list(this.savedPage.posts) : '<p class="empty">No saved posts yet. Use the post menu to save a post for later.</p>' }
-    try { const r = await this.api('/posts/' + id + '/save', { method: 'POST' }); p.saved = r.saved; this.redraw(id); if (typeof RL !== 'undefined') RL.sync(id); toast(p.saved ? 'Saved for later' : 'Removed from saved posts'); if (this.cur && this.cur.fn === 'saved' && p.saved) this.loadSaved(true) }
-    catch (e) { p.saved = was; if (this.cur && this.cur.fn === 'saved') this.loadSaved(true); else this.redraw(id); if (typeof RL !== 'undefined') RL.sync(id); this.err(e) }
+    toast(p.saved ? 'Saved for later' : 'Removed from saved posts');
+    SYNCQ.queue('sv:' + id, was, !!p.saved, () => ({ path: '/api/ac/gist/posts/' + id + '/save', body: {} }),
+      r => { p.saved = r.saved; this.redraw(id); if (typeof RL !== 'undefined') RL.sync(id); if (this.cur && this.cur.fn === 'saved' && p.saved) this.loadSaved(true) },
+      (w, msg) => { p.saved = w; if (this.cur && this.cur.fn === 'saved') this.loadSaved(true); else this.redraw(id); if (typeof RL !== 'undefined') RL.sync(id); if (msg) toast(msg) }, was)
   },
   feedHtml(F) {
     if (!F.p.length) return this.tagF ? `<p class="empty">No gists with #${esc(this.tagF)} yet. Start it! 🎉</p>` : this.tab === 'me' ? '<p class="empty">You have not posted yet. Tap “What’s the gist?” above.</p>' : this.emptyHtml(F);
@@ -323,7 +325,9 @@ const GIST = {
     if (p.myRx === type) { p.rx[type] = Math.max(0, (p.rx[type] || 1) - 1); p.myRx = ''; p.liked = false; p.likes = Math.max(0, p.likes - 1) }
     else { if (p.myRx) p.rx[p.myRx] = Math.max(0, (p.rx[p.myRx] || 1) - 1); else p.likes++; p.rx[type] = (p.rx[type] || 0) + 1; p.myRx = type; p.liked = true }
     this.sync(id);
-    this.api('/posts/' + id + '/react', { method: 'POST', body: { type } }).then(r => { p.myRx = r.myRx; p.liked = r.liked; p.likes = r.likes; p.rx = r.rx; this.sync(id) }).catch(e => { Object.assign(p, snap); this.sync(id); this.err(e) })
+    SYNCQ.queue('rx:' + id, snap.myRx || '', p.myRx || '', (b, w) => ({ path: '/api/ac/gist/posts/' + id + '/react', body: { type: w || b } }),
+      r => { p.myRx = r.myRx; p.liked = r.liked; p.likes = r.likes; p.rx = r.rx; this.sync(id) },
+      (sn, msg) => { Object.assign(p, sn); this.sync(id); if (msg) toast(msg) }, snap)
   },
   rxMenu(btn) {
     this.closeRx(); const id = btn.dataset.id, r = btn.getBoundingClientRect(), a = PH.$a(), ar = a.getBoundingClientRect(); if (navigator.vibrate) try { navigator.vibrate(15) } catch (e) { }
@@ -385,7 +389,9 @@ const GIST = {
   },
   likeComment(cid) {
     const c = this.cm && this.cm.list.find(x => x.id === cid); if (!c) return; c.liked = !c.liked; c.likes = Math.max(0, c.likes + (c.liked ? 1 : -1)); this.drawComments();
-    this.api('/comments/' + cid + '/like', { method: 'POST' }).then(r => { c.liked = r.liked; c.likes = r.likes; this.drawComments() }).catch(e => { c.liked = !c.liked; c.likes = Math.max(0, c.likes + (c.liked ? 1 : -1)); this.drawComments(); this.err(e) })
+    SYNCQ.queue('cl:' + cid, !c.liked, !!c.liked, () => ({ path: '/api/ac/gist/comments/' + cid + '/like', body: {} }),
+      r => { c.liked = r.liked; c.likes = r.likes; this.drawComments() },
+      (sn, msg) => { c.liked = sn.liked; c.likes = sn.likes; this.drawComments(); if (msg) toast(msg) }, { liked: !c.liked, likes: Math.max(0, c.likes + (c.liked ? -1 : 1)) })
   },
   delComment(cid) {
     const L = this.cm.list, c = L.find(x => x.id === cid); if (!c) return; const gone = L.filter(x => x.id === cid || x.parent === cid), id = this.cm.id, p = this.cache.get(id);
@@ -423,9 +429,9 @@ const GIST = {
     </div>`;
   },
   /* ---------- Rewards & payouts sign-up (moved here from the GameHub lobby) ---------- */
-  async rewards() {
+  async rewards(open) {
     const box = $('gmrwf'); if (!box) return;
-    if (box.innerHTML) { box.innerHTML = ''; return }
+    if (box.innerHTML && open !== true) { box.innerHTML = ''; return }
     box.innerHTML = '<p class="gmnote">Loading…</p>';
     let st = { launch: 'Late December', registered: false };
     try { st = await NET.api('/api/rewards/status') } catch (e) {}
@@ -435,7 +441,7 @@ const GIST = {
     box.innerHTML = `<div class="gmrwform">
       <p class="gmrwhero">🚀 <b>Coming soon · ${esc(st.launch)}</b><br>Soon you will be able to turn approved rewards into real payouts. Your ₦ balance stays in-game money and is not cash.</p>
       ${st.registered ? `<p class="gmrwdone">✅ You are on the list${st.legalName ? ', ' + esc(st.legalName) : ''}. You can update your details below.</p>` : ''}
-      <label>Full name (as on your ID)<input type="text" id="rwName" maxlength="80" autocomplete="name" value="${esc(st.legalName || '')}"></label>
+      <label>Full name (as on your ID)<input type="text" id="rwName" maxlength="80" autocomplete="name" value="${esc(st.legalName || '')}" ${st.nameLocked ? 'readonly' : ''}>${st.nameLocked ? '<small class="gmnote">Your legal name is locked once saved. Contact support if it needs correcting.</small>' : ''}</label>
       <label>Country<select id="rwCountry"><option value="">Select…</option>${opt(C, st.country)}</select></label>
       <label>Preferred payout method<select id="rwMethod"><option value="">Select…</option>${opt(M, st.method)}</select></label>
       <label class="chk"><input type="checkbox" id="rwAge"> I am 18 years or older</label>
@@ -552,8 +558,10 @@ const GIST = {
   },
   async moreProfile() { const p = this.pf; try { const last = p.posts.filter(x => !x.pinned); const r = await this.api('/profile/' + p.r.user.id + '/posts?before=' + encodeURIComponent((last[last.length - 1] || p.posts[p.posts.length - 1]).createdAt)); this.put(r.posts); p.posts = p.posts.concat(r.posts); p.more = r.more; const s = $('ab').scrollTop; this.drawProfile(); $('ab').scrollTop = s } catch (e) { this.err(e) } },
   follow() {
-    const p = this.pf; if (!p) return; const r = p.r, was = r.isFollowing; r.isFollowing = !was; r.followers = Math.max(0, r.followers + (was ? -1 : 1)); this.drawProfile();
-    this.api('/follow/' + r.user.id, { method: 'POST' }).then(x => { r.isFollowing = x.following; r.followers = x.followers; Object.values(this.F).forEach(f => f.stale = true); NET.drop('/gist/profile'); this.drawProfile() }).catch(e => { r.isFollowing = was; r.followers = Math.max(0, r.followers + (was ? 1 : -1)); this.drawProfile(); this.err(e) })
+    const p = this.pf; if (!p) return; const r = p.r, was = r.isFollowing, wasN = r.followers; r.isFollowing = !was; r.followers = Math.max(0, r.followers + (was ? -1 : 1)); this.drawProfile();
+    SYNCQ.queue('fl:' + r.user.id, !!was, !!r.isFollowing, () => ({ path: '/api/ac/gist/follow/' + r.user.id, body: {} }),
+      x => { r.isFollowing = x.following; r.followers = x.followers; Object.values(this.F).forEach(f => f.stale = true); NET.drop('/gist/profile'); this.drawProfile() },
+      (sn, msg) => { r.isFollowing = sn.was; r.followers = sn.n; this.drawProfile(); if (msg) toast(msg) }, { was: !!was, n: wasN })
   },
   unblock() { const p = this.pf; if (!p) return; this.friendAct(p.r.user.id, 'unblock') },
   message() { const id = this.pf.r.user.id; PH.chat(id, `GIST.openProfile('${id}')`) },

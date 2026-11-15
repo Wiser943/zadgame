@@ -24,7 +24,7 @@ router.get('/matches', ensureAuth, async (req,res,next)=>{ try { const rows=awai
 const REWARDS_LAUNCH_LABEL = 'Late December';
 const rewardsStatus = (u) => {
   const r = u.rewardsInterest || {};
-  return { launch: REWARDS_LAUNCH_LABEL, live: false, registered: !!r.registered, legalName: r.legalName || '', country: r.country || '', method: r.method || '', notify: r.notify !== false };
+  return { launch: REWARDS_LAUNCH_LABEL, live: false, registered: !!r.registered, nameLocked: !!r.legalName, legalName: r.legalName || '', country: r.country || '', method: r.method || '', notify: r.notify !== false };
 };
 router.get('/rewards/status', ensureAuth, (req, res) => res.json(rewardsStatus(req.user)));
 router.post('/rewards/register', ensureAuth, async (req, res, next) => {
@@ -33,13 +33,16 @@ router.post('/rewards/register', ensureAuth, async (req, res, next) => {
     const legalName = String(b.legalName || '').trim().replace(/\s+/g, ' ');
     const country = String(b.country || '').trim();
     const method = String(b.method || '');
-    if (legalName.length < 2 || legalName.length > 80) return res.status(400).json({ message: 'Enter your full name (2-80 characters).' });
+    const had = String(((req.user.rewardsInterest || {}).legalName) || '').trim();
+    if (had && legalName && legalName.toLowerCase() !== had.toLowerCase()) return res.status(409).json({ message: 'Your legal name is locked once it is saved. Contact support if it needs correcting.' });
+    const finalName = had || legalName;                                  // once set, the name never changes
+    if (finalName.length < 2 || finalName.length > 80) return res.status(400).json({ message: 'Enter your full name (2-80 characters).' });
     if (!/^[A-Za-z]{2}$/.test(country)) return res.status(400).json({ message: 'Choose your country.' });
     if (!['bank', 'mobile_money', 'crypto'].includes(method)) return res.status(400).json({ message: 'Choose a payout method.' });
     if (b.over18 !== true) return res.status(400).json({ message: 'You must be 18 or older to register.' });
     if (b.termsAccepted !== true) return res.status(400).json({ message: 'Please accept the terms to continue.' });
     const u = await User.findByIdAndUpdate(req.user.id, { $set: { rewardsInterest: {
-      registered: true, legalName, country: country.toUpperCase(), over18: true, method,
+      registered: true, legalName: finalName, country: country.toUpperCase(), over18: true, method,
       notify: b.notify !== false, termsAccepted: true, registeredAt: new Date()
     } } }, { new: true });
     res.json(rewardsStatus(u));
@@ -162,7 +165,8 @@ router.get('/leaderboard', ensureAuth, async (req, res) => {
   const byRating = req.query.by === 'rating';
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 100);
   const sort = byRating ? { rating: -1, 'stats.wins': -1 } : byWins ? { 'stats.wins': -1, 'ac.cash': -1 } : { 'ac.cash': -1, 'stats.wins': -1 };
-  const rows = await User.find({}).select('displayName avatar ac.cash rating stats').sort(sort).limit(limit).lean();
+  // the top list is the same for everyone, so it is computed at most once a minute (shared through Redis when it is configured)
+  const rows = await require('../utils/cache').wrap('lb:' + (byRating ? 'r' : byWins ? 'w' : 'c') + ':' + limit, 60, () => User.find({}).select('displayName avatar ac.cash rating stats').sort(sort).limit(limit).lean());
   const shape = (u, rank) => ({
     id: String(u._id), rank, displayName: u.displayName, avatar: u.avatar,
     coins: (u.ac && u.ac.cash) || 0, rating: u.rating || 1000, stats: u.stats || {}

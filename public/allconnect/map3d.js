@@ -1236,31 +1236,32 @@
   function draw(t) {
     const ctx = M.ctx; ctx.setTransform(M.dpr, 0, 0, M.dpr, 0, 0); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     lrLoad(); kxLoad(); M.hits = []; drawWorld(ctx, t);
-    // collect visible standing things
-    const list = [], m = 90;
+    // collect visible standing things (the flat 2D overview draws none: no buildings, trees, cars, boats or characters)
+    const solid = M.hs > .12, list = [], m = 90;
     const scan = arr => { for (const o of arr) {
       const p = cam.project(o.x, o.y, 0, tmp); if (tmp.z < NEAR) continue; const rr = (o.r + (o.h || 40)) * tmp.k + m;
       if (tmp.x < -rr || tmp.x > M.w + rr || tmp.y < -rr * 1.5 || tmp.y > M.h + rr) continue;
       if (o.t === 'tree' && cam.D > 800) continue;
       list.push([tmp.z, o]);
     } };
-    scan(objs.filter(o => {
+    scan((solid ? objs : []).filter(o => {
       if (!HUD.ads && (o.t === 'board' || o.t === 'poster')) return false;
       if (!HUD.gov && o.o && o.o.tag === 'gov') return false;
       return true;
-    })); scan(XOBJ);
-    if (LRX.on && LRX.img.bus && cam.D < 1000) for (const bu of LRX.buses) {            // danfos drive back and forth along their road
+    })); if (solid) scan(XOBJ);
+    if (solid && LRX.on && LRX.img.bus && cam.D < 1000) for (const bu of LRX.buses) {            // danfos drive back and forth along their road
       const span = 940, px = ((bu.x0 + bu.dir * bu.sp * t) % span + span) % span, bx = 30 + px, ob = { t: 'bus', x: bx, y: bu.y, dir: bu.dir, r: 14, h: 16 };
       if (!isLand(bx, bu.y) || onBridge(bx, bu.y)) continue;
       cam.project(bx, bu.y, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
     }
-    if (KX.on && cam.D < 1000) for (const ca of KX.cars) {                              // Kenney race cars on the vertical roads, same idea, north-south
+    if (solid && KX.on && cam.D < 1000) for (const ca of KX.cars) {                              // Kenney race cars on the vertical roads, same idea, north-south
       const span = ca.hi - ca.lo, py = ((ca.y0 + ca.dir * ca.sp * t) % span + span) % span, cy = ca.lo + py, ob = { t: 'car', x: ca.x, y: cy, dir: ca.dir, col: ca.col, r: 14, h: 16 };
       if (!isLand(ca.x, cy) || onBridge(ca.x, cy)) continue;
       cam.project(ca.x, cy, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
     }
     const A = [M.me]; if (HUD.neighbours) for (const o of M.others.values()) A.push(o.av);
-    for (const a of A) { cam.project(a.x, a.y, 0, tmp); if (tmp.z >= NEAR && tmp.x > -60 && tmp.x < M.w + 60 && tmp.y > -80 && tmp.y < M.h + 80) list.push([tmp.z - 4, a]); }
+    const dots = [];                                                                       // in 2D, people are simple coloured dots
+    for (const a of A) { cam.project(a.x, a.y, 0, tmp); if (tmp.z >= NEAR && tmp.x > -60 && tmp.x < M.w + 60 && tmp.y > -80 && tmp.y < M.h + 80) { if (solid) list.push([tmp.z - 4, a]); else dots.push([tmp.x, tmp.y, a]) } }
     list.sort((p, q) => q[0] - p[0]);
     const tags = [];
     for (const [, o] of list) {
@@ -1276,6 +1277,16 @@
       const nm = a === M.me ? 'You' : [...M.others.values()].find(o => o.av === a).name; const w = ctx.measureText(nm).width + 14, x = info.x, y = info.top - 10;
       ctx.fillStyle = a === M.me ? '#22b573' : 'rgba(27,34,54,.82)'; rr(ctx, x - w / 2, y - 9, w, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(nm, x, y + .5);
       if (a !== M.me) M.hits.push({ x: x - w / 2, y: y - 9, w, h: info.h + 20, name: nm, kind: 'player' });
+    }
+    if (dots.length) {
+      const mine = M.me, names = new Map([...M.others.values()].map(o => [o.av, o]));
+      ctx.font = '700 11px "Plus Jakarta Sans",system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (const [dx, dy, a] of dots) {
+        const me = a === mine, o = names.get(a); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+        ctx.fillStyle = me ? '#22b573' : (o && o.top) || '#3a7bd5'; ctx.beginPath(); ctx.arc(dx, dy, me ? 8 : 6, 0, TAU); ctx.fill();
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+        if (me) { ctx.fillStyle = '#1b2236'; ctx.fillText('You', dx, dy - 16) } else if (o) M.hits.push({ x: dx - 10, y: dy - 10, w: 20, h: 20, name: o.name, kind: 'player' });
+      }
     }
     drawClusters(ctx);
     for (const f of LAYERS.world) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
@@ -1311,7 +1322,7 @@
     const hrs = ((getS() && getS().min) || 720) / 60 % 24, night = hrs >= 19.5 || hrs < 5.5 ? 1 : hrs >= 18 ? (hrs - 18) / 1.5 : hrs < 7 ? (7 - hrs) / 1.5 : 0;
     const dk = darkTheme(), nightAmt = dk ? 1 : night;                         // dark mode always shows the city at night
     if (nightAmt > 0) { ctx.fillStyle = dk ? 'rgba(6,14,58,.52)' : `rgba(10,20,70,${.27 * night})`; ctx.fillRect(0, 0, M.w, M.h); }
-    if (nightAmt > .3) drawLamps(ctx, Math.min(1, (nightAmt - .3) / .5));
+    if (nightAmt > .3 && M.hs > .12) drawLamps(ctx, Math.min(1, (nightAmt - .3) / .5));
     for (const f of LAYERS.screen) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
   }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
@@ -1494,14 +1505,14 @@
     /* label is the readable name shown in the "coming soon" toast for any state that isn't built yet (anything not in CITIES);
        returns true when id is now (or already was) the active city, false for a not-built-yet state, so callers know whether
        to move the "on" highlight. */
-    setCity(id, label) {
+    setCity(id, label, quiet) {
       if (id === HUD.city) return true;
-      if (!CITIES[id]) { if (g.toast) g.toast('🚧 ' + (label || 'That state') + ' is coming soon — you’re still in ' + (CITY_NAME[HUD.city] || 'Lagos')); return false }
+      if (!CITIES[id]) { if (!quiet && g.toast) g.toast('🚧 ' + (label || 'That state') + ' is coming soon — you’re still in ' + (CITY_NAME[HUD.city] || 'Lagos')); return false }
       loadCity(id); HUD.city = id;
       const [sx, sy] = CITIES[id].spawn; teleport(sx, sy);
       if (M.flat) { cam.tx = sx; cam.ty = sy; M.D = M.tD = cam.D = 1100; cam.update() }                  // keep the 2D overview centred on the new city
       M.others.clear(); M.exp = null; sendPos(true);                                    // players in other cities are not drawn here
-      if (g.toast) g.toast(CITY_WELCOME[id] || '🏠 Back in Lagos');
+      if (!quiet && g.toast) g.toast(CITY_WELCOME[id] || '🏠 Back in Lagos');
       return true;
     },
     /* moves the "Home" pin to the player's actual house: the numbered slot the server gave them in their chosen hood (see HUB.loadMe) */

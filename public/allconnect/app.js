@@ -50,7 +50,7 @@ const NET = {
   save() {
     if (!this.user) return;
     clearTimeout(this.saveT);
-    this.saveT = setTimeout(() => this.api('/api/ac/save', { method: 'POST', body: { paint: S.paint, needs: S.needs, min: S.min, gender: S.gender || undefined } }).catch(() => {}), 1500)
+    this.saveT = setTimeout(() => this.api('/api/ac/save', { method: 'POST', body: { paint: S.paint, needs: S.needs, v: S.needsV, min: S.min, gender: S.gender || undefined } }).then(r => { if (r && r.conflict) { S.needs = r.needs; S.needsV = r.v; render() } }).catch(() => {}), 1500)
   }
 };
 const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k' : String(n);
@@ -107,7 +107,10 @@ function mapCity(btn) {
 }
 
 function applyAC(ac) {
-  Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
+  // needs: the browser is the live copy. Take the server's only the first time, or when the server itself changed them (a friend fed you).
+  const takeNeeds = !S._needsInit || (ac.needsV != null && ac.needsV !== S.needsV);
+  Object.assign(S, { cash: ac.cash, paint: ac.paint, min: ac.min, gender: ac.gender || S.gender || '' });
+  if (takeNeeds) { S.needs = ac.needs; S.needsV = ac.needsV || 0; S._needsInit = true }
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
   S.legacyItems = ac.items || []; S.legacyPaint = ac.paint; S.properties = ac.properties || [];
   /* first load after opening or refreshing the game: go back into the home the player entered last (saved on the server) */
@@ -142,7 +145,7 @@ function authMode(m) {
 }
 if (location.hash === '#register' || location.hash === '#sign-up') authMode('register');
 async function doAuth() {
-  if (window.AGE && (!AGE.ok() || (AM == 'register' && !AGE.hasFull()))) return AGE.gate(() => doAuth());   // sign-up always asks for the full date of birth
+  if (window.AGE && AM == 'register' && !AGE.hasFull()) return AGE.gate(() => doAuth());   // sign-up asks for the full date of birth once; signing in never asks (the server already knows)
   const id = $('fid').value.trim(),
     pw = $('fpw').value,
     name = $('fname').value.trim(),
@@ -456,6 +459,7 @@ const APPS = [
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
   ['Shop', '<i class="fa-solid fa-bag-shopping"></i>', 'linear-gradient(135deg,#34d399,#0891b2)', 1],
+  ['Leaderboard', '<i class="fa-solid fa-trophy"></i>', 'linear-gradient(135deg,#fbbf24,#f59e0b 55%,#ea580c)', 1],
   ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
   ['Invite', '<i class="fa-solid fa-user-group"></i>', 'linear-gradient(135deg,#3b82f6,#7c3aed)', 1],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
@@ -465,6 +469,7 @@ const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.op
 Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')" }; 
 OPEN.Homes = "PH.open('homes')";
 OPEN.Shop = "openHub(b=>b.shop())";
+OPEN.Leaderboard = 'LB.open()';
 OPEN.Guide = "PH.open('guide')";
 OPEN.Invite = "PH.open('invite')";
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
@@ -1061,3 +1066,11 @@ window.HAPTIC = HAPTIC;
 
 /* map: the rarely used buttons (Tools, weather, Legend, Walk Yaba, City Tour) live behind one button */
 function toggleMapMore(force) { const m = document.getElementById('map'), b = document.getElementById('mapMore'); if (!m) return; const on = typeof force === 'boolean' ? force : !m.classList.contains('mopen'); m.classList.toggle('mopen', on); if (b) { b.setAttribute('aria-expanded', on ? 'true' : 'false'); b.innerHTML = on ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-ellipsis"></i>' } }
+
+
+/* Save needs the moment the page is hidden or closed, so a refresh right after eating never loses it. */
+(function () {
+  const flush = () => { try { if (typeof NET !== 'undefined' && NET.user && navigator.sendBeacon) navigator.sendBeacon('/api/ac/save', new Blob([JSON.stringify({ paint: S.paint, needs: S.needs, v: S.needsV, min: S.min })], { type: 'application/json' })) } catch (e) { } };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush() });
+  window.addEventListener('pagehide', flush);
+})();

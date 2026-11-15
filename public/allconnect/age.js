@@ -2,10 +2,11 @@
    The server keeps the birth year (18+ rule) and the day + month (birthday card) (routes/acage.js). Also asks for home state and current state. */
 const AGE = {
   KEY: 'ac:age18', UNDER: 'ac:age:under', SYNC: 'ac:age18:sync',
-  get(k) { try { return localStorage.getItem(k) } catch (e) { return null } },
-  put(k, v) { try { localStorage.setItem(k, v) } catch (e) {} },
+  /* kept in localStorage AND in a one-year cookie, so clearing one does not make us ask again */
+  get(k) { let v = null; try { v = localStorage.getItem(k) } catch (e) {} if (v != null) return v; const m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : null },
+  put(k, v) { try { localStorage.setItem(k, v) } catch (e) {} try { document.cookie = k + '=' + encodeURIComponent(v) + '; max-age=31536000; path=/; SameSite=Lax' } catch (e) {} },
   ok() { return !!this.get(this.KEY) },
-  hasFull() { try { const v = JSON.parse(this.get(this.KEY) || '{}'); return v && v.y != null && v.m != null && v.d != null } catch (e) { return false } },
+  hasFull() { try { const v = JSON.parse(this.get(this.KEY) || '{}'); return !!v && (v.srv === 1 || (v.y != null && v.m != null && v.d != null)) } catch (e) { return false } },
   STATES: ["Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT (Abuja)", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara", "Outside Nigeria"],
   blocked() { return this.get(this.UNDER) === '1' },
   MONTHS: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],

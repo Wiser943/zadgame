@@ -16,10 +16,10 @@ Object.assign(GIST, {
     ['earn', '💰', 'Getting paid', '3 min', ['The creator programme is reviewed by the team. Meet the requirements in Manage, then apply.', 'Your naira balance is in-game money. Real withdrawals are done in AllConnect Pay > Withdraw during an open season and batch.', 'Keep your bank details correct. A wrong name can delay a payment.', 'Never share your password or PIN with anyone, including people who say they work for AllConnect.']]
   ],
   acDraw(open) {
-    const ab = $('ab'); if (!ab) return; const done = this.acDone(), t = this.acTab, tabs = [['learn', 'Learn'], ['tools', 'Tools']];
+    const ab = $('ab'); if (!ab) return; const done = this.acDone(), t = this.acTab, tabs = [['learn', 'Learn'], ['tools', 'Tools'], ['pay', 'Payouts']];
     const pct = Math.round(done.filter(x => this.LESSONS.some(l => l[0] === x)).length / this.LESSONS.length * 100);
     const head = `<div class="gm acad"><div class="gmst" style="--c:#6366f1"><span class="gmsi"><span class="fa-solid fa-graduation-cap"></span></span><div><h3>Creator Academy</h3><p>${pct}% complete. Short lessons and tools to help your videos do better.</p></div></div><div class="gmbar" style="margin:4px 0 12px"><i style="width:${pct}%"></i></div><div class="seg2 gpk">${tabs.map(x => `<button class="${t === x[0] ? 'on' : ''}" onclick="GIST.acTab='${x[0]}';GIST.acDraw()">${x[1]}</button>`).join('')}</div>`;
-    ab.innerHTML = head + (t === 'learn' ? this.acLearn(done, open) : this.acTools()) + '</div>'; if (t === 'tools') this.acToolsInit()
+    ab.innerHTML = head + (t === 'learn' ? this.acLearn(done, open) : t === 'pay' ? '<div class="gmcard" style="margin-top:10px"><h4 style="margin:0 0 6px">Rewards &amp; payouts</h4><div id="gmrwf"></div></div>' : this.acTools()) + '</div>'; if (t === 'tools') this.acToolsInit(); if (t === 'pay') this.rewards(true)
   },
   acLearn(done, open) {
     return this.LESSONS.map(l => { const d = done.includes(l[0]), o = open === l[0];

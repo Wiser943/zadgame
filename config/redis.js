@@ -27,5 +27,7 @@ async function redisHealth() {
   if (!pub) return { configured: true, ok: false };
   try { await pub.ping(); return { configured: true, ok: true }; } catch { return { configured: true, ok: false }; }
 }
+// the live client, or null when Redis is not configured / not connected (callers then use their in-memory fallback)
+const client = () => (pub && pub.isReady ? pub : null);
 async function closeRedis() { await Promise.allSettled([pub && pub.quit(), sub && sub.quit()]); }
-module.exports = { attachRedis, redisHealth, closeRedis };
+module.exports = { attachRedis, redisHealth, closeRedis, client };

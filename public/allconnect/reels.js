@@ -156,14 +156,15 @@ const RL = {
       <div class="rl-wash"></div><span class="rl-no">${String(i + 1).padStart(2, '0')}</span><div class="rl-pz"><i class="fa-solid fa-play"></i></div><div class="rl-burst"></div>
       ${p.video.cc ? `<button class="rl-cc ${this.ccOn ? 'on' : ''}" onclick="event.stopPropagation();RL.cc()" aria-label="Captions">CC</button>` : ''}
       <button class="rl-snd" onclick="event.stopPropagation();RL.snd()" aria-label="Sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i></button>
-      <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${esc(a.displayName || a.username || 'Player')}${GIST.vb(a)}</b></span></div>
+      <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>@${esc(a.username || a.displayName || 'player')}${GIST.vb(a)}</b><small>${esc(a.displayName || '')}</small></span>${a.id !== ((typeof NET !== 'undefined' && NET.user) || {}).id ? `<button class="rl-fol ${a.following ? 'on' : ''}" data-a="${a.id}" onclick="event.stopPropagation();RL.follow('${a.id}')">${a.following ? 'Following' : 'Follow'}</button>` : ''}</div>
       ${this.descHtml(p.text)}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
-      <div class="rl-act"><button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
-      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
-      <button role="menuitem" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
-      <button role="menuitem" data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><i class="fa-solid fa-share"></i><em>${this.fmt(p.shares) || 'Share'}</em></button>
-      <button role="menuitem" data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i><em>${p.saved ? 'Saved' : 'Save Reel'}</em></button>
-      <button role="menuitem" data-action="sound" onclick="event.stopPropagation();RL.action('${p.id}','sound')" aria-label="Toggle sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i><em>${this.muted ? 'Unmute' : 'Mute'}</em></button>
+      <div class="rl-act">
+      <button class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-regular fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
+      <button data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><span><i class="fa-regular fa-comment"></i></span><em>${this.fmt(p.comments) || 'Comment'}</em></button>
+      <button data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><span><i class="fa-solid fa-share-nodes"></i></span><em>${this.fmt(p.shares) || 'Share'}</em></button>
+      <button data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><span><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i></span><em>${p.saved ? 'Saved' : 'Save'}</em></button>
+      <button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
+      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" data-action="sound" onclick="event.stopPropagation();RL.action('${p.id}','sound')" aria-label="Toggle sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i><em>${this.muted ? 'Unmute' : 'Mute'}</em></button>
       <button role="menuitem" data-action="options" onclick="event.stopPropagation();RL.action('${p.id}','options')" aria-label="More post options"><i class="fa-solid fa-ellipsis"></i><em>Post options</em></button></div></div>
       <div class="rl-bar"><i></i></div></section>`
   },
@@ -219,7 +220,8 @@ const RL = {
   cur(i) {
     const f = this.feedEl(); if (!f) return;
     if (this.i !== i) document.querySelectorAll('.rl-card.actions-open').forEach(c => { c.classList.remove('actions-open'); const b = c.querySelector('.rl-more-btn'); if (b) b.setAttribute('aria-expanded', 'false') });
-    this.i = i; const cards = [...f.querySelectorAll('.rl-card')], F = this.List();
+    const moved = this.i !== i; this.i = i; const cards = [...f.querySelectorAll('.rl-card')], F = this.List();
+    if (moved && this.cm && cards[i]) { const nid = cards[i].dataset.id; if (nid && nid !== this.cm.id) this.comments(nid) }
     cards.forEach((c, k) => {
       const v = c.querySelector('video'), d = Math.abs(k - i);
       const ahead = k - i, reach = this.saver() ? 1 : 3;   // data saver: preload 1 reel ahead, otherwise 3
@@ -288,20 +290,51 @@ const RL = {
   sync(id) {
     const p = GIST.cache.get(id); if (!p) return;
     document.querySelectorAll(`.rl-card[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
-      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comments'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save Reel'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
+      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-regular fa-heart"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
+      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comment'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
     })
   },
   follow(aid) {
     const all = Object.values(this.L).flatMap(F => F.p).filter(p => p.author.id === aid); if (!all.length) return;
     const was = !!all[0].author.following, set = v => { all.forEach(p => { p.author.following = v }); document.querySelectorAll(`.rl-fol[data-a="${aid}"]`).forEach(b => { b.classList.toggle('on', v); b.textContent = v ? 'Following' : 'Follow' }) };
     set(!was); Object.values(GIST.F).forEach(f => f.stale = true);
-    GIST.api('/follow/' + aid, { method: 'POST' }).then(r => set(r.following)).catch(e => { set(was); GIST.err(e) })
+    SYNCQ.queue('fl:' + aid, was, !was, () => ({ path: '/api/ac/gist/follow/' + aid, body: {} }), r => set(r.following), (w, msg) => { set(w); if (msg) toast(msg) }, was)
   },
   profile(id) { this.stop(); GIST.nav('profile', id) },
-  comments(id) { this.stop(); GIST.nav('post', id) },
+  /* Comments open UNDER the video: the video squeezes up and keeps playing, like TikTok. */
+  cm: null,
+  async comments(id) {
+    const f = this.feedEl(); if (!f) return GIST.nav('post', id);
+    const root = f.parentNode; let pan = document.getElementById('rlcm');
+    if (!pan) { pan = document.createElement('div'); pan.id = 'rlcm'; root.appendChild(pan) }
+    this.cm = { id, list: [] }; root.classList.add('rl-split');
+    pan.innerHTML = `<div class="rlcm-h"><b id="rlcmn">Comments</b><button type="button" onclick="RL.closeComments()" aria-label="Close comments"><i class="fa-solid fa-xmark"></i></button></div><div class="rlcm-l" id="rlcml"><p class="rlcm-e">Loading…</p></div><form class="rlcm-f" onsubmit="RL.sendComment(event)"><input id="rlcmi" maxlength="500" placeholder="Add a comment…" autocomplete="off"><button type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></form>`;
+    setTimeout(() => this.reflow(), 280);
+    try { const r = await GIST.api('/posts/' + id + '/comments'); if (this.cm && this.cm.id === id) { this.cm.list = r.comments || []; this.drawCm() } }
+    catch (e) { const l = document.getElementById('rlcml'); if (l) l.innerHTML = `<p class="rlcm-e">${esc(e.message || 'Could not load comments.')}</p>` }
+  },
+  reflow() { const f = this.feedEl(); if (!f) return; this.fit(); f.scrollTop = (this.i || 0) * f.clientHeight },
+  closeComments() { const pan = document.getElementById('rlcm'); if (pan) pan.remove(); this.cm = null; const f = this.feedEl(); if (f) f.parentNode.classList.remove('rl-split'); setTimeout(() => this.reflow(), 60) },
+  drawCm() {
+    const l = document.getElementById('rlcml'), n = document.getElementById('rlcmn'); if (!l || !this.cm) return; const L = this.cm.list;
+    if (n) n.textContent = (L.length || 'No') + ' comment' + (L.length === 1 ? '' : 's');
+    l.innerHTML = L.length ? L.map(c => { const a = c.author || {}; return `<div class="rlcm-c${c.parent ? ' rep' : ''}${c.pending ? ' pending' : ''}"><span class="rlcm-a" onclick="RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}</span><div class="rlcm-b"><b>${esc(a.displayName || a.username || 'Player')}${GIST.vb(a)}</b><span>${GIST.txt(c.text)}</span><small>${c.pending ? 'sending…' : GIST.ago(c.createdAt)}</small></div><button type="button" class="rlcm-lk ${c.liked ? 'on' : ''}" onclick="RL.likeCm('${c.id}')" aria-label="Like comment"><i class="fa-${c.liked ? 'solid' : 'regular'} fa-heart"></i><em>${c.likes || ''}</em></button></div>` }).join('') : '<p class="rlcm-e">No comments yet. Be the first!</p>'
+  },
+  async sendComment(e) {
+    e.preventDefault(); const inp = document.getElementById('rlcmi'), t = (inp.value || '').trim(); if (!t || !this.cm) return; const id = this.cm.id; inp.value = '';
+    const me = (typeof NET !== 'undefined' && NET.user) || {}, tmp = { id: 'tmp' + Date.now(), text: t, pending: true, likes: 0, author: { id: me.id, avatar: me.avatar, displayName: me.displayName, username: me.username }, createdAt: Date.now() };
+    this.cm.list.unshift(tmp); this.drawCm();
+    try { const r = await GIST.api('/posts/' + id + '/comments', { method: 'POST', body: { text: t, parent: '' } }); const k = this.cm && this.cm.list.indexOf(tmp); if (k >= 0) this.cm.list[k] = r.comment; this.drawCm(); const p = GIST.cache.get(id); if (p) { p.comments = (p.comments || 0) + 1; this.sync(id) } }
+    catch (x) { if (this.cm) { this.cm.list = this.cm.list.filter(c => c !== tmp); this.drawCm() } GIST.err(x) }
+  },
+  likeCm(cid) {
+    const c = this.cm && this.cm.list.find(x => x.id === cid); if (!c || String(cid).startsWith('tmp')) return; const before = { liked: !!c.liked, likes: c.likes || 0 };
+    c.liked = !c.liked; c.likes = Math.max(0, (c.likes || 0) + (c.liked ? 1 : -1)); this.drawCm();
+    SYNCQ.queue('cl:' + cid, before.liked, !!c.liked, () => ({ path: '/api/ac/gist/comments/' + cid + '/like', body: {} }), r => { c.liked = r.liked; c.likes = r.likes; this.drawCm() }, (sn, msg) => { c.liked = sn.liked; c.likes = sn.likes; this.drawCm(); if (msg) toast(msg) }, before)
+  },
+
   removed(id) { Object.values(this.L).forEach(F => { F.p = F.p.filter(x => x.id !== id) }); this.start = ''; this.draw() },
-  stop() { if (this.isFs) this.fs(false); this.flushWatch(); if (this.obs) { this.obs.disconnect(); this.obs = null } clearTimeout(this.tapT); this.tapT = 0; document.querySelectorAll('.rl-v,.gvid video').forEach(v => { try { v.pause() } catch (e) { } }) },
+  stop() { if (this.cm) this.closeComments(); if (this.isFs) this.fs(false); this.flushWatch(); if (this.obs) { this.obs.disconnect(); this.obs = null } clearTimeout(this.tapT); this.tapT = 0; document.querySelectorAll('.rl-v,.gvid video').forEach(v => { try { v.pause() } catch (e) { } }) },
   async openFrom(id) {
     if (!GIST.cache.has(id)) {
       try { const r = await GIST.api('/posts/' + encodeURIComponent(id)); if (r && r.post) GIST.put([this.compatPost(r.post)]) }
@@ -379,7 +412,7 @@ const RL = {
     if (C.images && C.images.length) { const im = C.images[0]; return `<button type="button" class="gct" onclick="GIST.editImg(0)" aria-label="Edit photo"><img src="${esc(im.thumb || im.url)}" alt="">${C.images.length > 1 ? `<small>+${C.images.length - 1}</small>` : ''}<span class="gct-ed"><i class="fa-solid fa-pen"></i></span></button>` }
     return ''
   },
-  editHtml(C) { return C.video ? `<button class="gedit" onclick="RL.editor()"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit video<small>${(C.video.file.size / 1048576).toFixed(1)} MB</small></button>` : (C.images && C.images.length === 1 ? `<button class="gedit" onclick="GIST.editImg(0)"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit photo</button>` : '') },
+  editHtml(C) { return C.video ? `<button class="gevid" onclick="RL.editor()"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit video<small>${(C.video.file.size / 1048576).toFixed(1)} MB</small></button>` : (C.images && C.images.length === 1 ? `<button class="gevid" onclick="GIST.editImg(0)"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit photo</button>` : '') },
   setHtml(C) {
     const T = C.set = C.set || { visibility: 'public', allowComments: true, allowReuse: true };
     const sw = (k, on) => `<label class="rlsw"><input type="checkbox" ${on ? 'checked' : ''} onchange="RL.setOpt('${k}',this.checked)"><i></i></label>`;
@@ -529,18 +562,47 @@ const RL = {
   rm() { const C = GIST.C; if (C && C.video) { URL.revokeObjectURL(C.video.url); C.video = null; GIST.attDraw() } },
   online() { return new Promise(r => { if (navigator.onLine) return r(); const f = () => { window.removeEventListener('online', f); r() }; window.addEventListener('online', f) }) },
   /* Proven direct-upload path: send the complete selected file from the browser to Mux. The Node server only creates the signed upload URL and checks processing status. */
-  async xhr(file, onp, url) {
+  /* One ticket from the server says HOW to upload: PUT the file, POST a form, or the tus protocol. */
+  async send(t, file, onp) {
+    onp(0);
+    if (t.method === 'TUS') { await this.tus(t.url, file, onp); return null }
+    if (t.method === 'POST') return this.postForm(t, file, onp);
+    await this.xhr(file, onp, t.url, t.headers); return null
+  },
+  async tus(url, file, onp) {
+    let off = 0; const chunk = 8 * 1024 * 1024;
+    while (off < file.size) {
+      const end = Math.min(file.size, off + chunk);
+      const r = await fetch(url, { method: 'PATCH', headers: { 'Tus-Resumable': '1.0.0', 'Upload-Offset': String(off), 'Content-Type': 'application/offset+octet-stream' }, body: file.slice(off, end) }).catch(() => { throw new Error('Could not connect to the video host. Check your connection and try again.') });
+      if (!r.ok) throw new Error(`The video host rejected the upload (HTTP ${r.status}).`);
+      const n = Number(r.headers.get('Upload-Offset')); off = Number.isFinite(n) && n > off ? n : end; onp(Math.min(1, off / file.size))
+    }
+    onp(1)
+  },
+  postForm(t, file, onp) {
+    return new Promise((resolve, reject) => {
+      const fd = new FormData(); Object.keys(t.fields || {}).forEach(k => fd.append(k, t.fields[k])); fd.append(t.fileField || 'file', file);
+      const req = new XMLHttpRequest(); req.open('POST', t.url, true); req.timeout = 45 * 60 * 1000;
+      req.upload.onprogress = e => { if (e.lengthComputable) onp(Math.min(1, e.loaded / e.total)) };
+      req.onload = () => { let j = {}; try { j = JSON.parse(req.responseText) } catch (e) {}
+        if (req.status >= 200 && req.status < 300) { onp(1); resolve(j) } else reject(new Error((j.error && (j.error.message || j.error)) || j.message || `The video host rejected the upload (HTTP ${req.status}).`)) };
+      req.onerror = () => reject(new Error('Could not connect to the video host. Check your connection and try again.'));
+      req.ontimeout = () => reject(new Error('The upload took too long. Check your connection and try again.'));
+      req.send(fd)
+    })
+  },
+  async xhr(file, onp, url, headers) {
     onp(0);
     await new Promise((resolve, reject) => {
       const req = new XMLHttpRequest(); req.open('PUT', url, true); req.timeout = 45 * 60 * 1000;
-      req.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      if (headers) Object.keys(headers).forEach(k => req.setRequestHeader(k, headers[k])); else req.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
       req.upload.onprogress = e => { if (e.lengthComputable) onp(Math.min(1, e.loaded / e.total)) };
       req.onload = () => {
         if (req.status >= 200 && req.status < 300) { onp(1); resolve(); return }
         let detail = ''; try { const j = JSON.parse(req.responseText); detail = j.error && (j.error.message || (j.error.messages || []).join(', ')) || '' } catch (e) {}
-        reject(new Error(detail || `Mux rejected the video upload (HTTP ${req.status}). Check the Mux upload URL and app-origin CORS settings.`))
+        reject(new Error(detail || `The video host rejected the upload (HTTP ${req.status}).`))
       };
-      req.onerror = () => reject(new Error('Could not connect to Mux. Check your connection and the Mux upload CORS origin.'));
+      req.onerror = () => reject(new Error('Could not connect to the video host. Check your connection and try again.'));
       req.ontimeout = () => reject(new Error('The upload timed out. Try again on a stable connection.'));
       req.onabort = () => reject(new Error('The upload was cancelled.'));
       req.send(file)
@@ -610,28 +672,28 @@ const RL = {
     try {
       if (this._legacyApi) return await this.publishLegacy(C, V, set);
       let m;
-      try { m = await GIST.api('/reels/mux-upload', { method: 'POST', body: { origin: location.origin } }) }
+      try { m = await GIST.api('/reels/upload', { method: 'POST', body: { origin: location.origin, bytes: V.file.size, filename: V.file.name } }) }
       catch (e) {
         if (!e || e.status !== 404) throw e;
         try { await this.legacyConfig() }
         catch (legacyError) { if (legacyError && legacyError.status === 404) throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.'); throw legacyError }
         return await this.publishLegacy(C, V, set)
       }
-      if (!m || !m.uploadId || !m.url) throw new Error('The server did not return a Mux upload URL.'); try { await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url) }
+      if (!m || !m.uploadId || !m.url) throw new Error('The server did not return an upload URL.');
+      const prog = f => set('Uploading ' + Math.round(f * 100) + '%'); let result = null;
+      try { result = await this.send(m, V.file, prog) }
       catch (ue) {
-        // A blocked-by-CORS upload and a dropped connection look the same to the browser. Ask for a fresh upload link that
-        // accepts any origin and try once more before showing an error.
-        if (!ue || !/Could not connect to Mux/.test(ue.message || '')) throw ue;
+        // Mux upload links are tied to a browser origin. A blocked upload and a dropped connection look the same, so ask for a fresh link that accepts any origin and try once more.
+        if (!ue || !/Could not connect/.test(ue.message || '') || m.provider !== 'mux') throw ue;
         await this.online(); set('Retrying…');
-        const m2 = await GIST.api('/reels/mux-upload', { method: 'POST', body: { origin: '*' } });
-        if (!m2 || !m2.uploadId || !m2.url) throw ue; m = m2;
-        await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url)
+        const m2 = await GIST.api('/reels/upload', { method: 'POST', body: { origin: '*', bytes: V.file.size, filename: V.file.name } });
+        if (!m2 || !m2.uploadId || !m2.url) throw ue; m = m2; result = await this.send(m, V.file, prog)
       }
       set('Processing…'); let mx = null;
-      for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/mux-status/' + m.uploadId); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
+      for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/upload-status/' + m.uploadId, { method: 'POST', body: { result } }); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
       if (!mx) throw new Error('Your video is taking long to process. It will appear in your gallery when ready; try posting it again in a minute.');
       set('Posting…');
-      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { mux: { assetId: mx.assetId }, dur: mx.dur }, poll: C.poll || undefined, settings: C.set || undefined, fingerprint: await this.fp(V.file) } });
+      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { assetId: mx.assetId, provider: mx.provider, mux: mx.provider === 'mux' ? { assetId: mx.assetId } : undefined, dur: mx.dur }, poll: C.poll || undefined, settings: C.set || undefined, fingerprint: await this.fp(V.file) } });
       if (r.flagged) return this.heldPublish(r.post, V, r.flagged);
       this.finishPublish(r.post, V)
     } catch (e) { C.busy = false; const e2 = $('gc_e'); if (e2) e2.textContent = e.message; GIST.btn(); const bb = $('gc_b'); if (bb) bb.textContent = 'Post'; GIST.err(e) }

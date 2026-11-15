@@ -136,6 +136,7 @@ async function main() {
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
   app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
+  app.use('/api/ac/batch', require('./routes/acbatch'));   // many queued taps (likes, saves, follows) in one request
   app.use('/api/ac/verify', require('./routes/acverify'));  // verified badge: request + paid subscription
   app.use('/api/ac/party', require('./routes/acparty'));  // house parties
   app.use('/api/ac/v2', require('./routes/acv2'));  // traits, memory book, privacy, password, email, wallet top-up
@@ -287,7 +288,7 @@ async function main() {
   const withdrawalNotices = require('./services/withdrawalNotices');
   setTimeout(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 20000).unref();
   setInterval(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 60 * 1000).unref();
-  require('./utils/mux').startSweep();   // tidies uploads that never finished (only when Mux is configured)
+  require('./services/video').boot().catch((e) => console.error('[video boot]', e.message));   // seeds the storage_providers rows, re-counts usage, tidies unfinished uploads
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);
   });

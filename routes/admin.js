@@ -158,6 +158,15 @@ router.get('/ac/photo-status', (req, res) => {
 });
 router.post('/ac/photo-test', async (req, res, next) => { try { res.json(await acPhotos.testUpload()); } catch (e) { next(e); } });
 
+// Video storage providers (services/video): usage, limits, priority, on/off, and a live test per provider.
+router.get('/ac/video-providers', async (req, res, next) => { try { res.json({ providers: await require('../services/video').list() }); } catch (e) { next(e); } });
+router.put('/ac/video-providers/:name', async (req, res, next) => { try { await require('../services/video').update(req.params.name, req.body || {}); res.json({ ok: true }); } catch (e) { if (e.status) return res.status(e.status).json({ message: e.message }); next(e); } });
+router.post('/ac/video-providers/:name/test', async (req, res) => {
+  try { res.json({ ok: true, message: await require('../services/video').test(req.params.name) }); }
+  catch (e) { res.json({ ok: false, status: e.status || 0, message: req.params.name === 'mux' ? require('../utils/mux').muxWhy(e) : String(e.message || e).slice(0, 220) }); }
+});
+router.post('/ac/video-providers-recount', async (req, res, next) => { try { await require('../services/video').reconcile(); res.json({ ok: true }); } catch (e) { next(e); } });
+
 // Video storage (Mux): shows whether the keys exist and what Mux says when we try to use them.
 router.get('/ac/video-status', (req, res) => {
   const m = require('../utils/mux'), id = m.env('MUX_TOKEN_ID'), sec = m.env('MUX_TOKEN_SECRET');

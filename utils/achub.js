@@ -27,6 +27,50 @@ const NEIGHBOURHOODS = [
   { id: 'ikorodu', name: 'Ikorodu', emoji: '⛴️', vibe: 'Boat rides, big markets, strong community.', perk: 'Everybody knows everybody.', cap: 60 },
   { id: 'epe', name: 'Epe', emoji: '🌾', vibe: 'Quiet, lagoon-side and a long way from the noise.', perk: 'Cheapest rent in the city.', cap: 54 }
 ];
+
+/* Where you can live depends on the state you are in now. Lagos keeps its original seven areas; Abuja, Port Harcourt (Rivers) and Abia
+   use the districts of their maps; every other state gets four starter areas so nobody is sent to a Lagos address. */
+const STATE_KEY = (label) => ({ 'FCT (Abuja)': 'abuja', Rivers: 'ph', 'Outside Nigeria': 'lagos' }[label] || String(label || '').toLowerCase().replace(/[^a-z]/g, '') || 'lagos');
+const mk = (state, id, name, emoji, vibe, perk, cap) => ({ id, name, emoji, vibe, perk, cap, state });
+const STATE_HOODS = {
+  lagos: NEIGHBOURHOODS.map((h) => ({ ...h, state: 'lagos' })),
+  abuja: [
+    mk('abuja', 'abuja-maitama', 'Maitama', '🌳', 'Quiet, leafy and full of big embassies.', 'Prestige and peace.', 18),
+    mk('abuja', 'abuja-wuse', 'Wuse', '🏢', 'Offices, malls and a busy night market.', 'Everything is close by.', 36),
+    mk('abuja', 'abuja-garki', 'Garki', '🏦', 'Banks, markets and a lot of life.', 'Busy and well connected.', 42),
+    mk('abuja', 'abuja-gwarinpa', 'Gwarinpa', '🏘', 'The big estate: neighbours, joggers and small shops.', 'Friendly streets.', 54),
+    mk('abuja', 'abuja-jabi', 'Jabi', '🏖', 'Lakeside walks, a mall and a calm evening.', 'Good for relaxing.', 30),
+    mk('abuja', 'abuja-nyanya', 'Nyanya', '🚌', 'Long bus rides, cheap rent and big dreams.', 'Low rent, early mornings.', 60)
+  ],
+  ph: [
+    mk('ph', 'ph-oldgra', 'Old GRA', '🌳', 'Leafy colonial-era avenues and quiet roads.', 'Calm and respected.', 24),
+    mk('ph', 'ph-newgra', 'New GRA', '🏡', 'New estates, restaurants and the nightlife strip.', 'Lively evenings.', 36),
+    mk('ph', 'ph-transamadi', 'Trans-Amadi', '🏭', 'Oil and gas offices and the industrial layout.', 'Great for working people.', 42),
+    mk('ph', 'ph-diobu', 'Diobu (Mile 1)', '🛒', 'The big market: stalls, noise and pepper soup.', 'Never boring.', 60),
+    mk('ph', 'ph-dline', 'D-Line', '🍽', 'Restaurants, bars and the cultural centre.', 'Good food close by.', 30),
+    mk('ph', 'ph-waterside', 'Waterside', '🛶', 'The river front: fishing boats and the old jetty.', 'Quiet and on the water.', 48)
+  ],
+  abia: [
+    mk('abia', 'abia-ngwaroad', 'Ngwa Road', '🏙', 'Shops, shoes and a million small factories.', 'Hustle everywhere.', 48),
+    mk('abia', 'abia-ariaria', 'Ariaria', '🧵', 'Leather, garments and everything made in Aba.', 'Great for traders.', 54),
+    mk('abia', 'abia-osisioma', 'Osisioma', '🏭', 'The industrial belt: factories and workshops.', 'Work is close.', 48),
+    mk('abia', 'abia-umuahia', 'Umuahia', '🏢', 'The state capital: government offices and tidy roads.', 'Calm and orderly.', 36),
+    mk('abia', 'abia-ohafia', 'Ohafia', '🥁', 'War-dance country: villages, hills and tradition.', 'Strong community.', 42),
+    mk('abia', 'abia-azumini', 'Azumini', '🛶', 'The blue river: boats and riverside bars.', 'Fresh air and fish.', 36)
+  ]
+};
+const { NG_STATES } = require('./acv2');
+for (const label of NG_STATES) {          // every remaining state gets four generic starter areas
+  const k = STATE_KEY(label); if (STATE_HOODS[k] || label === 'Outside Nigeria') continue;
+  STATE_HOODS[k] = [
+    mk(k, k + '-centre', label + ' city centre', '🏙', 'Shops, offices and the busiest roads in ' + label + '.', 'Everything is close by.', 40),
+    mk(k, k + '-gra', 'Government area', '🏛', 'Wide roads, offices and calmer streets.', 'Quiet and orderly.', 30),
+    mk(k, k + '-market', 'Market area', '🛒', 'Stalls, noise and the best food in town.', 'Never boring.', 54),
+    mk(k, k + '-outskirts', 'The outskirts', '🌾', 'More space, cheaper rent and a slower pace.', 'Cheapest rent around.', 60)
+  ];
+}
+const hoodsFor = (stateLabel) => STATE_HOODS[STATE_KEY(stateLabel)] || STATE_HOODS.lagos;
+const ALL_HOODS = Object.values(STATE_HOODS).flat();
 const HOBBIES = [
   { id: 'gaming', name: 'Gaming', emoji: '🎮', words: ['Gamer', 'Pro', 'Clutch'] },
   { id: 'music', name: 'Music', emoji: '🎧', words: ['Beat', 'Afro', 'Vibes'] },
@@ -37,7 +81,7 @@ const HOBBIES = [
   { id: 'tech', name: 'Tech', emoji: '👨🏾‍💻', words: ['Dev', 'Byte', 'Code'] },
   { id: 'art', name: 'Art & photos', emoji: '📸', words: ['Snap', 'Frame', 'Colour'] }
 ];
-const HOBBY_IDS = HOBBIES.map((h) => h.id), HOOD_IDS = NEIGHBOURHOODS.map((h) => h.id);
+const HOBBY_IDS = HOBBIES.map((h) => h.id), HOOD_IDS = ALL_HOODS.map((h) => h.id);
 const STARTER_JOBS = ['transport', 'fashion', 'tech', 'banking', 'health', 'oil'];     // ids in utils/acjobs.js
 
 const ONBOARD_STEPS = [
@@ -253,7 +297,7 @@ function progressMap(h, m) {
 
 const cleanId = (v, list) => (list.includes(String(v)) ? String(v) : '');
 module.exports = {
-  PROMISE, PROTECT_DAYS, PROTECT, NEIGHBOURHOODS, HOBBIES, HOBBY_IDS, HOOD_IDS, STARTER_JOBS, ONBOARD_STEPS, usernameSuggestions,
+  PROMISE, PROTECT_DAYS, PROTECT, NEIGHBOURHOODS: ALL_HOODS, hoodsFor, STATE_KEY, HOBBIES, HOBBY_IDS, HOOD_IDS, STARTER_JOBS, ONBOARD_STEPS, usernameSuggestions,
   MISSIONS, MBYID, PLACEMENT_NEEDED, personalTasks, PARCEL, parcelFor, INVITE, RETURN, protectedUntil, isProtected, protectionLeftDays,
   THEMES, weeklyTheme, newspaper, ticker, HELP, ROADMAP, VOTES, VBYID, CHANGELOG, LORE, ANTHEM, recapKind, progressMap, cleanId, dayKey
 };

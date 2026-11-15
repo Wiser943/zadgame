@@ -90,6 +90,7 @@ const UserSchema = new mongoose.Schema({
     ageAt: { type: Date, default: null },                  // when the player attested they are 18 or older
     birthYear: { type: Number, default: null },            // year they entered in the age check (the full date is never stored)
     // Character sheet, memory book and privacy choices (see routes/acv2.js)
+    needsV: { type: Number, default: 0 },                   // bumped whenever the SERVER changes needs (e.g. a friend feeds you), so a stale browser copy can never overwrite it
     traits: { type: [String], default: [] },                // exactly three trait ids once chosen
     memories: { type: [{ _id: false, id: String, icon: String, title: String, text: String, mood: Number, at: { type: Date, default: Date.now } }], default: [] },
     prefs: {

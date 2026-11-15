@@ -336,7 +336,7 @@ router.post('/buy-food/:id', async (req, res, next) => {
     const sender = await User.findOneAndUpdate({ _id: f.me, 'ac.cash': { $gte: price } }, { $inc: { 'ac.cash': -price } }, { new: true });
     if (!sender) return bad(res, 402, 'Not enough ₦.');
     const r = await User.findById(f.other).select('ac.needs'); const cur = (r.ac.needs && r.ac.needs[0]) || 0;
-    await User.updateOne({ _id: f.other }, { $set: { 'ac.needs.0': Math.min(1, cur + item.fill) } });
+    await User.updateOne({ _id: f.other }, { $set: { 'ac.needs.0': Math.min(1, cur + item.fill) }, $inc: { 'ac.needsV': 1 } });
     notify(io(req), f.other, { icon: item.emoji, text: `${label(req.user)} bought you ${item.name}`, kind: 'good' }).catch(() => {});
     emitUser(io(req), f.other, 'cash', { delta: 0 });
     res.json({ cash: sender.ac.cash, message: await addMessage(req, { to: f.other, text: `${label(req.user)} bought you ${item.name} ${item.emoji}`, kind: 'food' }) });

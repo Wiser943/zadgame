@@ -88,7 +88,7 @@ const fill = (v, extra) => ({ assetId: v.mux.assetId, status: 'ready', playbackI
 async function syncPending(uid) {
   if (!muxOn()) return;
   const ACVideo = require('../models/ACVideo');
-  const rows = await ACVideo.find({ user: String(uid), status: 'pending' }).sort({ createdAt: -1 }).limit(5).lean();
+  const rows = await ACVideo.find({ user: String(uid), status: 'pending', $or: [{ provider: 'mux' }, { provider: { $exists: false } }] }).sort({ createdAt: -1 }).limit(5).lean();
   await Promise.all(rows.map((r) => settle(ACVideo, r)));
 }
 async function settle(ACVideo, r) {
@@ -117,7 +117,7 @@ function startSweep() {
 async function removeUserVideos(uid) {
   const ACVideo = require('../models/ACVideo'), gist = require('../routes/acgist');
   const rows = await ACVideo.find({ user: String(uid) }).lean(); let n = 0;
-  for (const v of rows) { if (v.assetId) { await gist.removeVideoPosts(v.assetId).catch(() => 0); if (muxOn()) await mux('DELETE', '/video/v1/assets/' + v.assetId).catch(() => {}); } await ACVideo.deleteOne({ _id: v._id }); n++; }
+  for (const v of rows) { if (v.assetId) { await gist.removeVideoPosts(v.assetId).catch(() => 0); } await require('../services/video').remove(v, { force: true }).catch(() => ACVideo.deleteOne({ _id: v._id })); n++; }
   return n;
 }
 

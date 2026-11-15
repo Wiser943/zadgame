@@ -146,15 +146,16 @@
   /* ============ Bottom sheets ============ */
   const SH = { tab: 'needs', stack: [] };
   V2.sheet = function (key, arg) { SH.key = key; SH.arg = arg; const el = $('v2sheet'); el.classList.add('on'); V2.paint() };
-  V2.closeSheet = function () { SH.key = ''; const el = $('v2sheet'); el.classList.remove('on'); el.innerHTML = '' };
+  V2.closeSheet = function () { SH.key = ''; const el = $('v2sheet'); el.classList.remove('on'); el.innerHTML = ''; el.dataset.key = '' };
   const shell = (cls, inner) => `<div class="v2sheet ${cls || ''}" role="dialog" aria-modal="true">${inner}</div>`;
   const closeBtn = '<button class="cl" onclick="V2.closeSheet()" aria-label="Close">✕</button>';
   V2.paint = async function () {
-    const el = $('v2sheet'), k = SH.key; if (!k) return;
+    const el = $('v2sheet'), k = SH.key; if (!k) return; const prevBd = el.querySelector('.v2bd'), prevTop = prevBd ? prevBd.scrollTop : 0, again = el.dataset.key === k && !!el.firstElementChild;
     if (!V2.me) { try { V2.me = await api('/me') } catch (e) { V2.me = { traits: [], prefs: {}, memories: [] } } }
     if (SH.key !== k) return;
     if (k === 'char') el.innerHTML = charHtml(); else if (k === 'traits') el.innerHTML = traitsHtml(); else if (k === 'memory') el.innerHTML = memoryHtml(); else if (k === 'topup') el.innerHTML = await topupHtml(); else if (k === 'notices') el.innerHTML = await noticesHtml(); else if (k === 'bday') el.innerHTML = bdayHtml(); else if (k === 'pw') el.innerHTML = pwHtml(); else if (k === 'email') el.innerHTML = emailHtml(); else if (k === 'reach') el.innerHTML = reachHtml(); else if (k === 'blocked') el.innerHTML = await blockedHtml();
-    const b = el.querySelector('.v2bd'); if (b && SH.scroll != null && SH.keep) { b.scrollTop = SH.scroll; SH.keep = false }
+    el.dataset.key = k; const b = el.querySelector('.v2bd'); if (again && el.firstElementChild) { el.firstElementChild.classList.add('still'); if (b) b.scrollTop = prevTop }
+    if (b && SH.scroll != null && SH.keep) { b.scrollTop = SH.scroll; SH.keep = false }
   };
   const person = () => { const u = (typeof NET !== 'undefined' && NET.user) || {}; return { name: u.username || u.displayName || 'Player', u } };
   function charHtml() {
@@ -166,10 +167,10 @@
     const S = SS() || {}, n = S.needs || [];
     if (SH.tab === 'needs') {
       const rows = NEEDS.map((x, i) => { const v = Math.round((n[i] || 0) * 100), low = v < 20; return `<div class="v2nd"><span class="v2ic" style="background:${x[3]};color:${x[2]}"><span class="fa-solid fa-${x[1]}"></span></span><div class="bx"><div class="l"><span>${x[0]}</span><span style="${low ? 'color:#ff6b7d' : ''}">${v}</span></div><div class="tr"><i style="width:${v}%;background:${x[2]}"></i></div></div></div>` }).join('');
-      const fe = FEEL.items().map(f => `<div class="v2fe"><span class="e">${f.e}</span><div class="t"><b>${esc(f.t)}</b><small>${esc(f.s)}</small></div><span class="v ${f.v >= 0 ? 'up' : 'dn'}">${f.v > 0 ? '+' : ''}${f.v}</span></div>`).join('') || '<p class="v2em">Nothing special right now.</p>';
+      const fe = FEEL.items().map(f => `<div class="v2fe"><div class="tt"><span class="e">${f.e}</span><b>${esc(f.t)}</b><span class="v ${f.v >= 0 ? 'up' : 'dn'}">${f.v > 0 ? '+' : ''}${f.v}</span></div><small>${esc(f.s)}</small></div>`).join('') || '<p class="v2em">Nothing special right now.</p>';
       const tr = (V2.me.traits || []).map(id => { const t = (V2.TRAITS || []).find(x => x.id === id); return t ? t.icon + ' ' + t.name : '' }).filter(Boolean);
       const nm = person().name;
-      return rows + `<div class="v2h">Feelings</div>${fe}${tr.length ? `<div class="v2tl">Traits: <b>${tr.join(' · ')}</b></div>` : ''}<div class="v2h" style="text-transform:none;letter-spacing:0;font-size:15px;color:#fff;margin-top:12px">Inner life</div><div class="v2gp"><button onclick="V2.sheet('traits')"><span class="v2ic">✨</span><div><b>Who is ${esc(nm)}?</b><small>${(V2.me.traits || []).length === 3 ? 'Change the three traits that shape you' : 'Pick three traits. They shape how you feel and what you want'}</small></div><span class="r">›</span></button><button onclick="V2.sheet('memory')"><span class="v2ic">📖</span><div><b>Memory book</b><small>Your big moments, with how they felt</small></div><span class="r">${(V2.me.memories || []).length}<span>›</span></span></button></div>`;
+      return `<div class="v2nds">${rows}</div><div class="v2h">Feelings</div>${fe}${tr.length ? `<div class="v2tl">Traits: <b>${tr.join(' · ')}</b></div>` : ''}<div class="v2h" style="text-transform:none;letter-spacing:0;font-size:15px;color:#fff;margin-top:12px">Inner life</div><div class="v2gp"><button onclick="V2.sheet('traits')"><span class="v2ic">✨</span><div><b>Who is ${esc(nm)}?</b><small>${(V2.me.traits || []).length === 3 ? 'Change the three traits that shape you' : 'Pick three traits. They shape how you feel and what you want'}</small></div><span class="r">›</span></button><button onclick="V2.sheet('memory')"><span class="v2ic">📖</span><div><b>Memory book</b><small>Your big moments, with how they felt</small></div><span class="r">${(V2.me.memories || []).length}<span>›</span></span></button></div>`;
     }
     if (SH.tab === 'goals') { try { return GOALS.goalsHtml.call(Object.assign({}, GOALS, { head: () => '' })) } catch (e) { return '<p class="v2em">Goals are loading…</p>' } }
     if (SH.tab === 'profile') {
@@ -194,15 +195,20 @@
   V2.TRAITS = [{ id: 'hustler', icon: '💼', name: 'Hustler', text: 'Money matters. You feel good when cash is flowing.' }, { id: 'gymrat', icon: '💪', name: 'Gym Rat', text: 'Strong body, strong mind.' }, { id: 'foodie', icon: '🍛', name: 'Foodie', text: 'A full belle is a happy belle.' }, { id: 'party', icon: '🎉', name: 'Party Animal', text: 'You need fun like you need air.' }, { id: 'homebody', icon: '🏠', name: 'Homebody', text: 'A nice home makes you glow.' }, { id: 'social', icon: '🦋', name: 'Social Butterfly', text: 'Friends are your fuel.' }, { id: 'neat', icon: '🧼', name: 'Neat Freak', text: 'You cannot relax when dirty.' }, { id: 'music', icon: '🎵', name: 'Music Lover', text: 'A good song fixes most things.' }, { id: 'bookworm', icon: '📚', name: 'Bookworm', text: 'Calm and curious.' }, { id: 'explorer', icon: '🧭', name: 'Explorer', text: 'You love new corners of Lagos.' }];
   function traitsHtml() {
     SH.pick = SH.pick || (V2.me.traits || []).slice(); const p = SH.pick, nm = person().name;
-    return shell('tall', `<div class="v2hd"><div class="v2tx"><h2>Who is ${esc(nm)}?</h2><p>Pick exactly three traits.</p></div>${closeBtn}</div><div class="v2bd"><div class="v2tg">${V2.TRAITS.map(t => `<button class="${p.includes(t.id) ? 'on' : ''}" onclick="V2.togTrait('${t.id}')"><span class="e">${t.icon}</span><b>${t.name}</b><small>${t.text}</small></button>`).join('')}</div><button class="v2btn" ${p.length === 3 ? '' : 'disabled'} onclick="V2.saveTraits()">${p.length === 3 ? 'Save traits' : `Pick ${3 - p.length} more`}</button><button class="v2btn alt" onclick="SH_back()">Back</button></div>`);
+    return shell('tall', `<div class="v2hd"><div class="v2tx"><h2>Who is ${esc(nm)}?</h2><p>Pick exactly three traits.</p></div>${closeBtn}</div><div class="v2bd"><div class="v2tg">${V2.TRAITS.map(t => `<button data-id="${t.id}" class="${p.includes(t.id) ? 'on' : ''}" onclick="V2.togTrait('${t.id}')"><div class="tt"><span class="e">${t.icon}</span><b>${t.name}</b></div><small>${t.text}</small></button>`).join('')}</div><button class="v2btn" id="v2tsave" ${p.length === 3 ? '' : 'disabled'} onclick="V2.saveTraits()">${p.length === 3 ? 'Save traits' : `Pick ${3 - p.length} more`}</button><button class="v2btn alt" onclick="SH_back()">Back</button></div>`);
   }
-  V2.togTrait = function (id) { const p = SH.pick = SH.pick || []; const i = p.indexOf(id); if (i >= 0) p.splice(i, 1); else if (p.length < 3) p.push(id); else toast('Only three. Tap one to swap it out.'); V2.paint() };
+  V2.togTrait = function (id) {
+    const p = SH.pick = SH.pick || (V2.me.traits || []).slice(), i = p.indexOf(id);
+    if (i >= 0) p.splice(i, 1); else if (p.length < 3) p.push(id); else return toast('Only three. Tap one to swap it out.');
+    document.querySelectorAll('.v2tg button').forEach(b => b.classList.toggle('on', p.includes(b.dataset.id)));       // update in place: re-drawing the sheet made it flash
+    const sv = $('v2tsave'); if (sv) { sv.disabled = p.length !== 3; sv.textContent = p.length === 3 ? 'Save traits' : 'Pick ' + (3 - p.length) + ' more' }
+  };
   V2.saveTraits = async function () { try { const r = await api('/traits', { method: 'POST', body: { traits: SH.pick } }); V2.me.traits = r.traits; V2.mem('✨', 'Who I am', 'I chose my three traits: ' + r.traits.map(id => (V2.TRAITS.find(t => t.id === id) || {}).name).join(', ') + '.', 5); SH.pick = null; toast('Traits saved ✓'); window.SH_back() } catch (e) { toast(e.message) } };
   window.SH_back = function () { SH.pick = null; SH.tab = 'needs'; V2.sheet('char') };
   /* memory book */
   function memoryHtml() {
     const ms = V2.me.memories || [];
-    return shell('tall', `<div class="v2hd"><div class="v2tx"><h2>Memory book</h2><p>Your big moments, with how they felt.</p></div>${closeBtn}</div><div class="v2bd">${ms.length ? ms.map(m => `<div class="v2mem"><span class="e">${esc(m.icon)}</span><div style="flex:1;min-width:0"><b>${esc(m.title)}</b>${m.text ? `<small>${esc(m.text)}</small>` : ''}<div class="d">${UI.ago(m.at)}${m.mood ? ` · felt ${m.mood > 0 ? '+' : ''}${m.mood}` : ''}</div></div></div>`).join('') : '<p class="v2em">No memories yet. Promotions, big wins and gifts will show up here.</p>'}<button class="v2btn alt" onclick="SH_back()">Back</button></div>`);
+    return shell('tall', `<div class="v2hd"><div class="v2tx"><h2>Memory book</h2><p>Your big moments, with how they felt.</p></div>${closeBtn}</div><div class="v2bd">${ms.length ? ms.map(m => `<div class="v2mem"><div class="tt"><span class="e">${esc(m.icon)}</span><b>${esc(m.title)}</b></div>${m.text ? `<small>${esc(m.text)}</small>` : ''}<div class="d">${UI.ago(m.at)}${m.mood ? ` · felt ${m.mood > 0 ? '+' : ''}${m.mood}` : ''}</div></div>`).join('') : '<p class="v2em">No memories yet. Promotions, big wins and gifts will show up here.</p>'}<button class="v2btn alt" onclick="SH_back()">Back</button></div>`);
   }
   V2.mem = async function (icon, title, text, mood) { try { const r = await api('/memories', { method: 'POST', body: { icon, title, text, mood } }); if (r && r.memory && V2.me) { V2.me.memories = [r.memory].concat(V2.me.memories || []).slice(0, 40) } } catch (e) {} };
   /* wallet top-up */
@@ -220,7 +226,7 @@
   /* notices */
   async function noticesHtml() {
     let ups = []; try { ups = (await NET.api('/api/ac/updates')).updates || [] } catch (e) {}
-    return shell('tall', `<div class="v2hd"><div class="v2tx"><h2>Notices</h2><p>What happened while you were busy.</p></div>${closeBtn}</div><div class="v2bd">${ups.length ? ups.map(u => `<div class="v2fe"><span class="e">${esc(u.icon || '🔔')}</span><div class="t"><b style="font-size:14px;font-weight:600">${esc(u.text)}</b><small>${UI.ago(u.at)}</small></div></div>`).join('') + '<button class="v2btn alt" onclick="V2.clearNotices()">Clear all</button>' : '<p class="v2em">Nothing new. You are all caught up.</p>'}<button class="v2btn alt" onclick="V2.closeSheet()">Close</button></div>`);
+    return shell('tall', `<div class="v2hd"><div class="v2tx"><h2>Notices</h2><p>What happened while you were busy.</p></div>${closeBtn}</div><div class="v2bd">${ups.length ? ups.map(u => `<div class="v2fe"><div class="tt"><span class="e">${esc(u.icon || '🔔')}</span><b style="font-weight:600">${esc(u.text)}</b></div><small>${UI.ago(u.at)}</small></div>`).join('') + '<button class="v2btn alt" onclick="V2.clearNotices()">Clear all</button>' : '<p class="v2em">Nothing new. You are all caught up.</p>'}<button class="v2btn alt" onclick="V2.closeSheet()">Close</button></div>`);
   }
   V2.clearNotices = async function () { try { await NET.api('/api/ac/updates/clear', { method: 'POST' }); toast('Cleared'); if ((typeof PH!=='undefined'?PH:undefined)) PH.badges.updates = 0; V2.paint() } catch (e) { toast(e.message) } };
   /* birthday, password, email */
@@ -304,6 +310,16 @@
     BUY.cancel = function () { V2.queue = []; return x0.apply(this, arguments) };
     BUY.drawSheet = function () { const r = d0.apply(this, arguments); decorateBuy(); V2.apply(); return r } }
 
+
+  /* The map opens in the state the player said they are in. If that state's map is not built yet it stays on Lagos. */
+  const CITY_OF = st => ({ 'FCT (Abuja)': 'abuja', Rivers: 'ph', 'Outside Nigeria': 'lagos' }[st] || String(st || '').toLowerCase().replace(/[^a-z]/g, ''));
+  V2.applyCity = function () {
+    if (V2.cityDone || !V2.me || !V2.me.stateCurrent || typeof MAP3D === 'undefined' || !MAP3D.setCity) return;
+    V2.cityDone = true; const id = CITY_OF(V2.me.stateCurrent); if (!id || id === 'lagos') return;
+    const btn = document.querySelector('#mapcities button[data-city="' + id + '"], #mapcitiesMore button[data-city="' + id + '"]');
+    if (MAP3D.setCity(id, btn ? btn.textContent : id, true)) document.querySelectorAll('#mapcities button, #mapcitiesMore button').forEach(b => b.classList.toggle('on', b.getAttribute('data-city') === id));
+  };
+
   /* ============ boot ============ */
   function hookGlobals() {
     if ((typeof BAN!=='undefined'?BAN:undefined) && !BAN._v2) { BAN._v2 = 1; const s0 = BAN.show.bind(BAN); BAN.show = function (t) { if (/UP NEPA/i.test(t)) V2.lastUp = Date.now(); return s0.apply(BAN, arguments) } }
@@ -311,12 +327,12 @@
     if (typeof window.openBank === 'function' && !window.openBank._v2) { const o = window.openBank; window.openBank = function (dep) { if (dep) { V2.sheet('topup'); if ((typeof PHONEUI!=='undefined'?PHONEUI:undefined) && S.page === 'phone') {} return } return o.apply(this, arguments) }; window.openBank._v2 = 1 }
     if ((typeof PH!=='undefined'?PH:undefined) && PH.settings && !PH.settings._v2) { const o = PH.settings; PH.settings = async function () { const r = await o.apply(this, arguments); try { V2.decorate() } catch (e) {} return r }; PH.settings._v2 = 1 }
     if ((typeof PH!=='undefined'?PH:undefined) && PH.deposit && !PH.deposit._v2) { PH.deposit = function () { PH.close && PH.close(); nav('home'); V2.sheet('topup') }; PH.deposit._v2 = 1 }
-    if (typeof window.nav === 'function' && !window.nav._v2) { const o = window.nav; window.nav = function () { const r = o.apply(this, arguments); setTimeout(tick, 0); if (window.V2) V2.closeSheet(); return r }; window.nav._v2 = 1 }
+    if (typeof window.nav === 'function' && !window.nav._v2) { const o = window.nav; window.nav = function () { const r = o.apply(this, arguments); setTimeout(tick, 0); if (window.V2) { V2.closeSheet(); if (arguments[0] === 'map') setTimeout(V2.applyCity, 450) } return r }; window.nav._v2 = 1 }
     hookBuy();
   }
   function init() {
     build(); hookGlobals(); tick(); document.body.classList.toggle('v2m', mq.matches); mq.addEventListener && mq.addEventListener('change', tick);
-    api('/me').then(r => { V2.me = r; tick() }).catch(() => {});
+    api('/me').then(r => { V2.me = r; tick(); try { if (S.page === 'map') V2.applyCity() } catch (e) {} }).catch(() => {});
     setInterval(() => { tick(); hookGlobals() }, 1000); checkReturn();
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && SH.key) V2.closeSheet() });
   }

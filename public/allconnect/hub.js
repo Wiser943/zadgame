@@ -176,7 +176,7 @@ const HUB = {
     const back = st > 0 ? `<button class="hlink" onclick="HUB.setup(${st - 1})">‹ Back</button>` : '';
     const pick = (list, key, fn) => `<div class="hopts">${list.map(o => `<button class="hopt ${su[key] === o.id ? 'on' : ''}" onclick="HUB.pick('${key}','${o.id}')"><span class="hem">${o.emoji || ''}</span><b>${this.esc(o.name)}</b><small>${this.esc(fn(o))}</small></button>`).join('')}</div>`;
     if (st === 0) return `${dots}<div class="hhero"><div class="hbig">🏙️</div><h3>${this.esc(NG.say(C.promise.tagline, 'Live your full Naija life, online.'))}</h3><p>${this.esc(NG.say(C.promise.line, 'Find work, pay your bills, fix your house, make padi, play games and watch 9ja change around you. AllConnect no dey reset: your life dey continue even when you close the app.'))}</p></div><ul class="hprom">${C.promise.day1.map(x => `<li><span class="fa-solid fa-circle-check"></span>${this.esc(x)}</li>`).join('')}</ul>${nextBtn(true, NG.say('Set up my life (1 minute)', 'Set up my life (1 minute)'))}<button class="hlink c" onclick="SHEET.close()">Skip for now</button>`;
-    if (st === 1) return `${dots}<h3 class="hq">${NG.say('Where will you live?', 'Where you wan live?')}</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
+    if (st === 1) return `${dots}<h3 class="hq">${C.stateName ? NG.say('Where will you live in ' + C.stateName + '?', 'Where you wan live for ' + C.stateName + '?') : NG.say('Where will you live?', 'Where you wan live?')}</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
     if (st === 2) return `${dots}<h3 class="hq">${NG.say('Choose a starter job', 'Pick your starter job')}</h3><p class="hsub">You can switch any time in Phone → Jobs.</p>${pick(C.jobs, 'job', o => `${o.startTitle} · ${this.fmt(o.startPay)} per shift`)}${nextBtn(!!su.job)}${back}`;
     if (st === 3) return `${dots}<h3 class="hq">${NG.say('What do you love?', 'Wetin you love?')}</h3><p class="hsub">We use this to suggest missions and a username.</p>${pick(C.hobbies, 'hobby', () => '')}${nextBtn(!!su.hobby)}${back}`;
     if (st === 4) {
@@ -344,7 +344,7 @@ const HUB = {
       return `<div class="hbanner" style="--c:#e8337a">${UI.ic('location-dot', '#e8337a', 40)}<div><b>${r.hood.emoji} ${this.esc(r.hood.name)}</b><small>${this.esc(r.hood.vibe)}</small></div></div>
         <div class="hnow"><b>${r.event.icon} ${this.esc(r.event.title)}</b>${r.vibe ? `<small>${this.esc(r.hood.name)}: ${this.esc(r.vibe)}</small>` : ''}</div>
         <h4>Neighbours</h4>` + (r.neighbours.length ? r.neighbours.map(n => `<div class="lgq tap" onclick="SHEET.close();GIST.openProfile('${n.id}',()=>{})" style="cursor:pointer">${PH.av(n)}<div><b>${n.username ? '@' + this.esc(n.username) : this.esc(n.displayName)} ${n.hobby}</b><small>${n.online ? '<i class="ond"></i>Online now' : 'Lives nearby'}</small></div><span class="lgrw">View</span></div>`).join('') : '<p class="empty">No neighbours yet. Invite a friend to move in!</p>') +
-        `<button class="rbigbtn ghost" onclick="SHEET.close();nav('phone');setTimeout(()=>PH.open('invite'),0)">Invite a friend</button>`;
+        `<button class="rbigbtn ghost" onclick="HUB.view('invite')">Invite a friend</button>`;
     }, { id: 'near' });
   },
 

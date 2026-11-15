@@ -16,6 +16,7 @@ const GOV = require('../utils/acgov');
 const reelstore = require('../utils/reelstore');
 const { milestonesFor } = require('../utils/acmilestones');
 const { playerContext, CTX_FIELDS } = require('../utils/acctx');
+const videoRouter = require('../services/video');
 
 const { muxWhy, muxOn, mux, muxVideo, playback, createUpload, verifyWebhook, fill, signingOn, env: menv, MUX_MAX_MB, MUX_MAX_SEC, DAILY_UPLOADS } = require('../utils/mux');
 const ACVideo = require('../models/ACVideo');
@@ -57,7 +58,7 @@ router.post('/mux-webhook', async (req, res) => {
     } else if (ev.type === 'video.upload.cancelled' || ev.type === 'video.upload.errored') {
       await ACVideo.deleteOne({ uploadId: d.id, status: 'pending' });
     } else if (ev.type === 'video.asset.deleted') {
-      await ACVideo.deleteOne({ assetId: d.id }); await router.removeVideoPosts(d.id).catch(() => 0);
+      const gone = await ACVideo.findOne({ assetId: d.id }).lean(); if (gone) await videoRouter.remove(gone, { force: true }).catch(() => 0); await router.removeVideoPosts(d.id).catch(() => 0);
     }
     res.json({ ok: true });
   } catch (e) { console.error('[mux webhook]', e.message); res.status(200).json({ ok: false }); }
@@ -273,10 +274,14 @@ router.post('/posts', limit('post', 10, 60000), async (req, res, next) => {
     const uid = me(req), b = req.body || {};
     const text = String(b.text || '').trim().slice(0, 500);
     let video = null;
-    if (!video && b.video && b.video.mux && b.video.mux.assetId) {
-      const v = await ACVideo.findOne({ assetId: String(b.video.mux.assetId), user: uid, status: 'ready' }).lean();
+    const vref = b.video && (b.video.assetId || (b.video.mux && b.video.mux.assetId));
+    if (!video && vref) {
+      const v = await ACVideo.findOne({ assetId: String(vref), user: uid, status: 'ready' }).lean();
       if (!v) return bad(res, 'That video was not found in your gallery. Please upload it again.');
-      video = { kind: 'mux', mux: { assetId: v.assetId, playbackId: v.playbackId, signed: !!v.signed, captions: !!v.cc }, url: v.url, mime: 'application/x-mpegURL', size: 0, dur: Math.round(v.dur || 0), poster: { url: v.poster, thumb: v.thumb || v.poster } };
+      const prov = v.provider || 'mux';
+      video = prov === 'mux'
+        ? { kind: 'mux', mux: { assetId: v.assetId, playbackId: v.playbackId, signed: !!v.signed, captions: !!v.cc }, url: v.url, mime: 'application/x-mpegURL', size: 0, dur: Math.round(v.dur || 0), poster: { url: v.poster, thumb: v.thumb || v.poster } }
+        : { kind: prov, assetId: v.assetId, url: v.url, mime: 'application/x-mpegURL', size: v.bytes || 0, dur: Math.round(v.dur || 0), poster: { url: v.poster, thumb: v.thumb || v.poster } };   // every host is stored as an HLS stream
     }
     const images = video ? [] : await buildImages(b.images, uid, res); if (!images) return;
     let game;
@@ -447,39 +452,32 @@ router.get('/reels/config', (req, res) => {
 });
 
 /* Mux direct upload: the phone sends the file straight to Mux (it never passes through our server), then we poll (or Mux calls our webhook) until it is ready. */
-router.post('/reels/mux-upload', limit('reelup', 12, 3600000), async (req, res, next) => {
+/* ---- video upload: the router picks the host (Mux, Cloudinary, ImageKit, Gumlet, Vimeo ...) ---- */
+async function uploadGate(uid, res) {
+  if (await ACVideo.countDocuments({ user: uid }) >= reelstore.MAX_PER_USER) { bad(res, `Your gallery has ${reelstore.MAX_PER_USER} videos already. Delete an old one to upload a new one.`, 409); return false; }
+  if (await ACVideo.countDocuments({ user: uid, createdAt: { $gte: new Date(Date.now() - 86400000) } }) >= DAILY_UPLOADS) { bad(res, `You can upload ${DAILY_UPLOADS} videos a day. Try again tomorrow.`, 429); return false; }
+  return true;
+}
+// CORS origin the host will accept for the one-time upload URL: the browser's own origin first, then the headers, then '*'.
+const cleanOrigin = (v) => { try { const u = new URL(String(v || '')); return /^https?:$/.test(u.protocol) ? u.origin : ''; } catch (e) { return ''; } };
+const pickOrigin = (req) => (req.body && req.body.origin === '*') ? '*' : (cleanOrigin(req.body && req.body.origin) || cleanOrigin(req.headers.origin) || cleanOrigin(req.headers.referer) || '*');
+const startUpload = (only) => async (req, res) => {
   try {
-    if (!muxOn()) return bad(res, 'Video storage is not configured on the server. Add MUX_TOKEN_ID and MUX_TOKEN_SECRET to the hosting environment, then restart the app.', 503);
-    const uid = me(req);
-    if (await ACVideo.countDocuments({ user: uid }) >= reelstore.MAX_PER_USER) return bad(res, `Your gallery has ${reelstore.MAX_PER_USER} videos already. Delete an old one to upload a new one.`, 409);
-    if (await ACVideo.countDocuments({ user: uid, createdAt: { $gte: new Date(Date.now() - 86400000) } }) >= DAILY_UPLOADS) return bad(res, `You can upload ${DAILY_UPLOADS} videos a day. Try again tomorrow.`, 429);
-    // CORS origin Mux will accept for this one-time upload URL. The browser's own origin is the most reliable source
-    // (proxies such as Netlify can drop or rewrite the Origin header), so: body.origin -> Origin header -> Referer -> '*'.
-    const cleanOrigin = (v) => { try { const u = new URL(String(v || '')); return /^https?:$/.test(u.protocol) ? u.origin : ''; } catch (e) { return ''; } };
-    const wantAny = req.body && req.body.origin === '*';
-    const origin = wantAny ? '*' : (cleanOrigin(req.body && req.body.origin) || cleanOrigin(req.headers.origin) || cleanOrigin(req.headers.referer) || '*');
-    const { d, cc } = await createUpload(uid, origin);
-    await ACVideo.create({ user: uid, uploadId: d.id, status: 'pending', cc });   // saved now, so it is never lost if the app closes mid-upload
-    res.json({ uploadId: d.id, url: d.url });
-  } catch (e) { console.error('[mux upload]', e.status || '', e.message); bad(res, 'Could not start the upload. ' + muxWhy(e), 502); }
-});
-router.get('/reels/mux-status/:uploadId', async (req, res, next) => {
+    const uid = me(req); if (!(await uploadGate(uid, res))) return;
+    const t = await videoRouter.createTicket({ uid, bytes: req.body && req.body.bytes, origin: pickOrigin(req), filename: req.body && req.body.filename, only });
+    res.json(only ? { uploadId: t.uploadId, url: t.url } : t);               // the old Mux-only route keeps its old answer shape
+  } catch (e) { console.error('[video upload]', e.status || '', e.message); bad(res, e.message || 'Could not start the upload.', e.status && e.status >= 400 && e.status < 600 ? e.status : 502); }
+};
+router.post('/reels/upload', limit('reelup', 12, 3600000), startUpload(''));
+router.post('/reels/mux-upload', limit('reelup', 12, 3600000), startUpload('mux'));
+const checkUpload = async (req, res) => {
   try {
-    if (!muxOn()) return bad(res, 'Video storage is not configured on the server. Add MUX_TOKEN_ID and MUX_TOKEN_SECRET to the hosting environment, then restart the app.', 503);
-    if (!/^[A-Za-z0-9]{10,80}$/.test(req.params.uploadId)) return bad(res, 'Invalid upload.');
-    const u = await mux('GET', '/video/v1/uploads/' + req.params.uploadId);
-    if (u.status === 'errored' || u.status === 'cancelled' || u.status === 'timed_out') return res.json({ error: 'The upload did not finish. Please try again.' });
-    if (!u.asset_id) return res.json({ ready: false, status: u.status });
-    const a = await mux('GET', '/video/v1/assets/' + u.asset_id);
-    if (a.passthrough !== me(req)) return bad(res, 'That upload is not yours.', 403);
-    if (a.status === 'errored') { mux('DELETE', '/video/v1/assets/' + a.id).catch(() => {}); return res.json({ error: 'That video could not be processed. Try an MP4 (H.264).' }); }
-    if (a.status !== 'ready') return res.json({ ready: false, status: a.status });
-    if ((a.duration || 0) > MUX_MAX_SEC + 1) { mux('DELETE', '/video/v1/assets/' + a.id).catch(() => {}); return res.json({ error: `Reels can be up to ${MUX_MAX_SEC / 60} minutes.` }); }
-    const mv = muxVideo(a); if (!mv) return res.json({ ready: false, status: 'preparing' });
-    await ACVideo.updateOne({ uploadId: req.params.uploadId, user: me(req) }, { $set: fill(mv) }, { upsert: true });
-    res.json({ ready: true, assetId: a.id, dur: a.duration || 0 });
-  } catch (e) { console.error('[mux status]', e.message); res.json({ ready: false, status: 'checking' }); }
-});
+    if (!/^[A-Za-z0-9_-]{6,120}$/.test(req.params.uploadId)) return bad(res, 'Invalid upload.');
+    res.json(await videoRouter.status(me(req), req.params.uploadId, req.body));
+  } catch (e) { console.error('[video status]', e.message); res.json({ ready: false, status: 'checking' }); }
+};
+router.post('/reels/upload-status/:uploadId', checkUpload);
+router.get('/reels/mux-status/:uploadId', checkUpload);
 
 const REEL_PAGE = 6;
 /* For you is ranked: engagement (likes, comments, shares), how much people actually watch and finish it, freshness, and a boost for creators you follow. */

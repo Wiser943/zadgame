@@ -162,7 +162,7 @@
 .gct small{position:absolute;left:6px;bottom:6px;padding:2px 7px;border-radius:99px;background:rgba(0,0,0,.6);color:#fff;font:700 11px inherit;font-family:inherit}
 .gct-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;font-size:12px}
 .gct-ed{position:absolute;right:6px;bottom:6px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;display:grid;place-items:center;font-size:11px}
-.gedit{display:flex;align-items:center;gap:8px;width:100%;margin:10px 0 0;padding:11px 14px;border:0;border-radius:14px;background:rgba(128,138,160,.16);color:inherit;font:700 13.5px inherit;font-family:inherit}.gedit small{margin-left:auto;opacity:.65;font-weight:600}
+.gevid{display:flex;align-items:center;gap:8px;width:100%;min-height:0;height:auto;margin:10px 0 0;padding:10px 14px;border:0;border-radius:14px;background:rgba(128,138,160,.16);color:inherit;font:700 13.5px inherit;font-family:inherit;text-align:left;cursor:pointer}.gevid small{margin-left:auto;opacity:.65;font-weight:600}
 .gprev button.ed{top:auto!important;bottom:3px;right:3px!important}
 .rl-set{margin:14px 0 6px;display:grid;gap:8px}.rl-set .lab2{margin:0 2px 2px}
 .rl-set .sr{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:rgba(128,138,160,.14);min-height:56px}.rl-set .sr>span{flex:1;min-width:0}
@@ -222,3 +222,14 @@
 .gbday .gbc{position:absolute;top:-18px;font-style:normal;font-size:18px;opacity:.85;animation:gbfall 4.8s linear infinite;pointer-events:none}
 @keyframes gbfall{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(190px) rotate(240deg);opacity:0}}@keyframes gbpop{0%,100%{transform:scale(1)}50%{transform:scale(1.12) rotate(-4deg)}}
 @media (prefers-reduced-motion:reduce){.gbday .gbc,.gbday .gbt{animation:none}.gbday .gbc{display:none}}
+
+#auth select{display:block;width:100%;border:1px solid #dcdfe9;background:#f6f7fb;border-radius:14px;padding:12px 14px;font:500 15px 'Plus Jakarta Sans',system-ui,sans-serif;margin-top:9px;color:var(--ink);outline:0;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7186' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}#auth select:focus{border-color:var(--grn)}
+#splash .card select{background-color:rgba(255,255,255,.52);border-color:rgba(255,255,255,.7)}
+html[data-theme="dark"] #splash .card select{background-color:rgba(20,26,44,.62);border-color:rgba(255,255,255,.16);color:#f3f5fb}
+html[data-theme="dark"] #splash .card select option{background:#1b2034;color:#f3f5fb}
+
+/* Leaderboard app */
+.lbk{padding:10px 14px 24px}.lbseg{margin:2px 0 12px}
+.lbrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;background:rgba(128,138,160,.12);margin-bottom:7px}.lbrow.me{background:rgba(7,91,255,.14);outline:2px solid rgba(7,91,255,.45)}
+.lbrk{width:34px;text-align:center;font-weight:800;font-size:15px;flex:none}.lbav{width:34px;height:34px;border-radius:50%;overflow:hidden;position:relative;flex:none}.lbav .avi{width:100%!important;height:100%!important}
+.lbnm{flex:1;min-width:0;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbnm small{font-weight:700;color:#075bff;margin-left:4px}.lbv{font-size:13px;white-space:nowrap}.lbgap{text-align:center;font-size:12px;opacity:.6;margin:12px 0 6px}

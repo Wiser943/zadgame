@@ -785,3 +785,14 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 ## Merged features (v20)
 - **Verified badge** (routes/acverify.js, utils/acverify.js, admin "Verified badges" page): request, admin decides permanent or paid, monthly/yearly subscription from the wallet, hourly expiry sweep.
 - **House Party** (routes/acparty.js, utils/acparty.js, public/allconnect/party.js), **Residency / Visa** tab in Transport, **business staff + price tiers** (POST /api/ac/invest/biz/manage), **bills auto-pay** (POST /api/ac/lagos/bills/autopay, toggle on the Bills screen), **profile milestones** (utils/acmilestones.js, utils/acctx.js) and tiered **home comfort** (Lekki apartment, Banana Island mansion) were merged in from the older zadgame-main-updated build.
+
+## Merged v2 features into v25 (Nov 2026)
+- Video hosting router (services/video): Mux, Cloudinary, ImageKit, Gumlet, Vimeo with per-host limits, priority and a live test in Admin > Photos & socials. Upload via POST /api/ac/gist/reels/upload; old mux-upload/mux-status routes still work.
+- Batched taps (public/allconnect/syncq.js, routes/acbatch.js): likes, saves, follows and comment likes are sent together after ~30 s.
+- Needs conflict guard (ac.needsV) so a stale browser never overwrites a friend feeding you; needs are also saved on page hide.
+- State-aware neighbourhoods and map: onboarding offers areas for the player's state; the map opens in that state when it exists.
+- Leaderboard is now an app inside /play (leaderboard.js, 60 s cached via utils/cache.js, Redis when configured). The lobby strip is removed and /leaderboard redirects to /play.
+- Reels: profile + follow + description bottom-left, actions on the right, comments open under the video.
+- Rewards: legal name locks once saved; Payouts tab inside Creator Academy.
+- Age check remembers in localStorage + cookie; sign-in no longer re-asks for the full date of birth.
+- 2D map overview shows players as dots; trait picker and sheets no longer flash on redraw.
