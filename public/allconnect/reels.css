@@ -346,3 +346,18 @@
 .rl-split .rl-info{bottom:12px;right:70px}.rl-split .rl-cap,.rl-split .rl-views,.rl-split .rl-tags{display:none}
 .rl-split .rl-act{bottom:10px;gap:5px}.rl-split .rl-act button span{width:34px;height:34px;font-size:16px}.rl-split .rl-act button em{font-size:10px}.rl-split .rl-act>button[data-action=save],.rl-split .rl-more-btn{display:none}
 .rl-split .rl-no,.rl-split .rl-bar,.rl-split .rl-snd,.rl-split .rl-cc{display:none}
+
+/* smaller right-hand action icons */
+#appview.pgist-social .rl-act button span{width:34px;height:34px;font-size:20px}
+#appview.pgist-social .rl-act button span svg{width:1em;height:1em}
+#appview.pgist-social .rl-act button em{font-size:10px}
+#appview.pgist-social .rl-act{gap:9px}
+#appview.pgist-social .rl-split .rl-act button span{width:28px;height:28px;font-size:16px}
+
+/* sheets (press-and-hold menu, share, post options) sit above the reel buttons */
+#appview.rlmode .asheet,.screen:has(#appview.rlmode) .asheet{z-index:30}
+/* comments under the video: these beat the full-screen rules (which use an id selector) */
+#appview.rlmode .rl-split .rl-feed,#appview.rlmode.rlfull .rl-split .rl-feed{height:42%;flex:none;min-height:0}
+#appview.rlmode.rlfull .rl-split .rl-act{bottom:10px}
+#appview.rlmode.rlfull .rl-split .rl-info{bottom:12px}
+#appview.rlmode #rlcm{position:relative;z-index:8}

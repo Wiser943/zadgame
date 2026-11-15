@@ -1,3 +1,5 @@
+/* reel like icon: the flash is a real icon; other reactions keep their emoji */
+const RLI = k => k === 'like' ? '<i class="fa-solid fa-bolt" style="color:#ffc933"></i>' : RXE[k];
   /* Reels for P-Gist: full-screen vertical feed, direct browser-to-Mux upload, and support for the earlier P-Gist video API. */
 const RL = {
   tab: 'foryou', L: { foryou: { p: [], more: false, ok: false }, following: { p: [], more: false, ok: false } }, i: 0, muted: true, obs: null, seen: new Set(), busy: false, start: '', tapT: 0, gen: 0,
@@ -159,13 +161,11 @@ const RL = {
       <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>@${esc(a.username || a.displayName || 'player')}${GIST.vb(a)}</b><small>${esc(a.displayName || '')}</small></span>${a.id !== ((typeof NET !== 'undefined' && NET.user) || {}).id ? `<button class="rl-fol ${a.following ? 'on' : ''}" data-a="${a.id}" onclick="event.stopPropagation();RL.follow('${a.id}')">${a.following ? 'Following' : 'Follow'}</button>` : ''}</div>
       ${this.descHtml(p.text)}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
       <div class="rl-act">
-      <button class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-regular fa-heart"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
+      <button class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RLI(p.myRx) : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
       <button data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><span><i class="fa-regular fa-comment"></i></span><em>${this.fmt(p.comments) || 'Comment'}</em></button>
-      <button data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><span><i class="fa-solid fa-share-nodes"></i></span><em>${this.fmt(p.shares) || 'Share'}</em></button>
+      <button data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 3.5 10.8 14.2"/><path d="M21.5 3.5 14.7 20.5l-3.9-6.3-6.3-3.9z"/></svg></span><em>${this.fmt(p.shares) || 'Share'}</em></button>
       <button data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><span><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i></span><em>${p.saved ? 'Saved' : 'Save'}</em></button>
-      <button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
-      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" data-action="sound" onclick="event.stopPropagation();RL.action('${p.id}','sound')" aria-label="Toggle sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i><em>${this.muted ? 'Unmute' : 'Mute'}</em></button>
-      <button role="menuitem" data-action="options" onclick="event.stopPropagation();RL.action('${p.id}','options')" aria-label="More post options"><i class="fa-solid fa-ellipsis"></i><em>Post options</em></button></div></div>
+      </div>
       <div class="rl-bar"><i></i></div></section>`
   },
   draw() {
@@ -290,7 +290,7 @@ const RL = {
   sync(id) {
     const p = GIST.cache.get(id); if (!p) return;
     document.querySelectorAll(`.rl-card[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-regular fa-heart"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
+      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RLI(p.myRx) : '<i class="fa-solid fa-bolt"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
       const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comment'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
     })
   },
