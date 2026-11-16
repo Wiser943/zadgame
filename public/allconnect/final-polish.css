@@ -1,0 +1,109 @@
+/* =====================================================================================================
+   final-polish.css  (loaded LAST, after v2.css)
+   1. Phone: iOS "liquid glass" bars + a compact, non-wrapping action banner that no longer covers the buttons
+   2. Tablet / desktop frame: home apps = ONE vertically scrolling list, 3 per row
+   3. Desktop: Buy panel full height on the right, room fitted into the space on the left (see room3d.js calcInset)
+   4. Desktop: bottom-left profile / needs lifted above the Keyboard button
+   5. Boutique (tablet / desktop): avatar fits + stays fixed, category tabs = max 2 rows, fixed, scroll sideways
+   ===================================================================================================== */
+
+/* ---------- 1. PHONE: glass bars ---------- */
+body.v2m{--v2-pill:rgba(22,30,44,.34);--v2-pill2:rgba(44,56,78,.46);--v2-glass-line:rgba(255,255,255,.24)}
+body.v2m .v2p,body.v2m .v2time,body.v2m .v2chev,body.v2m .v2card,
+body.v2m #v2rail .rb,body.v2m #v2radio,body.v2m #v2pop,
+body.v2m #v2act .cb,body.v2m #v2act .pl,body.v2m #v2act .wk,
+body.v2m #v2nav .cap,body.v2m #v2nav .ph,body.v2m #v2nav .me .mf,
+body.v2m #v2top .v2bal,body.v2m #v2strip .v2chip,body.v2m #v2strip .v2fl{
+  -webkit-backdrop-filter:blur(18px) saturate(1.8);backdrop-filter:blur(18px) saturate(1.8);
+  border:1px solid var(--v2-glass-line);
+  box-shadow:0 4px 18px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.34),inset 0 -1px 0 rgba(255,255,255,.06)}
+/* the journey / work pill keeps its lavender, just see-through */
+body.v2m #v2act .wk{background:rgba(217,200,255,.52)}
+body.v2m #v2act .wk button{color:#1d1433}
+body.v2m #v2act .wk button svg{stroke:#1d1433}
+/* the selected tab in the bottom nav = a frosted highlight instead of a solid blob */
+body.v2m #v2nav .cap button.on{background:rgba(255,255,255,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+/* avatar ring badge sits on glass as well */
+body.v2m #v2nav .me .mf{border-color:var(--v2-glass-line)}
+/* readable on bright sky / grass */
+body.v2m #v2rail .rb,body.v2m #v2radio,body.v2m #v2act .cb,body.v2m #v2act .pl,body.v2m #v2nav .cap button,body.v2m #v2nav .ph{text-shadow:0 1px 3px rgba(0,0,0,.45)}
+
+/* ---------- 1b. PHONE: "Sleeping… 31 s  [Stop]" banner ---------- */
+#usebar{
+  width:max-content;max-width:calc(100% - 96px);box-sizing:border-box;     /* the old left:50% made it only half as wide, so the text wrapped */
+  flex-wrap:nowrap;align-items:center;gap:8px;white-space:nowrap;
+  padding:5px 5px 5px 13px;font-size:12px;line-height:1.1;
+  background:rgba(20,28,44,.46);color:#fff;
+  -webkit-backdrop-filter:blur(18px) saturate(1.8);backdrop-filter:blur(18px) saturate(1.8);
+  border:1px solid rgba(255,255,255,.24);box-shadow:0 4px 18px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.3)}
+#usebar>span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#usebar>span b{font-variant-numeric:tabular-nums}
+#usebar button{flex:none;white-space:nowrap;padding:6px 12px;font-size:12px;line-height:1.1;
+  background:rgba(255,200,61,.95);color:#1b2236}
+/* phones: sit above the Outside / Radio / job row and clear of the right-hand buttons */
+body.v2m #usebar{bottom:calc(120px + var(--sab,0px))}
+
+/* ---------- 2. TABLET / DESKTOP: home apps = vertical list, 7 per row ---------- */
+@media (min-width:900px) and (min-height:560px){
+  #apps.tabx{overflow:hidden;scroll-snap-type:none;width:100%;align-self:stretch}
+  #apps.tabx+.pgdots{display:none}
+  #apps.ios.tabx .pg1{
+    display:grid;grid-template-columns:minmax(0,.62fr) minmax(0,1.8fr);grid-template-rows:auto auto auto minmax(0,1fr);
+    column-gap:22px;align-content:start;box-sizing:border-box;padding:0 22px 6px}
+  #apps.ios.tabx .pg1 .lock{grid-column:1;grid-row:1}
+  #apps.ios.tabx .pg1 .happen{grid-column:1;grid-row:2;max-width:none}
+  #apps.ios.tabx .pg1 .goalcard{grid-column:1;grid-row:3;max-width:none;margin-top:12px}
+  #apps.ios.tabx .pg1 .grid{
+    grid-column:2;grid-row:1 / -1;grid-template-columns:repeat(7,minmax(0,1fr));gap:0 4px;
+    min-height:0;max-height:100%;align-content:start;justify-items:center;
+    overflow-y:auto;overflow-x:hidden;padding:8px 8px 0;margin-top:0;box-sizing:border-box;
+    height:100%;grid-auto-rows:calc((100% - 8px) / 3);gap:0 4px;align-content:start;scroll-snap-type:y mandatory;
+    -webkit-mask-image:linear-gradient(#000 calc(100% - 14px),transparent);mask-image:linear-gradient(#000 calc(100% - 14px),transparent);
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.38) transparent;overscroll-behavior:contain}
+  #apps.ios.tabx .pg1 .grid::-webkit-scrollbar{width:6px}
+  #apps.ios.tabx .pg1 .grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.38);border-radius:6px}
+  #apps.ios.tabx .pg1 .grid>*{scroll-snap-align:start;align-self:center}
+  #apps.ios.tabx .ic{width:var(--ic);max-width:var(--ic);font-size:calc(var(--ic) * .47)}
+}
+
+/* ---------- 3 + 4. DESKTOP HUD ---------- */
+body.dk #dkMe{bottom:66px}                                   /* clear of the Keyboard button */
+
+body.dk #buy .sheet{
+  top:0;bottom:0;right:0;left:auto;height:auto;
+  width:clamp(340px,32vw,440px);border-radius:26px 0 0 26px;
+  padding:20px 16px 18px;
+  border-right:0}
+body.dk #buy .sheet h2{margin-top:0}
+body.dk #buy .bpanel{right:12px;bottom:12px;width:calc(clamp(340px,32vw,440px) - 24px)}
+/* the top pill + Mall/Home switch now live in the space to the LEFT of the panel */
+body.dk #app.inbuy #dkTop{
+  left:340px;transform:none;min-width:0;
+  max-width:calc(100% - clamp(340px,32vw,440px) - 340px - 16px)}
+body.dk #app.inbuy #dkTop .dkclk{padding:0 8px}
+@media (max-width:1180px){body.dk #app.inbuy #dkTop #dkWhere{min-width:0}}
+
+/* ---------- 5. BOUTIQUE (tablet / desktop) ---------- */
+@media (min-width:768px) and (min-height:520px){
+  html:root body .screen.light .appview .abody.stx{
+    display:grid;grid-template-columns:minmax(220px,40%) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);
+    column-gap:22px;align-items:stretch;overflow:hidden;min-height:0;padding:8px 20px 14px}
+  /* left: the avatar always fits the available height and never scrolls away */
+  html:root body .abody.stx>.stleft{
+    grid-column:1;grid-row:1 / span 2;position:static;min-height:0;height:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden}
+  html:root body .abody.stx .stpv{
+    flex:0 1 auto;width:auto;height:100%;max-width:100%;max-height:100%;min-height:0;aspect-ratio:3/4;margin:0}
+  html:root body .abody.stx .stdesc{flex:none;max-width:100%}
+  /* right: tabs fixed on top in 2 rows max, swipe / scroll sideways for the rest */
+  html:root body .abody.stx>.sttabs{
+    grid-column:2;grid-row:1;position:static;
+    display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:max-content;gap:6px;
+    flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:2px 2px 10px;margin:0;
+    scrollbar-width:thin;overscroll-behavior-x:contain}
+  html:root body .abody.stx>.sttabs button{white-space:nowrap}
+  /* options list = the only part that scrolls vertically */
+  html:root body .abody.stx>#stBody{
+    grid-column:2;grid-row:2;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 4px 12px 0;
+    scrollbar-width:thin}
+}
