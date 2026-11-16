@@ -42,10 +42,10 @@ Object.assign(PH,{
     b.innerHTML=NOTICE.html()+html;
   },
   payStatus(r){const L={submitted:'Waiting for review',held:'On hold while the team reviews it',approved:'Approved. Your payment is being sent by bank transfer',processing:'Being paid',paid:'Paid',rejected:'Not approved',rolled_over:'Rolled over to your next slot',failed:'Payment failed. Please contact support'};let t='Status: '+(L[r.status]||esc(r.status))+' · ₦'+Number(r.payoutAmount||0).toLocaleString('en-NG');if(r.status==='paid'&&r.reference)t+=' · ref '+esc(r.reference);if(r.status==='rejected'&&r.reason)t+=' · '+esc(r.reason);return t},
-  async pickBatch(n){if(!confirm(`Choose Batch ${n}? This choice controls your future rotation.`))return;const bs=[...document.querySelectorAll('.cocoPick button')];bs.forEach(x=>x.disabled=true);let t=0;const spin=setInterval(()=>{bs.forEach((x,i)=>{x.style.transform=`rotate(${(t+i)*18}deg) scale(${1+((t+i)%2)*.06})`;x.style.opacity=((t+i)%3===0)?'.55':'1'});t++},70);setTimeout(async()=>{clearInterval(spin);bs.forEach(x=>{x.style.transform='';x.style.opacity='';});try{this.P=await NET.api('/api/ac/payouts/select-batch',{method:'POST',body:{batch:n}});this.payoutDraw()}catch(e){bs.forEach(x=>x.disabled=false);toast(e.message)}},850)},
+  async pickBatch(n){if(!await PH.ask({title:`Choose Batch ${n}?`,msg:'This choice controls your future rotation.',ok:`Choose Batch ${n}`}))return;const bs=[...document.querySelectorAll('.cocoPick button')];bs.forEach(x=>x.disabled=true);let t=0;const spin=setInterval(()=>{bs.forEach((x,i)=>{x.style.transform=`rotate(${(t+i)*18}deg) scale(${1+((t+i)%2)*.06})`;x.style.opacity=((t+i)%3===0)?'.55':'1'});t++},70);setTimeout(async()=>{clearInterval(spin);bs.forEach(x=>{x.style.transform='';x.style.opacity='';});try{this.P=await NET.api('/api/ac/payouts/select-batch',{method:'POST',body:{batch:n}});this.payoutDraw()}catch(e){bs.forEach(x=>x.disabled=false);toast(e.message)}},850)},
   payoutBank(){const a=this.P&&this.P.account||{};this.view='payout-bank';this.shell('Bind bank details','PH.payouts()',`<div class="abody bk"><p class="hint2">Your bank details are used only for payout review. Confirm them carefully before submitting.</p><label class="lab2">BANK NAME<input class="sinput" id="poBank" value="${esc(a.bankName||'')}" placeholder="e.g. Access Bank"></label><label class="lab2">ACCOUNT NAME<input class="sinput" id="poName" value="${esc(a.accountName||'')}" placeholder="Name on the account"></label><label class="lab2">10-DIGIT ACCOUNT NUMBER<input class="sinput" id="poNum" inputmode="numeric" maxlength="10" placeholder="0123456789"></label><button class="btn p" onclick="PH.savePayoutBank()">Save bank details</button></div>`)},
   async savePayoutBank(){try{await NET.api('/api/ac/payouts/bank',{method:'POST',body:{bankName:document.getElementById('poBank').value,accountName:document.getElementById('poName').value,accountNumber:document.getElementById('poNum').value}});toast('Bank details saved ✓');this.payouts()}catch(e){toast(e.message)}},
-  async submitPayout(slot){if(!confirm('Submit this withdrawal request? Your scheduled slot will be locked and the request will go to admin review.'))return;try{await NET.api('/api/ac/payouts/submit',{method:'POST',body:{slot,idempotencyKey:`${NET.user.id}:${this.P.season.id}:${slot}`}});toast('Withdrawal submitted ✓');this.payouts()}catch(e){toast(e.message)}},
+  async submitPayout(slot){if(!await PH.ask({title:'Submit withdrawal?',msg:'Your scheduled slot will be locked and the request will go to admin review.',ok:'Submit'}))return;try{await NET.api('/api/ac/payouts/submit',{method:'POST',body:{slot,idempotencyKey:`${NET.user.id}:${this.P.season.id}:${slot}`}});toast('Withdrawal submitted ✓');this.payouts()}catch(e){toast(e.message)}},
   /* Deposit page (opened from the + next to the balance). Payments are not live yet. */
   deposit(){this.view='bank-d';this.shell('Deposit','PH.bank()',`<div class="abody bk"><div class="lab2">AMOUNT</div><div class="amt"><span>₦</span><input id="dpamt" inputmode="numeric" placeholder="0" oninput="PH.dpfmt()" autocomplete="off"></div>
       <div class="pre">${[1000,5000,10000,20000].map(n=>`<button onclick="PH.dppick(${n})">${n.toLocaleString('en-NG')}</button>`).join('')}</div>
@@ -111,3 +111,42 @@ Object.assign(PH,{
     document.addEventListener('keydown',kd,true);
     ov.querySelector('.keys').onclick=e=>{const k=e.target.closest('button');if(k)press(k.dataset.k)};ov.querySelector('.px').onclick=()=>done(null);ov.onclick=e=>{if(e.target===ov)done(null)}})}
 });
+
+/* In-app confirm dialog (replaces the browser's "connectng.online says" box).
+   if(!await PH.ask({title:'Delete?',msg:'This cannot be undone.',ok:'Delete',danger:true}))return; */
+PH.ask = function (o) {
+  o = o || {};
+  if (!document.getElementById('askcss')) {
+    const st = document.createElement('style'); st.id = 'askcss';
+    st.textContent = `.acask{position:absolute;inset:0;z-index:60;display:grid;place-items:center;padding:24px;background:rgba(10,14,32,.52);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:askbd .16s ease}
+.acask .ackd{width:100%;max-width:330px;background:#fff;border-radius:26px;padding:22px 20px 16px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;animation:askpop .2s cubic-bezier(.2,.9,.3,1.2)}
+.acask h3{margin:0 0 8px;font-size:19px;line-height:1.25;color:#1b2030}
+.acask p{margin:0 0 18px;font-size:14px;line-height:1.5;color:#5d6475}
+.acask .acbt{display:flex;gap:10px}
+.acask .acbt button{flex:1;height:46px;border:0;border-radius:15px;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}
+.acask .acno{background:#eef0f6;color:#1b2030}
+.acask .acyes{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;box-shadow:0 8px 18px rgba(234,88,12,.3)}
+.acask .acyes.danger{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 8px 18px rgba(220,38,38,.3)}
+.acask.out{opacity:0;transition:opacity .14s}
+html[data-theme="dark"] .acask .ackd{background:#1a1f33}
+html[data-theme="dark"] .acask h3{color:#f2f4fa}html[data-theme="dark"] .acask p{color:#a9b0c6}
+html[data-theme="dark"] .acask .acno{background:#2a3150;color:#f2f4fa}
+@keyframes askbd{from{opacity:0}to{opacity:1}}@keyframes askpop{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}`;
+    document.head.appendChild(st);
+  }
+  return new Promise(res => {
+    const host = PH.$a() || document.querySelector('.screen') || document.body;
+    host.querySelectorAll('.acask').forEach(x => x.remove());
+    const d = document.createElement('div'); d.className = 'acask'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true');
+    d.innerHTML = `<div class="ackd"><h3>${esc(o.title || 'Are you sure?')}</h3>${o.msg ? `<p>${esc(o.msg)}</p>` : ''}<div class="acbt"><button type="button" class="acno">${esc(o.cancel || 'Cancel')}</button><button type="button" class="acyes${o.danger ? ' danger' : ''}">${esc(o.ok || 'OK')}</button></div></div>`;
+    let done = false;
+    const end = v => { if (done) return; done = true; document.removeEventListener('keydown', key, true); d.classList.add('out'); setTimeout(() => d.remove(), 150); res(v) };
+    const key = e => { if (e.key === 'Escape') { e.preventDefault(); end(false) } };
+    d.onclick = e => { if (e.target === d) end(false) };
+    d.querySelector('.acno').onclick = () => end(false);
+    d.querySelector('.acyes').onclick = () => end(true);
+    document.addEventListener('keydown', key, true);
+    host.appendChild(d);
+    setTimeout(() => { try { d.querySelector('.acyes').focus() } catch (e) { } }, 30);
+  });
+};
