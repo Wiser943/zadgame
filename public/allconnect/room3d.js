@@ -303,10 +303,11 @@ window.ROOM3D = {
   },
   setFirstPerson(on) {
     on = !!on; if (on === !!this.fpv || !this.avatar) { if (!this.avatar) return false; return this.fpv }
-    this.fpv = on; const cam = this.cam;
+    this.fpv = on; this.joy = null; const cam = this.cam;
     if (on) { this.fpYaw = this.avatar.rotation.y; this.fpPitch = -.08; this.fpFov = cam.fov; cam.fov = 82; cam.near = .08; this.avatar.visible = false; this.setViewOffset0 = true; try { cam.clearViewOffset() } catch (e) {} }
     else { cam.fov = this.fpFov || 30; cam.near = 1; this.avatar.visible = true; this.applyShift() }
-    cam.updateProjectionMatrix(); this.ceiling(); return this.fpv
+    cam.updateProjectionMatrix(); this.ceiling(); try { V2.joyShow(!!(this.fpv || this.walk)) } catch (e) { }   /* the eye view gets the joystick too */
+    return this.fpv
   },
   /* Walk mode: the camera follows right behind your character INSIDE the home (the whole body shows) and a joystick moves them.
      Drag the screen to turn the view. Turned off again by the X on the eye button. */
@@ -585,8 +586,8 @@ window.ROOM3D = {
     const a = this.avatar; let moving = false;
     if (this.act && performance.now() - this.act.t0 >= this.act.dur) this.endAct(false);
     if (this.path.length) { const goal = this.path[0], d = goal.clone().sub(a.position); d.y = 0; const L = d.length(); if (L < .08) { this.path.shift(); if (!this.path.length && this.onArrive) { const f = this.onArrive; this.onArrive = null; f() } } else { moving = true; d.normalize(); a.position.addScaledVector(d, Math.min(L, 2.5 * dt)); const ta = Math.atan2(d.x, d.z), df = ((ta - a.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; a.rotation.y += df * Math.min(1, dt * 10) } }
-    if (this.walk && this.joy && !this.act) {      // joystick: up = forward along the camera, sideways = strafe; slides along walls and furniture
-      const j = this.joy, mag = Math.min(1, Math.hypot(j.x, j.y)), yaw = this.wYaw;
+    if ((this.walk || this.fpv) && this.joy && !this.act) {      // joystick (walk mode AND the first-person eye view): up = forward along the camera, sideways = strafe; slides along walls and furniture
+      const j = this.joy, mag = Math.min(1, Math.hypot(j.x, j.y)), yaw = this.fpv ? this.fpYaw : this.wYaw;
       if (mag > .12) {
         const dx = Math.sin(yaw) * j.y - Math.cos(yaw) * j.x, dz = Math.cos(yaw) * j.y + Math.sin(yaw) * j.x, L = Math.hypot(dx, dz) || 1, sp = 2.1 * mag * dt, mx = dx / L * sp, mz = dz / L * sp, p0 = a.position;
         if (this.walkOk(p0.x, p0.z, p0.x + mx, p0.z + mz)) { p0.x += mx; p0.z += mz } else if (this.walkOk(p0.x, p0.z, p0.x + mx, p0.z)) p0.x += mx; else if (this.walkOk(p0.x, p0.z, p0.x, p0.z + mz)) p0.z += mz;

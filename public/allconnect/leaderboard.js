@@ -18,7 +18,7 @@ const LB = {
 .lbk .lbhero{background:#fff8ee;border:1px solid #fde7c8;border-radius:22px;padding:14px 12px 14px;margin-bottom:12px}
 .lbk .lbhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 8px}
 .lbk .lbhd b{font-weight:800;font-size:17px;line-height:1.2;color:#1f2430}.lbk .lbhd span{font-weight:700;font-size:11px;line-height:1;color:#b45309;background:#ffedd5;border-radius:999px;padding:5px 9px;white-space:nowrap}
-.lbpod{display:flex;align-items:flex-end;justify-content:center;gap:8px}
+.lbpod{display:flex;align-items:flex-end;justify-content:center;gap:6px}
 .lbpc{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;text-align:center}
 .lbpc .lbmed{font-size:20px;line-height:1;margin-bottom:-6px;position:relative;z-index:2}
 .lbpc.p1 .lbmed{font-size:26px}
@@ -27,9 +27,10 @@ const LB = {
 .lbpc.p2 .avi{border-color:#cbd5e1}.lbpc.p3 .avi{border-color:#e0a070}
 .lbpc .lbn{margin-top:7px;max-width:100%;font-weight:700;font-size:14px;line-height:1.2;color:#1f2430;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lbpc .lbn small{font-weight:700;font-size:9px;line-height:1;color:#fff;background:#6366f1;border-radius:6px;padding:2px 5px;margin-left:3px;vertical-align:middle}
-.lbpc .lbv{margin-top:3px;font-weight:800;font-size:17px;line-height:1.15;color:#ea580c}.lbpc.p1 .lbv{font-size:20px}
-.lbpc .lbs{margin-top:2px;font-weight:500;font-size:11px;line-height:1.3;color:#8a90a2}
-.lbpc .lbbl{width:100%;margin-top:9px;border-radius:12px 12px 6px 6px;display:grid;place-items:center;font-weight:800;font-size:24px;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.18)}
+.lbpc .lbv{margin-top:4px;max-width:100%;font-weight:800;font-size:16px;line-height:1.15;color:#ea580c;overflow:hidden}.lbpc.p1 .lbv{font-size:19px}
+.lbpc .lbv small{display:block;font-weight:700;font-size:10px;line-height:1.2;color:#b45309;letter-spacing:.02em}
+.lbpc .lbs{margin-top:3px;max-width:100%;font-weight:500;font-size:10.5px;line-height:1.3;color:#8a90a2;overflow-wrap:anywhere}
+.lbpc .lbbl{width:100%;margin-top:10px;flex:none;border-radius:12px 12px 6px 6px;display:grid;place-items:center;font-weight:800;font-size:24px;line-height:1;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.18)}
 .lbpc.p1 .lbbl{height:62px;background:linear-gradient(#fcd34d,#f5b021)}
 .lbpc.p2 .lbbl{height:46px;background:linear-gradient(#cdd5e1,#9aa7ba)}
 .lbpc.p3 .lbbl{height:36px;background:linear-gradient(#f59e55,#e0701f)}
@@ -41,7 +42,7 @@ const LB = {
 .lbrow .lbnm{display:block;font-weight:700;font-size:15px;line-height:1.25;color:#1f2430;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lbrow .lbnm small{font-weight:700;font-size:9px;line-height:1;color:#fff;background:#6366f1;border-radius:6px;padding:2px 5px;margin-left:4px;vertical-align:middle}
 .lbrow .lbsub{display:block;margin-top:2px;font-weight:500;font-size:12px;line-height:1.3;color:#8a90a2}
-.lbrow .lbval{flex:none;font-weight:800;font-size:16px;line-height:1;color:#ea580c;text-align:right}.lbrow .lbval small{font-weight:600;font-size:11px;line-height:1;color:#9aa0b2;margin-left:2px}
+.lbrow .lbval{flex:none;max-width:38%;font-weight:800;font-size:16px;line-height:1.1;color:#ea580c;text-align:right}.lbrow .lbval small{display:block;font-weight:600;font-size:10.5px;line-height:1.2;color:#9aa0b2}
 .lbk .lbgap{margin:14px 4px 8px;font-weight:700;font-size:12px;line-height:1;color:#8a90a2;letter-spacing:.06em;text-transform:uppercase}
 .lbk .lbempty{text-align:center;color:#8a90a2;padding:26px 8px}
 html[data-theme="dark"] .lbk .lbhero{background:#2a2118;border-color:#4a3720}
@@ -66,10 +67,11 @@ html[data-theme="dark"] .lbpc .avi{border-color:#171b2b}
     catch (e) { const ab = document.getElementById('ab'); if (ab) ab.innerHTML = `<p class="empty">${esc(e.message || 'Could not load the leaderboard.')}</p><button class="btn p" onclick="LB.open()">Try again</button>` }
   },
   pick(by) { this.by = by; this.D = null; const ab = document.getElementById('ab'); if (ab) ab.innerHTML = '<p class="empty">Loading…</p>'; this.load() },
-  main(u) { return this.by === 'wins' ? ((u.stats && u.stats.wins) || 0) + ' wins' : this.by === 'rating' ? Math.round(u.rating || 1000) + ' rating' : this.short(u.coins) },
+  /* number first, small unit label after it, so it never runs wider than its podium column or row */
+  main(u) { return this.by === 'wins' ? ((u.stats && u.stats.wins) || 0) + '<small>wins</small>' : this.by === 'rating' ? Math.round(u.rating || 1000) + '<small>rating</small>' : this.short(u.coins) },
   sub(u) {
     const w = (u.stats && u.stats.wins) || 0, g = (u.stats && u.stats.gamesPlayed) || 0;
-    return this.by === 'coins' ? `${w} wins · ${g} games` : this.by === 'wins' ? `${g} games · ${Math.round(u.rating || 1000)} rating` : `${w} wins · ${g} games`;
+    return this.by === 'coins' ? `${w} wins · ${g} games` : this.by === 'wins' ? `${g} games` : `${w} wins · ${g} games`;
   },
   avatar(u) { return PH.av ? PH.av({ displayName: u.displayName, avatar: u.avatar }, 1) : '' },
   you(me) { return me ? ' <small>you</small>' : '' },

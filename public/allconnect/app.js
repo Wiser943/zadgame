@@ -459,7 +459,6 @@ const APPS = [
   ['Gazette', '<i class="fa-solid fa-newspaper"></i>', 'linear-gradient(135deg,#0ea5e9,#1e3a8a)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
-  ['Shop', '<i class="fa-solid fa-bag-shopping"></i>', 'linear-gradient(135deg,#34d399,#0891b2)', 1],
   ['Leaderboard', '<i class="fa-solid fa-trophy"></i>', 'linear-gradient(135deg,#fbbf24,#f59e0b 55%,#ea580c)', 1],
   ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
   ['Invite', '<i class="fa-solid fa-user-group"></i>', 'linear-gradient(135deg,#3b82f6,#7c3aed)', 1],
@@ -469,14 +468,18 @@ const APPS = [
 const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", 'Play Store': "PH.open('ads')", Boutique: "PH.open('style')",
 Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')" }; 
 OPEN.Homes = "PH.open('homes')";
-OPEN.Shop = "openHub(b=>b.shop())";
 OPEN.Leaderboard = 'LB.open()';
 OPEN.Guide = "PH.open('guide')";
 OPEN.Invite = "PH.open('invite')";
+/* App icon styles (Settings > Display): classic = the icons as they always were, emoji = one emoji per app, 3d = the same emoji on raised glossy tiles */
+const EMO = { Camera: '📷', Contacts: '📞', Bank: '🏦', GameHub: '🎮', Drive: '🚌', Jobs: '💼', Transport: '🚕', 'State House': '🏛️', Messages: '💬', Venues: '🏪', Homes: '🏠', 'Play Store': '🛍️', Boutique: '👗', Pet: '🐱', Health: '💊', Police: '🚓', 'P-Gist': '🎙️', City: '🏙️', Gazette: '📰', Search: '🔍', Songify: '🎵', Leaderboard: '🏆', Guide: '📖', Invite: '👥', Settings: '⚙️' };
+const iconStyle = () => { try { const v = (typeof GP !== 'undefined' && GP.get().iconStyle) || 'classic'; return ['classic', 'emoji', '3d'].includes(v) ? v : 'classic' } catch (e) { return 'classic' } };
+const appIc = a => iconStyle() === 'classic' ? a[1] : (EMO[a[0]] || a[1]);
+const layoutMode = () => { try { return (typeof GP !== 'undefined' && GP.get().appLayout) === 'vertical' ? 'vertical' : 'horizontal' } catch (e) { return 'horizontal' } };
 /* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
 const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Boutique', 'Songify', 'Settings'];
-const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
+const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${appIc(a)}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
 const HOMEFIT = { per: 8 };
@@ -498,10 +501,11 @@ function drawApps() {
   };
   let cur = HOMEFIT.per;
   /* tablet / desktop frame: ONE vertically scrolling list, 3 apps per row, on the right of the clock + city card (no horizontal pages) */
-  const tabx = !!(window.matchMedia && matchMedia('(min-width:900px) and (min-height:560px)').matches);
-  el.classList.toggle('tabx', tabx);
-  if (tabx) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollLeft = 0 } else build(cur);
-  if (!tabx && el.clientHeight > 0) {
+  const tabx = !!(window.matchMedia && matchMedia('(min-width:900px) and (min-height:560px)').matches), vert = !tabx && layoutMode() === 'vertical';
+  el.classList.toggle('tabx', tabx); el.classList.toggle('vert', vert); document.body.dataset.icons = iconStyle();
+  if (vert) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollTop = 0; el.scrollLeft = 0 }
+  else if (tabx) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollLeft = 0 } else build(cur);
+  if (!tabx && !vert && el.clientHeight > 0) {
     let grew = false;
     for (let k = 0; k < 8; k++) {
       const pg = el.querySelector('.pg1'), grid = pg && pg.querySelector('.grid'), a = grid && grid.querySelector('.app'); if (!a) break;

@@ -144,6 +144,11 @@
     walkUI(on) {
       this.walking = on; document.body.classList.toggle('walkmode', on);
       const b = $('v2eye'); if (b) { b.innerHTML = on ? I.xmark : I.eye; b.classList.toggle('on', on); b.setAttribute('aria-label', on ? 'Leave walk mode' : 'Look around. Press and hold to walk around') }
+      this.joyShow(on)
+    },
+    /* the joystick shows in walk mode and in the first-person eye view (the eye view keeps the bars, so the stick sits above them) */
+    joyShow(on) {
+      document.body.classList.toggle('fpmode', !!on && !this.walking);
       let j = $('v2joy');
       if (on && !j) { j = document.createElement('div'); j.id = 'v2joy'; j.innerHTML = '<div class="jb"><div class="jk"></div></div>'; document.getElementById('app').appendChild(j); this.joyBind(j) }
       if (!on && j) { j.remove(); try { ROOM3D.setJoy(0, 0) } catch (e) {} }
@@ -157,7 +162,7 @@
       base.addEventListener('pointermove', (e) => { if (e.pointerId === pid) set(e) });
       base.addEventListener('pointerup', end); base.addEventListener('pointercancel', end); base.addEventListener('lostpointercapture', end);
     },
-    eye() { const R = window.ROOM3D; if (!R || !R.avatar) { toast('Look around works inside your home'); return } const on = R.setFirstPerson(!R.fpv); const b = $('v2eye'); if (b) b.classList.toggle('on', !!on); toast(on ? 'First person: drag to look around 👁' : 'Back to the room view') },
+    eye() { const R = window.ROOM3D; if (!R || !R.avatar) { toast('Look around works inside your home'); return } const on = R.setFirstPerson(!R.fpv); const b = $('v2eye'); if (b) b.classList.toggle('on', !!on); this.joyShow(!!on); toast(on ? 'First person: use the joystick to walk, drag to look around 👁' : 'Back to the room view') },
     pop() { },                                  // the little zoom/reset toolbar was removed; kept so old callers do nothing
     homeTap() { try { PARTY.open() } catch (e) { toast('House parties are not available right now') } },
     bulbTap() {     // the bulb is a light switch: tap to brighten the room or dim it. If NEPA has taken light, it opens the bills instead.

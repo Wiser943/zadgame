@@ -301,31 +301,59 @@ const RL = {
     SYNCQ.queue('fl:' + aid, was, !was, () => ({ path: '/api/ac/gist/follow/' + aid, body: {} }), r => set(r.following), (w, msg) => { set(w); if (msg) toast(msg) }, was)
   },
   profile(id) { this.stop(); GIST.nav('profile', id) },
-  /* Comments open UNDER the video: the video squeezes up and keeps playing, like TikTok. */
+  /* Comments open UNDER the video: the video squeezes up and keeps playing, like TikTok.
+     Laid out like the YouTube Music comment sheet: @handle · time, text, like / reply row, "N replies" expander, input pill at the bottom. */
   cm: null,
   async comments(id) {
     const f = this.feedEl(); if (!f) return GIST.nav('post', id);
     const root = f.parentNode; let pan = document.getElementById('rlcm');
     if (!pan) { pan = document.createElement('div'); pan.id = 'rlcm'; root.appendChild(pan) }
-    this.cm = { id, list: [] }; root.classList.add('rl-split');
-    pan.innerHTML = `<div class="rlcm-h"><b id="rlcmn">Comments</b><button type="button" onclick="RL.closeComments()" aria-label="Close comments"><i class="fa-solid fa-xmark"></i></button></div><div class="rlcm-l" id="rlcml"><p class="rlcm-e">Loading…</p></div><form class="rlcm-f" onsubmit="RL.sendComment(event)"><input id="rlcmi" maxlength="500" placeholder="Add a comment…" autocomplete="off"><button type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></form>`;
+    const me = (typeof NET !== 'undefined' && NET.user) || {};
+    this.cm = { id, list: [], open: new Set(), replyTo: null }; root.classList.add('rl-split');
+    pan.innerHTML = `<div class="rlcm-grab"></div><div class="rlcm-h"><b>Comments</b><span id="rlcmn"></span><button type="button" onclick="RL.closeComments()" aria-label="Close comments"><i class="fa-solid fa-xmark"></i></button></div><div class="rlcm-l" id="rlcml"><p class="rlcm-e">Loading…</p></div><div class="rlcm-rt" id="rlcmrt" style="display:none"></div><form class="rlcm-f" onsubmit="RL.sendComment(event)"><span class="rlcm-me">${PH.av({ avatar: me.avatar, displayName: me.displayName, username: me.username })}</span><input id="rlcmi" maxlength="300" placeholder="Add a comment…" autocomplete="off"><button type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></form>`;
     setTimeout(() => this.reflow(), 280);
     try { const r = await GIST.api('/posts/' + id + '/comments'); if (this.cm && this.cm.id === id) { this.cm.list = r.comments || []; this.drawCm() } }
     catch (e) { const l = document.getElementById('rlcml'); if (l) l.innerHTML = `<p class="rlcm-e">${esc(e.message || 'Could not load comments.')}</p>` }
   },
   reflow() { const f = this.feedEl(); if (!f) return; this.fit(); f.scrollTop = (this.i || 0) * f.clientHeight },
   closeComments() { const pan = document.getElementById('rlcm'); if (pan) pan.remove(); this.cm = null; const f = this.feedEl(); if (f) f.parentNode.classList.remove('rl-split'); setTimeout(() => this.reflow(), 60) },
-  drawCm() {
-    const l = document.getElementById('rlcml'), n = document.getElementById('rlcmn'); if (!l || !this.cm) return; const L = this.cm.list;
-    if (n) n.textContent = (L.length || 'No') + ' comment' + (L.length === 1 ? '' : 's');
-    l.innerHTML = L.length ? L.map(c => { const a = c.author || {}; return `<div class="rlcm-c${c.parent ? ' rep' : ''}${c.pending ? ' pending' : ''}"><span class="rlcm-a" onclick="RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}</span><div class="rlcm-b"><b>${esc(a.displayName || a.username || 'Player')}${GIST.vb(a)}</b><span>${GIST.txt(c.text)}</span><small>${c.pending ? 'sending…' : GIST.ago(c.createdAt)}</small></div><button type="button" class="rlcm-lk ${c.liked ? 'on' : ''}" onclick="RL.likeCm('${c.id}')" aria-label="Like comment"><i class="fa-${c.liked ? 'solid' : 'regular'} fa-heart"></i><em>${c.likes || ''}</em></button></div>` }).join('') : '<p class="rlcm-e">No comments yet. Be the first!</p>'
+  cmHandle(a) { a = a || {}; return '@' + String(a.username || a.displayName || 'player').replace(/\s+/g, '') },
+  cmRow(c, isReply) {
+    const a = c.author || {}, mine = (typeof NET !== 'undefined' && NET.user && NET.user.id === a.id);
+    return `<div class="rlcm-c${isReply ? ' rep' : ''}${c.pending ? ' pending' : ''}" data-cid="${c.id}"><span class="rlcm-a" onclick="RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}</span><div class="rlcm-b"><div class="rlcm-t"><b onclick="RL.profile('${a.id}')">${esc(this.cmHandle(a))}</b>${GIST.vb(a)}<small>· ${c.pending ? 'sending…' : GIST.ago(c.createdAt)}</small></div><div class="rlcm-x">${GIST.txt(c.text)}</div><div class="rlcm-act"><button type="button" class="${c.liked ? 'on' : ''}" onclick="RL.likeCm('${c.id}')" aria-label="Like comment"><i class="fa-${c.liked ? 'solid' : 'regular'} fa-thumbs-up"></i><em>${c.likes || ''}</em></button><button type="button" onclick="RL.replyTo('${c.id}')" aria-label="Reply"><i class="fa-regular fa-comment-dots"></i></button>${c.canDelete && !c.pending ? `<button type="button" class="del" onclick="RL.delCm('${c.id}')" aria-label="Delete comment"><i class="fa-regular fa-trash-can"></i></button>` : ''}</div></div></div>`
   },
+  drawCm() {
+    const l = document.getElementById('rlcml'), n = document.getElementById('rlcmn'); if (!l || !this.cm) return; const L = this.cm.list, t = x => new Date(x.createdAt).getTime() || 0;
+    if (n) n.textContent = L.length ? String(L.length) : '';
+    if (!L.length) { l.innerHTML = '<p class="rlcm-e">No comments yet. Be the first!</p>'; return }
+    const kids = new Map(); L.filter(c => c.parent).forEach(c => { if (!kids.has(c.parent)) kids.set(c.parent, []); kids.get(c.parent).push(c) });
+    const top = L.filter(c => !c.parent).sort((x, y) => (y.likes || 0) - (x.likes || 0) || t(y) - t(x));
+    const keep = l.scrollTop;
+    l.innerHTML = top.map(c => {
+      const r = (kids.get(c.id) || []).sort((x, y) => t(x) - t(y)), open = this.cm.open.has(c.id);
+      return this.cmRow(c, false) + (r.length ? `<button type="button" class="rlcm-rp" onclick="RL.toggleReplies('${c.id}')"><i class="fa-solid fa-chevron-${open ? 'up' : 'down'}"></i> ${r.length} repl${r.length === 1 ? 'y' : 'ies'}</button>` : '') + (open ? `<div class="rlcm-rl">${r.map(x => this.cmRow(x, true)).join('')}</div>` : '')
+    }).join('');
+    l.scrollTop = keep
+  },
+  toggleReplies(cid) { if (!this.cm) return; this.cm.open.has(cid) ? this.cm.open.delete(cid) : this.cm.open.add(cid); this.drawCm() },
+  replyTo(cid) {
+    const c = this.cm && this.cm.list.find(x => x.id === cid); if (!c || String(cid).startsWith('tmp')) return;
+    this.cm.replyTo = c; const bar = document.getElementById('rlcmrt'), inp = document.getElementById('rlcmi'), h = this.cmHandle(c.author);
+    if (bar) { bar.style.display = 'flex'; bar.innerHTML = `<span>Replying to <b>${esc(h)}</b></span><button type="button" onclick="RL.cancelReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button>` }
+    if (inp) { inp.value = c.parent ? h + ' ' : ''; inp.placeholder = 'Add a reply…'; inp.focus() }
+  },
+  cancelReply() { if (this.cm) this.cm.replyTo = null; const bar = document.getElementById('rlcmrt'), inp = document.getElementById('rlcmi'); if (bar) bar.style.display = 'none'; if (inp) inp.placeholder = 'Add a comment…' },
   async sendComment(e) {
-    e.preventDefault(); const inp = document.getElementById('rlcmi'), t = (inp.value || '').trim(); if (!t || !this.cm) return; const id = this.cm.id; inp.value = '';
-    const me = (typeof NET !== 'undefined' && NET.user) || {}, tmp = { id: 'tmp' + Date.now(), text: t, pending: true, likes: 0, author: { id: me.id, avatar: me.avatar, displayName: me.displayName, username: me.username }, createdAt: Date.now() };
-    this.cm.list.unshift(tmp); this.drawCm();
-    try { const r = await GIST.api('/posts/' + id + '/comments', { method: 'POST', body: { text: t, parent: '' } }); const k = this.cm && this.cm.list.indexOf(tmp); if (k >= 0) this.cm.list[k] = r.comment; this.drawCm(); const p = GIST.cache.get(id); if (p) { p.comments = (p.comments || 0) + 1; this.sync(id) } }
+    e.preventDefault(); const inp = document.getElementById('rlcmi'), t = (inp.value || '').trim(); if (!t || !this.cm) return; const id = this.cm.id, to = this.cm.replyTo, root = to ? (to.parent || to.id) : ''; inp.value = ''; this.cancelReply();
+    const me = (typeof NET !== 'undefined' && NET.user) || {}, tmp = { id: 'tmp' + Date.now(), text: t, parent: root, pending: true, likes: 0, author: { id: me.id, avatar: me.avatar, displayName: me.displayName, username: me.username }, createdAt: Date.now() };
+    this.cm.list.push(tmp); if (root) this.cm.open.add(root); this.drawCm();
+    try { const r = await GIST.api('/posts/' + id + '/comments', { method: 'POST', body: { text: t, parent: root } }); const k = this.cm && this.cm.list.indexOf(tmp); if (k >= 0) this.cm.list[k] = r.comment; this.drawCm(); const p = GIST.cache.get(id); if (p) { p.comments = (p.comments || 0) + 1; this.sync(id) } }
     catch (x) { if (this.cm) { this.cm.list = this.cm.list.filter(c => c !== tmp); this.drawCm() } GIST.err(x) }
+  },
+  async delCm(cid) {
+    if (!this.cm || !confirm('Delete this comment?')) return; const id = this.cm.id;
+    try { const r = await GIST.api('/comments/' + cid, { method: 'DELETE' }); const gone = new Set([cid]); this.cm.list.forEach(c => { if (c.parent === cid) gone.add(c.id) }); this.cm.list = this.cm.list.filter(c => !gone.has(c.id)); this.drawCm(); const p = GIST.cache.get(id); if (p) { p.comments = Math.max(0, (p.comments || 0) - ((r && r.removed) || gone.size)); this.sync(id) } }
+    catch (x) { GIST.err(x) }
   },
   likeCm(cid) {
     const c = this.cm && this.cm.list.find(x => x.id === cid); if (!c || String(cid).startsWith('tmp')) return; const before = { liked: !!c.liked, likes: c.likes || 0 };
@@ -671,24 +699,34 @@ const RL = {
     const C = GIST.C; if (!C || !C.video || C.busy) return; C.busy = true; C.text = ($('gc_t') && $('gc_t').value) || C.text; const V = C.video, b = $('gc_b'), set = t => { const e = $('gc_b'); if (e) { e.disabled = true; e.textContent = t } }; set('Uploading 0%');
     try {
       if (this._legacyApi) return await this.publishLegacy(C, V, set);
-      let m;
-      try { m = await GIST.api('/reels/upload', { method: 'POST', body: { origin: location.origin, bytes: V.file.size, filename: V.file.name } }) }
-      catch (e) {
-        if (!e || e.status !== 404) throw e;
-        try { await this.legacyConfig() }
-        catch (legacyError) { if (legacyError && legacyError.status === 404) throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.'); throw legacyError }
-        return await this.publishLegacy(C, V, set)
+      const prog = f => set('Uploading ' + Math.round(f * 100) + '%');
+      /* Ask the server for an upload link, send the file, and if THIS browser cannot reach that host (blocked network, CORS, rejected link)
+         ask for a link on the NEXT host and try again. Before, a failure on the first host stopped everything, so the other hosts were never used. */
+      this._muxWildTried = 0; let m = null, result = null; const tried = []; let lastErr = null, muxWild = false;
+      for (let attempt = 0; attempt < 7; attempt++) {
+        const body = { origin: muxWild ? '*' : location.origin, bytes: V.file.size, filename: V.file.name, skip: tried.slice(), abandon: m ? m.uploadId : undefined };
+        let next;
+        try { next = await GIST.api('/reels/upload', { method: 'POST', body }) }
+        catch (e) {
+          if (!attempt && e && e.status === 404) {
+            try { await this.legacyConfig() }
+            catch (legacyError) { if (legacyError && legacyError.status === 404) throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.'); throw legacyError }
+            return await this.publishLegacy(C, V, set)
+          }
+          if (lastErr) throw new Error('Your connection could not reach any of our video hosts (' + tried.join(', ') + '). Try again on a different network (Wi-Fi or mobile data), or turn off any VPN or data saver.');
+          throw e
+        }
+        m = next; muxWild = false;
+        if (!m || !m.uploadId || !m.url) throw new Error('The server did not return an upload URL.');
+        try { set('Uploading 0%'); result = await this.send(m, V.file, prog); lastErr = null; break }
+        catch (ue) {
+          lastErr = ue; if (/cancelled/i.test((ue && ue.message) || '')) throw ue;
+          await this.online();
+          if (m.provider === 'mux' && !tried.includes('mux') && !this._muxWildTried) { this._muxWildTried = 1; muxWild = true; set('Retrying…'); continue }   /* Mux links are tied to an origin: one more go with an any-origin link before moving on */
+          tried.push(m.provider); set('Trying another host…')
+        }
       }
-      if (!m || !m.uploadId || !m.url) throw new Error('The server did not return an upload URL.');
-      const prog = f => set('Uploading ' + Math.round(f * 100) + '%'); let result = null;
-      try { result = await this.send(m, V.file, prog) }
-      catch (ue) {
-        // Mux upload links are tied to a browser origin. A blocked upload and a dropped connection look the same, so ask for a fresh link that accepts any origin and try once more.
-        if (!ue || !/Could not connect/.test(ue.message || '') || m.provider !== 'mux') throw ue;
-        await this.online(); set('Retrying…');
-        const m2 = await GIST.api('/reels/upload', { method: 'POST', body: { origin: '*', bytes: V.file.size, filename: V.file.name } });
-        if (!m2 || !m2.uploadId || !m2.url) throw ue; m = m2; result = await this.send(m, V.file, prog)
-      }
+      if (lastErr) throw lastErr;
       set('Processing…'); let mx = null;
       for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/upload-status/' + m.uploadId, { method: 'POST', body: { result } }); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
       if (!mx) throw new Error('Your video is taking long to process. It will appear in your gallery when ready; try posting it again in a minute.');

@@ -49,9 +49,13 @@ async function release(name, bytes) {
 const fail = (message, status, code) => Object.assign(new Error(message), { status, code });
 
 /* Start an upload on the best provider that has room; falls through to the next one when a provider is full or errors. */
-async function createTicket({ uid, bytes = 0, origin = '*', filename = '', only = '' }) {
+async function createTicket({ uid, bytes = 0, origin = '*', filename = '', only = '', skip = [], abandon = '' }) {
   bytes = Math.max(0, Math.floor(Number(bytes) || 0));
-  const rows = await StorageProvider.find({ enabled: true, ...(only ? { name: only } : {}) }).sort({ priority: 1 }).lean();
+  /* The browser could not reach the host it was given (blocked network, CORS, bad link). Throw that unfinished upload away so its slot is freed,
+     and never hand this player the same host again for this post: that is what lets the next host in the list actually get used. */
+  if (abandon) { const old = await ACVideo.findOne({ uploadId: String(abandon), user: String(uid), status: 'pending' }).lean(); if (old) await discard(old).catch(() => {}); }
+  skip = (Array.isArray(skip) ? skip : []).map(String).slice(0, 12);
+  const rows = (await StorageProvider.find({ enabled: true, ...(only ? { name: only } : {}) }).sort({ priority: 1 }).lean()).filter((r) => !skip.includes(r.name));
   let tooBig = 0, tried = 0, lastErr = null, lastLabel = '';
   for (const row of rows) {
     const a = providers[row.name]; if (!a || !a.configured()) continue;

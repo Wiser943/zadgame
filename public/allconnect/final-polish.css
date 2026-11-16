@@ -107,3 +107,16 @@ body.dk #app.inbuy #dkTop .dkclk{padding:0 8px}
     grid-column:2;grid-row:2;min-height:0;overflow-y:auto;overflow-x:hidden;padding:0 4px 12px 0;
     scrollbar-width:thin}
 }
+
+/* ---- phone home: vertical layout (one scrolling list instead of swipe pages) ---- */
+#apps.vert{overflow-x:hidden;scroll-snap-type:none}
+#apps.vert .pg{overflow-y:auto;-webkit-overflow-scrolling:touch}
+#apps.vert .pg1 .goalcard{display:block;max-width:none;margin:12px 0 0}
+#apps.vert+.pgdots{display:none}
+#apps.vert .grid{padding-bottom:18px}
+/* ---- app icon style: 3D = raised glossy tiles with a soft drop shadow under each emoji ---- */
+body[data-icons="3d"] #apps .ic,body[data-icons="3d"] .dock .ic{position:relative;transform:translateY(-2px);text-shadow:0 3px 5px rgba(0,0,0,.4);
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.65),inset 0 -6px 9px rgba(0,0,0,.28),0 5px 0 rgba(0,0,0,.28),0 11px 16px rgba(0,0,0,.42)}
+body[data-icons="3d"] #apps .ic::after,body[data-icons="3d"] .dock .ic::after{content:"";position:absolute;left:6%;right:6%;top:3%;height:46%;border-radius:20px 20px 60% 60%/20px 20px 40% 40%;background:linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,0));pointer-events:none}
+body[data-icons="3d"] #apps .app:active .ic,body[data-icons="3d"] .dock .app:active .ic{transform:translateY(2px);box-shadow:inset 0 2px 2px rgba(255,255,255,.5),inset 0 -4px 6px rgba(0,0,0,.25),0 1px 0 rgba(0,0,0,.28),0 4px 8px rgba(0,0,0,.4)}
+body[data-icons="emoji"] #apps .ic,body[data-icons="emoji"] .dock .ic{text-shadow:none}

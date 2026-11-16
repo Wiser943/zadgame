@@ -464,7 +464,8 @@ const pickOrigin = (req) => (req.body && req.body.origin === '*') ? '*' : (clean
 const startUpload = (only) => async (req, res) => {
   try {
     const uid = me(req); if (!(await uploadGate(uid, res))) return;
-    const t = await videoRouter.createTicket({ uid, bytes: req.body && req.body.bytes, origin: pickOrigin(req), filename: req.body && req.body.filename, only });
+    const t = await videoRouter.createTicket({ uid, bytes: req.body && req.body.bytes, origin: pickOrigin(req), filename: req.body && req.body.filename, only,
+      skip: req.body && req.body.skip, abandon: /^[A-Za-z0-9_-]{6,120}$/.test(String(req.body && req.body.abandon || '')) ? String(req.body.abandon) : '' });
     res.json(only ? { uploadId: t.uploadId, url: t.url } : t);               // the old Mux-only route keeps its old answer shape
   } catch (e) { console.error('[video upload]', e.status || '', e.message); bad(res, e.message || 'Could not start the upload.', e.status && e.status >= 400 && e.status < 600 ? e.status : 502); }
 };

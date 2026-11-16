@@ -46,8 +46,8 @@ body:not(.dk) #wMob{display:flex}
 #wMob span{font-weight:800;font-size:13px;background:rgba(13,27,31,.84);padding:8px 12px;border-radius:999px}
 body:not(.dk) #wChips{top:66px}
 /* touch stick (walking) */
-#wJoy{display:none;position:absolute;left:22px;bottom:34px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.28);z-index:6;touch-action:none}
-#wJoy i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px;border-radius:50%;background:rgba(255,255,255,.45)}
+#wJoy{display:none;position:absolute;left:16px;bottom:16px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.28);z-index:6;touch-action:none}
+#wJoy i{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px;border-radius:50%;background:rgba(255,255,255,.45)}
 #world.wtouch:not(.drv) #wJoy{display:block}
 /* driving controls */
 #wCar{display:none}

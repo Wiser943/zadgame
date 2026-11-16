@@ -2,7 +2,7 @@
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
 const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
-const GP_DEF={theme:'light',night:'off',darkness:50,saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm'};
+const GP_DEF={theme:'light',night:'off',darkness:50,saver:'auto',camAuto:false,music:true,sound:true,vibration:true,voice:true,lowPower:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm',appLayout:'horizontal',iconStyle:'classic'};
 /* Removed options (reduce animations, larger text, high contrast, colour-blind friendly). Wipe any saved value once, so nobody is stuck with one still on. */
 try{const o=JSON.parse(localStorage.getItem('ghPrefs')||'null');if(o&&('reducedMotion' in o||'largeText' in o||'highContrast' in o||'colorSafe' in o)){['reducedMotion','largeText','highContrast','colorSafe'].forEach(k=>delete o[k]);localStorage.setItem('ghPrefs',JSON.stringify(o))}}catch(e){}
 const GP={
@@ -31,7 +31,8 @@ Object.assign(PH,{
     const row=document.querySelector(`.segrow[data-seg="${k}"]`);if(row)row.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
     const h=document.getElementById('segh-'+k);if(h)h.textContent=k==='night'?this.nightHint():k==='saver'?this.saverHint():(val?'On: the map camera swings round to follow the way you walk.':'');
     if(k==='saver'){if(window.BGM)BGM.sync();if(window.refreshMute)refreshMute();const now=PREFX.saverNow();now?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off'),window.warmUp&&warmUp(true))}
-    if(k==='night')toast(PREFX.nightNow()?'🌙 Night mode on':'☀️ Night mode off')},
+    if(k==='night')toast(PREFX.nightNow()?'🌙 Night mode on':'☀️ Night mode off');
+    if(k==='appLayout'||k==='iconStyle'){try{drawApps()}catch(e){}toast(k==='appLayout'?(v==='vertical'?'Apps now scroll up and down':'Apps now swipe left and right'):'App icons: '+({'3d':'3D','emoji':'Emoji','classic':'Classic'}[v]))}},
   isOn(k,p){return k==='theme'?p.theme==='dark':!!p[k]},
   tgl(k){const p=GP.get(),on=!this.isOn(k,p);GP.set(k,k==='theme'?(on?'dark':'light'):on);
     const el=document.querySelector(`.trow[data-k="${k}"] .sw2`);if(el)el.classList.toggle('on',on);
@@ -49,6 +50,8 @@ Object.assign(PH,{
       <div class="lab2">SOUND</div><div class="sgrp">${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
         ${this.seg('camAuto','🎥','Camera turns by itself','The camera stays where you leave it. Drag to turn it.',[['false','Off'],['true','On']],String(!!p.camAuto),p.camAuto?'On: the map camera swings round to follow the way you walk.':'')}
+        ${this.seg('appLayout','📱','App layout','How the apps sit on your phone home screen. Horizontal swipes between pages, vertical is one list you scroll up and down.',[['horizontal','Horizontal'],['vertical','Vertical']],p.appLayout==='vertical'?'vertical':'horizontal')}
+        ${this.seg('iconStyle','🎨','App icons','Pick how the app icons look: 3D (raised glossy tiles), Emoji, or Classic (the original icons).',[['3d','3D'],['emoji','Emoji'],['classic','Classic']],['3d','emoji'].includes(p.iconStyle)?p.iconStyle:'classic')}
         ${this.seg('saver','🔋','Data & battery saver','Uses less data and keeps your phone cool. Naija still looks like Naija.',[['auto','Auto'],['on','On'],['off','Off']],p.saver,this.saverHint(p))}
         ${this.lrow('Reset button & player positions','fa-solid fa-arrows-up-down-left-right',"DRAGPOS.reset();SONGIFY.resetFloat&&SONGIFY.resetFloat()")}
         <label class="trow"><span class="ti"><i class="fa-solid fa-globe"></i></span><span class="tl">Language</span><select class="ssel" onchange="PH.setLang(this.value)"><option value="pcm" ${p.lang==='en'||p.lang==='fr'?'':'selected'}>Naija Pidgin (default)</option><option value="en" ${p.lang==='en'?'selected':''}>English</option><option value="fr" ${p.lang==='fr'?'selected':''}>Français</option></select></label></div>
@@ -104,3 +107,5 @@ Object.assign(PH,{
   async loadRules(){let games=[];try{games=(await NET.api('/api/games')).games||[]}catch(e){}const el=document.getElementById('rules');if(!el)return;
     el.innerHTML=games.filter(g=>Array.isArray(g.rules)&&g.rules.length).map(g=>`<div class="lab2">${esc(String(g.name||g.key).toUpperCase())}</div><div class="sgrp"><ul class="tut">${g.rules.map(r=>`<li>${esc(r)}</li>`).join('')}</ul></div>`).join('')||'<p class="empty">Rules appear here once games load.</p>'}
 });
+/* the home screen may have been drawn before the saved layout / icon choice was readable: draw it again once settings are loaded */
+try{const _p=GP.get();if(typeof drawApps==='function'&&(_p.appLayout==='vertical'||['3d','emoji'].includes(_p.iconStyle)))drawApps()}catch(e){}
