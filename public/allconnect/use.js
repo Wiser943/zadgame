@@ -50,6 +50,8 @@ const USE = {
   esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) },
   /* open the sheet for a tapped item; returns false when there is nothing to do with it (the caller keeps its old behaviour) */
   open(id) {
+    // visiting a friend: you can only use their things if they allow it (and never when you broke in)
+    if (window.VISIT && VISIT.on && !VISIT.allowUse) { toast(VISIT.burglar ? 'You are a burglar: hands off!' : `${VISIT.v && VISIT.v.host ? VISIT.v.host.name : 'The owner'} does not let visitors use their things.`); return }
     const it = this.find(id); if (!it) return false; const acts = this.actsFor(it); if (!acts.length) return false;
     this.mount(); const k = this.kindOf(it);
     this.el.innerHTML = `<div class="sheet usesheet"><h2>${this.esc(it.name)}<small onclick="USE.close()">✕</small></h2><p class="usesub">${this.esc(this.HINT[(!it.fixture && window.FURN && FURN.ITEMS[it.name] && FURN.ITEMS[it.name].kind) || k] || '')}</p>` +

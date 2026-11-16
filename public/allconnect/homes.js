@@ -52,7 +52,7 @@ const HOMES = {
       const price = h.mode === 'rent' ? h.rent : h.price;
       const term = h.mode === 'rent' ? `Rent · ${h.rentDays} days` : 'Permanent ownership';
       const comfort = h.comfort && h.comfort !== 1 ? ` · comfort x${h.comfort}` : '';
-      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}${comfort}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.sizeLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
+      rows.push(`<div class="home-card"><div class="home-emoji">🏡</div><div class="home-copy"><b>${this.esc(h.name)}</b><p>${this.esc(h.description)}</p><small>${term} · ${this.money(price)}${comfort}</small>${p && !expired ? `<p>Owned/rented · ${(p.items || []).length} furniture item${(p.items || []).length === 1 ? '' : 's'}</p>` : ''}${p && !expired && p.tenure === 'owned' ? this.sizeLine(p, h) : ''}</div><div class="home-actions">${p && !expired ? `<button onclick="HOMES.enter('${this.esc(p.id)}')">${activeP ? 'Current home' : 'Enter home'}</button>${this.expandButton(p, h)}${this.renovateButton(p)}` : `<button ${this.busy ? 'disabled' : ''} onclick="HOMES.acquire('${this.esc(h.id)}')">${h.mode === 'rent' ? 'Rent' : 'Buy'}</button>`}</div></div>`);
     }
     target.innerHTML = rows.join('');
   },
@@ -62,6 +62,34 @@ const HOMES = {
     if (!p || p.tenure !== 'owned') return '';
     const label = p.sizeLabel || (p.totalBedrooms > 0 ? p.totalBedrooms + '-Bedroom' : 'Studio'), more = (p.expansions || []).length;
     return `<p>Size · <b>${this.esc(label)}</b>${more ? '' : ' · biggest size'}</p>`;
+  },
+  /* Renovate: the server decides what is on offer and the price (p.renovations): back extension (toilet + porch), an upstairs floor with a
+     choice of layouts, a new upstairs layout, and the luxury finish. */
+  renovateButton(p) {
+    if (!p || p.tenure !== 'owned' || !(p.renovations || []).length) return '';
+    return `<button class="secondary" ${this.busy ? 'disabled' : ''} onclick="HOMES.renoSheet('${this.esc(p.id)}')">Renovate · upstairs, luxury &amp; more</button>`;
+  },
+  renoSheet(id) {
+    this.renoId = id; SHEET.open({ id: 'reno', title: '🛠️ Renovate', body: () => this.renoBody() });
+  },
+  renoBody() {
+    const p = ((this.data && this.data.properties) || []).find(x => x.id === this.renoId); if (!p) return '<p class="empty">Home not found.</p>';
+    const opts = p.renovations || []; if (!opts.length) return '<p class="empty">Nothing left to renovate. This home is fully upgraded. ✨</p>';
+    const groups = {}; opts.forEach(o => { (groups[o.group || o.name] = groups[o.group || o.name] || []).push(o) });
+    const state = [p.upstairs ? '🏢 Upstairs floor built' : '', p.finish === 'luxury' ? '💎 Luxury finish' : '', p.bath ? '🚽 Back extension' : ''].filter(Boolean).join(' · ');
+    return (state ? `<p class="lgnote">${state}</p>` : '') + Object.entries(groups).map(([g, list]) => `<h4>${this.esc(g)}</h4>` + list.map(o => `<div class="lgq"><span class="lgi">${o.id.startsWith('upstairs') ? '🏢' : o.id === 'finish' ? '💎' : o.id.startsWith('upstyle') ? '🧱' : '🚽'}</span><div><b>${this.esc(o.name)}</b><small>${this.esc(o.description)}</small></div><button class="lgbtn" ${this.busy ? 'disabled' : ''} onclick="HOMES.renovate('${this.esc(p.id)}','${this.esc(o.id)}')">${this.money(o.cost)}</button></div>`).join('')).join('');
+  },
+  async renovate(id, optId) {
+    if (this.busy) return; const p = ((this.data && this.data.properties) || []).find(x => x.id === id), o = p && (p.renovations || []).find(x => x.id === optId); if (!o) return;
+    if (!confirm(`${o.name} for ${this.money(o.cost)}?\n\n${o.description}`)) return;
+    this.busy = true; this.draw();
+    try {
+      const r = await NET.api('/api/ac/properties/' + encodeURIComponent(id) + '/renovate', { method: 'POST', body: { id: o.id } });
+      applyAC(r.ac); this.data.properties = (this.data.properties || []).map(x => x.id === id ? r.property : x); this.data.cash = r.ac.cash;
+      if (S.activePropertyId === id && window.ROOM3D) ROOM3D.sync(); if (window.BUY && BUY.active) BUY.draw();
+      toast('Renovation done 🛠️ ' + o.name)
+    } catch (e) { toast(e.message || 'Could not renovate.') }
+    finally { this.busy = false; this.draw(); try { if (SHEET.isOpen('reno')) SHEET.paint() } catch (e) {} }
   },
   expandButton(p) {
     if (!p || p.tenure !== 'owned' || !(p.expansions || []).length) return '';

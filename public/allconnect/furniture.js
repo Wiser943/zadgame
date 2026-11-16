@@ -8,7 +8,8 @@
   "Kitchen",
   "Bath",
   "Comfort",
-  "Light"
+  "Light",
+  "Power"
  ],
  "ITEMS": {
   "Foam Mattress": {
@@ -91,16 +92,6 @@
    "kind": "fridge",
    "color": "#dfe6ee",
    "emoji": "🧊"
-  },
-  "Gen Set": {
-   "cat": "Kitchen",
-   "w": 1,
-   "d": 1,
-   "price": 180000,
-   "stars": 3,
-   "kind": "genset",
-   "color": "#dd9944",
-   "emoji": "⚡"
   },
   "Dining Table": {
    "cat": "Kitchen",
@@ -222,6 +213,87 @@
    "color": "#7a1424",
    "emoji": "🛋️"
   },
+  "Gen Set": {
+   "cat": "Power",
+   "w": 1,
+   "d": 1,
+   "price": 180000,
+   "stars": 3,
+   "kind": "genset",
+   "color": "#dd9944",
+   "emoji": "⚡",
+   "backup": "gen"
+  },
+  "Solar Inverter Kit": {
+   "cat": "Power",
+   "w": 1,
+   "d": 1,
+   "price": 650000,
+   "stars": 4,
+   "kind": "solar",
+   "color": "#1f3a6b",
+   "emoji": "☀️",
+   "backup": "solar"
+  },
+  "Pendant Light": {
+   "cat": "Light",
+   "w": 0,
+   "d": 0,
+   "price": 22000,
+   "stars": 2,
+   "kind": "pendant",
+   "color": "#ffd9a0",
+   "emoji": "💡",
+   "fixed": true,
+   "hang": true
+  },
+  "Ceiling Fan": {
+   "cat": "Light",
+   "w": 0,
+   "d": 0,
+   "price": 65000,
+   "stars": 3,
+   "kind": "fan",
+   "color": "#d8c7a6",
+   "emoji": "🌀",
+   "fixed": true,
+   "hang": true
+  },
+  "Chandelier": {
+   "cat": "Light",
+   "w": 0,
+   "d": 0,
+   "price": 180000,
+   "stars": 4,
+   "kind": "chandelier",
+   "color": "#ffe3a3",
+   "emoji": "🪔",
+   "fixed": true,
+   "hang": true
+  },
+  "Grand Staircase": {
+   "cat": "Structure",
+   "w": 2,
+   "d": 3,
+   "price": 400000,
+   "stars": 4,
+   "kind": "stairs",
+   "color": "#8a6a45",
+   "emoji": "🪜",
+   "locked": true,
+   "hidden": true,
+   "stairs": true
+  },
+  "Arc Floor Lamp": {
+   "cat": "Light",
+   "w": 1,
+   "d": 1,
+   "price": 45000,
+   "stars": 3,
+   "kind": "stand",
+   "color": "#2b2b33",
+   "emoji": "🪔"
+  },
   "Ceiling Bulb": {
    "cat": "Light",
    "w": 0,
@@ -270,13 +342,21 @@
   window.homeGrid = (p) => 6;   // the plain room is always 6x6 cells; bigger homes come from homeLayout below
   // A home's floor plan: the fixed plan of a house-model home (Family House, Market Shop), or the bedroom plan of a home
   // with bedrooms (shared generator in bedrooms.js, the same one the server uses), or null for the plain 6x6 room.
-  window.homeLayout = (p) => {
+  window.homeLayout = (p, floor) => {
     if (!p) return null;
     if (window.LAYOUTS && window.LAYOUTS[p.type]) return window.LAYOUTS[p.type];
-    const total = Number(p.totalBedrooms) || 0, L = window.BEDROOMS ? BEDROOMS.layout(total) : null;
-    if (!L) return null;
-    if (!L.blockedSet) { L.blockedSet = new Set(L.blocked); L.wallSet = new Set(L.walls) }
-    return L;
+    const total = Number(p.totalBedrooms) || 0, G = window.BEDROOMS ? BEDROOMS.layout(total, p.bath ? { bath: true } : null) : null;
+    if (Number(floor) === 1 && p.upstairs && window.BEDROOMS) {         // upstairs: same footprint, opening where the staircase is, walls by the chosen style
+      const st = (p.items || []).find(i => i.name === 'Grand Staircase' && i.placed !== false && !(Number(i.floor) > 0)), open = st ? cellsOf(st).map(c => c.join(',')) : [];
+      const U = BEDROOMS.upper(G ? G.w : 6, G ? G.d : 6, p.upStyle, open); if (!U.blockedSet) { U.blockedSet = new Set(U.blocked); U.wallSet = new Set(U.walls) } return U;
+    }
+    if (!G) return null;
+    if (!G.blockedSet) { G.blockedSet = new Set(G.blocked); G.wallSet = new Set(G.walls) }
+    return G;
   };
-  window.FURN = { ...D, isItem, sellPrice, footprint, inBounds, cellsOf, occupied, canPlace, autoPlace };
+  const onFloor = (items, f) => (items || []).filter(i => (Number(i.floor) || 0) === (Number(f) || 0));
+  const isHang = n => isItem(n) && !!D.ITEMS[n].hang;
+  // ceiling lights / fans hang at a cell: inside the room, not on a wall cell, nothing else hanging there
+  const canHang = (items, n, x, z, skipId, grid) => { grid = grid || curGrid(); if (!isHang(n) || !inBounds(x, z, 1, 1, grid)) return false; if (grid && typeof grid === 'object' && grid.blockedSet && grid.blockedSet.has(x + ',' + z)) return false; return !items.some(i => i.id !== skipId && i.placed !== false && isHang(i.name) && i.x === x && i.z === z) };
+  window.FURN = { onFloor, isHang, canHang, ...D, isItem, sellPrice, footprint, inBounds, cellsOf, occupied, canPlace, autoPlace };
 })();

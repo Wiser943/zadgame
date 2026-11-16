@@ -215,9 +215,11 @@ const VISIT = {
     if (!window.ROOM3D) { toast('The 3D room is not ready yet. Try again in a moment.'); return }
     if (this.on) this.close(true);
     const p = h.property || null;
-    this.saved = { items: S.items, grid: S.grid, layout: S.layout, paint: S.paint };
+    this.saved = { items: S.items, grid: S.grid, layout: S.layout, paint: S.paint, floor: S.floor || 0 };
     this.v = { items: h.placed || [], grid: p ? homeGrid(p) : 6, layout: p ? homeLayout(p) : null, paint: h.paint, host: h };
+    this.burglar = !!h.burglar; this.allowUse = !!h.allowUse;
     this.on = true; document.body.classList.add('visiting');
+    clearInterval(this.hb); this.hb = setInterval(() => this.ping(), 20000);
     try { if (PH.view) PH.close() } catch (e) {}
     if (S.page !== 'home') nav('home');
     this.apply(); setTimeout(() => { if (this.on) this.apply() }, 180);      // again once the Home screen has finished switching on
@@ -225,12 +227,22 @@ const VISIT = {
     el.className = 'live';
     el.innerHTML = `<div class="vtop"><span class="pill">🏠 ${esc(h.name)}'s place</span><button class="pill" onclick="closeVisit()">Leave</button></div>
       <div class="vtools"><button class="pill vt" onclick="VISIT.look()" aria-label="Look around">${'👁'}</button><button class="pill vt" onclick="VISIT.say()" aria-label="Say something">🎙️</button></div>
-      <div class="pill vnote">You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items === 1 ? '' : 's'} · ${esc(h.propertyName || 'Home')}</div>`;
+      <div class="pill vnote${h.burglar ? ' burg' : ''}" id="vnote">${h.burglar ? `🕵️ You broke into ${esc(h.name)}'s home while they are away. If they come online they can kick you out.` : `You're visiting ${esc(h.name)} · ${h.items} furniture item${h.items === 1 ? '' : 's'} · ${esc(h.propertyName || 'Home')}${h.allowUse ? '' : ' · look only'}`}</div>`;
     el.style.display = 'block';
   },
-  apply() { S.items = this.v.items; S.grid = this.v.grid; S.layout = this.v.layout; try { setPaint(this.v.paint) } catch (e) {} ROOM3D.sync() },
+  apply() { S.floor = 0; S.items = this.v.items; S.grid = this.v.grid; S.layout = this.v.layout; try { setPaint(this.v.paint) } catch (e) {} ROOM3D.sync() },
   /* the game reloaded your own data in the background (applyAC): keep the friend's room on screen, remember your own for later */
   reapply() { if (!this.on) return; this.saved = { ...this.saved, items: S.items, grid: S.grid, layout: S.layout, paint: S.paint }; this.apply() },
+  /* heartbeat: lets the owner see you are here, and tells you if they kicked you out or came online */
+  async ping() {
+    if (!this.on || !this.v) return;
+    try {
+      const r = await NET.api('/api/ac/visit/' + encodeURIComponent(this.v.host.id) + '/ping', { method: 'POST' });
+      if (r.kicked) { toast('🚪 ' + this.v.host.name + ' asked you to leave.'); this.close(); return }
+      this.allowUse = !!r.allowUse; const n = document.getElementById('vnote');
+      if (this.burglar && r.ownerOnline && n) { n.classList.remove('burg'); n.textContent = this.v.host.name + ' is online now. They can see you in their home.' }
+    } catch (e) {}
+  },
   look() { try { ROOM3D.setFirstPerson(!ROOM3D.fpv) } catch (e) {} },
   say() { try { V2.mic() } catch (e) { toast('Voice is not available here.') } },
   /* what you said goes to your friend in your private chat */
@@ -239,10 +251,11 @@ const VISIT = {
     try { await NET.api('/api/ac/messages/' + h.id, { method: 'POST', body: { text: '🎤 ' + text } }); toast('Sent to ' + h.name + ' 🎙️') } catch (e) { toast(e.message || 'Could not send that.') }
   },
   close(silent) {
-    if (!this.on) return; const sv = this.saved; this.on = false; this.v = null;
+    if (!this.on) return; const sv = this.saved, hid = this.v && this.v.host && this.v.host.id; this.on = false; this.v = null; clearInterval(this.hb);
+    if (hid) NET.api('/api/ac/visit/' + encodeURIComponent(hid) + '/leave', { method: 'POST' }).catch(() => {});
     document.body.classList.remove('visiting');
     try { ROOM3D.setFirstPerson(false) } catch (e) {}
-    if (sv) { S.items = sv.items; S.grid = sv.grid; S.layout = sv.layout; try { setPaint(sv.paint) } catch (e) {} }
+    if (sv) { S.floor = sv.floor || 0; S.items = sv.items; S.grid = sv.grid; S.layout = sv.layout; try { setPaint(sv.paint) } catch (e) {} }
     this.saved = null; if (window.ROOM3D) ROOM3D.sync();
     const el = document.getElementById('visit'); if (el) { el.style.display = 'none'; el.className = ''; el.innerHTML = '' }
   }

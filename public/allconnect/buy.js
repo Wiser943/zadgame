@@ -2,21 +2,34 @@
    Rules (prices, overlap, sell value = 20%) are enforced by the server (routes/acitems.js). The 3D room is ROOM3D. */
 const BUY = {
   active: false, tab: 'Sleep', sheetOpen: true, g: null, sel: null, confirmSell: 0, paint0: null, pp: null,
-  TABS: ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light', 'Design', 'Wishlist', 'Stored'],
+  TABS: ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light', 'Power', 'Design', 'Wishlist', 'Stored'],
   is3d() { return !!(window.ROOM3D && ROOM3D.on) },
-  items() { return S.items || [] },
+  items() { return FURN.onFloor(S.items || [], S.floor || 0) },        // furniture on the floor you are placing on
+  allItems() { return S.items || [] },                                  // every floor (stored items, how many you own)
   api(u, b) { if (S.activePropertyId && u !== '/wish') { const base = '/api/ac/properties/' + encodeURIComponent(S.activePropertyId) + '/furniture'; const m = u.match(/^\/([^/]+)\/(move|place|store|sell)$/); return NET.api(base + (m ? '/' + encodeURIComponent(m[1]) + '/' + m[2] : u), { method: 'POST', body: b || {} }); } return NET.api('/api/ac/items' + u, { method: 'POST', body: b || {} }) },
   stars(n) { return n ? '★'.repeat(n) : '' },
   thumb(name) { const D = FURN.ITEMS[name]; const u = this.is3d() ? ROOM3D.thumb(name) : ''; return u ? `<img src="${u}" alt="">` : `<span class="cem">${D.emoji || '🛋️'}</span>` },
   enter() {
     this.active = true; this.g = null; this.sel = null; this.pp = null; this.sheetOpen = true; this.paint0 = S.paint;
-    if (!this.is3d() && this.TABS.indexOf(this.tab) < 5) this.tab = 'Design';
+    if (!this.is3d() && this.TABS.indexOf(this.tab) < 6) this.tab = 'Design';
     if (this.is3d()) { ROOM3D.buyMode(true, e => this.tap(e)); ROOM3D.page('buy') }
-    this.draw()
+    this.draw(); this.floorPill()
+  },
+  /* Ground floor / Upstairs switch (only in homes that have an upstairs floor) */
+  floor() {
+    if (!S.activeProperty || !S.activeProperty.upstairs || !window.ROOM3D) return;
+    this.g = null; this.sel = null; try { ROOM3D.unghost(); ROOM3D.deselect() } catch (e) {}
+    ROOM3D.setFloor((S.floor || 0) ? 0 : 1); this.floorPill(); this.draw()
+  },
+  floorPill() {
+    let el = document.getElementById('buyfloor'); const up = !!(S.activeProperty && S.activeProperty.upstairs);
+    if (!this.active || !up) { if (el) el.remove(); return }
+    if (!el) { el = document.createElement('button'); el.id = 'buyfloor'; el.type = 'button'; el.onclick = () => BUY.floor(); document.getElementById('app').appendChild(el) }
+    el.textContent = (S.floor ? '⬆ Upstairs' : '⬇ Ground floor') + ' · tap to switch'
   },
   /* leaving Buy mode: a preview you did not pay for is kept as a draft in your wishlist */
   leave() {
-    if (!this.active) return; this.active = false;
+    if (!this.active) return; this.active = false; this.floorPill();
     if (this.g && this.g.mode === 'new') this.wish(this.g.name, true, true);
     if (this.g && this.g.id && window.ROOM3D) ROOM3D.hideItem(this.g.id, false);
     if (window.ROOM3D) ROOM3D.buyMode(false);
@@ -37,35 +50,40 @@ const BUY = {
   /* ---------- ghost (preview) ---------- */
   startGhost(name, mode, id, at) {
     const D = FURN.ITEMS[name]; this.sel = null; ROOM3D && ROOM3D.deselect(); this.sheetOpen = false;
-    if (D.fixed) { this.g = { name, mode: 'new', fixed: true, x: 0, z: 0, rot: 0, valid: !this.items().some(i => i.name === name) }; this.draw(); return }
+    if (D.hang) {      // ceiling light / fan: pick the cell it hangs over (works in every room of the home)
+      let spot = at; if (!spot) { const items = this.items().filter(i => i.id !== id), W = ROOM3D.gw || 6, Dd = ROOM3D.gd || 6, c0 = FURN.canHang; outer: for (let z = 0; z < Dd; z++) for (let x = 0; x < W; x++) if (c0(items, name, x, z, id)) { spot = { x, z, rot: 0 }; break outer } }
+      this.g = { name, mode, id, hang: true, x: spot ? spot.x : 0, z: spot ? spot.z : 0, rot: 0, valid: !!spot }; if (id) ROOM3D.hideItem(id, true); this.setGhost(this.g.x, this.g.z, 0); return
+    }
+    if (D.fixed) { this.g = { name, mode: 'new', fixed: true, x: 0, z: 0, rot: 0, valid: !this.allItems().some(i => i.name === name) }; this.draw(); return }
     const spot = at || FURN.autoPlace(this.items().filter(i => i.id !== id), name);
     this.g = { name, mode, id, x: spot ? spot.x : 0, z: spot ? spot.z : 0, rot: spot ? spot.rot : 0, valid: !!spot };
     if (id) ROOM3D.hideItem(id, true);
     this.setGhost(this.g.x, this.g.z, this.g.rot)
   },
   setGhost(x, z, rot) {
-    const g = this.g; Object.assign(g, { x, z, rot }); g.valid = FURN.canPlace(this.items(), g.name, x, z, rot, g.id);
+    const g = this.g; Object.assign(g, { x, z, rot }); g.valid = g.hang ? FURN.canHang(this.items(), g.name, x, z, g.id) : FURN.canPlace(this.items(), g.name, x, z, rot, g.id);
     const sim = this.items().filter(i => i.id !== g.id).concat([{ id: 'ghost', name: g.name, x, z, rot, placed: true }]);
+    if (g.hang) { g.blocks = false; ROOM3D.ghost(g.name, x, z, rot, g.valid); this.draw(); return }
     g.blocks = g.valid && ROOM3D.reachesCooler(this.items()) && !ROOM3D.reachesCooler(sim);
     ROOM3D.ghost(g.name, x, z, rot, g.valid); this.draw()
   },
   nudge(sx, sy) {
     const g = this.g; if (!g || g.fixed) return; const az = ROOM3D.az, f = [-Math.sin(az), -Math.cos(az)], r = [Math.cos(az), -Math.sin(az)];
     let dx = sy * f[0] + sx * r[0], dz = sy * f[1] + sx * r[1]; const L = Math.hypot(dx, dz) || 1; dx = Math.abs(dx / L) > .38 ? Math.sign(dx) : 0; dz = Math.abs(dz / L) > .38 ? Math.sign(dz) : 0;
-    const [w, d] = FURN.footprint(g.name, g.rot); this.setGhost(Math.max(0, Math.min(6 - w, g.x + dx)), Math.max(0, Math.min(6 - d, g.z + dz)), g.rot)
+    const [w, d] = FURN.footprint(g.name, g.rot); this.setGhost(Math.max(0, Math.min((ROOM3D.gw || 6) - w, g.x + dx)), Math.max(0, Math.min((ROOM3D.gd || 6) - d, g.z + dz)), g.rot)
   },
   spin() {
-    const g = this.g; if (!g || g.fixed) return; const rot = (g.rot + 90) % 360, [w, d] = FURN.footprint(g.name, rot);
-    this.setGhost(Math.max(0, Math.min(6 - w, g.x)), Math.max(0, Math.min(6 - d, g.z)), rot)
+    const g = this.g; if (!g || g.fixed || g.hang) return; const rot = (g.rot + 90) % 360, [w, d] = FURN.footprint(g.name, rot);
+    this.setGhost(Math.max(0, Math.min((ROOM3D.gw || 6) - w, g.x)), Math.max(0, Math.min((ROOM3D.gd || 6) - d, g.z)), rot)
   },
   cancel() { const g = this.g; if (g && g.id) ROOM3D.hideItem(g.id, false); if (window.ROOM3D) ROOM3D.unghost(); this.g = null; this.draw() },
   async commit() {
     const g = this.g; if (!g || !g.valid) return;
     try {
       if (g.mode === 'new') {
-        const r = await this.api('/buy', { name: g.name, x: g.x, z: g.z, rot: g.rot }); applyAC(r.ac); ROOM3D.unghost(); this.g = null; render(); toast('Bought ' + g.name + ' ✓'); if (window.PH) PH.local_('🛍️', 'You bought ' + g.name, 'good')
+        const r = await this.api('/buy', { name: g.name, x: g.x, z: g.z, rot: g.rot, floor: S.floor || 0 }); applyAC(r.ac); ROOM3D.unghost(); this.g = null; render(); toast('Bought ' + g.name + ' ✓'); if (window.PH) PH.local_('🛍️', 'You bought ' + g.name, 'good')
       } else {
-        const r = await this.api('/' + g.id + (g.mode === 'place' ? '/place' : '/move'), { x: g.x, z: g.z, rot: g.rot }); ROOM3D.hideItem(g.id, false); ROOM3D.unghost(); this.g = null; applyAC(r.ac); toast(g.mode === 'place' ? 'Placed ✓' : 'Moved ✓')
+        const r = await this.api('/' + g.id + (g.mode === 'place' ? '/place' : '/move'), { x: g.x, z: g.z, rot: g.rot, floor: S.floor || 0 }); ROOM3D.hideItem(g.id, false); ROOM3D.unghost(); this.g = null; applyAC(r.ac); toast(g.mode === 'place' ? 'Placed ✓' : 'Moved ✓')
       }
     } catch (e) { toast(e.message) } this.draw()
   },
@@ -108,8 +126,8 @@ const BUY = {
     if (show) this.drawSheet(); if (this.g) this.drawGhostPanel(); else if (this.sel) this.drawSelPanel()
   },
   drawSheet() {
-    const t = this.tab, stored = this.items().filter(i => i.placed === false), wish = S.wish || [], tabs = this.TABS.filter(x => this.is3d() || x === 'Design');
-    $('tabs').innerHTML = tabs.map(x => `<button class="${x === t ? 'on' : ''}" onclick="BUY.setTab('${x}')">${{ Sleep: '🛏️', Kitchen: '🍳', Bath: '🚿', Comfort: '🛋️', Light: '💡', Design: '🎨', Wishlist: '♡', Stored: '📦' }[x]} ${x}${x === 'Wishlist' && wish.length ? ' (' + wish.length + ')' : x === 'Stored' && stored.length ? ' (' + stored.length + ')' : ''}</button>`).join('');
+    const t = this.tab, stored = this.allItems().filter(i => i.placed === false), wish = S.wish || [], tabs = this.TABS.filter(x => this.is3d() || x === 'Design');
+    $('tabs').innerHTML = tabs.map(x => `<button class="${x === t ? 'on' : ''}" onclick="BUY.setTab('${x}')">${{ Sleep: '🛏️', Kitchen: '🍳', Bath: '🚿', Comfort: '🛋️', Light: '💡', Power: '🔋', Design: '🎨', Wishlist: '♡', Stored: '📦' }[x]} ${x}${x === 'Wishlist' && wish.length ? ' (' + wish.length + ')' : x === 'Stored' && stored.length ? ' (' + stored.length + ')' : ''}</button>`).join('');
     const G = $('items'); G.className = 'grid cat';
     if (t === 'Design') {
       G.className = 'grid'; G.innerHTML = CAT.Design[0][1].map((it, i) => `<button class="sw ${this.pp && this.pp[0] === it[0] ? 'sel' : ''}" onclick="BUY.paint(${i})"><i style="background:linear-gradient(90deg,${it[2]} 50%,${it[2]}cc 50%)"></i>${it[0]}<span>${S.owned[it[0]] ? 'Owned' : fmt(it[1])}</span></button>`).join('') + (this.pp ? `<button class="btn p" style="grid-column:1/-1" onclick="BUY.buyPaint()">${S.owned[this.pp[0]] ? 'Use ' + this.pp[0] : 'Buy ' + this.pp[0] + ' · ' + fmt(this.pp[1])}</button>` : '')
@@ -120,7 +138,7 @@ const BUY = {
     G.innerHTML = Object.keys(FURN.ITEMS).filter(n => FURN.ITEMS[n].cat === t).map(n => this.card(n)).join('')
   },
   card(n, extra, stored) {
-    const D = FURN.ITEMS[n], have = this.items().filter(i => i.name === n).length, size = D.fixed ? 'Fixed' : D.w + '×' + D.d;
+    const D = FURN.ITEMS[n], have = this.allItems().filter(i => i.name === n).length, size = D.fixed ? 'Fixed' : D.w + '×' + D.d;
     return `<div class="cc" ${extra ? '' : `onclick="BUY.startGhost('${n}','new')"`}><div class="ch"><span>${size}</span><b>${this.stars(D.stars)}</b></div><div class="ci">${this.thumb(n)}</div><div class="cn">${n}</div><div class="cp">${stored ? 'Stored' : fmt(D.price)}${have && !stored ? `<small> · own ${have}</small>` : ''}</div>${extra || ''}</div>`
   },
   drawGhostPanel() {
@@ -131,14 +149,14 @@ const BUY = {
     else if (g.blocks) warn = '<span class="warn">Heads up: this blocks the way to your cooler box</span>';
     else if (isNew && !afford) warn = `<span class="bad">You need ${fmt(need)} more. You can still preview it.</span>`;
     const go = isNew ? (afford && ok ? `<button class="btn p" onclick="BUY.commit()">✓ Place · ${fmt(D.price)}</button>` : `<button class="btn p dis" disabled>${!ok ? (g.fixed ? 'Already owned' : 'Spot taken') : 'Need ' + fmt(need) + ' more'}</button>`) : `<button class="btn p" ${ok ? '' : 'disabled'} onclick="BUY.commit()">✓ ${g.mode === 'place' ? 'Place' : 'Done'}</button>`;
-    const ctl = g.fixed ? '' : `<div class="pad"><button onclick="BUY.nudge(-1,1)" aria-label="Up left">↖</button><button onclick="BUY.nudge(1,1)" aria-label="Up right">↗</button><button class="rot" onclick="BUY.spin()" aria-label="Turn">⟳</button><button onclick="BUY.nudge(-1,-1)" aria-label="Down left">↙</button><button onclick="BUY.nudge(1,-1)" aria-label="Down right">↘</button></div>`;
+    const ctl = g.fixed ? '' : `<div class="pad"><button onclick="BUY.nudge(-1,1)" aria-label="Up left">↖</button><button onclick="BUY.nudge(1,1)" aria-label="Up right">↗</button>${g.hang ? '<span></span>' : '<button class="rot" onclick="BUY.spin()" aria-label="Turn">⟳</button>'}<button onclick="BUY.nudge(-1,-1)" aria-label="Down left">↙</button><button onclick="BUY.nudge(1,-1)" aria-label="Down right">↘</button></div>`;
     $('bpanel').innerHTML = `<div class="bp-h"><b>${g.name}</b>${isNew ? `<span>${fmt(D.price)}</span>` : '<span>Moving</span>'}</div><div class="bp-w">${warn || '&nbsp;'}</div><div class="bp-c">${ctl}<div class="bp-b">${go}${isNew && !afford ? `<button class="btn s" onclick="BUY.wishFromGhost()">♡ Save to wishlist</button>` : ''}<button class="btn s" onclick="BUY.cancel()">✕ Cancel</button></div></div>`
   },
   drawSelPanel() {
     const it = this.selItem(); if (!it) { this.sel = null; return this.draw() }
     const D = FURN.ITEMS[it.name], lock = D.locked, confirming = Date.now() - this.confirmSell < 3500;
     $('bpanel').innerHTML = `<div class="bp-i"><div class="bp-t">${this.thumb(it.name)}</div><div><b>${it.name}</b><small>${lock ? 'You need this one' : 'Sells for ' + fmt(FURN.sellPrice(it.name))}</small></div></div>
-      <div class="bp-a">${D.fixed ? '' : `<button onclick="BUY.move()">Move</button><button onclick="BUY.turn()">⟳ Turn</button>`}${D.fixed || lock ? '' : `<button onclick="BUY.store()">Store</button>`}<button onclick="BUY.closeSel()">Close</button>${lock ? '' : `<button class="sell ${confirming ? 'on' : ''}" onclick="BUY.sell()">${confirming ? 'Tap to confirm' : 'Sell'}</button>`}</div>`;
+      <div class="bp-a">${D.fixed && !D.hang ? '' : `<button onclick="BUY.move()">Move</button>${D.hang ? '' : '<button onclick="BUY.turn()">⟳ Turn</button>'}`}${D.fixed || lock ? '' : `<button onclick="BUY.store()">Store</button>`}<button onclick="BUY.closeSel()">Close</button>${lock ? '' : `<button class="sell ${confirming ? 'on' : ''}" onclick="BUY.sell()">${confirming ? 'Tap to confirm' : 'Sell'}</button>`}</div>`;
     if (confirming) setTimeout(() => { if (this.sel === it.id) this.drawSelPanel() }, 3600)
   }
 };

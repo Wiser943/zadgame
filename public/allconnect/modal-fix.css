@@ -154,3 +154,18 @@ body.visiting #v2top,body.visiting #v2act,body.visiting #v2nav,body.visiting #v2
 #visit.live .pill,#visit.live button{pointer-events:auto}
 #visit.live .vtools{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px}
 #visit.live .vt{width:48px;height:48px;border-radius:50%;padding:0;font-size:20px;display:grid;place-items:center}
+
+#visit .vnote.burg{background:#5a1118!important;color:#ffd7d9!important}
+
+/* ---------- walk mode: bottom bar hidden, joystick shown, eye turns into an X ---------- */
+body.walkmode #v2nav,body.walkmode #v2rail,body.walkmode #v2strip,body.walkmode #v2radio,body.walkmode #v2event,body.walkmode #v2act .cb:not(#v2eye),body.walkmode #v2act .pl{display:none!important}
+body.walkmode #v2act{left:auto!important;right:16px!important;bottom:calc(34px + var(--sab,0px))!important}
+body.walkmode #v2act #v2eye{width:46px;height:46px;background:rgba(190,40,50,.92)}
+body.walkmode #v2act #v2eye svg{width:20px;height:20px}
+#v2joy{position:absolute;left:22px;bottom:calc(34px + var(--sab,0px));z-index:30;touch-action:none;user-select:none;-webkit-user-select:none}
+#v2joy .jb{position:relative;width:132px;height:132px;border-radius:50%;background:rgba(20,26,52,.38);border:2px solid rgba(255,255,255,.35);backdrop-filter:blur(4px);touch-action:none;display:grid;place-items:center}
+#v2joy .jk{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.88);box-shadow:0 4px 14px rgba(0,0,0,.35);transition:transform .06s}
+
+/* ---------- upstairs / downstairs ---------- */
+#buyfloor{position:absolute;left:50%;top:calc(64px + var(--sat,0px));transform:translateX(-50%);z-index:36;border:0;border-radius:999px;padding:9px 16px;font:700 13px Outfit,system-ui,sans-serif;background:rgba(20,26,52,.82);color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.3);cursor:pointer}
+#v2rail #v2floor{font-size:18px}

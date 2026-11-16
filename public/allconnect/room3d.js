@@ -2,7 +2,7 @@
    Walls that face the camera fade out so you can always see inside. Falls back to the flat SVG room if WebGL or the library is unavailable. */
 window.ROOM3D = {
   on: false, loading: false, T: null, az: Math.PI / 4, pol: 0.95, dist: 30, d0: 30, tAz: null, W: 0, H: 0, shiftY: 0, dark_: false, page_: 'home',
-  WALL_H: 2.4,   // box-room wall height (was 3 — shorter walls so the room reads less tall/boxy)
+  WALL_H: 2.8,   // box-room wall height (was 3 — shorter walls so the room reads less tall/boxy)
   walls: [], gw: 6, gd: 6, offX: 0, offZ: 0, layout: null, roomKey: 6, extras: null, avatar: null, goal: null, ptr: new Map(), pinch: 0, drag: false, down: null, last: 0,
   load() {
     return new Promise((ok, no) => {
@@ -66,7 +66,7 @@ window.ROOM3D = {
     cv2.addEventListener('pointermove', e => {
       const p = this.ptr.get(e.pointerId); if (!p) return;
       if (this.ptr.size === 2) { p.x = e.clientX; p.y = e.clientY; const [a, b] = [...this.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if (this.pinch) this.zoom(this.pinch / d); this.pinch = d; this.drag = true }
-      else { const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; if (this.down && Math.abs(e.clientX - this.down.x) + Math.abs(e.clientY - this.down.y) > 8) this.drag = true; if (this.drag) { if (this.fpv) { this.fpYaw -= dx * .006; this.fpPitch = Math.max(-.9, Math.min(.9, this.fpPitch - dy * .004)) } else { this.tAz = null; this.az -= dx * .0085; this.pol = Math.max(.35, Math.min(1.35, this.pol - dy * .006)) } } }
+      else { const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; if (this.down && Math.abs(e.clientX - this.down.x) + Math.abs(e.clientY - this.down.y) > 8) this.drag = true; if (this.drag) { if (this.fpv) { this.fpYaw -= dx * .006; this.fpPitch = Math.max(-.9, Math.min(.9, this.fpPitch - dy * .004)) } else if (this.walk) { this.wYaw -= dx * .006; this.wPitch = Math.max(.08, Math.min(.85, this.wPitch + dy * .004)) } else { this.tAz = null; this.az -= dx * .0085; this.pol = Math.max(.35, Math.min(1.35, this.pol - dy * .006)) } } }
     });
     const up = e => { const was = this.ptr.size === 1 && !this.drag && this.down && Date.now() - this.down.t < 450; this.ptr.delete(e.pointerId); this.pinch = 0; if (was) this.tap(e.clientX, e.clientY) };
     cv2.addEventListener('pointerup', up); cv2.addEventListener('pointercancel', e => { this.ptr.delete(e.pointerId) });
@@ -268,13 +268,39 @@ window.ROOM3D = {
   flip() { this.tAz = (this.tAz == null ? this.az : this.tAz) + Math.PI / 2 },
   reset() { this.userDist = false; this.dist = this.d0; this.pol = .95; this.tAz = Math.round((this.az - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4 },
   page(w) {
-    if (w !== 'home' && this.fpv) this.setFirstPerson(false);
+    if (w !== 'home' && this.fpv) this.setFirstPerson(false); if (w !== 'home' && this.walk) { this.setWalk(false); try { V2.walkUI(false) } catch (e) {} }
     this.page_ = w; if (!this.on) return; const show = w === 'home' || w === 'buy' || w === 'phone'; this.cv.style.display = show ? 'block' : 'none';
     this.shiftY = w === 'buy' ? (document.body.classList.contains('dk') ? .02 : -.17) : .05; this.resize()
   },
-  paint(c) { this.walls.forEach(w => w.m.material.color.set(c || '#d9a93a')) },
+  /* Luxury finish (bought in Homes > Renovate): polished marble floor and cream walls on every floor */
+  isLux() { return !!(S.activeProperty && S.activeProperty.finish === 'luxury') },
+  paint(c) { if (this.isLux() && !(window.BUY && BUY.active && BUY.pp)) c = '#f1e6cf'; this.walls.forEach(w => w.m.material.color.set(c || '#d9a93a')) },
+  finishApply() {
+    if (!this.floor) return; const lux = this.isLux();
+    if (!this.woodTx) this.woodTx = this.floor.material.map;
+    if (lux && !this.marbleTx) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d'); g.fillStyle = '#f5f2ea'; g.fillRect(0, 0, 256, 256);
+      let r = 7; const rnd = () => (r = (r * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < 14; i++) { g.strokeStyle = `rgba(120,118,112,${.08 + rnd() * .12})`; g.lineWidth = .8 + rnd() * 1.6; g.beginPath(); let x = rnd() * 256, y = rnd() * 256; g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (rnd() - .3) * 60; y += (rnd() - .5) * 60; g.lineTo(x, y) } g.stroke() }
+      g.strokeStyle = 'rgba(190,150,60,.55)'; g.lineWidth = 3; g.strokeRect(0, 0, 256, 256);
+      this.marbleTx = new THREE.CanvasTexture(cv); this.marbleTx.wrapS = this.marbleTx.wrapT = THREE.RepeatWrapping; this.marbleTx.repeat.set(2, 2); this.marbleTx.anisotropy = 8
+    }
+    const want = lux ? this.marbleTx : this.woodTx; if (this.floor.material.map !== want) { this.floor.material.map = want; this.floor.material.needsUpdate = true }
+    this.paint(S.paint)
+  },
   dark(b) { this.dark_ = !!b },
   env(dl) { this.dl = dl },
+  /* only the furniture on the floor you are standing on */
+  fItems() { return FURN.onFloor(S.items || [], S.floor || 0) },
+  /* go to the other floor: S.floor + layout change, the character appears next to the stairs */
+  setFloor(f) {
+    const P = S.activeProperty; if (!P || !P.upstairs || !this.avatar) return false; f = Number(f) === 1 ? 1 : 0; if ((S.floor || 0) === f) return false;
+    const st = (P.items || []).find(i => i.name === 'Grand Staircase' && i.placed !== false && !(Number(i.floor) > 0));
+    S.floor = f; S.layout = homeLayout(P, f); this.occCache = null; this.sync();
+    // stand on the free cell nearest the staircase
+    if (st) { const occ = FURN.occupied(this.fItems()), cells = FURN.cellsOf(st); let best = null, bd = 1e9; for (let z = 0; z < this.gd; z++) for (let x = 0; x < this.gw; x++) { if (occ.has(x + ',' + z)) continue; const d = Math.min(...cells.map(c => Math.abs(c[0] - x) + Math.abs(c[1] - z))); if (d < bd) { bd = d; best = [x, z] } } if (best) this.avatar.position.set(this.cc(best[0]), 0, this.cc(best[1])); }
+    this.path = []; this.onArrive = null; return true
+  },
   setFirstPerson(on) {
     on = !!on; if (on === !!this.fpv || !this.avatar) { if (!this.avatar) return false; return this.fpv }
     this.fpv = on; const cam = this.cam;
@@ -282,22 +308,43 @@ window.ROOM3D = {
     else { cam.fov = this.fpFov || 30; cam.near = 1; this.avatar.visible = true; this.applyShift() }
     cam.updateProjectionMatrix(); this.ceiling(); return this.fpv
   },
+  /* Walk mode: the camera follows right behind your character INSIDE the home (the whole body shows) and a joystick moves them.
+     Drag the screen to turn the view. Turned off again by the X on the eye button. */
+  setWalk(on) {
+    on = !!on; if (!this.avatar) return false; if (on === !!this.walk) return this.walk;
+    if (on && this.fpv) this.setFirstPerson(false);
+    const cam = this.cam; this.walk = on; this.joy = null;
+    if (on) { this.wYaw = this.avatar.rotation.y; this.wPitch = .3; this.wFov = cam.fov; cam.fov = 62; cam.near = .1; this.path = []; this.occCache = null; try { cam.clearViewOffset() } catch (e) {} }
+    else { cam.fov = this.wFov || 30; cam.near = 1; this.applyShift() }
+    cam.updateProjectionMatrix(); this.ceiling(); return this.walk
+  },
+  setJoy(x, y) { this.joy = (x || y) ? { x, y } : null },
+  /* can the character stand at (x,z) coming from (ox,oz)? inside the home, not on furniture, not through a wall */
+  walkOk(ox, oz, x, z) {
+    if (x < -2.75 || z < -2.75 || x > this.gw - 3.25 || z > this.gd - 3.25) return false;
+    const a = [Math.floor(ox + 3), Math.floor(oz + 3)], b = [Math.floor(x + 3), Math.floor(z + 3)]; if (a[0] === b[0] && a[1] === b[1]) return true;
+    const occ = this.occCache || (this.occCache = FURN.occupied(this.fItems())); if (occ.has(b[0] + ',' + b[1])) return false;
+    if (this.layout && this.layout.wallSet && Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) === 1 && this.layout.wallSet.has(this.ek(a, b))) return false;
+    return true
+  },
   /* Ceiling: only exists while you look around from inside (first person), so the top of the room is closed in instead of open sky.
      In the normal bird's-eye view it is hidden so you can still see into the room. */
   ceiling() {
     if (!this.scene) return;
-    const on = !!this.fpv, y = this.WALL_H, gw = this.gw || 6, gd = this.gd || 6;
+    const on = !!this.fpv || !!this.walk, y = (this.layout && this.layout.model && this.shellTop) || this.WALL_H, gw = this.gw || 6, gd = this.gd || 6;
     if (!this.ceilM) {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshLambertMaterial({ color: 0xf6f0e4, side: THREE.DoubleSide }));
       m.rotation.x = Math.PI / 2; m.visible = false; this.scene.add(m); this.ceilM = m
     }
+    // interior partition walls (homes with extra rooms) rise to the ceiling while you look around from inside
+    if (this.fxWalls) for (const f of this.fxWalls) { const k = on ? y / f.h : 1; f.w.scale.y = k; f.w.position.y = f.h * k / 2; f.c.position.y = f.h * k + .02 }
     const m = this.ceilM; m.scale.set(this.layout ? gw : gw + .15, this.layout ? gd : gd + .15, 1); m.position.set(this.offX || 0, y, this.offZ || 0); m.visible = on;
     // the house model is cut off at the wall tops for the bird's-eye view: in first person lift the cut so the walls reach the ceiling
     if (this.shellPlane && this.layout && this.layout.model) this.shellPlane.constant = on ? y : this.layout.model.cutY
   },
   setLight(on) { this.roomLight = !!on; this.roomBoost = !!on;     // switching the light ON on purpose gives a slightly brighter room than the starting level
     try { localStorage.setItem('roomLight', on ? 'on' : 'off') } catch (e) {} },
-  power() { return !this.dark_ || (S.items || []).some(i => i.name === 'Gen Set' && i.placed !== false) },
+  power() { return !this.dark_ || (S.items || []).some(i => i.placed !== false && FURN.ITEMS[i.name] && FURN.ITEMS[i.name].backup) || (window.homePowerTier && homePowerTier() === 'full') },
   /* ---------- furniture: every placed item is a model on the 6x6 grid ---------- */
   cc(c) { return -2.5 + c },
   B(w, h, d, c, x, y, z, par) { return this.box(w, h, d, c, x, y, z, par) },
@@ -317,13 +364,18 @@ window.ROOM3D = {
       case 'barrel': { this.cyl(.42, 1.0, c, 0, .5, 0, g); this.cyl(.43, .08, K(c, 1.3), 0, 1.02, 0, g); break }
       case 'toilet': { B(.62, .42, .5, c, 0, .22, .05); B(.66, .6, .2, c, 0, .75, -.3); B(.5, .06, .44, 0xdde3ea, 0, .46, .06); break }
       case 'shower': { B(.9, .06, .9, c, 0, .04, 0); this.cyl(.04, 2.0, 0x888888, -.3, 1.0, -.3, g); B(.4, .08, .4, 0x888888, -.1, 2.0, -.1); break }
+      case 'stairs': { const n = 9, run = 2.7, H = this.WALL_H; for (let k = 0; k < n; k++) { const h = (k + 1) * H / n; this.B(1.8, h, run / n + .02, k % 2 ? 0x9a7650 : 0x8a6a45, 0, h / 2, -run / 2 + (k + .5) * run / n, g) } const L = Math.hypot(run, H - .3); for (const sx of [-.93, .93]) { const rl = this.B(.06, .06, L, 0x3b2a1a, sx, (H + .3) / 2 + .55, 0, g); rl.rotation.x = -Math.atan2(H - .3, run) } break }
+      case 'solar': { B(.78, .86, .52, 0x2c3a55, 0, .43, 0); B(.7, .05, .46, 0x14203f, 0, .9, 0); const pn = B(.9, .05, .62, 0x1b2f66, 0, 1.15, -.04); pn.rotation.x = -.45; B(.5, .04, .3, 0x5b7fd6, 0, 1.17, -.05).rotation.x = -.45; this.cyl(.035, .03, 0x3ddc84, .26, .62, .27, g); break }
+      case 'pendant': { const H = this.WALL_H; this.cyl(.012, .5, 0x222222, 0, H - .25, 0, g); this.cyl(.17, .14, K(c, .9), 0, H - .55, 0, g); g.userData.lamp = { y: H - .66, r: .07 }; break }
+      case 'fan': { const H = this.WALL_H, bl = new THREE.Group(); bl.position.set(0, H - .36, 0); g.add(bl); this.cyl(.012, .22, 0x222222, 0, H - .12, 0, g); this.cyl(.1, .1, 0x555555, 0, H - .3, 0, g); for (let k = 0; k < 4; k++) { const a = new THREE.Group(); a.rotation.y = k * Math.PI / 2; const b = this.B(.62, .02, .13, c, .4, 0, 0, a); bl.add(a) } g.userData.fan = bl; g.userData.lamp = { y: H - .42, r: .06 }; break }
+      case 'chandelier': { const H = this.WALL_H; this.cyl(.012, .35, 0x222222, 0, H - .17, 0, g); this.cyl(.34, .035, 0xc9a24a, 0, H - .45, 0, g); this.cyl(.05, .22, 0xc9a24a, 0, H - .38, 0, g); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; this.cyl(.015, .12, 0xf6ecc8, Math.cos(a) * .32, H - .36, Math.sin(a) * .32, g); const fl = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe9a0 })); fl.position.set(Math.cos(a) * .32, H - .27, Math.sin(a) * .32); g.add(fl) } g.userData.lamp = { y: H - .5, big: true, r: .12 }; break }
       case 'stand': { this.cyl(.2, .05, 0x3a3a3a, 0, .03, 0, g); this.cyl(.03, 1.5, 0x3a3a3a, 0, .78, 0, g); g.userData.lamp = { y: 1.68 }; break }
     }
     return g
   },
   ensureAvatarFree() {
     if (this.act) return;
-    const occ = FURN.occupied(S.items || []), a = this.avatar, cx = Math.floor(a.position.x + 3), cz = Math.floor(a.position.z + 3);
+    const occ = FURN.occupied(this.fItems()), a = this.avatar, cx = Math.floor(a.position.x + 3), cz = Math.floor(a.position.z + 3);
     if (!occ.has(cx + ',' + cz)) return; const f = this.nearestFree(cx, cz, occ); if (f) { a.position.set(this.cc(f[0]), 0, this.cc(f[1])); this.path = [] }
   },
   nearestFree(cx, cz, occ) { let best = null, bd = 1e9; for (let x = 0; x < this.gw; x++) for (let z = 0; z < this.gd; z++) { if (occ.has(x + ',' + z)) continue; const d = Math.abs(x - cx) + Math.abs(z - cz); if (d < bd) { bd = d; best = [x, z] } } return best },
@@ -354,15 +406,20 @@ window.ROOM3D = {
   ek(a, b) { const f = (a[0] < b[0] || (a[0] === b[0] && a[1] < b[1])) ? [a, b] : [b, a]; return f[0][0] + ',' + f[0][1] + '|' + f[1][0] + ',' + f[1][1] },
   sync() {
     if (!this.on) return; this.setRoom(S.layout || null, S.grid || 6); this.petLoad(); if (this.petCfg && !this.pet3) this.petBuild(); if (!this.petCfg && this.pet3) { this.scene.remove(this.pet3); this.pet3 = null; if (this.petItem3) { this.scene.remove(this.petItem3); this.petItem3 = null } } const ig = this.itemsGroup; while (ig.children.length) ig.remove(ig.children[0]);
-    this.lamps = []; this.byId = {}; const items = S.items || [], own = (n) => items.some(i => i.name === n && i.placed !== false);
-    const lamp = (x, y, z, big, par) => { const bm = new THREE.MeshBasicMaterial({ color: 0x8a8466 }); const b = new THREE.Mesh(new THREE.SphereGeometry(big ? .2 : .13, 12, 10), bm); b.position.set(x, y, z); ig.add(b); const l = new THREE.PointLight(0xffd68a, 0, big ? 11 : 8); l.position.set(x, y - .1, z); ig.add(l); this.lamps.push({ l, bm, k: big ? 1.15 : .9 }) };
+    this.finishApply(); this.occCache = null; this.lamps = []; this.fans = []; this.byId = {}; const items = this.fItems(), own = (n) => (S.items || []).some(i => i.name === n && i.placed !== false);
+    const lamp = (x, y, z, big, par, glow) => { const bm = new THREE.MeshBasicMaterial({ color: 0x8a8466 }); const b = new THREE.Mesh(new THREE.SphereGeometry(glow || (big ? .11 : .1), 12, 10), bm); b.position.set(x, y, z); ig.add(b); let l; if (this.lamps.length < 8) { l = new THREE.PointLight(0xffd68a, 0, big ? 11 : 8); l.position.set(x, y - .1, z); ig.add(l) } else l = { intensity: 0 }; this.lamps.push({ l, bm, k: big ? 1.15 : .9 }) };
+    if ((S.floor || 0) === 1 && S.layout && S.layout.blocked) for (const c of S.layout.blocked) { const [bx, bz] = String(c).split(',').map(Number); this.box(1, .05, 1, 0x14110e, this.cc(bx), .03, this.cc(bz), ig) }      // the stairwell opening upstairs
     for (const it of items) {
       if (it.placed === false || !FURN.isItem(it.name)) continue; const D = FURN.ITEMS[it.name];
+      if (D.hang) {          // ceiling lights and fans: they hang over the cell you picked, in any room
+        const g = this.model(it.name); g.position.set(this.cc(it.x), 0, this.cc(it.z)); g.userData.id = it.id; g.userData.name = it.name; ig.add(g); this.byId[it.id] = g;
+        if (g.userData.fan) this.fans.push(g.userData.fan); if (g.userData.lamp) lamp(g.position.x, g.userData.lamp.y, g.position.z, !!g.userData.lamp.big, null, g.userData.lamp.r); continue
+      }
       if (D.fixed) continue;
       const [w, d] = FURN.footprint(it.name, it.rot), g = this.model(it.name); g.position.set(this.cc(it.x) + (w - 1) / 2, 0, this.cc(it.z) + (d - 1) / 2); g.rotation.y = it.rot * Math.PI / 180; g.userData.id = it.id; g.userData.name = it.name; ig.add(g); this.byId[it.id] = g;
       if (g.userData.lamp) lamp(g.position.x, g.userData.lamp.y, g.position.z, false)
     }
-    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .35, 0x222222, bx, this.WALL_H - .18, bz, ig); lamp(bx, this.WALL_H - .4, bz, true) }
+    if (own('Ceiling Bulb')) { const bx = this.layout ? this.cc(this.layout.start[0]) : 0, bz = this.layout ? this.cc(this.layout.start[1]) : 0; this.cyl(.015, .18, 0x222222, bx, this.WALL_H - .09, bz, ig); lamp(bx, this.WALL_H - .26, bz, true) }
     if (own('Wall Lamp') && !this.layout) { const ly = this.WALL_H - .8; this.box(.12, .2, .22, 0x555555, -2.93, ly, .2, ig); lamp(-2.8, ly, .2); this.box(.22, .2, .12, 0x555555, 1.2, ly, -2.93, ig); lamp(1.2, ly, -2.8) }
     this.ensureAvatarFree(); if (this.selId) this.select(this.selId); if (this.ghostInfo) this.ghost(this.ghostInfo.name, this.ghostInfo.x, this.ghostInfo.z, this.ghostInfo.rot, this.ghostInfo.valid)
   },
@@ -410,7 +467,12 @@ window.ROOM3D = {
   /* ---------- buy mode helpers: ghost preview, selection ring, hide, thumbnails ---------- */
   ghost(name, x, z, rot, valid) {
     this.unghost(); this.ghostInfo = { name, x, z, rot, valid };
-    const D = FURN.ITEMS[name]; if (D.fixed) return; const [w, d] = FURN.footprint(name, rot), g = this.model(name), col = new THREE.Color(valid ? 0x3ddc84 : 0xff4d4d);
+    const D = FURN.ITEMS[name]; if (D.hang) {          // preview of a ceiling light / fan: the fixture plus a coloured spot on the floor under it
+      const g = this.model(name), col = new THREE.Color(valid ? 0x3ddc84 : 0xff4d4d); g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .78; if (o.material.emissive) o.material.emissive = col.clone().multiplyScalar(.35) } });
+      g.position.set(this.cc(x), 0, this.cc(z)); this.scene.add(g); this.ghostG = g;
+      const pad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .35, depthWrite: false })); pad.rotation.x = -Math.PI / 2; pad.position.set(g.position.x, .03, g.position.z); this.scene.add(pad); this.ghostPad = pad; return
+    }
+    if (D.fixed) return; const [w, d] = FURN.footprint(name, rot), g = this.model(name), col = new THREE.Color(valid ? 0x3ddc84 : 0xff4d4d);
     g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = .72; o.material.emissive = col.clone().multiplyScalar(.45) } });
     g.position.set(this.cc(x) + (w - 1) / 2, 0, this.cc(z) + (d - 1) / 2); g.rotation.y = rot * Math.PI / 180; this.scene.add(g); this.ghostG = g;
     const pad = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .35, depthWrite: false })); pad.rotation.x = -Math.PI / 2; pad.position.set(g.position.x, .03, g.position.z); this.scene.add(pad); this.ghostPad = pad
@@ -418,7 +480,7 @@ window.ROOM3D = {
   unghost() { if (this.ghostG) { this.scene.remove(this.ghostG); this.ghostG = null } if (this.ghostPad) { this.scene.remove(this.ghostPad); this.ghostPad = null } this.ghostInfo = null },
   hideItem(id, hide) { const g = this.byId && this.byId[id]; if (g) g.visible = !hide },
   select(id) {
-    this.deselect(); const g = this.byId && this.byId[id]; if (!g) return; this.selId = id; const it = (S.items || []).find(i => i.id === id); if (!it) return; const [w, d] = FURN.footprint(it.name, it.rot);
+    this.deselect(); const g = this.byId && this.byId[id]; if (!g) return; this.selId = id; const it = this.fItems().find(i => i.id === id); if (!it) return; const [w, d] = FURN.footprint(it.name, it.rot);
     const r = new THREE.Mesh(new THREE.PlaneGeometry(w + .12, d + .12), new THREE.MeshBasicMaterial({ color: 0x2f7fd8, transparent: true, opacity: .4, depthWrite: false })); r.rotation.x = -Math.PI / 2; r.position.set(g.position.x, .035, g.position.z); this.scene.add(r); this.ring = r
   },
   deselect() { this.selId = null; if (this.ring) { this.scene.remove(this.ring); this.ring = null } },
@@ -441,7 +503,7 @@ window.ROOM3D = {
     return null
   },
   walkToCell(cell, exact) {
-    const occ = FURN.occupied(S.items || []), a = this.avatar.position, from = this.cellFromPoint(a); occ.delete(from[0] + ',' + from[1]); if (occ.has(cell[0] + ',' + cell[1])) return false;
+    const occ = FURN.occupied(this.fItems()), a = this.avatar.position, from = this.cellFromPoint(a); occ.delete(from[0] + ',' + from[1]); if (occ.has(cell[0] + ',' + cell[1])) return false;
     const p = this.bfs(from, cell, occ); if (!p) return false;
     this.path = p.slice(1).map(c => new THREE.Vector3(this.cc(c[0]), 0, this.cc(c[1]))); if (exact) this.path.push(new THREE.Vector3(Math.max(-2.6, Math.min(this.gw - 3.4, exact.x)), 0, Math.max(-2.6, Math.min(this.gd - 3.4, exact.z)))); return true
   },
@@ -458,7 +520,7 @@ window.ROOM3D = {
   SEAT: { chair: .54, stool: .82, sofa: .58, armchair: .58, toilet: .5 },
   useItem(it, act, cb) {
     const D = FURN.ITEMS[it.name] || (it.fixture ? {} : null); if (!D) return; const [w, d] = it.fixture ? [it.w, it.d] : FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, f = [Math.sin(th), Math.cos(th)];
-    const occ = FURN.occupied(S.items || []), from = this.cellFromPoint(this.avatar.position); occ.delete(from[0] + ',' + from[1]);
+    const occ = FURN.occupied(this.fItems()), from = this.cellFromPoint(this.avatar.position); occ.delete(from[0] + ',' + from[1]);
     const cx = it.x + (w - 1) / 2, cz = it.z + (d - 1) / 2; let best = null, bs = 1e9, bp = null;
     for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) {
       if (i >= 0 && i < w && j >= 0 && j < d) continue; if ((i === -1 || i === w) && (j === -1 || j === d)) continue;
@@ -496,7 +558,7 @@ window.ROOM3D = {
     if (this.buy) { if (itemG && String(itemG.userData.id).startsWith('fx:')) { this.buy({ type: 'none' }); return } if (itemG) this.buy({ type: 'item', id: itemG.userData.id }); else if (floorHit) this.buy({ type: 'cell', cell: this.cellFromPoint(floorHit.point) }); else this.buy({ type: 'none' }); return }
     if (itemG && window.USE && USE.open(itemG.userData.id)) return;
     if (itemG && itemG.userData.eat) {
-      const it = (S.items || []).find(i => i.id === itemG.userData.id), occ = FURN.occupied(S.items || []), [w, d] = FURN.footprint(it.name, it.rot); let best = null, bl = 1e9;
+      const it = this.fItems().find(i => i.id === itemG.userData.id), occ = FURN.occupied(this.fItems()), [w, d] = FURN.footprint(it.name, it.rot); let best = null, bl = 1e9;
       for (let i = -1; i <= w; i++) for (let j = -1; j <= d; j++) { if ((i >= 0 && i < w) && (j >= 0 && j < d)) continue; const c = [it.x + i, it.z + j]; if (c[0] < 0 || c[1] < 0 || c[0] >= this.gw || c[1] >= this.gd || occ.has(c[0] + ',' + c[1])) continue; const dd = Math.hypot(this.cc(c[0]) - this.avatar.position.x, this.cc(c[1]) - this.avatar.position.z); if (dd < bl && this.walkToCell(c)) { bl = dd; best = c } }
       if (!best) { toast('Something is blocking your cooler box'); return } this.walkToCell(best); this.onArrive = () => eat({ stopPropagation() { } }); return
     }
@@ -512,6 +574,10 @@ window.ROOM3D = {
       const yaw = this.fpYaw, pit = this.fpPitch, cp = Math.cos(pit), back = .5,    // sit a little behind the head so you see the room the way your eyes would, not through a keyhole
         ex = Math.max(-2.85, Math.min(this.gw - 3.15, hw.x - Math.sin(yaw) * back)), ez = Math.max(-2.85, Math.min(this.gd - 3.15, hw.z - Math.cos(yaw) * back)), ey = hw.y + .12;
       cam.position.set(ex, ey, ez); cam.lookAt(ex + Math.sin(yaw) * cp, ey + Math.sin(pit), ez + Math.cos(yaw) * cp);
+    } else if (this.walk && this.avatar) {          // chase camera: behind the character, inside the room, ceiling above
+      const A = this.avatar.position, yaw = this.wYaw, pit = this.wPitch, dist = 2.2, cp = Math.cos(pit);
+      const cx = Math.max(-2.85, Math.min(this.gw - 3.15, A.x - Math.sin(yaw) * cp * dist)), cz = Math.max(-2.85, Math.min(this.gd - 3.15, A.z - Math.cos(yaw) * cp * dist)), cy = Math.min(this.WALL_H - .25, 1.15 + Math.sin(pit) * dist);
+      cam.position.set(cx, cy, cz); cam.lookAt(A.x, 1.0, A.z)
     } else { cam.position.set(px + this.offX, py + .8, pz + this.offZ); cam.lookAt(this.offX, .8, this.offZ) }
     // walls between the camera and the room fade out
     this.walls.forEach(w => { if (this.layout) return; const side = px * w.out[0] + pz * w.out[1], want = !this.fpv && side > 2.2 ? .08 : 1, m = w.m.material; m.opacity += (want - m.opacity) * Math.min(1, dt * 8); m.depthWrite = m.opacity > .6; w.m.visible = m.opacity > .02 });
@@ -519,6 +585,14 @@ window.ROOM3D = {
     const a = this.avatar; let moving = false;
     if (this.act && performance.now() - this.act.t0 >= this.act.dur) this.endAct(false);
     if (this.path.length) { const goal = this.path[0], d = goal.clone().sub(a.position); d.y = 0; const L = d.length(); if (L < .08) { this.path.shift(); if (!this.path.length && this.onArrive) { const f = this.onArrive; this.onArrive = null; f() } } else { moving = true; d.normalize(); a.position.addScaledVector(d, Math.min(L, 2.5 * dt)); const ta = Math.atan2(d.x, d.z), df = ((ta - a.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; a.rotation.y += df * Math.min(1, dt * 10) } }
+    if (this.walk && this.joy && !this.act) {      // joystick: up = forward along the camera, sideways = strafe; slides along walls and furniture
+      const j = this.joy, mag = Math.min(1, Math.hypot(j.x, j.y)), yaw = this.wYaw;
+      if (mag > .12) {
+        const dx = Math.sin(yaw) * j.y - Math.cos(yaw) * j.x, dz = Math.cos(yaw) * j.y + Math.sin(yaw) * j.x, L = Math.hypot(dx, dz) || 1, sp = 2.1 * mag * dt, mx = dx / L * sp, mz = dz / L * sp, p0 = a.position;
+        if (this.walkOk(p0.x, p0.z, p0.x + mx, p0.z + mz)) { p0.x += mx; p0.z += mz } else if (this.walkOk(p0.x, p0.z, p0.x + mx, p0.z)) p0.x += mx; else if (this.walkOk(p0.x, p0.z, p0.x, p0.z + mz)) p0.z += mz;
+        const ta = Math.atan2(dx, dz), df = ((ta - a.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; a.rotation.y += df * Math.min(1, dt * 12); moving = true
+      }
+    }
     this.animate(t, dt, moving);
     // time of day: daylight dl (0 night .. 1 day) drives sun, sky tint, ground and window; bought lamps follow NEPA power
     const dl = this.dl == null ? 1 : this.dl, kk = Math.min(1, dt * 3), C = THREE.Color, lerpC = (a, b, t) => new C(a).lerp(new C(b), t);
@@ -527,7 +601,7 @@ window.ROOM3D = {
     this.sun.intensity += (.55 * dl * (rl ? 1 : .55) * (1 + .08 * bst) - this.sun.intensity) * kk; this.sun.color.copy(lerpC(0xff8a45, 0xfff0d0, Math.max(0, Math.min(1, (dl - .2) / .6))));
     this.moon.intensity += (.42 * (1 - dl) - this.moon.intensity) * kk;
     this.ground.color.copy(lerpC(0x24331f, 0x93a05a, dl)); if (this.glass) this.glass.color.copy(lerpC(0x16224a, 0xbfe4ff, dl));
-    const on = pw && rl; this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) * (1 + .25 * bst) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
+    const on = pw && rl; if (this.fans && this.fans.length) { const sp = pw ? 7 : 0; this.fans.forEach(f => { f.userData.v = (f.userData.v || 0) + (sp - (f.userData.v || 0)) * Math.min(1, dt * 1.5); f.rotation.y += f.userData.v * dt }) } this.lamps.forEach(m => { const want = on ? m.k * (.4 + .75 * (1 - dl)) * (1 + .25 * bst) : 0; m.l.intensity += (want - m.l.intensity) * Math.min(1, dt * 6); m.bm.color.copy(lerpC(0x8a8466, 0xffe9a0, Math.min(1, m.l.intensity / (m.k * .6)))) });
     this.petStep(t, dt);
     this.R.render(this.scene, cam)
   }

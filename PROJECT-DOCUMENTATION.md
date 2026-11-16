@@ -796,3 +796,11 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - Rewards: legal name locks once saved; Payouts tab inside Creator Academy.
 - Age check remembers in localStorage + cookie; sign-in no longer re-asks for the full date of birth.
 - 2D map overview shows players as dots; trait picker and sheets no longer flash on redraw.
+
+## Merged v27 home features into the v2 build (Nov 2026)
+- Homes: upstairs floors with a Grand Staircase, renovations (back extension, upstairs layout, luxury finish), fully furnished Ikoyi / Maitama mansions, floor switch buttons (routes/acproperties.js, utils/acproperties.js, buy.js, homes.js, room3d.js).
+- Furniture: ceiling lights and fans that hang at a cell, Power category (Gen Set, Solar Inverter Kit), Arc Floor Lamp (utils/furniture.js, public/allconnect/furniture.js).
+- NEPA: outages are occasional (about 2-4 minutes); mansions and 4+ bedroom homes never lose power, 3-bedroom homes lose it less often (homePowerTier in app.js).
+- Visiting: friends can only visit while the owner is online, otherwise it counts as a break-in with an alert; owner can kick visitors and choose whether guests may use things (routes/acsocial.js, party.js, phone.js, use.js).
+- Walk mode: press and hold the eye button for a joystick and a full-body view (v2.js, modal-fix.css).
+

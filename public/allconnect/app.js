@@ -119,10 +119,11 @@ function applyAC(ac) {
   if (!S.activeProperty) S.activePropertyId = '';
   S.items = S.activeProperty ? S.activeProperty.items : S.legacyItems;
   S.grid = window.homeGrid ? homeGrid(S.activeProperty) : 6;
-  S.layout = window.homeLayout ? homeLayout(S.activeProperty) : null;
-  if (S.activeProperty) S.paint = S.activeProperty.paint || S.legacyPaint;
+  if (S.floorFor !== S.activePropertyId) { S.floor = 0; S.floorFor = S.activePropertyId }       // a different home always starts on the ground floor
+  if (!S.activeProperty || !S.activeProperty.upstairs) S.floor = 0;
+  S.layout = window.homeLayout ? homeLayout(S.activeProperty, S.floor || 0) : null;
+  S.paint = S.activeProperty ? (S.activeProperty.paint || S.legacyPaint) : S.legacyPaint;
   if (window.VISIT && VISIT.on) VISIT.reapply();                 // you are visiting a friend: leave their room on screen
-  else S.paint = S.legacyPaint;
   S.wish = ac.wish || [];
   S.mapPos = ac.mapPos || null;
   if (S.mapPos && window.MAP3D && !S._mapRestored) { S._mapRestored = true; MAP3D.restorePos(S.mapPos); }
@@ -834,6 +835,9 @@ window.addEventListener('storage', e => { if (e.key === 'ghPrefs') refreshMute()
 setTimeout(refreshMute, 0); window.addEventListener('load', refreshMute);
 
 /* ================= NEPA & city banners: pop up now and then ================= */
+/* how well the active home rides out NEPA: 'full' (own backup power), 'partial' or 'none' (set by the server per home) */
+function homePowerTier() { const p = typeof S !== 'undefined' && S.activeProperty; return (p && p.power) || 'none' }
+window.homePowerTier = homePowerTier;
 const BAN = {
   t: 0,
   show(text, ms = 4800) { const b = $('banner'); if (!b) return;
@@ -851,22 +855,27 @@ const BAN = {
     if (window.BANNER && BANNER.show({ icon, app: 'NEPA', title, text, tap: open })) return;
     toast(icon + ' ' + title)
   },
+  /* NEPA is now an occasional event, not a constant flicker: on average light stays ~20 minutes, then goes for 2-4 minutes.
+     Mansions and homes with 4+ bedrooms have their own backup power (never cut); 3-bedroom homes lose light 3x less often. */
   cycle() {
     clearTimeout(this.t);
+    const tier = window.homePowerTier ? homePowerTier() : 'none';
     this.t = setTimeout(() => {
       const idle = $('splash').style.display !== 'none' || $('hub').style.display === 'flex';
-      if (!idle) {
+      const tierNow = window.homePowerTier ? homePowerTier() : 'none';
+      if (tierNow === 'full' && !this.light) { this.light = true; $('app').classList.remove('blackout'); if (window.ROOM3D) ROOM3D.dark(false) }
+      if (!idle && tierNow !== 'full') {
         if (this.light) { this.light = false;
           $('app').classList.add('blackout'); if (window.ROOM3D) ROOM3D.dark(true);
           this.note(false);
-          this.t = setTimeout(() => this.cycle(), 20000 + Math.random() * 25000); return }
+          this.t = setTimeout(() => this.cycle(), 120000 + Math.random() * 120000); return }       // out for 2-4 minutes
         this.light = true;
         $('app').classList.remove('blackout');
         if (window.ROOM3D) ROOM3D.dark(false);
         this.note(true)
       }
       this.cycle()
-    }, this.light ? 45000 + Math.random() * 75000 : 1000)
+    }, this.light ? (tier === 'partial' ? 3 : 1) * (900000 + Math.random() * 600000) : 1000)       // light stays 15-25 min (45-75 min in a 3-bedroom home)
   }
 };
 BAN.cycle();

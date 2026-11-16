@@ -15,7 +15,6 @@ const ITEMS = {
   'Cooler Box': { cat: 'Kitchen', w: 1, d: 1, price: 6500, stars: 1, kind: 'cooler', color: '#2d6dd8', emoji: '🧊', locked: true },
   'Gas Cooker': { cat: 'Kitchen', w: 1, d: 1, price: 85000, stars: 2, kind: 'cooker', color: '#bbbbbb', emoji: '🍳' },
   'Fridge': { cat: 'Kitchen', w: 1, d: 1, price: 320000, stars: 3, kind: 'fridge', color: '#dfe6ee', emoji: '🧊' },
-  'Gen Set': { cat: 'Kitchen', w: 1, d: 1, price: 180000, stars: 3, kind: 'genset', color: '#dd9944', emoji: '⚡' },
   'Dining Table': { cat: 'Kitchen', w: 2, d: 1, price: 14000, stars: 2, kind: 'table', color: '#c9a572', emoji: '🍽️' },
   // Bath
   'Bucket Set': { cat: 'Bath', w: 1, d: 1, price: 2000, stars: 1, kind: 'bucket', color: '#2f6fd8', emoji: '🪣' },
@@ -30,12 +29,21 @@ const ITEMS = {
   '3-Seater Family Sofa': { cat: 'Comfort', w: 3, d: 1, price: 24000, stars: 3, kind: 'sofa', color: '#c97b4a', emoji: '🛋️' },
   'Italian Leather Sofa': { cat: 'Comfort', w: 2, d: 1, price: 48000, stars: 3, kind: 'sofa', color: '#16161a', emoji: '🛋️' },
   'Royal Gold Sofa': { cat: 'Comfort', w: 2, d: 1, price: 96000, stars: 4, kind: 'sofa', color: '#7a1424', emoji: '🛋️' },
-  // Light (lit when NEPA gives light or you own a Gen Set)
+  // Power: keeps lights, fridge and gadgets on when NEPA takes light. A Gen Set works in an outage; a Solar kit never lets you down.
+  'Gen Set': { cat: 'Power', w: 1, d: 1, price: 180000, stars: 3, kind: 'genset', color: '#dd9944', emoji: '⚡', backup: 'gen' },
+  'Solar Inverter Kit': { cat: 'Power', w: 1, d: 1, price: 650000, stars: 4, kind: 'solar', color: '#1f3a6b', emoji: '☀️', backup: 'solar' },
+  // Light (lit when NEPA gives light or you own a Gen Set). hang: true = hangs from the ceiling at the cell you choose, one per room is fine
+  'Pendant Light': { cat: 'Light', w: 0, d: 0, price: 22000, stars: 2, kind: 'pendant', color: '#ffd9a0', emoji: '💡', fixed: true, hang: true },
+  'Ceiling Fan': { cat: 'Light', w: 0, d: 0, price: 65000, stars: 3, kind: 'fan', color: '#d8c7a6', emoji: '🌀', fixed: true, hang: true },
+  'Chandelier': { cat: 'Light', w: 0, d: 0, price: 180000, stars: 4, kind: 'chandelier', color: '#ffe3a3', emoji: '🪔', fixed: true, hang: true },
+  // The staircase that is built together with an upstairs floor. Not sold in the shop; it can be moved but not stored or sold.
+  'Grand Staircase': { cat: 'Structure', w: 2, d: 3, price: 400000, stars: 4, kind: 'stairs', color: '#8a6a45', emoji: '🪜', locked: true, hidden: true, stairs: true },
+  'Arc Floor Lamp': { cat: 'Light', w: 1, d: 1, price: 45000, stars: 3, kind: 'stand', color: '#2b2b33', emoji: '🪔' },
   'Ceiling Bulb': { cat: 'Light', w: 0, d: 0, price: 4000, stars: 1, kind: 'ceiling', color: '#ffe08a', emoji: '💡', fixed: true },
   'Wall Lamp': { cat: 'Light', w: 0, d: 0, price: 6000, stars: 1, kind: 'wall', color: '#ffd166', emoji: '🔦', fixed: true },
   'Standing Lamp': { cat: 'Light', w: 1, d: 1, price: 18000, stars: 2, kind: 'stand', color: '#f4b942', emoji: '🕯️' }
 };
-const CATS = ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light'];
+const CATS = ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light', 'Power'];
 // What every new life starts with (the old hard-coded room), as items you can move or sell.
 const STARTERS = [
   { name: 'Spring Bed', x: 0, z: 1, rot: 0 }, { name: 'Plastic Chair', x: 2, z: 3, rot: 0 }, { name: 'Lounge Armchair', x: 3, z: 3, rot: 0 },
@@ -51,6 +59,14 @@ const gridW = (g) => (typeof g === 'object' && g ? g.w : g), gridD = (g) => (typ
 const inBounds = (x, z, w, d, grid = GRID) => Number.isInteger(x) && Number.isInteger(z) && x >= 0 && z >= 0 && x + w <= gridW(grid) && z + d <= gridD(grid);
 const cellsOf = (it) => { const [w, d] = footprint(it.name, it.rot); const out = []; for (let i = 0; i < w; i++) for (let j = 0; j < d; j++) out.push([it.x + i, it.z + j]); return out; };
 const occupied = (items, skipId, grid) => { const s = new Set(grid && typeof grid === 'object' && grid.blocked ? grid.blocked : []); for (const it of items) { if (it.id === skipId || it.placed === false || !isItem(it.name) || ITEMS[it.name].fixed) continue; for (const [a, b] of cellsOf(it)) s.add(a + ',' + b); } return s; };
+const onFloor = (items, f) => (items || []).filter((i) => (Number(i.floor) || 0) === (Number(f) || 0));
+const isHang = (n) => isItem(n) && !!ITEMS[n].hang;
+// Ceiling lights / fans hang at a cell: inside the room, not on a wall cell, and no other hanging item already at that cell
+function canHang(items, name, x, z, skipId, grid = GRID) {
+  if (!isHang(name) || !inBounds(x, z, 1, 1, grid)) return false;
+  if (grid && typeof grid === 'object' && grid.blocked && new Set(grid.blocked).has(x + ',' + z)) return false;
+  return !items.some((i) => i.id !== skipId && i.placed !== false && isHang(i.name) && i.x === x && i.z === z);
+}
 // Can `name` stand at (x,z,rot)? (ignoring the item `skipId` itself, for moves)
 function canPlace(items, name, x, z, rot, skipId, grid = GRID) {
   if (!isItem(name) || ITEMS[name].fixed || !validRot(rot)) return false;
@@ -78,4 +94,4 @@ function migrate(ownedNames) {
   }
   return { items, refund };
 }
-module.exports = { GRID, SELL_RATE, ITEMS, CATS, STARTERS, isItem, sellPrice, footprint, validRot, inBounds, cellsOf, occupied, canPlace, autoPlace, newId, starterItems, migrate };
+module.exports = { onFloor, isHang, canHang, GRID, SELL_RATE, ITEMS, CATS, STARTERS, isItem, sellPrice, footprint, validRot, inBounds, cellsOf, occupied, canPlace, autoPlace, newId, starterItems, migrate };

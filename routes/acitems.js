@@ -20,7 +20,8 @@ router.post('/buy', async (req, res, next) => {
     const it = F.ITEMS[name], u0 = await ensureAC(req.user.id), items = u0.ac.items || [];
     if (items.length >= MAX_ITEMS) return bad(res, 'Your house is full of stuff. Sell or store something first.');
     let inst = { id: F.newId(), name, x: 0, z: 0, rot: 0, placed: true };
-    if (it.fixed) { if (items.some((i) => i.name === name)) return bad(res, 'You already have that.', 409); }
+    if (it.hang) { const p = pos(req.body); if (!F.canHang(items, name, p.x, p.z)) return bad(res, 'Pick a free spot inside the room to hang it.'); Object.assign(inst, p); }
+    else if (it.fixed) { if (items.some((i) => i.name === name)) return bad(res, 'You already have that.', 409); }
     else { const p = pos(req.body); if (!F.canPlace(items, name, p.x, p.z, p.rot)) return bad(res, 'That spot is taken or outside the room.'); Object.assign(inst, p); }
     const u = await User.findOneAndUpdate({ _id: req.user.id, 'ac.cash': { $gte: it.price } }, { $inc: { 'ac.cash': -it.price }, $push: { 'ac.items': inst }, $pull: { 'ac.wish': name } }, { new: true });
     if (!u) return bad(res, 'Not enough ₦.', 402);
@@ -42,9 +43,9 @@ async function save(req, res, id, set) {
 async function putDown(req, res, next, needStored) {
   try {
     const c = await mine(req, res); if (!c) return; const { it, items } = c, def = F.ITEMS[it.name];
-    if (def.fixed) return bad(res, 'That is fixed to the wall.');
+    if (def.fixed && !def.hang) return bad(res, 'That is fixed to the wall.');
     if (needStored && it.placed !== false) return bad(res, 'Already in your room.');
-    const p = pos(req.body); if (!F.canPlace(items, it.name, p.x, p.z, p.rot, it.id)) return bad(res, 'That spot is taken or outside the room.');
+    const p = pos(req.body); if (!(def.hang ? F.canHang(items, it.name, p.x, p.z, it.id) : F.canPlace(items, it.name, p.x, p.z, p.rot, it.id))) return bad(res, 'That spot is taken or outside the room.');
     await save(req, res, it.id, { x: p.x, z: p.z, rot: p.rot, placed: true });
   } catch (e) { next(e); }
 }

@@ -321,10 +321,54 @@ router.get('/visit/:id', async (req, res, next) => {
       if (gone) { property = null; propertyId = '' }       // their live home ran out: fall back to the Starter Room
     }
     if (property) { paint = property.paint || paint; items = property.items || []; propertyName = (A.HOMES[property.type] && A.HOMES[property.type].name) || 'Home' }
-    const plain = (it) => ({ id: it.id, name: it.name, x: it.x, z: it.z, rot: it.rot || 0, placed: it.placed !== false });
-    notify(io(req), f.other, { icon: '👋', text: `${label(req.user)} visited your place`, kind: 'friend' }).catch(() => {});
-    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName, property: property ? A.publicHome(property) : null, placed: items.map(plain) } });
+    const plain = (it) => ({ id: it.id, name: it.name, x: it.x, z: it.z, rot: it.rot || 0, floor: Number(it.floor) || 0, placed: it.placed !== false });
+    // Visiting only works while the owner is online. If they are away it is a break-in: they get a burglar alert and can kick you out.
+    const now = new Date(), vis = host.ac.visit || {};
+    const k = (vis.kicked || []).find((x) => String(x.id) === String(f.me) && new Date(x.until) > now);
+    if (k) return bad(res, 403, `${label(host)} asked you to leave. Try again in ${Math.max(1, Math.ceil((new Date(k.until) - now) / 60000))} min.`);
+    const online = acPresence.isOnline(f.other), burglar = !online;
+    await User.updateOne({ _id: f.other }, { $pull: { 'ac.visit.guests': { id: String(f.me) } } });
+    await User.updateOne({ _id: f.other }, { $push: { 'ac.visit.guests': { id: String(f.me), name: label(req.user), at: now, burglar } } });
+    notify(io(req), f.other, burglar
+      ? { icon: '🚨', text: `Burglar alert! ${label(req.user)} broke into your home while you were away. Open House Parties to kick them out.`, kind: 'warn' }
+      : { icon: '👋', text: `${label(req.user)} is visiting your place. You can kick them out in House Parties.`, kind: 'friend' }).catch(() => {});
+    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName, property: property ? A.publicHome(property) : null, placed: items.map(plain), burglar, allowUse: !!vis.allowUse && !burglar } });
   } catch (e) { next(e); }
+});
+// the visitor's heartbeat: tells them if they were kicked and whether the owner is home now
+router.post('/visit/:id/ping', async (req, res, next) => {
+  try {
+    const f = await friendOr(req, res); if (!f) return;
+    const host = await User.findById(f.other).select('ac.visit'), vis = (host && host.ac && host.ac.visit) || {}, now = new Date();
+    const kicked = (vis.kicked || []).some((x) => String(x.id) === String(f.me) && new Date(x.until) > now), here = (vis.guests || []).some((g) => String(g.id) === String(f.me));
+    if (kicked || !here) return res.json({ kicked: true });
+    await User.updateOne({ _id: f.other, 'ac.visit.guests.id': String(f.me) }, { $set: { 'ac.visit.guests.$.at': now } });
+    const online = acPresence.isOnline(f.other);
+    res.json({ kicked: false, ownerOnline: online, allowUse: !!vis.allowUse && online });
+  } catch (e) { next(e); }
+});
+router.post('/visit/:id/leave', async (req, res, next) => {
+  try { const f = await friendOr(req, res); if (!f) return; await User.updateOne({ _id: f.other }, { $pull: { 'ac.visit.guests': { id: String(f.me) } } }); res.json({ ok: true }); } catch (e) { next(e); }
+});
+// the owner's side: who is in my home right now, kick them, and decide whether guests may use my things
+router.get('/visitors', async (req, res, next) => {
+  try {
+    const me = await User.findById(uid(req)).select('ac.visit'), vis = (me && me.ac && me.ac.visit) || {}, cut = Date.now() - 90000;
+    res.json({ allowUse: !!vis.allowUse, guests: (vis.guests || []).filter((g) => new Date(g.at).getTime() > cut).map((g) => ({ id: g.id, name: g.name, burglar: !!g.burglar, at: g.at })) });
+  } catch (e) { next(e); }
+});
+router.post('/visitors/kick', async (req, res, next) => {
+  try {
+    const gid = String((req.body && req.body.userId) || ''); if (!gid) return bad(res, 400, 'Who should leave?');
+    const mins = Math.max(5, Math.min(240, Number(req.body && req.body.minutes) || 30)), until = new Date(Date.now() + mins * 60000);
+    await User.updateOne({ _id: uid(req) }, { $pull: { 'ac.visit.guests': { id: gid }, 'ac.visit.kicked': { id: gid } } });
+    await User.updateOne({ _id: uid(req) }, { $push: { 'ac.visit.kicked': { id: gid, until } } });
+    notify(io(req), gid, { icon: '🚪', text: `${label(req.user)} asked you to leave their home.`, kind: 'warn' }).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+router.post('/visitors/settings', async (req, res, next) => {
+  try { await User.updateOne({ _id: uid(req) }, { $set: { 'ac.visit.allowUse': !!(req.body && req.body.allowUse) } }); res.json({ allowUse: !!(req.body && req.body.allowUse) }); } catch (e) { next(e); }
 });
 router.post('/buy-food/:id', async (req, res, next) => {
   try {
