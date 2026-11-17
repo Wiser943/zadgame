@@ -84,6 +84,7 @@ const UserSchema = new mongoose.Schema({
       boughtAt: { type: Date, default: Date.now }, leaseExpiresAt: { type: Date, default: null }, paint: { type: String, default: '#d9a93a' },
       level: { type: Number, default: 0, min: 0, max: 2 }, bedrooms: { type: Number, default: 0, min: 0, max: 5 }, bath: { type: Boolean, default: false }, upstairs: { type: Boolean, default: false }, upStyle: { type: String, default: 'lounge' }, finish: { type: String, default: 'standard' }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
       items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, floor: { type: Number, default: 0 }, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },
+    baes: { type: [{ _id: false, partner: String, since: { type: Date, default: Date.now } }], default: [] },   // up to 3 "baes" (routes/acsocial.js keeps both sides in sync)
     wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
     activeProperty: { type: String, default: '' },         // the home the player last entered ('' = the Starter Room), so it loads again after a refresh
     health: { type: mongoose.Schema.Types.Mixed, default: null },   // Health app: { ill, checked, last } (see utils/achealth.js)

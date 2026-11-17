@@ -528,6 +528,7 @@ const GIST = {
     $('ab').innerHTML = `<div class="gprof"><div class="gcover" ${u.cover ? `style="background-image:url('${esc(u.cover)}')" data-ph="${esc(u.cover)}" onclick="GIST.viewPhoto(this.dataset.ph)"` : ''}></div><div class="gavw" data-ph="${esc(avSrc)}" onclick="GIST.viewPhoto(this.dataset.ph)">${PH.av({ avatar: u.avatar, displayName: u.displayName, username: u.username }, 1).replace('class="avi big"', 'class="avi huge"')}${r.online ? '<i class="gon"></i>' : ''}</div>
       <h3>${esc(u.displayName)}${this.vb(u)}</h3><p class="gun">${u.username ? '@' + esc(u.username) : ''}${r.online ? ' · <span class="gonl">Online</span>' : ''}</p>${u.bio ? `<p class="gbio">${this.txt(u.bio)}</p>` : (r.isMe ? '<p class="gbio mut">Add a bio in Edit profile</p>' : '')}
       <div class="gstats"><div><b>${r.postsCount}</b><span>Posts</span></div><button onclick="GIST.nav('people','${u.id}','followers')"><b id="gfc">${r.followers}</b><span>Followers</span></button><button onclick="GIST.nav('people','${u.id}','following')"><b>${r.following}</b><span>Following</span></button></div>${btns}
+      ${this.baeHtml(r)}
       <div class="ggs"><div class="ggh"><i class="fa-solid fa-gamepad"></i> Game stats${since ? `<small>Playing since ${since}</small>` : ''}</div><div class="ggg">${st.map(s => `<div><b>${s[1] == null ? 0 : s[1]}</b><span>${s[0]}</span></div>`).join('')}</div></div>
       ${this.milestonesHtml(r.milestones)}</div>
       <div class="gprofile-tabs" role="tablist" aria-label="Profile posts">${[['grid','Grid'],['posts','Posts'],['reels','Reels']].map(([m,n]) => `<button role="tab" aria-controls="gprofile-content" tabindex="${(this.pf.mode || 'grid') === m ? '0' : '-1'}" aria-selected="${(this.pf.mode || 'grid') === m}" class="${(this.pf.mode || 'grid') === m ? 'on' : ''}" onclick="GIST.profileMode('${m}')">${n}</button>`).join('')}</div><div id="gprofile-content" role="tabpanel">${this.profileContent(posts, more)}</div>`
@@ -536,6 +537,12 @@ const GIST = {
   viewPhoto(url) {
     if (!url) return toast('No photo to show yet');
     const o = document.createElement('div'); o.className = 'gview'; o.innerHTML = `<button class="gvx" aria-label="Close"><i class="fa-solid fa-xmark"></i></button><img src="${esc(url)}" alt="">`; o.onclick = () => o.remove(); (PH.$a() || document.body).appendChild(o)
+  },
+  /* "In a relationship": up to 3 baes, set from the Messages ⋮ menu. The server only sends them when the owner's showRelationships switch is on (or it is your own profile). */
+  baeHtml(r) {
+    const b = r.baes || []; if (!b.length) return '';
+    const since = x => x ? new Date(x).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : '';
+    return `<div class="gbae"><div class="ggh"><i class="fa-solid fa-heart"></i> In a relationship<small>${b.length}/3</small></div><div class="gbl">${b.map(x => `<button type="button" class="gbp" onclick="GIST.openProfile('${x.id}',()=>GIST.openProfile('${r.user.id}'))">${PH.av({ avatar: x.avatar, displayName: x.displayName, username: x.username })}<b>${esc(x.displayName)}</b><span>💞 since ${since(x.since)}</span></button>`).join('')}</div></div>`
   },
   // Life milestones: part of the Profile page itself (not a separate app) — see utils/acmilestones.js.
   milestonesHtml(m) {

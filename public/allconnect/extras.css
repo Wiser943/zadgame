@@ -233,3 +233,10 @@ html[data-theme="dark"] #splash .card select option{background:#1b2034;color:#f3
 .lbrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;background:rgba(128,138,160,.12);margin-bottom:7px}.lbrow.me{background:rgba(7,91,255,.14);outline:2px solid rgba(7,91,255,.45)}
 .lbrk{width:34px;text-align:center;font-weight:800;font-size:15px;flex:none}.lbav{width:34px;height:34px;border-radius:50%;overflow:hidden;position:relative;flex:none}.lbav .avi{width:100%!important;height:100%!important}
 .lbnm{flex:1;min-width:0;font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbnm small{font-weight:700;color:#075bff;margin-left:4px}.lbv{font-size:13px;white-space:nowrap}.lbgap{text-align:center;font-size:12px;opacity:.6;margin:12px 0 6px}
+
+/* profile: In a relationship (up to 3 baes) */
+.gbae{margin:12px 14px 0;padding:12px 12px 10px;border-radius:18px;background:linear-gradient(135deg,rgba(255,92,146,.16),rgba(109,74,255,.14));border:1px solid rgba(255,92,146,.28)}
+.gbae .ggh{display:flex;align-items:center;gap:8px;font-weight:800}.gbae .ggh i{color:#ff5c92}.gbae .ggh small{margin-left:auto;opacity:.7;font-weight:700}
+.gbl{display:flex;gap:10px;overflow-x:auto;padding:8px 2px 2px}
+.gbp{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:84px;border:0;background:rgba(255,255,255,.08);border-radius:16px;padding:10px 8px;color:inherit;cursor:pointer;font:inherit}
+.gbp .avi{width:46px;height:46px}.gbp b{font-size:13px;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gbp span{font-size:11px;opacity:.75}

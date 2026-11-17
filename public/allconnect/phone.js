@@ -129,8 +129,8 @@ const PH={
   /* ----- Chat ----- */
   async chat(id,back){this.view='chat';this.chatId=id;this.replyTo=null;this.editing=null;this._tp=null;this.newId=null;this.newCount=0;this.chatBack=back||null;const bk=this.chatBack||'PH.messages()';document.querySelector('.screen').classList.add('light');
     const hit=NET.cache.get('/api/ac/messages/'+id);
-    try{if(hit){this.peer=hit.d.peer;this.msgs=hit.d.messages;this.isFriend=hit.d.isFriend}else{const r=await NET.api('/api/ac/messages/'+id);NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});this.peer=r.peer;this.msgs=r.messages;this.isFriend=r.isFriend;this.markNew()}}catch(e){this.view='messages';return toast(e.message)}
-    if(hit)NET.api('/api/ac/messages/'+id).then(r=>{NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});if(this.view==='chat'&&this.chatId===id){this.msgs=r.messages;this.isFriend=r.isFriend;this.markNew();this.drawMsgs();this.applyPending(true);this.refreshBadges()}}).catch(()=>{});
+    try{if(hit){this.peer=hit.d.peer;this.msgs=hit.d.messages;this.isFriend=hit.d.isFriend;this.bae=hit.d.bae||{}}else{const r=await NET.api('/api/ac/messages/'+id);NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});this.peer=r.peer;this.msgs=r.messages;this.isFriend=r.isFriend;this.bae=r.bae||{};this.markNew()}}catch(e){this.view='messages';return toast(e.message)}
+    if(hit)NET.api('/api/ac/messages/'+id).then(r=>{NET.cache.set('/api/ac/messages/'+id,{d:r,t:Date.now()});if(this.view==='chat'&&this.chatId===id){this.msgs=r.messages;this.isFriend=r.isFriend;this.bae=r.bae||{};this.markNew();this.drawMsgs();this.applyPending(true);this.refreshBadges()}}).catch(()=>{});
     const n=this.name(this.peer),fr=this.isFriend;
     this.shell(`<span onclick="GIST.openProfile('${id}',()=>PH.chat('${id}'))" style="cursor:pointer">${n}</span>`,bk,`<div class="abody chat" id="ab"><div class="cmsgs" id="cm"></div></div>
       <div class="qr">${['How far? 👋','I dey o 😄','Wetin dey happen?'].map(t=>`<button onclick="PH.send('${t}')">${t}</button>`).join('')}</div>
@@ -148,12 +148,13 @@ const PH={
     const el=document.querySelector(`.msg[data-id="${m.id}"]`);if(el){el.classList.add('hl');if(!this.newId)el.scrollIntoView({block:'center'})}},
   bubble(m,last){const mine=m.from===NET.user.id;
     if(m.kind==='money'||m.kind==='food'||m.kind==='system')return `<div class="sys">${esc(m.text)} · ${this.time(m.at)}</div>`;
+    if(m.kind==='bae'){const st=m.status==='accepted'?'<br><b>💞 Accepted</b>':m.status==='declined'?'<br><b>💔 Not this time</b>':(mine?'<br><small>Waiting for their answer…</small>':`<br><button onclick="PH.baeRespond(true)">Yes 💞</button> <button onclick="PH.baeRespond(false)">Not now</button>`);return `<div class="sys inv bae">${esc(m.text)} · ${this.time(m.at)}${st}</div>`}
     if(m.kind==='invite')return `<div class="sys inv">${esc(m.text)} · ${this.time(m.at)}${mine?'':`<br><button onclick="PH.visit('${esc(m.propertyId||'')}')">Go over 🏠</button>`}</div>`;
     return `<div class="msg ${mine?'me':'th'}" data-id="${m.id}"><div class="mb">${m.reply?`<div class="mrep"><b>${m.reply.from===NET.user.id?'You':esc(this.name(this.peer))}</b><span>${esc(m.reply.text)}</span></div>`:''}${esc(m.text)}</div><small>${this.time(m.at)}${mine&&last&&m.read?' · Seen':''}</small></div>`},
   drawMsgs(keep){const el=document.getElementById('cm');if(!el)return;const st0=document.getElementById('ab').scrollTop;const lastMine=[...this.msgs].reverse().find(m=>m.from===NET.user.id&&m.kind==='text');
     el.innerHTML=this.msgs.length?this.msgs.map(m=>(this.newId&&m.id===this.newId?`<div class="newdiv"><span>${this.newCount>1?this.newCount+' new messages':'New message'}</span></div>`:'')+this.bubble(m,lastMine&&m.id===lastMine.id)).join(''):`<p class="empty">Say hi to ${this.name(this.peer)} 👋</p>`;const b=document.getElementById('ab'),dv=el.querySelector('.newdiv');
     if(dv&&this._scrollNew){this._scrollNew=false;dv.scrollIntoView({block:'start'})}else if(keep===true)b.scrollTop=st0;else b.scrollTop=b.scrollHeight},
-  push(m){if(this.msgs.some(x=>x.id===m.id))return;this.msgs.push(m);const h=NET.cache.get('/api/ac/messages/'+this.chatId);if(h)h.d.messages=this.msgs;NET.drop('/api/ac/chats');this.drawMsgs()},
+  push(m){const ex=this.msgs.find(x=>x.id===m.id);if(ex){if(m.kind==='bae'&&m.status&&ex.status!==m.status){ex.status=m.status;this.drawMsgs()}return}this.msgs.push(m);const h=NET.cache.get('/api/ac/messages/'+this.chatId);if(h)h.d.messages=this.msgs;NET.drop('/api/ac/chats');this.drawMsgs()},
   emoji(e){const i=document.getElementById('cinput');i.value+=e;i.focus()},
   sendInput(){const i=document.getElementById('cinput');const t=i.value.trim();if(!t)return;i.value='';this.send(t)},
   async send(t){const rid=this.replyTo&&this.replyTo.id;this.cancelReply();try{this.push((await NET.api('/api/ac/messages/'+this.chatId,{method:'POST',body:{text:t,replyTo:rid||undefined}})).message)}catch(e){toast(e.message)}},
@@ -166,13 +167,19 @@ const PH={
     if(focus!==false){if(navigator.vibrate)navigator.vibrate(15);const i=document.getElementById('cinput');if(i)i.focus()}},
   cancelReply(){this.replyTo=null;const r=document.getElementById('crep');if(r)r.innerHTML=''},
   async invite(){try{this.push((await NET.api('/api/ac/invite/'+this.chatId,{method:'POST',body:{propertyId:S.activePropertyId||''}})).message);toast('Invite sent 🏠')}catch(e){toast(e.message)}},
+  /* "Be my bae": the request lands in their chat as a card with Yes / Not now. One bae at a time (the server checks both sides). */
+  baeSheet(){const n=this.name(this.peer);this.sheet(`<h3>Ask ${n} to be your bae? 💕</h3><p class="hint2">They get a card in the chat and can say yes or not now. You can have up to 3 baes.</p><button class="fopt" onclick="PH.askBae()"><span>💕 Send the ask</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
+  async askBae(){try{const r=await NET.api('/api/ac/bae/'+this.chatId,{method:'POST'});this.closeSheet();this.push(r.message);toast('Sent 💕 fingers crossed')}catch(e){this.closeSheet();toast(e.message)}},
+  async baeRespond(yes){try{const r=await NET.api('/api/ac/bae/'+this.chatId+'/respond',{method:'POST',body:{accept:!!yes}});const q=this.msgs.find(x=>x.id===(r.request&&r.request.id));if(q)q.status=r.request.status;this.bae=Object.assign({},this.bae,{together:!!r.together});this.push(r.message);this.drawMsgs();toast(yes?'You two are bae 💞':'Done')}catch(e){toast(e.message);NET.cache.delete('/api/ac/messages/'+this.chatId)}},
+  endBaeSheet(){const n=this.name(this.peer);this.sheet(`<h3>End things with ${n}? 💔</h3><p class="hint2">You will both be single again. They get a message about it.</p><button class="fopt red" onclick="PH.endBae()"><span>💔 End it</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`)},
+  async endBae(){try{const r=await NET.api('/api/ac/bae/'+this.chatId+'/end',{method:'POST'});this.closeSheet();this.bae=Object.assign({},this.bae,{together:false});this.push(r.message)}catch(e){this.closeSheet();toast(e.message)}},
   /* WhatsApp-style ⋮ menu: Send money, Invite, Visit, Buy food, Block and Report live here instead of crowding the top of the chat */
   chatMenu(e){
     if(e)e.stopPropagation();const av=this.$a(),old=document.getElementById('cmenu');if(old){old.remove();return}
     const id=this.chatId,fr=this.isFriend;
     const it=(ic,t,go,cls)=>`<button class=\"cmi ${cls||''}\" onclick=\"PH.closeChatMenu();${go}\"><span class=\"cmic\">${ic}</span>${t}</button>`;
     const m=document.createElement('div');m.id='cmenu';m.className='cmenu';m.setAttribute('role','menu');
-    m.innerHTML=it('💸','Send money',`PH.payUser('${id}','${esc(this.peer.username||'')}','PH.chat(\\'${id}\\')')`)+(fr?it('🏠','Invite over','PH.invite()')+it('🚪','Visit them','PH.visit()')+it('🍛','Buy food','PH.foodSheet()'):'')+'<i class=\"cmsep\"></i>'+it('🚫','Block','PH.blockSheet()','red')+it('⚑','Report','PH.reportSheet()','red');
+    m.innerHTML=it('💸','Send money',`PH.payUser('${id}','${esc(this.peer.username||'')}','PH.chat(\\'${id}\\')')`)+(fr?it('🏠','Invite over','PH.invite()')+it('🚪','Visit them','PH.visit()')+it('🍛','Buy food','PH.foodSheet()')+((this.bae&&this.bae.together)?it('💔','End bae','PH.endBaeSheet()'):it('💕','Ask to be my bae','PH.baeSheet()')):'')+'<i class=\"cmsep\"></i>'+it('🚫','Block','PH.blockSheet()','red')+it('⚑','Report','PH.reportSheet()','red');
     av.appendChild(m);setTimeout(()=>document.addEventListener('click',PH.closeChatMenu,{once:true}),0)
   },
   closeChatMenu(){const m=document.getElementById('cmenu');if(m)m.remove()},

@@ -25,7 +25,7 @@ const rxEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const io = (req) => req.app.get('io');
 const label = (u) => (u.acUsername ? '@' + u.acUsername : u.displayName);
 const pub = (u) => ({ id: String(u._id), username: u.acUsername || '', displayName: u.displayName, avatar: u.avatar || '', online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id) });
-const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, propertyId: m.propertyId || '', amount: m.amount || 0, read: !!m.read, at: m.at,
+const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, propertyId: m.propertyId || '', amount: m.amount || 0, status: m.status || '', read: !!m.read, at: m.at,
   reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
   image: CH.imageView(m), voice: CH.voiceView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
 const between = (a, b) => ({ $or: [{ requester: a, recipient: b }, { requester: b, recipient: a }] });
@@ -207,7 +207,8 @@ router.get('/messages/:id', async (req, res, next) => {
     await ACMessage.updateMany({ from: f.other, to: f.me, read: false }, { $set: { read: true } });
     emitUser(io(req), f.other, 'seen', { by: f.me });
     const noRead = f.target.ac && f.target.ac.prefs && f.target.ac.prefs.readReceipts === false;   // they turned read receipts off: you never see their blue ticks
-    res.json({ messages: rows.reverse().map((m) => { const v = mv(m); if (noRead && m.from === f.me) v.read = false; return v; }), peer: pub(f.target), isFriend: f.friend });
+    const myB = await baeOf(f.me), thB = await baeOf(f.other);
+    res.json({ messages: rows.reverse().map((m) => { const v = mv(m); if (noRead && m.from === f.me) v.read = false; return v; }), peer: pub(f.target), isFriend: f.friend, bae: { together: myB.list.includes(f.other), mineFull: myB.n >= 3, theirsFull: thB.n >= 3 } });
   } catch (e) { next(e); }
 });
 router.post('/messages/:id', async (req, res, next) => {
@@ -302,6 +303,52 @@ router.post('/invite/:id', async (req, res, next) => {
     }
     notify(io(req), f.other, { icon: '🏠', text: `${label(req.user)} invited you over`, kind: 'friend' }).catch(() => {});
     res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} invited you to ${propertyName} 🏠`, kind: 'invite', propertyId }) });
+  } catch (e) { next(e); }
+});
+/* ---------- "Be my bae": ask a friend, they accept or decline in the chat. Up to 3 baes each, kept in sync on both sides. ---------- */
+const MAX_BAE = 3;
+const baeOf = async (id) => { const u = await User.findById(id).select('ac.baes').lean(); const list = ((u && u.ac && u.ac.baes) || []).map((b) => b.partner); return { list, n: list.length }; };
+router.post('/bae/:id', async (req, res, next) => {
+  try {
+    if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
+    const f = await friendOr(req, res); if (!f) return;
+    const mine = await baeOf(f.me), theirs = await baeOf(f.other);
+    if (mine.list.includes(f.other)) return bad(res, 409, `You and ${label(f.target)} are already bae 💞`);
+    if (mine.n >= MAX_BAE) return bad(res, 409, `You already have ${MAX_BAE} baes. End one first.`);
+    if (theirs.n >= MAX_BAE) return bad(res, 409, `${label(f.target)} already has ${MAX_BAE} baes.`);
+    if (await ACMessage.exists({ from: f.me, to: f.other, kind: 'bae', status: '', at: { $gt: new Date(Date.now() - 86400000) } })) return bad(res, 409, 'You already asked. Give them a little time 😅');
+    notify(io(req), f.other, { icon: '💕', text: `${label(req.user)} asked you to be their bae`, kind: 'friend' }).catch(() => {});
+    res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} is asking: will you be my bae? 💕`, kind: 'bae' }) });
+  } catch (e) { next(e); }
+});
+router.post('/bae/:id/respond', async (req, res, next) => {
+  try {
+    const f = await friendOr(req, res); if (!f) return;      // f.other = the one who asked
+    const yes = !!(req.body && req.body.accept);
+    const q = await ACMessage.findOne({ from: f.other, to: f.me, kind: 'bae', status: '' }).sort({ at: -1 });
+    if (!q) return bad(res, 404, 'That request is no longer open.');
+    const mine = await baeOf(f.me), theirs = await baeOf(f.other);
+    if (yes && (mine.n >= MAX_BAE || theirs.n >= MAX_BAE || mine.list.includes(f.other))) { q.status = 'declined'; await q.save(); return bad(res, 409, mine.n >= MAX_BAE ? `You already have ${MAX_BAE} baes.` : `${label(f.target)} already has ${MAX_BAE} baes.`); }
+    q.status = yes ? 'accepted' : 'declined'; await q.save();
+    if (yes) {
+      const since = new Date();
+      // $ne guard keeps it idempotent; showRelationships is switched on so the new relationship shows on both profiles (they can turn it off in Privacy)
+      await Promise.all([
+        User.updateOne({ _id: f.me, 'ac.baes.partner': { $ne: f.other } }, { $push: { 'ac.baes': { partner: f.other, since } }, $set: { 'ac.prefs.showRelationships': true } }),
+        User.updateOne({ _id: f.other, 'ac.baes.partner': { $ne: f.me } }, { $push: { 'ac.baes': { partner: f.me, since } }, $set: { 'ac.prefs.showRelationships': true } })]);
+    }
+    const text = yes ? `💞 ${label(req.user)} said yes. You two are bae now!` : `💔 ${label(req.user)} said not right now.`;
+    notify(io(req), f.other, { icon: yes ? '💞' : '💔', text, kind: 'friend' }).catch(() => {});
+    emitUser(io(req), f.other, 'dm', mv(q));
+    res.json({ message: await addMessage(req, { to: f.other, text, kind: 'system' }), request: mv(q), together: yes });
+  } catch (e) { next(e); }
+});
+router.post('/bae/:id/end', async (req, res, next) => {
+  try {
+    const f = await friendOr(req, res); if (!f) return;
+    const mine = await baeOf(f.me); if (!mine.list.includes(f.other)) return bad(res, 409, 'You are not bae with this player.');
+    await Promise.all([User.updateOne({ _id: f.me }, { $pull: { 'ac.baes': { partner: f.other } } }), User.updateOne({ _id: f.other }, { $pull: { 'ac.baes': { partner: f.me } } })]);
+    res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} ended the bae thing 💔`, kind: 'system' }) });
   } catch (e) { next(e); }
 });
 router.get('/visit/:id', async (req, res, next) => {

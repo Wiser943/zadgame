@@ -109,7 +109,7 @@
     const bulb = $('v2bulb'), lit = !((typeof BAN!=='undefined'?BAN:undefined) && BAN.light === false) && !(window.ROOM3D && ROOM3D.roomLight === false); bulb.innerHTML = lit ? I.bulb : I.bulbOff;
     const bang = $('v2hbang'); if (bang) bang.style.display = todo ? 'block' : 'none';
     const dot = $('v2phdot'); if (dot) { const b = ((typeof PH!=='undefined'?PH:undefined) && PH.badges) || {}, c = (b.messages || 0) + (b.updates || 0) + (b.requests || 0) + (((typeof PH!=='undefined'?PH:undefined) && PH.localUnread) || 0); dot.style.display = c ? 'block' : 'none' }
-    const wk = $('v2work'); if (wk && (typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) { const st = JOBS.btn(JOBS.data.mine); wk.querySelector('span').textContent = st.off ? (st.t.startsWith('On break') ? st.t.replace('On break · ', '') : st.t.length > 12 ? 'Work' : st.t) : 'Work'; wk.disabled = !!st.off } else if (wk) wk.querySelector('span').textContent = 'Work';
+    const wk = $('v2work'); if (wk && (typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) { const st = JOBS.btn(JOBS.data.mine); wk.querySelector('span').textContent = st.off ? (st.t.startsWith('On break') ? st.t.replace('On break · ', '') : st.t.length > 12 ? 'Work' : st.t) : 'Work'; wk.disabled = false } else if (wk) wk.querySelector('span').textContent = 'Work';
   }
   Object.assign(V2, {
     fold() { const on = document.body.classList.toggle('fold'); $('v2chev').classList.toggle('up', on) },
@@ -181,7 +181,7 @@
       this.outsideGo(); setTimeout(() => this.navSync(), 200); setTimeout(() => this.navSync(), 700)
     },
     outsideGo() { try { if ((typeof DOOR!=='undefined'?DOOR:undefined) && DOOR.btn && DOOR.btn.dataset.mode === 'out') DOOR.press(); else { nav('map'); setTimeout(() => { if ((typeof MAP3D!=='undefined'?MAP3D:undefined) && MAP3D.stepOutside) MAP3D.stepOutside() }, 80) } } catch (e) { nav('map') } },
-    work() { try { if ((typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) JOBS.work(); else { nav('phone'); setTimeout(() => PH.open('jobs'), 60) } } catch (e) { toast('Work is not ready yet') } },
+    work() { try { if ((typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) WORKPLACE.open(); else { nav('phone'); setTimeout(() => PH.open('jobs'), 60) } } catch (e) { toast('Work is not ready yet') } },
     car() { try { nav('phone'); setTimeout(() => TR.open(), 80) } catch (e) { toast('Transport is not ready yet') } },
     mic() { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return toast("Voice commands aren't supported in this browser."); try { const r = new SR(); r.lang = 'en-NG'; r.onresult = e => { const t = e.results[0][0].transcript; toast('🎙️ ' + t); if (window.VISIT && VISIT.on) { VISIT.tell(t); return } try { VCMD.handle(t) } catch (x) {} }; r.onerror = () => toast('I could not hear you. Try again.'); r.start(); toast('Listening…') } catch (e) { toast('Voice is not available right now.') } }
   });

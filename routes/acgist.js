@@ -640,6 +640,15 @@ router.get('/profile/:key', async (req, res, next) => {
       Friendship.countDocuments({ status: 'accepted', $or: [{ requester: id }, { recipient: id }] })]);
     const posts = first.posts;
     if (pinned) posts.unshift((await hydrate([pinned], uid))[0]);
+    // "In a relationship": up to 3 baes, shown to others only when the owner's showRelationships privacy switch is on (it is switched on when a bae request is accepted)
+    let baes = [];
+    try {
+      const bu = await User.findById(id).select('ac.baes ac.prefs.showRelationships').lean(), list = (bu && bu.ac && bu.ac.baes) || [];
+      if (list.length && (id === uid || (bu.ac.prefs && bu.ac.prefs.showRelationships))) {
+        const people = await User.find({ _id: { $in: list.map((b) => b.partner) } }).select(USER_FIELDS).lean(), by = new Map(people.map((p) => [String(p._id), p]));
+        baes = list.filter((b) => by.has(b.partner)).map((b) => ({ ...pubUser(by.get(b.partner)), since: b.since }));
+      }
+    } catch (e) { /* the profile still loads without it */ }
     const s = u.stats || {};
     const played = s.gamesPlayed || 0;
     res.json({
@@ -649,6 +658,7 @@ router.get('/profile/:key', async (req, res, next) => {
       game: { played, wins: s.wins || 0, losses: s.losses || 0, draws: s.draws || 0, winRate: played ? Math.round(((s.wins || 0) / played) * 100) : 0, level: u.level || 1, bestStreak: u.bestStreak || 0, tournamentWins: u.tournamentWins || 0, rating: u.rating || 1000, since: u.createdAt },
       // Life milestones live on the Profile page itself, not as a separate app (see utils/acmilestones.js).
       milestones: milestonesFor(await playerContext(id, { u, friends: friendCount, posts: postsCount, followers })),
+      baes,
       posts, more: first.more,
     });
   } catch (e) { next(e); }
