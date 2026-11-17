@@ -1,5 +1,5 @@
 /* Tap your profile picture → Edit avatar / Create new / From my photo.
-   Binds to #avbtn (and anything marked data-av-menu). Uses what app.js + room3d.js expose: setGender(), ROOM3D.setLook(), ROOM3D.look,
+   Binds to the bottom-nav profile button (#v2nav .me), the needs avatar (#avbtn) and anything marked data-av-menu. Uses what app.js + room3d.js expose: setGender(), ROOM3D.setLook(), ROOM3D.look,
    ACAvatar.BODIES, paintPortraits(). "Edit" hands over to the Style app (styleapp.js). */
 const AVMENU = {
   SKINS: ['#4a2f23', '#6b4226', '#8a5a3c', '#a9714b', '#c58f66'],
@@ -42,13 +42,13 @@ const AVMENU = {
 <button class="opt" onclick="AVMENU.edit()"><i>✏️</i><div><b>Edit avatar</b><span>Clothes, hair, shoes and looks in the Style app</span></div></button>
 <button class="opt" onclick="AVMENU.create()"><i>✨</i><div><b>Create new avatar</b><span>Pick person, skin tone, hair colour, body and height</span></div></button>
 <button class="opt" onclick="AVMENU.photo()"><i>📸</i><div><b>Make it look like me</b><span>Use a selfie to pick your skin tone and hair colour</span></div></button>
-<button class="opt" onclick="AVMENU.needs()"><i>❤️</i><div><b>Show my needs</b><span>Hunger, energy, mood and more</span></div></button></div>`
+<button class="opt" onclick="AVMENU.needs()"><i>❤️</i><div><b>Profile &amp; needs</b><span>Your profile, needs, goals, skills and people</span></div></button></div>`
   },
-  needs() { this.close(); if (typeof toggleNeeds === 'function') toggleNeeds() },
+  needs() { this.close(); if (window.V2 && V2.sheet) return V2.sheet('char'); if (typeof toggleNeeds === 'function') toggleNeeds() },
   edit() {
     this.close();
-    try { if (window.STYLE && typeof STYLE.open === 'function') return STYLE.open() } catch (e) { }
-    try { nav('phone'); setTimeout(() => { try { PH.open('style') } catch (e) { if (typeof toast === 'function') toast('Open the Style app on your phone') } }, 90) } catch (e) { }
+    const go = () => { try { PH.open('style') } catch (e) { if (typeof toast === 'function') toast('Open the Style app on your phone') } };
+    try { if (window.S && S.page === 'phone') go(); else { PHONEUI.open(); setTimeout(go, 480) } } catch (e) { try { nav('phone'); setTimeout(go, 480) } catch (x) { } }
   },
 
   /* ---------- creator (same controls as the MyOfficeo "Choose your person" screen) ---------- */
@@ -122,7 +122,7 @@ ${bk.length ? `<h4>Body</h4><div class="seg">${seg(names, d.body, 'AVMENU.body')
 
   boot() {
     document.addEventListener('click', e => {
-      const t = e.target.closest && e.target.closest('#avbtn,[data-av-menu]'); if (!t) return;
+      const t = e.target.closest && e.target.closest('#v2nav .me,#avbtn,[data-av-menu]'); if (!t) return;
       e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); this.open()
     }, true);
     // restore a saved creator look after the 3D room is ready

@@ -138,10 +138,29 @@ const WORKPLACE = (function () {
       else { for (let i = 0; i < 900; i++) { g.fillStyle = Math.random() > .5 ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)'; g.fillRect(Math.random() * 256, Math.random() * 256, 3, 3) } g.strokeStyle = b; g.lineWidth = 2; g.strokeRect(0, 0, 256, 256) }
       const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(6, 4.5); return t
     },
+    /* real model (models3d.js) placed over a fallback group: if it loads the fallback is hidden */
+    async glbProp(key, o, fallback, tint) {
+      try {
+        const M = window.M3D; if (!M || !M.spawn) return; await M.libs(); const m = await M.spawn(key, { height: o.height, rotY: o.rotY || 0 }); if (!this.on || !this.scene) return;
+        m.root.position.set(o.x, 0, o.z);
+        if (tint) m.obj.traverse(n => { if (!n.isMesh || !n.material) return; n.material = n.material.clone(); if (/body|paint|car|main|shell/i.test(n.material.name || n.name)) n.material.color.set(tint) });
+        this.scene.add(m.root); if (fallback) fallback.visible = false
+      } catch (e) { }
+    },
+    /* shared finishing so every workplace reads as a proper room: skirting boards, windows, ceiling lights, a door mat, outside ground and a real building in the distance */
+    decorate(T) {
+      const sc = this.scene, tr = T.trim || T.accent || '#ffffff';
+      this.bx(12.1, .22, .08, '#f4f1ea', 0, .11, -4.46); this.bx(.08, .22, 8.9, '#f4f1ea', -5.98, .11, 0);
+      [-3.4, 1.0].forEach(z => { this.bx(.06, 1.35, 1.5, '#f4f1ea', -5.97, 1.75, z); this.bx(.03, 1.2, 1.35, '#bfe3fb', -5.93, 1.75, z, null, { transparent: true, opacity: .7 }); this.bx(.1, .06, 1.6, tr, -5.95, 1.05, z) });
+      [-4.0, 0, 4.0].forEach(x => { this.bx(1.6, .05, .35, '#fffbe8', x, 3.3, -3.6); this.bx(1.5, .02, .3, '#fff7c2', x, 3.27, -3.6, null, { emissive: new THREE.Color('#fff2a8') }) });
+      this.bx(1.4, .03, .9, '#3a3f4b', LANE, .02, -3.6);
+      const gd = new THREE.Mesh(new THREE.CircleGeometry(60, 32), new THREE.MeshLambertMaterial({ color: T.outside || '#8aa86a' })); gd.rotation.x = -Math.PI / 2; gd.position.y = -.32; sc.add(gd);
+      if (T.skyline !== false) this.glbProp('office', { height: 6, x: -13, z: -9, rotY: -Math.PI / 2 }, null);
+    },
     resize() { if (!this.R) return; const w = innerWidth, h = innerHeight; this.R.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix() },
 
     build() {
-      const T = this.T = THEMES[this.th](this), sc = this.scene = new THREE.Scene(); sc.background = new THREE.Color(T.sky || '#1a2142');
+      const T = this.T = THEMES[this.th](this), sc = this.scene = new THREE.Scene(); sc.background = new THREE.Color(T.sky || '#aed8f5');
       const cv = document.getElementById('wpcv'); this.R = new THREE.WebGLRenderer({ canvas: cv, antialias: true }); this.R.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
       this.cam = new THREE.PerspectiveCamera(34, 1, .5, 120); this.resize();
       sc.add(new THREE.HemisphereLight(0xffffff, T.ground || 0x8a7a60, .78)); const sun = new THREE.DirectionalLight(0xfff2dc, .55); sun.position.set(6, 14, 9); sc.add(sun);
@@ -152,18 +171,18 @@ const WORKPLACE = (function () {
       this.bx(12.2, 3.4, .25, T.wall, 0, 1.7, -4.62); this.bx(.25, 3.4, 9.2, T.wall, -6.12, 1.7, 0); this.bx(12.3, .22, .3, T.trim || T.accent, 0, 3.45, -4.62);
       // door in the back wall (where customers and colleagues come and go)
       this.bx(1.2, 2.4, .12, '#3b2a1a', LANE, 1.2, -4.45); this.bx(1.4, .12, .2, T.trim || T.accent, LANE, 2.46, -4.45); this.cy(.05, .1, '#d9b24a', LANE + .4, 1.1, -4.38, null, 8);
-      T.build(this);
+      this.decorate(T); T.build(this);
       // people
       const me = (window.ROOM3D && ROOM3D.look) || {}, uni = T.uni;
-      this.me = this.person({ skin: me.skin || '#8a5a3c', hair: (me.hair && me.hair.color) || '#16100d', top: uni, fem: (me.g || S.gender) === 'female', tag: 'You', cls: 'me', sub: this.job.title });
+      this.me = this.person({ skin: me.skin || '#8a5a3c', hair: (me.hair && me.hair.color) || '#16100d', top: uni, fem: (me.g || S.gender) === 'female', tag: 'You', cls: 'me', sub: this.job.title, me: true });
       this.me.at(LANE, AISLE); this.me.isMe = true;
-      T.staff.forEach((s, i) => { const p = this.person({ skin: pick(SKINS), hair: pick(HAIRS), top: s.top || uni, fem: Math.random() > .5, tag: pick(NAMES), sub: s.role }); p.at(s.x, s.z); p.face(s.r); p.pose = s.pose || 'stand'; p.st = s; p.home = s; if (p.pose === 'sit') p.sit(true) });
+      T.staff.forEach((s, i) => { const p = this.person({ skin: pick(SKINS), hair: pick(HAIRS), top: s.top || uni, fem: Math.random() > .5, tag: pick(NAMES), sub: s.role }); p.at(s.x, s.z); p.face(s.r); p.pose = s.pose || 'stand'; p.st = s; p.home = s; if (p.pose === 'sit') { p.sit(true); p.seated = true } });
       this.spawnAt = performance.now() + 1500
     },
 
     /* ---------- people ---------- */
     person(o) {
-      const g = new THREE.Group(), fem = !!o.fem, M = c => this.mat(c), sk = M(o.skin);
+      const g = new THREE.Group(), fem = !!o.fem, M = c => this.mat(c), sk = M(o.skin || '#8a5a3c');
       const mk = (w, h, d, mt, x, y, z, par) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mt); m.position.set(x, y, z); (par || g).add(m); return m };
       const leg = sx => { const p = new THREE.Group(); p.position.set(sx * (fem ? .1 : .12), .8, 0); g.add(p); mk(.15, .72, .17, M(o.bottom || '#2b2f3a'), 0, -.36, 0, p); mk(.17, .08, .26, M('#1a1a1a'), 0, -.76, .04, p); return p };
       const arm = sx => { const p = new THREE.Group(); p.position.set(sx * (fem ? .3 : .35), 1.36, 0); g.add(p); mk(.11, .52, .13, M(o.top), 0, -.26, 0, p); mk(.1, .1, .12, sk, 0, -.55, 0, p); return p };
@@ -174,7 +193,32 @@ const WORKPLACE = (function () {
       P.at = (x, z) => { g.position.set(x, 0, z) }; P.face = r => { g.rotation.y = r };
       P.sit = on => { P.sitting = on; g.position.y = on ? -.36 : 0; P.legL.rotation.x = P.legR.rotation.x = on ? -1.45 : 0 };
       if (o.tag) { const sp = document.createElement('span'); sp.className = o.cls || ''; sp.innerHTML = o.tag + (o.sub ? `<small>${o.sub}</small>` : ''); document.getElementById('wptags').appendChild(sp); P.tagEl = sp }
-      this.people.push(P); return P
+      this.people.push(P); this.realise(P, o); return P
+    },
+    /* The same animated GLB characters the home uses (models3d.js). Colleagues and customers get a random character + skin tone,
+       you get YOUR character dressed in your Style-app look. The blocky figure above stays only as a fallback while they load / if they cannot load. */
+    CAST: { f: ['woman', 'woman', 'worker'], m: ['casual', 'businessman', 'hoodie', 'menworker', 'farmer', 'worker'], c: ['casual', 'hoodie', 'woman', 'farmer', 'beach', 'businessman'] },
+    async realise(P, o) {
+      try {
+        const M = window.M3D; if (!M || !M.spawn) return; await M.libs();
+        const gender = o.fem ? 'female' : 'male', R0 = (window.ROOM3D && ROOM3D.look && ROOM3D.look.g === gender) ? ROOM3D.look : null;
+        let key = o.me ? M.charKey(gender, R0) : (o.key || pick(o.cust ? this.CAST.c : (o.fem ? this.CAST.f : this.CAST.m)));
+        const m = await M.spawn(key, { height: 1.7 }); if (!this.on || !P.g.parent) return;
+        P.g.children.forEach(c => { c.visible = false }); P.g.add(m.root);
+        const g = P.glb = { root: m.root, obj: m.obj, clips: m.clips, mixer: m.mixer, acts: {}, cur: '' };
+        try {   // dress it: your own look for you, a random skin tone + the job's colour for everyone else
+          const base = (window.ACAvatar && ACAvatar.defaultRender) ? ACAvatar.defaultRender(gender) : null;
+          const look = o.me ? Object.assign({}, R0 || base) : Object.assign({}, base, { skin: o.skin, top: { c1: o.top }, hair: Object.assign({}, base && base.hair, { color: o.hair }) });
+          if (look) { delete look.head; delete look.face; delete look.neckwear; delete look.jewel; M.dress({ obj: m.obj, room: { avatar: null } }, look, gender, key) }
+        } catch (e) { }
+        this.play(P, 'idle')
+      } catch (e) { /* keep the blocky fallback */ }
+    },
+    play(P, st) {
+      const g = P.glb; if (!g || !g.mixer || g.cur === st) return; g.cur = st;
+      const map = { idle: [['Idle_Neutral', 'Idle'], 1], walk: [['Walk'], 1.1], work: [['Interact', 'Wave'], .9] }[st], c = window.M3D.clip(g, ...map[0]); if (!c) return;
+      const nx = g.acts[c.name] || (g.acts[c.name] = g.mixer.clipAction(c)); nx.enabled = true; nx.setEffectiveTimeScale(map[1]); nx.setEffectiveWeight(1);
+      if (g.act && g.act !== nx) { nx.reset(); nx.play(); g.act.crossFadeTo(nx, .25, false) } else { nx.reset().play() } g.act = nx
     },
     remove(p) { if (p.tagEl) p.tagEl.remove(); this.scene.remove(p.g); const i = this.people.indexOf(p); if (i >= 0) this.people.splice(i, 1) },
     routeFor(spot, out) { const r = [{ x: LANE, z: -4.0 }, { x: LANE, z: AISLE }, { x: spot.x, z: AISLE }, { x: spot.x, z: spot.z }]; return out ? r.reverse() : r },
@@ -198,6 +242,7 @@ const WORKPLACE = (function () {
           const da = ((((Math.atan2(dx, dz) - P.g.rotation.y) + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI; P.g.rotation.y += da * Math.min(1, dt * 9); moving = true
         }
       }
+      if (P.glb) { this.play(P, moving ? 'walk' : (P.working ? 'work' : 'idle')); if (P.glb.mixer) P.glb.mixer.update(dt); P.state = moving ? 'walk' : 'stand'; return }
       P.ph += dt * (moving ? 8 : 2);
       const sw = moving ? Math.sin(P.ph) * .6 : 0; if (!P.sitting) { P.legL.rotation.x = sw; P.legR.rotation.x = -sw }
       let al = -sw * .8, ar = sw * .8;
@@ -229,7 +274,7 @@ const WORKPLACE = (function () {
       const T = this.T; if (now < this.spawnAt) return; this.spawnAt = now + rnd(4500, 9000);
       const cust = this.people.filter(p => p.cust).length; if (cust >= T.maxCust) return;
       const used = new Set(this.people.filter(p => p.spot).map(p => p.spot)), free = T.spots.filter(s => !used.has(s)); if (!free.length) return;
-      const spot = pick(free), p = this.person({ skin: pick(SKINS), hair: pick(HAIRS), top: pick(TOPS), fem: Math.random() > .5, tag: pick(T.visitor) });
+      const spot = pick(free), p = this.person({ skin: pick(SKINS), hair: pick(HAIRS), top: pick(TOPS), fem: Math.random() > .5, tag: pick(T.visitor), cust: true });
       p.cust = true; p.spot = spot; p.at(LANE, -4.0); p.sp = rnd(1.1, 1.6); p.route = this.routeFor(spot);
       p.after = () => { p.face(spot.r); p.waitUntil = performance.now() + rnd(6000, 12000); p.waiting = true }
     },
@@ -258,12 +303,12 @@ const WORKPLACE = (function () {
   const shelf = (x, z, w, W_, cols) => { W_.bx(w, 2, .35, '#6e4a2a', x, 1, z); for (let i = 0; i < 4; i++) { const y = .4 + i * .5; for (let k = 0; k < Math.floor(w / .3); k++) W_.bx(.18, .26, .2, (cols || ['#e63946', '#f4a261', '#2a9d8f', '#e9c46a'])[(i + k) % 4], x - w / 2 + .2 + k * .3, y + .15, z + .1) } W_.solid(x, z, w, .45) };
   const screen = (x, y, z, w, h, col, W_) => { const m = W_.bx(w, h, .08, '#10131c', x, y, z); W_.bx(w - .1, h - .1, .02, col, x, y, z + .05); return m };
   const mirror = (x, z, W_) => { W_.bx(.9, 1.3, .05, '#8a6a45', x, 1.5, z); W_.bx(.8, 1.2, .02, '#cfe9ff', x, 1.5, z + .03, null, { transparent: true, opacity: .6 }) };
-  const car = (x, z, rot, col, W_, taxi) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; W_.scene.add(g); W_.bx(1.9, .55, .95, col, 0, .5, 0, g); W_.bx(1.0, .45, .85, col, -.1, .98, 0, g); W_.bx(.95, .3, .87, '#cfe9ff', -.1, 1.0, 0, g, { transparent: true, opacity: .55 }); [[-.6, .4], [.6, .4], [-.6, -.4], [.6, -.4]].forEach(p => { const w = W_.cy(.22, .18, '#111', p[0], .22, p[1], g); w.rotation.x = PI / 2 }); if (taxi) W_.bx(.35, .12, .2, '#fff', -.1, 1.28, 0, g); W_.solid(x, z, rot && Math.abs(Math.sin(rot)) > .7 ? 1 : 2, rot && Math.abs(Math.sin(rot)) > .7 ? 2 : 1, rot) };
+  const car = (x, z, rot, col, W_, taxi) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; W_.scene.add(g); W_.bx(1.9, .55, .95, col, 0, .5, 0, g); W_.bx(1.0, .45, .85, col, -.1, .98, 0, g); W_.bx(.95, .3, .87, '#cfe9ff', -.1, 1.0, 0, g, { transparent: true, opacity: .55 }); [[-.6, .4], [.6, .4], [-.6, -.4], [.6, -.4]].forEach(p => { const w = W_.cy(.22, .18, '#111', p[0], .22, p[1], g); w.rotation.x = PI / 2 }); if (taxi) W_.bx(.35, .12, .2, '#fff', -.1, 1.28, 0, g); W_.solid(x, z, rot && Math.abs(Math.sin(rot)) > .7 ? 1 : 2, rot && Math.abs(Math.sin(rot)) > .7 ? 2 : 1, rot); W_.glbProp('sportscar', { height: 1.15, x, z, rotY: rot + PI / 2 }, g, taxi ? '#f2c200' : col); return g };
   const bed = (x, z, W_) => { W_.bx(1.0, .35, 2.0, '#d9dde6', x, .3, z); W_.bx(.95, .12, 1.6, '#e8f1ff', x, .52, z + .15); W_.bx(.5, .12, .35, '#fff', x, .6, z - .75); W_.bx(1.0, .6, .06, '#9aa3b2', x, .65, z - 1.0); W_.solid(x, z, 1.0, 2.0) };
   const chairSalon = (x, z, W_) => { W_.cy(.28, .08, '#222', x, .08, z); W_.bx(.1, .4, .1, '#888', x, .3, z); W_.bx(.55, .12, .5, '#e63946', x, .55, z); W_.bx(.55, .7, .1, '#e63946', x, .95, z - .25); W_.solid(x, z, .6, .6) };
   const bus = (x, z, W_) => { W_.bx(4.2, 1.3, 1.6, '#f2c200', x, .95, z); W_.bx(4.22, .25, 1.62, '#111', x, .8, z); for (let i = -1; i <= 1; i++) W_.bx(.8, .4, 1.64, '#cfe9ff', x + i * 1.2, 1.25, z, null, { transparent: true, opacity: .6 }); [[-1.4, .75], [1.4, .75], [-1.4, -.75], [1.4, -.75]].forEach(p => { const w = W_.cy(.34, .22, '#111', x + p[0], .34, z + p[1]); w.rotation.x = PI / 2 }); W_.solid(x, z, 4.2, 1.6) };
   const crate = (x, z, W_, col, s) => { s = s || .6; W_.bx(s, s, s, col || '#b08850', x, s / 2, z); W_.solid(x, z, s, s) };
-  const bike = (x, z, rot, W_) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; W_.scene.add(g); [-.55, .55].forEach(px => { const w = new THREE.Mesh(new THREE.TorusGeometry(.3, .04, 6, 14), W_.mat('#222')); w.position.set(px, .32, 0); g.add(w) }); W_.bx(1.1, .05, .05, '#e63946', 0, .55, 0, g); W_.bx(.05, .3, .05, '#e63946', -.1, .7, 0, g); W_.bx(.35, .05, .6, '#222', .45, .88, 0, g); W_.bx(.5, .3, .4, '#f2c200', -.55, .75, 0, g); W_.solid(x, z, 1.4, .6, rot) };
+  const bike = (x, z, rot, W_) => { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; W_.scene.add(g); [-.55, .55].forEach(px => { const w = new THREE.Mesh(new THREE.TorusGeometry(.3, .04, 6, 14), W_.mat('#222')); w.position.set(px, .32, 0); g.add(w) }); W_.bx(1.1, .05, .05, '#e63946', 0, .55, 0, g); W_.bx(.05, .3, .05, '#e63946', -.1, .7, 0, g); W_.bx(.35, .05, .6, '#222', .45, .88, 0, g); W_.bx(.5, .3, .4, '#f2c200', -.55, .75, 0, g); W_.solid(x, z, 1.4, .6, rot); W_.glbProp('motorcycle', { height: 1.0, x, z, rotY: rot }, g); return g };
   const tank = (x, z, W_, r) => { W_.cy(r || .9, 2.6, '#cfd4dc', x, 1.3, z, null, 20); W_.cy((r || .9) + .03, .12, '#e63946', x, 2.0, z, null, 20); W_.solid(x, z, (r || .9) * 2, (r || .9) * 2) };
   const pipe = (x, y, z, len, vertical, W_) => { const m = W_.cy(.1, len, '#7d8591', x, y, z, null, 10); if (!vertical) m.rotation.z = PI / 2; return m };
 
