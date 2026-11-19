@@ -109,7 +109,7 @@
     const bulb = $('v2bulb'), lit = !((typeof BAN!=='undefined'?BAN:undefined) && BAN.light === false) && !(window.ROOM3D && ROOM3D.roomLight === false); bulb.innerHTML = lit ? I.bulb : I.bulbOff;
     const bang = $('v2hbang'); if (bang) bang.style.display = todo ? 'block' : 'none';
     const dot = $('v2phdot'); if (dot) { const b = ((typeof PH!=='undefined'?PH:undefined) && PH.badges) || {}, c = (b.messages || 0) + (b.updates || 0) + (b.requests || 0) + (((typeof PH!=='undefined'?PH:undefined) && PH.localUnread) || 0); dot.style.display = c ? 'block' : 'none' }
-    const wk = $('v2work'); if (wk && (typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) { const st = JOBS.btn(JOBS.data.mine); wk.querySelector('span').textContent = st.off ? (st.t.startsWith('On break') ? st.t.replace('On break · ', '') : st.t.length > 12 ? 'Work' : st.t) : 'Work'; wk.disabled = false } else if (wk) wk.querySelector('span').textContent = 'Work';
+    const wk = $('v2work'); if (wk && (typeof JOBS!=='undefined'?JOBS:undefined) && JOBS.data && JOBS.data.mine) { const st = JOBS.btn(JOBS.data.mine); wk.querySelector('span').textContent = st.pill || 'Work'; wk.disabled = false } else if (wk) wk.querySelector('span').textContent = 'Work';
   }
   Object.assign(V2, {
     fold() { const on = document.body.classList.toggle('fold'); $('v2chev').classList.toggle('up', on) },

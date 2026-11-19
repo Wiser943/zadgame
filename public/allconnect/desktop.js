@@ -36,6 +36,13 @@
         '<button data-p="buy">' + ICON.shop + '<span>Shop</span></button>' +
         '<button data-p="map">' + ICON.map + '<span>Map</span></button></div>' +
         '<button id="dkPhone" aria-label="Phone">' + ICON.phone + '<i class="dknw"></i></button></div>' +
+        '<div id="dkRail">' +
+        '<button class="dkr dkp" id="dkParty" title="House parties" aria-label="House parties">🏠</button>' +
+        '<button class="dkr dkp" id="dkFloor" title="Go upstairs / downstairs" aria-label="Go upstairs or downstairs" hidden>⬆</button>' +
+        '<button class="dkr dkp" id="dkEye" title="View: click for first person · press and hold to walk around (W A S D)" aria-label="Change view"></button>' +
+        '<button class="dkr dkp" id="dkMusic" title="Game song on / off" aria-label="Game song on or off"></button>' +
+        '<button class="dkr dkp" id="dkMic" title="Say something" aria-label="Voice" hidden>🎙️</button>' +
+        '</div>' +
         '<div id="dkAct">' +
         '<button class="dka dkp" id="dkRadio">🎧 Radio</button>' +
         '<button class="dka dkp" id="dkOut">🚪 Go outside</button>' +
@@ -50,6 +57,13 @@
       $('dkAv').onclick = () => { if (typeof nav === 'function') { nav('phone'); try { PH.open('style'); } catch (e) { } } };
       $('dkRadio').onclick = () => { try { nav('phone'); SONGIFY.open(); } catch (e) { if (typeof toast === 'function') toast('Radio is not available right now.'); } };
       $('dkOut').onclick = () => this.outside();
+      // the same controls the phone has: house parties, view switcher (tap = first person, hold = walk mode), stairs, game song, voice
+      $('dkParty').onclick = () => { try { PARTY.open(); } catch (e) { if (typeof toast === 'function') toast('House parties are not available right now.'); } };
+      const eye = $('dkEye'); eye.onpointerdown = e => { if (window.V2) V2.eyeDown(e); }; eye.onpointerup = e => { if (window.V2) V2.eyeUp(e); this.railSync(); }; eye.onpointercancel = () => { if (window.V2) V2.eyeCancel(); }; eye.oncontextmenu = () => false;
+      $('dkFloor').onclick = () => { if (window.V2) V2.floor(); this.railSync(); };
+      $('dkMusic').onclick = () => { if (window.V2) V2.music(); this.railSync(); };
+      $('dkMic').onclick = () => { if (window.V2) V2.mic(); };
+      this.railSync();
       $('dkWork').onclick = () => this.work();
       $('dkCar').onclick = () => { try { nav('phone'); TR.open('garage'); } catch (e) { } };
       $('dkWhere').onclick = () => this.search(!$('dkSearch').classList.contains('open'));
@@ -92,7 +106,22 @@
       $('dkRadio').hidden = m === 'map' || m === 'buy';
       $('dkWork').parentNode.hidden = m === 'buy';
       const f = $('dkFuel'); if (f) f.textContent = window.TR && TR.D && TR.D.fuelPrice ? '₦' + Math.round(TR.D.fuelPrice) : 'Garage';
+      this.railSync(); const bb = $('dkNav') && $('dkNav').querySelector('[data-p="buy"] span'); if (bb) bb.textContent = 'Buy mode';
       const ph = $('dkPhone'), nw0 = document.querySelector('#menubtn .nw, #menubtn .dot, #menubtn .badge'); if (ph) ph.classList.toggle('has', !!(nw0 && nw0.offsetParent !== null));
+    },
+    /* keep the rail in step with the game: icons, stairs button, voice button, walk mode */
+    railSync() {
+      if (!$('dkRail')) return;
+      const walking = !!(window.V2 && V2.walking), eye = $('dkEye'), fl = $('dkFloor'), mu = $('dkMusic'), mic = $('dkMic'), pa = $('dkParty');
+      const home = typeof S !== 'undefined' && S.page === 'home' && !(window.WORLD && WORLD.on), visiting = !!(window.VISIT && VISIT.on);
+      $('dkRail').hidden = !home;
+      if (eye) { const html = walking ? '✕' : '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'; if (eye.dataset.w !== String(walking)) { eye.dataset.w = String(walking); eye.innerHTML = html; } eye.classList.toggle('walk', walking); }
+      const P = typeof S !== 'undefined' && S.activeProperty;
+      if (fl) { fl.hidden = !(P && P.upstairs) || visiting || walking; fl.textContent = (S.floor || 0) === 0 ? '⬆' : '⬇'; fl.title = (S.floor || 0) === 0 ? 'Go upstairs' : 'Go downstairs'; }
+      if (mu) mu.innerHTML = !(window.GP && GP.get().music === false) ? '<i class="fa-solid fa-music"></i>' : '<i class="fa-solid fa-volume-xmark"></i>';
+      if (mic) mic.hidden = !((window.VISIT && VISIT.on) || (window.PARTY && PARTY.isLive && PARTY.isLive()));
+      if (pa) pa.hidden = visiting || walking;
+      document.body.classList.toggle('dkvisit', visiting);
     },
     go(p) {
       if (typeof nav !== 'function') return;
@@ -142,7 +171,19 @@
 
   // keep the HUD in step with the game: render() runs on every state change, nav() on every page change
   const wrap = (name) => { const f0 = window[name]; if (typeof f0 !== 'function') return; window[name] = function () { const r = f0.apply(this, arguments); try { DK.paint(); } catch (e) { } return r; }; };
-  const boot = () => { wrap('render'); wrap('nav'); DK.apply(); setInterval(() => { if (DK.on) DK.paint(); }, 1500); };
+  /* Keyboard walking: while walk mode (or the first-person view) is on, W A S D / arrow keys drive the same joystick the phone uses.
+     Runs in the capture phase so letters like S and H do not trigger their other shortcuts while you are walking. */
+  const held = new Set(), KEYS = { w: 'u', arrowup: 'u', s: 'd', arrowdown: 'd', a: 'l', arrowleft: 'l', d: 'r', arrowright: 'r' };
+  const joyFromKeys = () => { const x = (held.has('r') ? 1 : 0) - (held.has('l') ? 1 : 0), y = (held.has('u') ? 1 : 0) - (held.has('d') ? 1 : 0), L = Math.hypot(x, y) || 1; try { ROOM3D.setJoy(x / L, y / L); } catch (e) { } };
+  const walkingNow = () => !!((window.V2 && V2.walking) || (window.ROOM3D && ROOM3D.fpv)) && typeof S !== 'undefined' && S.page === 'home';
+  window.addEventListener('keydown', e => {
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = KEYS[String(e.key).toLowerCase()]; if (!k || !walkingNow()) return;
+    e.preventDefault(); e.stopImmediatePropagation(); held.add(k); joyFromKeys();
+  }, true);
+  window.addEventListener('keyup', e => { const k = KEYS[String(e.key).toLowerCase()]; if (!k) return; if (held.delete(k)) joyFromKeys(); }, true);
+  window.addEventListener('blur', () => { held.clear(); try { ROOM3D.setJoy(0, 0); } catch (e) { } });
+  const boot = () => { wrap('render'); wrap('nav'); DK.apply(); setInterval(() => { if (DK.on) DK.paint(); }, 1500); setInterval(() => { if (DK.on) DK.railSync(); }, 600); };
   if (MQ.addEventListener) MQ.addEventListener('change', () => DK.apply()); else if (MQ.addListener) MQ.addListener(() => DK.apply());
   window.addEventListener('resize', () => { if (MQ.matches !== DK.on) DK.apply(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 0)); else setTimeout(boot, 0);

@@ -271,6 +271,14 @@ async function main() {
   const petAlerts = require('./services/petalerts');
   setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
   setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
+  setInterval(() => require('./routes/acproperties').notifyReady(app.get('io')).catch((e) => console.error('[build notify]', e.message)), 60 * 1000).unref();    // "your builders are done"
+  setInterval(async () => {          // 9 to 5 workday: pay every full hour to clocked-in players (and clock them out at 5 PM), even if the game is closed
+    try {
+      const User = require('./models/User'), jobs = require('./routes/acjobs');
+      const due = await User.find({ 'ac.clockAt': { $ne: null } }).select('_id').limit(500).lean();
+      for (const d of due) await jobs.settle(String(d._id), app.get('io'));
+    } catch (e) { console.error('[workday sweep]', e.message); }
+  }, 5 * 60 * 1000).unref();
   setInterval(async () => {          // pay out house parties that have ended, even if the host never opens the app again
     try {
       const User = require('./models/User'), party = require('./routes/acparty');

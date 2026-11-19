@@ -804,3 +804,12 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - Visiting: friends can only visit while the owner is online, otherwise it counts as a break-in with an alert; owner can kick visitors and choose whether guests may use things (routes/acsocial.js, party.js, phone.js, use.js).
 - Walk mode: press and hold the eye button for a joystick and a full-body view (v2.js, modal-fix.css).
 
+
+
+## v28 additions
+- **9 to 5 workday** (utils/acjobs.js, routes/acjobs.js, jobs.js): Mon-Fri 9:00-17:00 Lagos time. Clock in, one paid shift per full hour (max 8/day), clock out any time. Hours are credited by `settle()` from the Jobs screen, `/work` and a 5-minute sweep in server.js, so players are paid with the game closed. New **Construction** career (builders also finish their own builds 25% faster).
+- **Construction** (routes/acproperties.js, homes.js): buying a home or ordering a renovation starts a build (minutes to ~2.5 h by size, `BUILD_SPEED` env divides the time for testing). When the builders finish the player is notified ("finished building, awaiting payment") and pays in Homes; payment is claimed atomically. Max 3 builds at once.
+- **Ground-floor layouts** (open / lounge + kitchen / lounge, kitchen + dining) and a **Garage extension** (3-row strip; cars only fit inside it) as renovations. `bedrooms.js layout(k, {bath, garage, style})` is shared by server and browser.
+- **~40 new buy-mode items**: Outdoor (kiosk, food stall, bus shelter, container shop...), Cars (8 cars + container truck), utilities, household extras. Procedural models in `room3d.modelMore()`.
+- **Desktop rail** (desktop.js): house parties, view switcher (click = first person, hold = walk mode, W A S D walks), stairs, game song, voice; same as the phone controls.
+- **Seated pose fix** (models3d.js `legBase`): leg bones are restored every frame while sitting so the pose no longer feeds back into itself.

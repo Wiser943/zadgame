@@ -303,8 +303,17 @@
       bone.quaternion.copy(q1.invert().multiply(r).multiply(q2)); bone.updateMatrixWorld(true)
     },
     /* sitting: thighs forward, shins down, feet (separate IK bones) back under the knees, hips on the seat */
+    /* The rig only animates some bones, so the leg bones kept whatever rotation we gave them last frame, and every frame the pose was measured
+       from that rotated skeleton and rotated again: the legs slowly spun and the mesh stretched ("legs hanging" / long black strands). Fix: remember the legs as they
+       are when the sit starts and put them back to that pose at the start of EVERY frame, so each frame's sit pose is computed from the same clean skeleton. */
+    legBase(g, restore) {
+      const B = g.bones, names = ['UpperLeg.L', 'UpperLeg.R', 'LowerLeg.L', 'LowerLeg.R']; if (!B) return;
+      if (restore) { if (!g.sitBase) return; names.forEach(n => { if (B[n] && g.sitBase[n]) B[n].quaternion.copy(g.sitBase[n]) }); ['L', 'R'].forEach(x => { const f = B['Foot.' + x]; if (f && g.sitBase['Foot.' + x]) f.position.copy(g.sitBase['Foot.' + x]) }); if (g.root) g.root.updateMatrixWorld(true); return }
+      g.sitBase = {}; names.forEach(n => { if (B[n]) g.sitBase[n] = B[n].quaternion.clone() }); ['L', 'R'].forEach(x => { const f = B['Foot.' + x]; if (f) g.sitBase['Foot.' + x] = f.position.clone() })
+    },
     sitPose(g, av, seatTop) {
       const B = g.bones; if (!B || !B.Hips || !B['UpperLeg.L'] || !B['Foot.L']) return;
+      if (!g.sitBase) this.legBase(g, false); else { this.legBase(g, true); av.updateMatrixWorld(true) }
       const V = THREE.Vector3, X = new V(1, 0, 0).applyQuaternion(av.getWorldQuaternion(new THREE.Quaternion())), v = new V(), w = new V(), off = {};
       av.updateMatrixWorld(true); B.Hips.getWorldPosition(v); const hipRel = v.y - av.getWorldPosition(w).y;
       ['L', 'R'].forEach(s => { B['LowerLeg.' + s].getWorldPosition(v); B['Foot.' + s].getWorldPosition(w); off[s] = w.clone().sub(v) });
@@ -312,14 +321,14 @@
       // thigh * sin(slope) = (hip height above the floor) - (shin height) ; the shins stay vertical, the feet stay flat.
       B['UpperLeg.L'].getWorldPosition(v); const uy = v.y - av.getWorldPosition(w).y; B['LowerLeg.L'].getWorldPosition(w); const knee = w.clone(); B['Foot.L'].getWorldPosition(w);
       const baseY = av.getWorldPosition(new V()).y, thigh = Math.max(.15, knee.distanceTo(v)), shin = Math.max(0, knee.y - w.y), footY = w.y - baseY;
-      const hipJoint = seatTop + .03 - hipRel + uy, slope = Math.asin(Math.max(-.5, Math.min(.85, (hipJoint - footY - shin) / thigh))), ang = Math.PI / 2 - slope;
+      const hipJoint = seatTop + .03 - hipRel + uy, slope = Math.asin(Math.max(-.5, Math.min(.85, (hipJoint - footY - shin) / thigh))), ang = Math.max(.25, Math.min(1.75, Math.PI / 2 - slope)); if (!isFinite(ang) || !isFinite(hipRel)) return;
       ['L', 'R'].forEach(s => { this.rotW(B['UpperLeg.' + s], X, -ang); this.rotW(B['LowerLeg.' + s], X, ang) });
       ['L', 'R'].forEach(s => { const f = B['Foot.' + s]; B['LowerLeg.' + s].getWorldPosition(v); v.add(off[s]); f.parent.updateWorldMatrix(true, false); f.parent.worldToLocal(v); f.position.copy(v); f.updateMatrixWorld(true) });
       g.root.position.set(0, seatTop + .03 - hipRel, -.05)
     },
     /* an action is running (room.act): lie on the bed, sit on the seat, or stand and use the thing */
     stepAct(room, g, dt) {
-      const A = room.act, av = room.avatar; g.posed = true;
+      const A = room.act, av = room.avatar; g.posed = true; if (g.sitFor !== A) { if (g.sitBase) this.legBase(g, true); g.sitBase = null; g.sitFor = A }
       g.root.rotation.set(0, 0, 0); g.root.position.set(0, 0, 0); g.spin = 0;
       this.play(g, A.kind === 'stand' ? 'use' : 'rest'); g.mixer.update(dt);
       if (g.anch) g.anch.hA.visible = g.anch.tA.visible = A.kind !== 'lie';
@@ -330,7 +339,7 @@
     /* drives the GLB character instead of the procedural joints (same signature as ROOM3D.animate) */
     step(room, t, dt, moving) {
       const g = room.glb; if (room.act) return this.stepAct(room, g, dt);
-      if (g.posed) { g.posed = false; g.root.rotation.set(0, 0, 0); g.root.position.set(0, 0, 0); if (g.anch) g.anch.hA.visible = g.anch.tA.visible = true; g.cur = null }
+      if (g.posed) { g.posed = false; if (g.sitBase) { this.legBase(g, true); g.sitBase = null; g.sitFor = null } g.root.rotation.set(0, 0, 0); g.root.position.set(0, 0, 0); if (g.anch) g.anch.hA.visible = g.anch.tA.visible = true; g.cur = null }
       if (room.em && moving) { room.em = null; if (window.emoteEnded) window.emoteEnded() }
       const ext = room.ext || {}, st = moving ? 'walk' : (room.em || 'idle'), dn = room.dn || 0, dm = dn % 4;
       g.dn = dn; g.tt += dt;

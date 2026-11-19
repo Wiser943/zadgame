@@ -351,6 +351,7 @@ window.ROOM3D = {
   B(w, h, d, c, x, y, z, par) { return this.box(w, h, d, c, x, y, z, par) },
   model(name) {
     const D = FURN.ITEMS[name], [w, d] = [D.w || 1, D.d || 1], c = D.color, g = new THREE.Group(), B = (a, b, cc, col, x, y, z) => this.B(a, b, cc, col, x, y, z, g), K = (hex, f) => new THREE.Color(hex).multiplyScalar(f).getHex();
+    if (this.modelMore(D, g, B, K, w, d, c)) return g;
     switch (D.kind) {
       case 'bed': { B(w - .1, .28, d - .1, 0xb08a5a, 0, .2, 0); B(w - .22, .2, d - .22, c, .04, .42, 0); B(.1, .75, d - .1, 0x6b4a2a, -w / 2 + .08, .5, 0); const n = d >= 2 ? 2 : 1; for (let k = 0; k < n; k++) B(.42, .13, (d - .3) / n - .12, 0xf4efe6, -w / 2 + .42, .6, (k - (n - 1) / 2) * ((d - .3) / n)); B(w * .55, .05, d - .26, K(c, 1.15), .25, .54, 0); break }
       case 'sofa': case 'armchair': { B(w - .08, .38, .9, K(c, .85), 0, .22, .02); for (let k = 0; k < w; k++) B(.86, .15, .68, c, -w / 2 + .5 + k, .5, .08); B(w - .08, .62, .22, K(c, .8), 0, .72, -.34); B(.18, .58, .9, K(c, .8), -w / 2 + .12, .46, .02); B(.18, .58, .9, K(c, .8), w / 2 - .12, .46, .02); break }
@@ -373,6 +374,68 @@ window.ROOM3D = {
       case 'stand': { this.cyl(.2, .05, 0x3a3a3a, 0, .03, 0, g); this.cyl(.03, 1.5, 0x3a3a3a, 0, .78, 0, g); g.userData.lamp = { y: 1.68 }; break }
     }
     return g
+  },
+  /* More things to buy: household extras, utilities, street-life stuff and cars. Plain boxes and cylinders in the same low-poly style. */
+  modelMore(D, g, B, K, w, d, c) {
+    const T = this, cyl = (r, h, col, x, y, z) => T.cyl(r, h, col, x, y, z, g), wheel = (x, y, z, r) => { r = r || .34; const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, .26, 14), T.mat(0x17171a)); m.rotation.z = Math.PI / 2; m.position.set(x, y, z); g.add(m); const hub = new THREE.Mesh(new THREE.CylinderGeometry(r * .5, r * .5, .28, 10), T.mat(0xb9bcc2)); hub.rotation.z = Math.PI / 2; hub.position.set(x, y, z); g.add(hub) };
+    const disc = (r, t, col, x, y, z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, t, 16), T.mat(col)); m.rotation.x = Math.PI / 2; m.position.set(x, y, z); g.add(m); return m };
+    const ball = (r, col, x, y, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), T.mat(col)); m.position.set(x, y, z); g.add(m); return m };
+    const cone = (r, h, col, x, y, z, seg) => { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, seg || 8), T.mat(col)); m.position.set(x, y, z); g.add(m); return m };
+    const legs4 = (W, Dp, h, col, t) => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) B(t || .06, h, t || .06, col, sx * W / 2, h / 2, sz * Dp / 2) };
+    switch (D.kind) {
+      case 'bunk': { for (const [y, k] of [[.22, 1], [1.0, 1.1]]) { B(w - .1, .12, d - .1, 0x7a5a3a, 0, y, 0); B(w - .22, .16, d - .22, k > 1 ? 0x4a6fa5 : c, 0, y + .14, 0) } for (const sx of [-1, 1]) for (const sz of [-1, 1]) B(.07, 1.5, .07, 0x5a3f27, sx * (w / 2 - .05), .75, sz * (d / 2 - .05)); B(.08, .3, d - .1, 0x5a3f27, w / 2 - .06, 1.25, 0); break }
+      case 'wardrobe': { B(w - .1, 1.9, .7, c, 0, .96, 0); B(.03, 1.7, .02, K(c, .55), 0, .96, .36); B(.05, .22, .03, 0xd8c27a, -.1, .95, .37); B(.05, .22, .03, 0xd8c27a, .1, .95, .37); break }
+      case 'microwave': { B(.8, .5, .6, 0x4a4d55, 0, .25, 0); B(.7, .36, .5, c, 0, .68, 0); B(.44, .24, .02, 0x15191f, -.08, .68, .26); B(.12, .24, .02, 0x7a7f88, .24, .68, .26); break }
+      case 'freezer': { B(w - .1, .8, .75, c, 0, .42, 0); B(w - .06, .06, .79, 0xb9c0c9, 0, .85, 0); B(.04, .04, .4, 0x888888, 0, .8, .4); break }
+      case 'island': { B(w - .1, .9, .8, 0x8a8f99, 0, .45, 0); B(w, .07, .9, 0xe3dfd3, 0, .93, 0); for (const sx of [-.4, .4]) { cyl(.17, .08, 0x3a3f4a, sx, .5, .62); cyl(.03, .5, 0x777777, sx, .25, .62) } break }
+      case 'diningset': { B(w - .6, .08, d - .8, c, 0, .78, 0); legs4(w - .8, d - 1, .78, K(c, .7), .08); for (const [x, z, r] of [[-.8, -1.0, 0], [0, -1.0, 0], [.8, -1.0, 0], [-.8, 1.0, 1], [0, 1.0, 1], [.8, 1.0, 1]]) { B(.42, .07, .42, 0xd9d2c3, x, .46, z); B(.42, .5, .06, 0xd9d2c3, x, .74, z + (r ? .2 : -.2)); B(.05, .44, .05, 0x7a5a3a, x - .16, .22, z - .16); B(.05, .44, .05, 0x7a5a3a, x + .16, .22, z + .16) } break }
+      case 'cylinder': { cyl(.2, .8, c, 0, .4, 0); cyl(.09, .12, 0x888888, 0, .86, 0); cyl(.04, .1, 0x333333, 0, .96, 0); break }
+      case 'washer': { B(.8, .9, .75, c, 0, .46, 0); disc(.25, .05, 0x2a3440, 0, .5, .39); disc(.17, .04, 0x8fb7d6, 0, .5, .42); B(.7, .12, .02, 0x6b7280, 0, .86, .39); break }
+      case 'bathtub': { B(w - .1, .55, .9, c, 0, .28, 0); B(w - .34, .3, .66, 0xbfe3f5, 0, .5, 0); cyl(.04, .3, 0x999999, -w / 2 + .2, .75, -.3); break }
+      case 'coffee': { B(.85, .06, .6, c, 0, .42, 0); legs4(.7, .45, .4, K(c, .7), .05); B(.4, .02, .3, 0xd8c8a8, 0, .46, 0); break }
+      case 'tvstand': { B(w - .1, .5, .45, c, 0, .26, 0); B(1.3, .75, .06, 0x0b0b0e, 0, .96, 0); B(1.2, .64, .02, 0x1b2a3f, 0, .96, .04); B(.3, .05, .2, 0x222222, 0, .56, 0); break }
+      case 'bookshelf': { B(.88, 1.7, .36, c, 0, .86, 0); for (let r = 0; r < 4; r++) { B(.84, .03, .34, K(c, .75), 0, .3 + r * .38, 0); for (let k = 0; k < 5; k++) B(.1, .26, .22, [0xc0392b, 0x2e86c1, 0x27ae60, 0xf1c40f, 0x8e44ad][(k + r) % 5], -.34 + k * .17, .46 + r * .38, 0) } break }
+      case 'desk': { B(w - .1, .06, .7, c, 0, .76, 0); legs4(w - .3, .55, .76, K(c, .6), .07); B(.62, .4, .05, 0x101114, 0, 1.06, -.15); B(.62, .34, .01, 0x2a5fa8, 0, 1.06, -.12); B(.1, .2, .1, 0x333333, 0, .9, -.15); B(.5, .02, .18, 0x2a2d33, 0, .8, .12); B(.4, .3, .45, 0x222428, w / 2 - .4, .5, .02); break }
+      case 'rug': { B(w - .2, .03, d - .2, c, 0, .02, 0); B(w - .6, .035, d - .6, K(c, 1.35), 0, .025, 0); B(w - 1, .04, d - 1, K(c, .7), 0, .03, 0); break }
+      case 'plant': { cyl(.2, .28, 0xb5654a, 0, .14, 0); for (const [x, y, z, r] of [[0, .72, 0, .3], [-.18, .52, .05, .2], [.2, .56, -.05, .22], [0, .98, .02, .2]]) ball(r, c, x, y, z); break }
+      case 'ac': { B(.55, 1.5, .42, c, 0, .76, 0); B(.46, .06, .02, 0x9aa3ad, 0, 1.28, .22); B(.46, .06, .02, 0x9aa3ad, 0, 1.18, .22); B(.1, .04, .02, 0x3ddc84, .16, .5, .22); break }
+      case 'treadmill': { B(.7, .12, d - .4, 0x2d2f36, 0, .15, 0); B(.6, .04, d - .6, 0x111114, 0, .23, .05); B(.08, 1.0, .08, 0x555a63, -.28, .7, -.5); B(.08, 1.0, .08, 0x555a63, .28, .7, -.5); B(.7, .26, .1, 0x1a1d22, 0, 1.2, -.5); B(.5, .12, .02, 0x3ddc84, 0, 1.2, -.44); break }
+      case 'piano': { B(w - .1, .9, d - .5, c, 0, .62, .1); B(w - .2, .06, .44, 0xf5f5f0, 0, .94, .62); for (const sx of [-.7, .7]) B(.1, .6, .1, K(c, 1.4), sx, .3, .9); B(.8, .08, .4, 0x2a2a2e, 0, .42, 1.2); B(w - .1, .04, d - .5, K(c, 1.5), 0, 1.1, -.1); break }
+      case 'battery': { B(.6, .5, .4, c, 0, .26, 0); B(.5, .12, .02, 0x3ddc84, 0, .44, .21); B(.06, .06, .06, 0xff5555, .22, .56, 0); break }
+      case 'biggen': { B(1.7, .9, .8, c, 0, .52, 0); B(1.3, .6, .62, 0x26282d, -.1, .55, 0); B(.5, .3, .02, 0x14161a, .5, .6, .42); for (const sx of [-.7, .7]) wheel(sx, .17, .38, .15); B(.26, .42, .2, 0xd33a2e, .98, .3, .1); break }
+      case 'tank': { for (const sx of [-.7, .7]) for (const sz of [-.7, .7]) B(.09, 1.0, .09, 0x6b4a2a, sx, .5, sz); B(1.7, .08, 1.7, 0x6b4a2a, 0, 1.0, 0); cyl(.85, 1.3, c, 0, 1.7, 0); cyl(.5, .12, K(c, .8), 0, 2.4, 0); for (const y of [1.3, 1.7, 2.05]) cyl(.88, .05, K(c, 1.4), 0, y, 0); break }
+      case 'pump': { B(.55, .4, .5, c, 0, .22, 0); cyl(.07, .9, 0x8a8f99, .1, .85, 0); B(.3, .2, .02, 0x14161a, 0, .3, .26); break }
+      case 'kiosk': { B(1.7, 1.2, 1.4, c, 0, .62, -.1); B(1.72, .55, 1.42, 0x2d5fa6, 0, .29, -.1); const rf = B(2.1, .07, 1.8, 0x9a6a4a, 0, 1.45, -.05); rf.rotation.x = .12; B(1.1, .5, .05, 0x15191f, 0, .92, .62); const aw = B(1.5, .05, .5, 0x4a74b8, 0, 1.2, .9); aw.rotation.x = .3; B(1.2, .12, .4, 0x8a6a45, -.2, .32, 1.15); B(.4, .4, .4, 0x8a6a45, .7, .2, 1.1); break }
+      case 'cart': { B(1.3, .3, .8, c, 0, .62, 0); B(1.1, .26, .6, 0xe9dfc4, -.1, .9, 0); B(.5, .3, .4, 0x2f6fd1, .3, 1.12, 0); B(.3, .35, .3, 0xe8c21a, -.35, 1.1, .1); disc(.38, .08, 0x5a3f27, 0, .38, .46); disc(.38, .08, 0x5a3f27, 0, .38, -.46); const h1 = B(.06, .06, 1.0, 0x5a3f27, .95, .85, .3); h1.rotation.y = .1; const h2 = B(.06, .06, 1.0, 0x5a3f27, .95, .85, -.3); h2.rotation.y = -.1; break }
+      case 'shelter': { for (const sx of [-1.3, 1.3]) for (const sz of [-.4, .4]) B(.08, 2.1, .08, c, sx, 1.05, sz); const rf = B(3, .07, 1.1, K(c, 1.1), 0, 2.15, 0); B(2.9, .07, .5, K(c, 1.2), 0, 2.2, -.1); B(2.2, .12, .45, 0x6b8fc7, 0, .5, -.25); B(2.2, .5, .06, 0x6b8fc7, 0, .8, -.45); B(.5, .35, .04, 0xe8c21a, 1.0, 1.3, -.45); break }
+      case 'stall': { B(1.8, .8, .9, 0x8a6a45, 0, .4, .2); for (const sx of [-.9, .9]) for (const sz of [-.8, .9]) B(.07, 1.9, .07, 0x6b4a2a, sx, .95, sz); const tp = B(2, .05, 1.9, 0x2f63b8, 0, 1.92, .05); tp.rotation.x = .1; cyl(.22, .3, 0xd9d9de, -.5, .95, .2); cyl(.2, .25, 0xd9d9de, .1, .93, .3); B(.62, .42, .42, 0x2d5fa6, .6, .95, .2); B(.35, .3, .05, 0xe8c21a, -.7, .5, -.28); for (const [x, z, col] of [[-.8, .95, 0x3aa65a], [.9, .95, 0x9b59b6]]) cyl(.16, .4, col, x, .2, z); break }
+      case 'umbtable': { cyl(.04, 1.9, 0x555555, 0, .95, 0); cone(1.05, .42, 0xe8b52a, 0, 1.95, 0, 8); cone(.7, .43, 0x8e5bb8, 0, 1.96, 0, 8); B(.9, .05, .9, 0x3f7fd0, 0, .72, 0); legs4(.7, .7, .72, 0x2a5fa8, .05); B(.45, .05, .45, 0xf4efe6, .65, .46, .5); B(.45, .5, .06, 0xf4efe6, .65, .72, .72); break }
+      case 'container': { B(3.9, 1.8, 1.9, c, 0, .9, 0); B(2.2, .6, .05, 0xd9a95a, .5, 1.15, .97); const aw = B(2.4, .05, .6, 0xcbc4a8, .5, 1.55, 1.2); aw.rotation.x = .35; for (let k = 0; k < 8; k++) B(.03, 1.7, .02, K(c, .8), -1.8 + k * .5, .9, .96); B(.5, 1.7, .04, K(c, 1.2), -1.4, .9, .97); break }
+      case 'icestand': { B(1.8, .7, .7, 0x8a6a45, 0, .36, 0); B(.7, .45, .45, c, -.45, .93, 0); B(.7, .05, .5, 0xe8f1ff, -.45, 1.18, 0); for (let k = 0; k < 4; k++) B(.25, .08, .18, 0xf4f8ff, .3 + (k % 2) * .3, .78 + Math.floor(k / 2) * .09, 0); cyl(.03, 1.6, 0x555555, .7, .8, -.2); cone(.75, .3, 0x2f6fd1, .7, 1.65, -.2, 8); cyl(.16, .4, 0x8e5bb8, .85, .2, .55); break }
+      case 'dustbin': { B(.85, .9, .7, c, 0, .52, 0); const lid = B(.9, .08, .75, K(c, .8), 0, 1.0, -.12); lid.rotation.x = -.35; B(.5, .4, .1, 0x15151a, 0, 1.0, .1); disc(.14, .06, 0x2a2a2e, .3, .14, .38); disc(.14, .06, 0x2a2a2e, -.3, .14, .38); break }
+      case 'plasticset': { B(.9, .05, .9, c, 0, .7, 0); legs4(.7, .7, .7, K(c, .8), .06); B(.46, .28, .36, 0xd33a2e, 0, .88, 0); for (let k = 0; k < 4; k++) cyl(.04, .26, [0x2d6a2d, 0x7a4a1a, 0x2d6a2d, 0xd9a62a][k], -.14 + (k % 2) * .28, 1.1, -.08 + Math.floor(k / 2) * .16); for (const [x, z, r] of [[-.75, 0, 1], [.75, 0, -1]]) { B(.42, .06, .42, 0xf4f4f6, x, .44, z); B(.06, .5, .42, 0xf4f4f6, x + r * .2, .72, z); B(.05, .42, .05, 0xf4f4f6, x - .16, .21, z - .16); B(.05, .42, .05, 0xf4f4f6, x + .16, .21, z + .16) } break }
+      case 'tyres': { for (let k = 0; k < 4; k++) cyl(.38, .22, c, 0, .12 + k * .23, 0); for (let k = 0; k < 4; k++) cyl(.18, .24, 0x555555, 0, .12 + k * .23, 0); break }
+      case 'car': {
+        const st = D.style, rusty = st === 'rusty', body = rusty ? 0x56616b : c, glass = 0x1a2530, L = st === 'truck' ? 5.8 : 4.1, W = 1.75;
+        if (st === 'truck') {
+          B(1.3, .26, L, 0x2d2d31, 0, .5, 0); B(W, 1.45, 1.4, 0xf1f2f4, 0, 1.25, 2.1); B(W - .1, .5, .05, glass, 0, 1.6, 2.82); B(W + .05, .5, 1.1, 0xe3e5e8, 0, .7, 2.2);
+          B(W, 1.85, 3.9, c, 0, 1.75, -.7); for (let k = 0; k < 10; k++) B(.03, 1.8, .02, K(c, .75), -.84 + k * .19, 1.75, 1.27);
+          for (const z of [2.2, -1.6, -2.4]) for (const sx of [-1, 1]) wheel(sx * (W / 2), .42, z, .42);
+        } else {
+          B(W, .5, L, body, 0, .55, 0);
+          const cab = { sedan: [2.1, .5, -.2], rusty: [2.1, .5, -.2], hatch: [2.6, .52, -.45], suv: [2.9, .66, -.35], prado: [3.0, .74, -.3], pickup: [1.5, .58, .75] }[st] || [2.1, .5, -.2];
+          B(W - .12, cab[1], cab[0], body, 0, .8 + cab[1] / 2, cab[2]); B(W - .04, cab[1] * .62, cab[0] - .28, glass, 0, .86 + cab[1] / 2, cab[2]);
+          if (st === 'pickup') { B(W - .12, .1, 1.9, body, 0, .83, -1.2); for (const sx of [-1, 1]) B(.08, .32, 1.9, body, sx * (W / 2 - .08), 1.0, -1.2); B(W - .12, .32, .08, body, 0, 1.0, -2.1) }
+          if (st === 'suv' || st === 'prado') { for (const sx of [-.7, .7]) B(.05, .05, 2.5, 0x2a2a2e, sx, 1.52 + (st === 'prado' ? .08 : 0), -.35); if (st === 'prado') B(.9, .5, .14, body, 0, 1.0, -2.15) }
+          B(.34, .16, .05, 0xffefb0, -.55, .66, L / 2); B(.34, .16, .05, 0xffefb0, .55, .66, L / 2); B(.3, .14, .05, 0xd43a3a, -.58, .66, -L / 2); B(.3, .14, .05, 0xd43a3a, .58, .66, -L / 2); B(W - .3, .1, .06, 0x2a2a2e, 0, .45, L / 2);
+          for (const sx of [-1, 1]) for (const z of [L / 2 - .85, -(L / 2 - .85)]) { if (rusty && sx === 1 && z < 0) { B(.3, .24, .3, 0x9a8f7a, sx * (W / 2 - .05), .16, z); continue } wheel(sx * (W / 2), .34, z) }
+          if (rusty) { B(.5, .02, .8, 0x8a5a3a, .3, 1.04 + .27, -.4); B(.6, .02, .5, 0x8a5a3a, -.4, .8 + .27, 1.1) }
+        }
+        break
+      }
+      default: return false
+    }
+    return true
   },
   ensureAvatarFree() {
     if (this.act) return;
@@ -518,7 +581,7 @@ window.ROOM3D = {
   /* built-in things of a fixed-plan home (shop counter, shelves ...) as use-able pseudo items */
   fixture(id) { const f = ((this.layout && this.layout.fixtures) || []).find(x => 'fx:' + x.id === id); return f ? { id, name: f.name, kind: f.kind, x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, fixture: true } : null },
   /* ---------- using furniture: walk next to it, then lie / sit / stand there for a while ---------- */
-  SEAT: { chair: .54, stool: .82, sofa: .58, armchair: .58, toilet: .5 },
+  SEAT: { chair: .54, stool: .82, sofa: .58, armchair: .58, toilet: .5, desk: .52, piano: .5, shelter: .5, umbtable: .5, plasticset: .46, bunk: .5 },
   useItem(it, act, cb) {
     const D = FURN.ITEMS[it.name] || (it.fixture ? {} : null); if (!D) return; const [w, d] = it.fixture ? [it.w, it.d] : FURN.footprint(it.name, it.rot), th = (it.rot || 0) * Math.PI / 180, f = [Math.sin(th), Math.cos(th)];
     const occ = FURN.occupied(this.fItems()), from = this.cellFromPoint(this.avatar.position); occ.delete(from[0] + ',' + from[1]);

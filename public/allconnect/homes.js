@@ -29,7 +29,7 @@ const HOMES = {
     this.errorMessage = '';
     const list = document.getElementById('homesList');
     try {
-      this.data = await NET.api('/api/ac/properties');
+      this.data = await NET.api('/api/ac/properties'); this.off = this.data.now ? this.data.now - Date.now() : 0; this._ready = null; clearInterval(this._bt); this._bt = setInterval(() => { if (document.getElementById('homesList')) this.tickBuilds(); else clearInterval(this._bt) }, 1000);
       this.oldServer = this.data.homesApi !== 2;      // the server answers with homesApi:2 once the new home code is deployed
       if (SHEET.isOpen('homes') || (window.PH && PH.view === 'homes')) this.draw();
     } catch (e) {
@@ -45,6 +45,7 @@ const HOMES = {
     const own = d.properties || [], active = S.activePropertyId, rows = [];
     if (this.oldServer) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Game server needs updating</b><p>Buying, renting and adding bedrooms need the latest server version. Redeploy the backend, then reopen Homes.</p></div></div>`);
     if (this.errorMessage && !this.oldServer) rows.push(`<div class="home-error" role="alert"><span class="home-error-ic"><i class="fa-solid fa-triangle-exclamation"></i></span><div><b>Couldn't complete that</b><p>${this.esc(this.errorMessage)}</p></div><button onclick="HOMES.load()">Try again</button></div>`);
+    const bh = this.buildsHtml(); if (bh) rows.push(bh);
     rows.push(`<div class="home-card"><div class="home-emoji">🛏️</div><div class="home-copy"><b>Starter Room</b><p>Your original AllConnect room and furniture are preserved.</p><small>Always available · Existing furniture</small></div><div class="home-actions"><button class="${!active ? 'secondary' : ''}" onclick="HOMES.enter('')">${!active ? 'Current home' : 'Enter'}</button></div></div>`);
     for (const h of d.catalogue || []) {
       const p = own.find(x => x.type === h.id && !(x.tenure === 'rent' && x.leaseExpiresAt && new Date(x.leaseExpiresAt) <= new Date()));
@@ -81,15 +82,14 @@ const HOMES = {
   },
   async renovate(id, optId) {
     if (this.busy) return; const p = ((this.data && this.data.properties) || []).find(x => x.id === id), o = p && (p.renovations || []).find(x => x.id === optId); if (!o) return;
-    if (!confirm(`${o.name} for ${this.money(o.cost)}?\n\n${o.description}`)) return;
+    if (!confirm(`${o.name}\n\n${o.description}\n\nThe builders start now and tell you when they finish. You pay ${this.money(o.cost)} then.`)) return;
     this.busy = true; this.draw();
     try {
       const r = await NET.api('/api/ac/properties/' + encodeURIComponent(id) + '/renovate', { method: 'POST', body: { id: o.id } });
-      applyAC(r.ac); this.data.properties = (this.data.properties || []).map(x => x.id === id ? r.property : x); this.data.cash = r.ac.cash;
-      if (S.activePropertyId === id && window.ROOM3D) ROOM3D.sync(); if (window.BUY && BUY.active) BUY.draw();
-      toast('Renovation done 🛠️ ' + o.name)
-    } catch (e) { toast(e.message || 'Could not renovate.') }
-    finally { this.busy = false; this.draw(); try { if (SHEET.isOpen('reno')) SHEET.paint() } catch (e) {} }
+      this.data.builds = r.builds || []; toast('🏗️ The builders are on it: about ' + this.fmtLeft(r.minutes * 60000) + '. We will tell you when they finish.')
+      try { if (SHEET.isOpen('reno')) SHEET.close() } catch (e) {}
+    } catch (e) { toast(e.message || 'Could not start the renovation.') }
+    finally { this.busy = false; this.draw() }
   },
   expandButton(p) {
     if (!p || p.tenure !== 'owned' || !(p.expansions || []).length) return '';
@@ -119,6 +119,7 @@ const HOMES = {
     this.busy = true; this.sizeMsg = ''; this.drawSizes();
     try {
       const r = await NET.api('/api/ac/properties/' + encodeURIComponent(id) + '/expand', { method: 'POST', body: { bedrooms: total } });
+      if (r && r.building) { this.data.builds = r.builds || []; this.draw(); toast('🏗️ The builders are on it: about ' + this.fmtLeft(r.minutes * 60000) + '. We will tell you when they finish.'); this.busy = false; this.draw(); return }
       if (!r || !r.ac || !r.property) throw new Error('The server did not confirm the expansion. Open Homes again to check your home before trying again.');
       applyAC(r.ac);
       this.data.properties = (this.data.properties || []).map(x => x.id === id ? r.property : x);
@@ -135,6 +136,42 @@ const HOMES = {
     }
   },
   esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
+  /* ---------- construction: order -> builders work (minutes to hours) -> "finished, awaiting payment" -> you pay ---------- */
+  fmtLeft(ms) { const m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60 ? (m % 60) + ' min' : '') : m + ' min' },
+  buildsHtml() {
+    const B = (this.data && this.data.builds) || []; if (!B.length) return '';
+    return '<div class="builds"><h4>🏗️ Construction</h4>' + B.map(b => {
+      const ready = Date.now() >= b.readyAt - (this.off || 0), left = Math.max(0, b.readyAt - Date.now() + (this.off || 0)), pct = ready ? 100 : Math.max(2, Math.min(99, Math.round((Date.now() - (this.off || 0) - b.startedAt) / Math.max(1, b.readyAt - b.startedAt) * 100)));
+      return `<div class="build ${ready ? 'ready' : ''}" data-b="${this.esc(b.id)}" data-r="${b.readyAt}"><div class="bh"><b>${this.esc(b.name)}</b><span>${ready ? '✅ Finished, awaiting payment' : '🔨 Building · ' + this.fmtLeft(left) + ' left'}</span></div><div class="bbar"><u style="width:${pct}%"></u></div>
+        <div class="bf">${ready ? `<button class="lgbtn" ${this.busy ? 'disabled' : ''} onclick="HOMES.payBuild('${this.esc(b.id)}')">Pay ${this.money(b.cost)}</button>` : `<small>${this.money(b.cost)} due when the builders finish</small>`}<button class="lgbtn ghost" onclick="HOMES.cancelBuild('${this.esc(b.id)}')">Cancel</button></div></div>`
+    }).join('') + '</div>'
+  },
+  /* the server decides when a project is done; this only ticks the countdown once a second while Homes is open */
+  tickBuilds() {
+    if (!this.data || !(this.data.builds || []).length) return; const t = document.getElementById('homesList'); if (!t) return;
+    const was = (this.data.builds || []).map(b => Date.now() - (this.off || 0) >= b.readyAt);
+    if (this._ready && this._ready.join() !== was.join()) { this._ready = was; this.draw(); return }
+    this._ready = was; t.querySelectorAll('.build:not(.ready)').forEach(el => {
+      const b = (this.data.builds || []).find(x => x.id === el.dataset.b); if (!b) return;
+      const left = Math.max(0, b.readyAt - Date.now() + (this.off || 0)), pct = Math.max(2, Math.min(99, Math.round((Date.now() - (this.off || 0) - b.startedAt) / Math.max(1, b.readyAt - b.startedAt) * 100)));
+      el.querySelector('.bh span').textContent = '🔨 Building · ' + this.fmtLeft(left) + ' left'; el.querySelector('.bbar u').style.width = pct + '%'
+    })
+  },
+  async payBuild(id) {
+    if (this.busy) return; this.busy = true; this.draw();
+    try {
+      const r = await NET.api('/api/ac/properties/builds/' + encodeURIComponent(id) + '/pay', { method: 'POST' });
+      applyAC(r.ac); const P = this.data.properties || []; this.data.properties = P.some(x => x.id === r.property.id) ? P.map(x => x.id === r.property.id ? r.property : x) : [...P, r.property];
+      this.data.builds = r.builds || []; this.data.cash = r.ac.cash;
+      if (S.activePropertyId === r.property.id && window.ROOM3D) ROOM3D.sync();
+      toast('🏠 ' + (r.name || 'Your project') + ' is ready!')
+    } catch (e) { toast(e.message || 'Could not pay.'); await this.load() }
+    finally { this.busy = false; this.draw(); try { if (SHEET.isOpen('reno')) SHEET.paint() } catch (e) {} }
+  },
+  async cancelBuild(id) {
+    if (!confirm('Cancel this project? You have not paid anything yet.')) return;
+    try { const r = await NET.api('/api/ac/properties/builds/' + encodeURIComponent(id) + '/cancel', { method: 'POST' }); this.data.builds = r.builds || []; this.draw(); toast('Project cancelled') } catch (e) { toast(e.message) }
+  },
   async acquire(type) {
     if (this.busy) return;
     this.busy = true; this.errorMessage = ''; this.draw();

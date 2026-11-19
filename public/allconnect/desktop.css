@@ -118,3 +118,16 @@ body.dk #buy .bpanel{left:auto;right:18px;top:auto;bottom:18px;transform:none;wi
 body.dk #phone .frame{top:calc(50% + 24px)}
 
 @media (max-width:1180px){#dkTop .dkon{display:none!important}#dkTop{min-width:0;max-width:calc(100% - 280px)}}
+
+/* ---------- desktop rail: house parties, view switcher, stairs, game song, voice (same controls as the phone) ---------- */
+#dkRail{position:absolute;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:6}
+#dkRail[hidden],#dkRail .dkr[hidden]{display:none}
+#dkRail .dkr{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:18px;padding:0;cursor:pointer}
+#dkRail .dkr:hover{background:rgba(24,44,50,.92)}
+#dkRail .dkr.walk{background:rgba(190,40,50,.92);color:#fff;font-size:20px}
+body.dk #app.inbuy #dkRail,body.dk #app.inphone #dkRail,body.dk.dkvisit #dkRail{display:none}
+/* walk mode: the dock, actions and top bar get out of the way, the joystick shows bottom-left, the eye turns into an X */
+body.dk.walkmode #dkDock,body.dk.walkmode #dkAct,body.dk.walkmode #dkMe,body.dk.walkmode #dkSearch{display:none!important}
+body.dk.walkmode #dkRail #dkParty,body.dk.walkmode #dkRail #dkFloor,body.dk.walkmode #dkRail #dkMusic,body.dk.walkmode #dkRail #dkMic{display:none!important}
+body.dk.dkvisit #dkTop,body.dk.dkvisit #dkMe,body.dk.dkvisit #dkDock,body.dk.dkvisit #dkAct{display:none!important}
+body.dk #v2joy{left:28px;bottom:34px}

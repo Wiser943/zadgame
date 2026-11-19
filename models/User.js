@@ -82,7 +82,7 @@ const UserSchema = new mongoose.Schema({
     // entry as a plain String, so ac.properties became a list of strings: new homes could be written but never read back.
     properties: { type: [{ _id: false, id: String, type: { type: String }, tenure: { type: String, enum: ['owned', 'rent'], default: 'owned' },
       boughtAt: { type: Date, default: Date.now }, leaseExpiresAt: { type: Date, default: null }, paint: { type: String, default: '#d9a93a' },
-      level: { type: Number, default: 0, min: 0, max: 2 }, bedrooms: { type: Number, default: 0, min: 0, max: 5 }, bath: { type: Boolean, default: false }, upstairs: { type: Boolean, default: false }, upStyle: { type: String, default: 'lounge' }, finish: { type: String, default: 'standard' }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
+      level: { type: Number, default: 0, min: 0, max: 2 }, bedrooms: { type: Number, default: 0, min: 0, max: 5 }, bath: { type: Boolean, default: false }, garage: { type: Boolean, default: false }, groundStyle: { type: String, default: 'open' }, upstairs: { type: Boolean, default: false }, upStyle: { type: String, default: 'lounge' }, finish: { type: String, default: 'standard' }, insured: { type: Boolean, default: false }, condition: { type: Number, default: 100 }, lastWeatherEvent: { type: String, default: '' },
       items: { type: [{ _id: false, id: String, name: String, x: Number, z: Number, rot: Number, floor: { type: Number, default: 0 }, placed: { type: Boolean, default: true } }], default: [] } }], default: [] },
     baes: { type: [{ _id: false, partner: String, since: { type: Date, default: Date.now } }], default: [] },   // up to 3 "baes" (routes/acsocial.js keeps both sides in sync)
     wish: { type: [String], default: [] },                 // previewed but not bought yet (wishlist / drafts)
@@ -120,6 +120,7 @@ const UserSchema = new mongoose.Schema({
     jobShifts: { type: Map, of: Number, default: {} },
     autoWork: { type: Boolean, default: true },
     lastShift: { type: Date, default: null },
+    clockAt: { type: Date, default: null },                 // clocked in: the start of the hour being worked (null = not clocked in). A 9 to 5 day pays once per full hour.
     shiftDay: { type: String, default: '' },
     shiftsToday: { type: Number, default: 0 },
     bills: { type: [{ _id: false, key: String, cycle: String, amount: Number, due: Date, paidAt: { type: Date, default: null }, fee: { type: Number, default: 0 } }], default: [] },
@@ -140,6 +141,7 @@ const UserSchema = new mongoose.Schema({
       rides: { type: Number, default: 0 }, fines: { type: Number, default: 0 }, crashes: { type: Number, default: 0 }, earned: { type: Number, default: 0 },
       sess: { type: mongoose.Schema.Types.Mixed, default: null }     // the one quiz / light / okada round in progress (answers stay on the server)
     },
+    builds: { type: [{ _id: false, id: String, kind: String, propertyId: String, optId: String, homeType: String, name: String, cost: Number, startedAt: Date, readyAt: Date, notified: Boolean }], default: [] },   // construction orders: building -> ready (awaiting payment) -> paid
     visit: {                                               // friends visiting this home: online-only (otherwise a break-in), owner can kick and decides if guests may use things
       allowUse: { type: Boolean, default: false },
       kicked: { type: [{ _id: false, id: String, until: Date }], default: [] },

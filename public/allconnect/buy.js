@@ -2,7 +2,7 @@
    Rules (prices, overlap, sell value = 20%) are enforced by the server (routes/acitems.js). The 3D room is ROOM3D. */
 const BUY = {
   active: false, tab: 'Sleep', sheetOpen: true, g: null, sel: null, confirmSell: 0, paint0: null, pp: null,
-  TABS: ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light', 'Power', 'Design', 'Wishlist', 'Stored'],
+  TABS: ['Sleep', 'Kitchen', 'Bath', 'Comfort', 'Light', 'Power', 'Outdoor', 'Cars', 'Design', 'Wishlist', 'Stored'],
   is3d() { return !!(window.ROOM3D && ROOM3D.on) },
   items() { return FURN.onFloor(S.items || [], S.floor || 0) },        // furniture on the floor you are placing on
   allItems() { return S.items || [] },                                  // every floor (stored items, how many you own)
@@ -11,7 +11,7 @@ const BUY = {
   thumb(name) { const D = FURN.ITEMS[name]; const u = this.is3d() ? ROOM3D.thumb(name) : ''; return u ? `<img src="${u}" alt="">` : `<span class="cem">${D.emoji || '🛋️'}</span>` },
   enter() {
     this.active = true; this.g = null; this.sel = null; this.pp = null; this.sheetOpen = true; this.paint0 = S.paint;
-    if (!this.is3d() && this.TABS.indexOf(this.tab) < 6) this.tab = 'Design';
+    if (!this.is3d() && this.TABS.indexOf(this.tab) < 8) this.tab = 'Design';
     if (this.is3d()) { ROOM3D.buyMode(true, e => this.tap(e)); ROOM3D.page('buy') }
     this.draw(); this.floorPill()
   },
@@ -127,7 +127,7 @@ const BUY = {
   },
   drawSheet() {
     const t = this.tab, stored = this.allItems().filter(i => i.placed === false), wish = S.wish || [], tabs = this.TABS.filter(x => this.is3d() || x === 'Design');
-    $('tabs').innerHTML = tabs.map(x => `<button class="${x === t ? 'on' : ''}" onclick="BUY.setTab('${x}')">${{ Sleep: '🛏️', Kitchen: '🍳', Bath: '🚿', Comfort: '🛋️', Light: '💡', Power: '🔋', Design: '🎨', Wishlist: '♡', Stored: '📦' }[x]} ${x}${x === 'Wishlist' && wish.length ? ' (' + wish.length + ')' : x === 'Stored' && stored.length ? ' (' + stored.length + ')' : ''}</button>`).join('');
+    $('tabs').innerHTML = tabs.map(x => `<button class="${x === t ? 'on' : ''}" onclick="BUY.setTab('${x}')">${{ Sleep: '🛏️', Kitchen: '🍳', Bath: '🚿', Comfort: '🛋️', Light: '💡', Power: '🔋', Outdoor: '🏪', Cars: '🚗', Design: '🎨', Wishlist: '♡', Stored: '📦' }[x]} ${x}${x === 'Wishlist' && wish.length ? ' (' + wish.length + ')' : x === 'Stored' && stored.length ? ' (' + stored.length + ')' : ''}</button>`).join('');
     const G = $('items'); G.className = 'grid cat';
     if (t === 'Design') {
       G.className = 'grid'; G.innerHTML = CAT.Design[0][1].map((it, i) => `<button class="sw ${this.pp && this.pp[0] === it[0] ? 'sel' : ''}" onclick="BUY.paint(${i})"><i style="background:linear-gradient(90deg,${it[2]} 50%,${it[2]}cc 50%)"></i>${it[0]}<span>${S.owned[it[0]] ? 'Owned' : fmt(it[1])}</span></button>`).join('') + (this.pp ? `<button class="btn p" style="grid-column:1/-1" onclick="BUY.buyPaint()">${S.owned[this.pp[0]] ? 'Use ' + this.pp[0] : 'Buy ' + this.pp[0] + ' · ' + fmt(this.pp[1])}</button>` : '')
@@ -135,7 +135,8 @@ const BUY = {
     }
     if (t === 'Wishlist') { G.innerHTML = wish.length ? wish.map(n => this.card(n, `<div class="cbtns"><button onclick="BUY.startGhost('${n}','new')">Preview</button><button class="x" onclick="BUY.wish('${n}',false)">✕</button></div>`)).join('') : '<p class="empty" style="grid-column:1/-1">Nothing saved. Preview something you like and close Buy mode: it is kept here until you can afford it.</p>'; return }
     if (t === 'Stored') { G.innerHTML = stored.length ? stored.map(i => this.card(i.name, `<div class="cbtns"><button onclick="BUY.startGhost('${i.name}','place','${i.id}')">Place</button><button class="x" onclick="BUY.sel='${i.id}';BUY.sheetOpen=false;BUY.draw()">⋯</button></div>`, 1)).join('') : '<p class="empty" style="grid-column:1/-1">No stored items. Tap an item in your room and choose Store to keep it here.</p>'; return }
-    G.innerHTML = Object.keys(FURN.ITEMS).filter(n => FURN.ITEMS[n].cat === t).map(n => this.card(n)).join('')
+    const hasGarage = !!(S.activeProperty && S.activeProperty.garage);
+    G.innerHTML = (t === 'Cars' && !hasGarage ? '<p class="empty" style="grid-column:1/-1">🚗 Cars park in a Garage. Build a Garage extension in Homes → Renovate first. You can still preview them here.</p>' : '') + Object.keys(FURN.ITEMS).filter(n => FURN.ITEMS[n].cat === t && !FURN.ITEMS[n].hidden).map(n => this.card(n)).join('')
   },
   card(n, extra, stored) {
     const D = FURN.ITEMS[n], have = this.allItems().filter(i => i.name === n).length, size = D.fixed ? 'Fixed' : D.w + '×' + D.d;

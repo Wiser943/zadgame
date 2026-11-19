@@ -44,7 +44,7 @@ const STAIRS = 'Grand Staircase';
 const gridOf = (p, floor = 0) => {
   const h = HOMES[p && p.type];
   if (h && h.layout) return layoutFor(h.layout) || BED.MAIN;
-  const L = BED.layout(totalOf(p), p && p.bath ? { bath: true } : null), ground = L ? { ...L, blocked: new Set(L.blocked), walls: new Set(L.walls) } : BED.MAIN;
+  const L = BED.layout(totalOf(p), p ? { bath: !!p.bath, garage: !!p.garage, style: p.groundStyle } : null), ground = L ? { ...L, blocked: new Set(L.blocked), walls: new Set(L.walls) } : BED.MAIN;
   if (Number(floor) !== 1 || !p || !p.upstairs) return ground;
   const w = typeof ground === 'object' ? ground.w : ground, d = typeof ground === 'object' ? ground.d : ground;
   const st = (p.items || []).find((i) => i.name === STAIRS && i.placed !== false && !(Number(i.floor) > 0)), open = st ? require('./furniture').cellsOf(st).map((c) => c.join(',')) : [];
@@ -75,16 +75,26 @@ const priceOf = (t) => (HOMES[t] && HOMES[t].price) || 0, rnd = (n) => Math.roun
 const BATH_COST = (t) => Math.max(250000, rnd(priceOf(t) * 0.04));
 const UPSTAIRS_COST = (t) => Math.max(900000, rnd(priceOf(t) * 0.30));
 const FINISH_COST = (t) => Math.max(600000, rnd(priceOf(t) * 0.08));
-const STYLE_COST = 150000;
+const STYLE_COST = 150000, GSTYLE_COST = 200000, GARAGE_COST = (t) => Math.max(1200000, rnd(priceOf(t) * 0.10));
 const renovationOptions = (p) => {
   const t = p && p.type, h = HOMES[t]; if (!p || p.tenure !== 'owned' || !h || h.mode !== 'buy' || h.layout) return [];
   const out = [];
   if (!p.bath) out.push({ id: 'bath', name: 'Back extension', description: 'Adds a Toilet room and an open back porch behind your home. Your furniture does not move.', cost: BATH_COST(t) });
   if (!p.upstairs) for (const k of Object.keys(BED.UP_STYLES)) out.push({ id: 'upstairs:' + k, group: 'Add an upstairs floor', name: 'Upstairs · ' + BED.UP_STYLES[k], description: 'Builds a grand staircase and a whole new floor above your home. Needs a free 2 by 3 space downstairs for the staircase.', cost: UPSTAIRS_COST(t) });
   else for (const k of Object.keys(BED.UP_STYLES)) if (k !== (p.upStyle || 'lounge')) out.push({ id: 'upstyle:' + k, group: 'Change the upstairs layout', name: 'Upstairs · ' + BED.UP_STYLES[k], description: 'Rebuilds the walls upstairs. Furniture that no longer fits goes into storage.', cost: STYLE_COST });
+  if (!p.garage) out.push({ id: 'garage', name: 'Garage extension', description: 'Adds a three-row garage along the bottom of your home. Cars from the Cars tab in Buy mode can be parked in it.', cost: GARAGE_COST(t) });
+  for (const k of Object.keys(BED.STYLES)) if (k !== (p.groundStyle || 'open')) out.push({ id: 'gstyle:' + k, group: 'Downstairs layout', name: 'Downstairs · ' + BED.STYLES[k], description: 'Rebuilds the walls of your living area. Furniture that no longer fits goes into storage.', cost: k === 'open' ? 0 : GSTYLE_COST });
   if (p.finish !== 'luxury') out.push({ id: 'finish', name: 'Luxury finish', description: 'Polished marble floors, cream walls and gold trim on every floor.', cost: FINISH_COST(t) });
   return out;
 };
+// How long the builders take. Bigger homes and bigger jobs take longer (BUILD_SPEED=10 makes everything 10x faster for testing).
+const BUILD_SPEED = Math.max(0.01, Number(process.env.BUILD_SPEED) || 1);
+const homeBuildMinutes = (type) => Math.max(1, Math.round(Math.min(150, Math.max(4, 4 + priceOf(type) / 1e6 * 6)) / BUILD_SPEED));
+const renoBuildMinutes = (p, optId) => {
+  const k = String(optId).split(':')[0], base = { bath: 6, garage: 18, upstairs: 40, finish: 15, upstyle: 8, gstyle: 10 }[k] || 10, f = (k === 'upstyle' || k === 'gstyle') ? 1 : Math.min(2.5, Math.max(1, priceOf(p && p.type) / 4e6));
+  return Math.max(1, Math.round(base * f / BUILD_SPEED));
+};
+const publicBuild = (b, now = Date.now()) => { const ready = new Date(b.readyAt).getTime(), start = new Date(b.startedAt).getTime(); return { id: b.id, kind: b.kind, name: b.name, cost: b.cost, propertyId: b.propertyId || '', homeType: b.homeType || '', startedAt: start, readyAt: ready, status: now >= ready ? 'ready' : 'building', msLeft: Math.max(0, ready - now), pct: Math.max(0, Math.min(100, Math.round((now - start) / Math.max(1, ready - start) * 100))) }; };
 const isHome = (id) => Object.prototype.hasOwnProperty.call(HOMES, id);
-const publicHome = (p) => ({ id: p.id, type: p.type, name: HOMES[p.type]?.name || 'Home', description: HOMES[p.type]?.description || '', comfort: HOMES[p.type]?.comfort || 1, tenure: p.tenure, boughtAt: p.boughtAt, leaseExpiresAt: p.leaseExpiresAt, paint: p.paint, bedrooms: extraOf(p), totalBedrooms: totalOf(p), sizeLabel: BED.label(totalOf(p)), maxBedrooms: baseBedrooms(p.type) + maxExtra(p.type), power: powerTier(p), bath: !!p.bath, upstairs: !!p.upstairs, upStyle: p.upStyle || 'lounge', finish: p.finish || 'standard', renovations: renovationOptions(p), furnished: !!HOMES[p.type]?.furnished, expansions: expansionOptions(p), layout: HOMES[p.type]?.layout || '', insured: !!p.insured, condition: Number.isFinite(p.condition) ? p.condition : 100, items: (p.items || []).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, floor: Number(i.floor) || 0, placed: i.placed !== false })) });
-module.exports = { STAIRS, UPSTAIRS_COST, FINISH_COST, STYLE_COST, BATH_COST, renovationOptions, powerTier, furnishedItems, HOMES, MAX_BEDROOMS, assetValue, baseBedrooms, maxExtra, extraOf, totalOf, stepCost, expansionCost, expansionOptions, gridOf, isHome, publicHome };
+const publicHome = (p) => ({ id: p.id, type: p.type, name: HOMES[p.type]?.name || 'Home', description: HOMES[p.type]?.description || '', comfort: HOMES[p.type]?.comfort || 1, tenure: p.tenure, boughtAt: p.boughtAt, leaseExpiresAt: p.leaseExpiresAt, paint: p.paint, bedrooms: extraOf(p), totalBedrooms: totalOf(p), sizeLabel: BED.label(totalOf(p)), maxBedrooms: baseBedrooms(p.type) + maxExtra(p.type), power: powerTier(p), bath: !!p.bath, garage: !!p.garage, groundStyle: p.groundStyle || 'open', upstairs: !!p.upstairs, upStyle: p.upStyle || 'lounge', finish: p.finish || 'standard', renovations: renovationOptions(p), furnished: !!HOMES[p.type]?.furnished, expansions: expansionOptions(p), layout: HOMES[p.type]?.layout || '', insured: !!p.insured, condition: Number.isFinite(p.condition) ? p.condition : 100, items: (p.items || []).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, rot: i.rot, floor: Number(i.floor) || 0, placed: i.placed !== false })) });
+module.exports = { homeBuildMinutes, renoBuildMinutes, publicBuild, GARAGE_COST, GSTYLE_COST, STAIRS, UPSTAIRS_COST, FINISH_COST, STYLE_COST, BATH_COST, renovationOptions, powerTier, furnishedItems, HOMES, MAX_BEDROOMS, assetValue, baseBedrooms, maxExtra, extraOf, totalOf, stepCost, expansionCost, expansionOptions, gridOf, isHome, publicHome };

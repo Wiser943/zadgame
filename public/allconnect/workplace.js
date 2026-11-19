@@ -8,7 +8,7 @@
 const WORKPLACE = (function () {
   'use strict';
   const LANE = 4.9, AISLE = 2.6, ROOM = { x0: -6, x1: 6, z0: -4.5, z1: 4.5 };
-  const MAP = { banking: 'bank', tech: 'office', oil: 'control', fashion: 'salon', salon: 'salon', health: 'clinic', transport: 'garage', taxi: 'garage', delivery: 'garage', boat: 'jetty' };
+  const MAP = { banking: 'bank', tech: 'office', oil: 'control', fashion: 'salon', salon: 'salon', health: 'clinic', transport: 'garage', taxi: 'garage', delivery: 'garage', boat: 'jetty', builder: 'garage' };
   const NAMES = ['Tunde', 'Amaka', 'Bisi', 'Chidi', 'Ngozi', 'Emeka', 'Zainab', 'Femi', 'Kemi', 'Ibrahim', 'Ada', 'Segun', 'Funke', 'Obinna'];
   const SKINS = ['#4a2f23', '#6b4226', '#8a5a3c', '#a9714b', '#c58f66'], HAIRS = ['#16100d', '#241810', '#3a2418', '#0d0d0d'];
   const TOPS = ['#2d6dd8', '#d63a2f', '#2f9e63', '#e9c46a', '#8a5cf6', '#f2a585', '#4a4e57', '#ffffff'];
@@ -86,7 +86,7 @@ const WORKPLACE = (function () {
     hudTick() {
       if (!this.on) return clearInterval(this.hudT); const J = window.JOBS, d = J && J.data && J.data.mine; if (!d) return; this.job = Object.assign(this.job || {}, d);
       const b = J.btn(d), go = document.getElementById('wpgo'); if (!go) return; go.textContent = this.working ? 'Working…' : b.t; go.disabled = !!b.off || !!this.working;
-      const nx = d.next; document.getElementById('wpinfo').textContent = `₦${Number(d.pay).toLocaleString('en-NG')} per shift · ${d.shiftsToday}/${d.maxPerDay} today${nx ? ` · ${nx.shiftsLeft} to ${nx.title}` : ''}`;
+      const nx = d.next; document.getElementById('wpinfo').textContent = `₦${Number(d.pay).toLocaleString('en-NG')} per hour · ${d.shiftsToday}/${d.maxPerDay} hours paid today${nx ? ` · ${nx.shiftsLeft} to ${nx.title}` : ''}`;
       document.getElementById('wpon').textContent = '👥 ' + (1 + this.remote.size)
     },
 

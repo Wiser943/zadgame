@@ -17,40 +17,60 @@
   const edge = (ax, az, bx, bz) => (ax < bx || (ax === bx && az < bz)) ? `${ax},${az}|${bx},${bz}` : `${bx},${bz}|${ax},${az}`;
   const bands = (n, d) => { const out = []; for (let i = 0; i < n; i++) out.push([Math.round(d * i / n), Math.round(d * (i + 1) / n)]); return out; };
 
-  // Build the plan for `extra` added bedrooms (0 = the original 6x6 room, no layout object).
-  // ext = { bath: true } adds a back extension below the home: a small Toilet room (2x2) and an open back porch. The original
-  // living area and bedrooms never move, so furniture placed before the renovation stays where it is.
+  // Build the plan for `extra` added bedrooms (0 = the original 6x6 room).
+  // ext = { bath, garage, style }:  bath = a back extension below the home (a Toilet room + open porch); garage = a 3-row Garage strip along the
+  // bottom; style = how the 6x6 living area is divided ('open' | 'split' | 'rooms'). Extensions only ever ADD space below the original plan and the
+  // original living area / bedrooms never move, so furniture placed before a renovation stays where it is (the server stores whatever a new wall cuts).
+  const STYLES = { open: 'Open plan', split: 'Lounge + kitchen', rooms: 'Lounge, kitchen + dining' };
   function layout(extraRaw, ext) {
-    const k = clamp(extraRaw), bath = !!(ext && ext.bath); if (!k && !bath) return null;
-    const ckey = k + (bath ? 'b' : ''); if (cache.has(ckey)) return cache.get(ckey);
-    if (!k) { const walls = [], rooms = [], D = MAIN; addBath(walls, rooms, MAIN, D); const L0 = { id: 'bdb', bedrooms: 0, w: MAIN, d: D + 2, blocked: [], walls, start: [2, 2], model: null, fixtures: [], rooms, noCross: true }; cache.set(ckey, L0); return L0 }
-    const d = k <= 2 ? MAIN : 9, cols = k <= 3 ? 1 : 2, w = MAIN + ROOM_W * cols;
-    const counts = cols === 1 ? [k] : [3, k - 3];
-    const rooms = [], walls = [];
-    let n = 0;
-    for (let c = 0; c < cols; c++) {
-      const x0 = MAIN + ROOM_W * c, x1 = x0 + ROOM_W - 1, bs = bands(counts[c], d);
-      const wallX = x0 - 1;                                     // the line between this column and whatever is west of it
-      const doors = new Set();
-      for (const [z0, z1] of bs) {
-        n++;
-        const doorZ = z0 + Math.floor((z1 - z0 - 1) / 2);
-        doors.add(doorZ);
-        rooms.push({ id: 'b' + n, name: 'Bedroom ' + n, x0, z0, x1, z1: z1 - 1, door: [wallX, doorZ] });
+    const k = clamp(extraRaw), bath = !!(ext && ext.bath), garage = !!(ext && ext.garage), style = ext && STYLES[ext.style] ? ext.style : 'open';
+    if (!k && !bath && !garage && style === 'open') return null;
+    const ckey = [k, bath ? 'b' : '', garage ? 'g' : '', style].join('|'); if (cache.has(ckey)) return cache.get(ckey);
+    let w = MAIN, d = MAIN; const rooms = [], walls = [];
+    if (k) {
+      d = k <= 2 ? MAIN : 9; const cols = k <= 3 ? 1 : 2; w = MAIN + ROOM_W * cols;
+      const counts = cols === 1 ? [k] : [3, k - 3];
+      let n = 0;
+      for (let c = 0; c < cols; c++) {
+        const x0 = MAIN + ROOM_W * c, x1 = x0 + ROOM_W - 1, bs = bands(counts[c], d);
+        const wallX = x0 - 1;                                     // the line between this column and whatever is west of it
+        const doors = new Set();
+        for (const [z0, z1] of bs) {
+          n++;
+          const doorZ = z0 + Math.floor((z1 - z0 - 1) / 2);
+          doors.add(doorZ);
+          rooms.push({ id: 'b' + n, name: 'Bedroom ' + n, x0, z0, x1, z1: z1 - 1, door: [wallX, doorZ] });
+        }
+        for (let z = 0; z < d; z++) if (!doors.has(z)) walls.push(edge(wallX, z, wallX + 1, z));
+        for (const [z0] of bs) if (z0 > 0) for (let x = x0; x <= x1; x++) walls.push(edge(x, z0 - 1, x, z0));
       }
-      for (let z = 0; z < d; z++) if (!doors.has(z)) walls.push(edge(wallX, z, wallX + 1, z));
-      for (const [z0] of bs) if (z0 > 0) for (let x = x0; x <= x1; x++) walls.push(edge(x, z0 - 1, x, z0));
     }
-    let dd = d; if (bath) { addBath(walls, rooms, w, d); dd = d + 2 }
-    const L = { id: 'bd' + k + (bath ? 'b' : ''), bedrooms: k, w, d: dd, blocked: [], walls, start: [2, 2], model: null, fixtures: [], rooms, noCross: true };
+    if (style !== 'open') addStyle(walls, rooms, style);
+    let dd = d;
+    if (bath) { addBath(walls, rooms, w, d); dd = d + 2 }
+    if (garage) { addGarage(walls, rooms, w, dd); dd += 3 }
+    const L = { id: 'bd' + ckey.replace(/\|/g, ''), bedrooms: k, w, d: dd, blocked: [], walls, start: [2, 2], model: null, fixtures: [], rooms, noCross: true };
     cache.set(ckey, L);
     return L;
+  }
+  // dividing walls inside the original 6x6 living area (doorways keep every part reachable)
+  function addStyle(walls, rooms, style) {
+    for (let z = 0; z < MAIN; z++) if (z !== 2 && z !== 3) walls.push(edge(2, z, 3, z));                 // lounge | rest, with a 2-wide doorway
+    rooms.push({ id: 'lv1', name: 'Lounge', x0: 0, z0: 0, x1: 2, z1: MAIN - 1, door: [2, 2] });
+    if (style === 'split') { rooms.push({ id: 'lv2', name: 'Kitchen', x0: 3, z0: 0, x1: MAIN - 1, z1: MAIN - 1, door: [3, 2] }); return }
+    for (let x = 3; x < MAIN; x++) if (x !== 4) walls.push(edge(x, 2, x, 3));                           // kitchen above, dining below, doorway at x = 4
+    rooms.push({ id: 'lv2', name: 'Kitchen', x0: 3, z0: 0, x1: MAIN - 1, z1: 2, door: [3, 1] }, { id: 'lv3', name: 'Dining', x0: 3, z0: 3, x1: MAIN - 1, z1: MAIN - 1, door: [3, 3] });
   }
   // walls + room entry for the back extension strip (rows D and D+1 across the whole width)
   function addBath(walls, rooms, w, D) {
     walls.push(edge(1, D - 1, 1, D), edge(1, D, 2, D), edge(1, D + 1, 2, D + 1));         // the toilet room: door at the left, walls on its other sides
     for (let x = MAIN; x < w; x++) walls.push(edge(x, D - 1, x, D));                      // the bedroom wing keeps a wall along its south side
     rooms.push({ id: 'bath', name: 'Toilet', x0: 0, z0: D, x1: 1, z1: D + 1, door: [0, D - 1] });
+  }
+  // the Garage: three rows along the whole bottom of the home, one door into the house at x = 3
+  function addGarage(walls, rooms, w, G) {
+    for (let x = 0; x < w; x++) if (x !== 3) walls.push(edge(x, G - 1, x, G));
+    rooms.push({ id: 'garage', name: 'Garage', x0: 0, z0: G, x1: w - 1, z1: G + 2, door: [3, G - 1] });
   }
 
   /* ---------- upstairs floor ----------
@@ -87,5 +107,5 @@
 
   // "Studio", "1-Bedroom", "2-Bedroom" ...
   const label = (total) => (Number(total) > 0 ? `${total}-Bedroom` : 'Studio');
-  return { MAIN, ROOM_W, MAX_EXTRA, UP_STYLES, clamp, edge, layout, upper, crossesWall, label };
+  return { MAIN, ROOM_W, MAX_EXTRA, STYLES, UP_STYLES, clamp, edge, layout, upper, crossesWall, label };
 });

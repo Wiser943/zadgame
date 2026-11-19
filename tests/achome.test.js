@@ -54,7 +54,37 @@ test('renovations: upstairs, luxury finish and restyling are offered once and pr
   const o = A.renovationOptions({ type: 'mini_flat', tenure: 'owned' }).map((x) => x.id);
   assert.ok(o.includes('upstairs:lounge') && o.includes('upstairs:suites') && o.includes('upstairs:rooms') && o.includes('finish'));
   const done = A.renovationOptions({ type: 'mini_flat', tenure: 'owned', upstairs: true, upStyle: 'suites', finish: 'luxury' }).map((x) => x.id);
-  assert.deepEqual(done.sort(), ['bath', 'upstyle:lounge', 'upstyle:rooms'].sort());
+  assert.deepEqual(done.filter((x) => !x.startsWith('gstyle')).sort(), ['bath', 'garage', 'upstyle:lounge', 'upstyle:rooms'].sort());
+  assert.ok(done.includes('gstyle:split') && done.includes('gstyle:rooms'));
   assert.equal(A.renovationOptions({ type: 'family_house', tenure: 'owned' }).length, 0);  // fixed house plans cannot be changed
   assert.ok(A.UPSTAIRS_COST('ikoyi_mansion') > A.UPSTAIRS_COST('mini_flat'));
+});
+
+test('garage: cars only fit inside the Garage extension, in every home size', () => {
+  const none = A.gridOf({ type: 'mini_flat' }, 0), g = A.gridOf({ type: 'mini_flat', garage: true }, 0), room = g.rooms.find((r) => r.id === 'garage');
+  assert.ok(room && room.z1 - room.z0 === 2);                                              // three rows deep
+  assert.equal(F.canPlace([], 'White Corolla', 0, 0, 90, undefined, g), false);           // inside the living area: no
+  assert.equal(F.canPlace([], 'White Corolla', 0, room.z0, 90, undefined, g), true);       // in the garage: yes
+  assert.equal(F.canPlace([], 'White Corolla', 0, 0, 90, undefined, none), false);         // no garage at all: no
+  const fill = []; for (const n of ['White Prado', 'Black SUV']) { const spot = F.autoPlace(fill, n, g); assert.ok(spot, n); fill.push({ id: n, name: n, ...spot, placed: true }); }
+  assert.equal(F.autoPlace([], 'Container Truck', g) !== null, true);                       // even the big truck has a spot
+});
+test('ground floor layouts: styles add walls inside the living area but never move it', () => {
+  const open = A.gridOf({ type: 'mini_flat' }, 0), split = A.gridOf({ type: 'mini_flat', groundStyle: 'split' }, 0), rooms = A.gridOf({ type: 'mini_flat', groundStyle: 'rooms' }, 0);
+  assert.equal(split.w, open.w); assert.equal(split.d, open.d);
+  assert.ok(split.walls.size > open.walls.size && rooms.walls.size > split.walls.size);
+  assert.ok(A.renovationOptions({ type: 'mini_flat', tenure: 'owned' }).some((o) => o.id === 'gstyle:split'));
+  assert.ok(!A.renovationOptions({ type: 'mini_flat', tenure: 'owned', groundStyle: 'split' }).some((o) => o.id === 'gstyle:split'));
+});
+test('construction: bigger homes and jobs take longer; a build reports building then ready', () => {
+  assert.ok(A.homeBuildMinutes('ikoyi_mansion') > A.homeBuildMinutes('mini_flat'));
+  assert.ok(A.renoBuildMinutes({ type: 'mini_flat' }, 'upstairs:suites') > A.renoBuildMinutes({ type: 'mini_flat' }, 'finish'));
+  const b = { id: 'x', kind: 'home', name: 'Mini Flat', cost: 1, startedAt: new Date(Date.now() - 1000), readyAt: new Date(Date.now() + 60000) };
+  assert.equal(A.publicBuild(b).status, 'building'); assert.equal(A.publicBuild({ ...b, readyAt: new Date(Date.now() - 1) }).status, 'ready');
+});
+test('more to buy: cars, street life and utilities exist, priced and categorised', () => {
+  for (const c of ['Outdoor', 'Cars']) assert.ok(F.CATS.includes(c));
+  const cars = Object.entries(F.ITEMS).filter(([, d]) => d.cat === 'Cars'); assert.ok(cars.length >= 8 && cars.every(([, d]) => d.garage && d.price > 0));
+  assert.ok(Object.values(F.ITEMS).filter((d) => d.cat === 'Outdoor').length >= 10);
+  assert.ok(Object.keys(F.ITEMS).length >= 70);
 });
