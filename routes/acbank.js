@@ -89,8 +89,9 @@ router.post('/transfer', async (req, res, next) => {
     const other = rw.user;
     if (other === me) return bad(res, 400, "You can't send money to yourself.");
     if (await isBlocked(me, other)) return bad(res, 403, 'You cannot send money to this account.');
-    const rec = await User.findById(other).select('displayName acUsername');
+    const rec = await User.findById(other).select('displayName acUsername ac.prefs');
     if (!rec) return bad(res, 404, 'Recipient not found.');
+    if (rec.ac && rec.ac.prefs && rec.ac.prefs.whoCanSendMoney === 'friends' && !(await Friendship.exists({ $or: [{ requester: me, recipient: other }, { requester: other, recipient: me }], status: 'accepted' }))) return bad(res, 403, 'This player only accepts money from friends.');
     await ensureAC(me); await ensureAC(other);
     const day = new Date().toISOString().slice(0, 10);
     await User.updateOne({ _id: me, 'ac.sentDay': { $ne: day } }, { $set: { 'ac.sentDay': day, 'ac.sentAmt': 0 } });

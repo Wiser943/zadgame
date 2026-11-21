@@ -12,6 +12,7 @@ const { makeRef } = require('../utils/acbank');
 const { notify, emitUser } = require('../utils/acnotify');
 const L = require('../utils/aclagos');
 const TRN = require('../utils/actransport');
+const P = require('../utils/acproperties');
 
 const router = express.Router();
 router.use(ensureAuth);
@@ -26,32 +27,38 @@ async function applyWeatherLosses(userId, now) {
   const ev = L.currentEvent(now);
   if (ev.id !== 'rain' || !['heavy', 'thunderstorm'].includes(ev.rainType)) return [];
   const u = await User.findById(userId).select('ac.cash ac.properties'); if (!u) return [];
-  const assetValue = (p) => ({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[p.type] || 0);
-  const wealth = Number(u.ac?.cash || 0) + (u.ac?.properties || []).reduce((sum, p) => sum + assetValue(p), 0);
+  const wealth = Number(u.ac?.cash || 0) + (u.ac?.properties || []).reduce((sum, p) => sum + P.assetValue(p.type), 0);
   if (wealth < 5000000) return [];
   const losses = [];
   for (const p of (u.ac.properties || [])) {
     if (p.tenure !== 'owned' || p.lastWeatherEvent === String(ev.windowKey)) continue;
-    const base = assetValue(p); if (base < 350000) continue;
+    const base = P.assetValue(p.type); if (base < 350000) continue;
     const loss = Math.min(150000, Math.max(10000, Math.round(base * (ev.rainType === 'thunderstorm' ? .055 : .025) / 1000) * 1000));
     const freshWallet = await User.findById(userId).select('ac.cash').lean();
     const affordableLoss = Math.min(loss, Math.max(0, Number(freshWallet?.ac?.cash || 0)));
     const update = p.insured
       ? await User.updateOne({ _id: userId, ac: { $exists: true }, 'ac.properties': { $elemMatch: { id: p.id, lastWeatherEvent: { $ne: String(ev.windowKey) } } } }, { $set: { 'ac.properties.$[p].lastWeatherEvent': String(ev.windowKey) } }, { arrayFilters: [{ 'p.id': p.id }] })
       : await User.updateOne({ _id: userId, 'ac.properties': { $elemMatch: { id: p.id, lastWeatherEvent: { $ne: String(ev.windowKey) } } } }, { $inc: { 'ac.cash': -affordableLoss }, $set: { 'ac.properties.$[p].lastWeatherEvent': String(ev.windowKey), 'ac.properties.$[p].condition': Math.max(20, Number(p.condition ?? 100) - (ev.rainType === 'thunderstorm' ? 22 : 10)) } }, { arrayFilters: [{ 'p.id': p.id }] });
-    if (update.modifiedCount) losses.push({ propertyId: p.id, name: require('../utils/acproperties').HOMES[p.type]?.name || 'Property', insured: !!p.insured, loss: p.insured ? 0 : affordableLoss, weather: ev.rainType });
+    if (update.modifiedCount) losses.push({ propertyId: p.id, name: P.HOMES[p.type]?.name || 'Property', insured: !!p.insured, loss: p.insured ? 0 : affordableLoss, weather: ev.rainType });
   }
   return losses;
 }
 
-/* issue this cycle's bills if they do not exist yet (safe to call from several requests at once) */
+/* issue this cycle's bills if they do not exist yet (safe to call from several requests at once).
+   Bills are compulsory: a player either pays each one by hand or turns on auto-pay (below), which charges a bill
+   to the balance the moment it is issued instead of waiting for a tap. Either way the normal late-fee / power-cut
+   rule still applies to anything that is not paid by Sunday night. */
 async function issueBills(id, now = Date.now()) {
   const u = await ensureAC(id); if (!u) return null;
   const fresh = L.newBills(u, now);
   for (const b of fresh) {
     await User.updateOne({ _id: id, 'ac.bills': { $not: { $elemMatch: { cycle: b.cycle, key: b.key } } } }, { $push: { 'ac.bills': { $each: [b], $slice: -L.KEEP * 3 } } });
   }
-  return fresh.length ? User.findById(id) : u;
+  let out = fresh.length ? await User.findById(id) : u;
+  if (fresh.length && out && out.ac && out.ac.billsAutopay) {
+    for (const b of fresh) { const r = await payOne(id, b.cycle, b.key, now); if (!r.err) out = r.after; }
+  }
+  return out;
 }
 const billList = (u, now) => (u.ac.bills || []).map((b) => L.billView(b, now)).sort((a, b) => (a.paid - b.paid) || (a.due - b.due));
 const unpaidSummary = (u, now) => { const l = billList(u, now).filter((b) => !b.paid); return { count: l.length, total: l.reduce((s, b) => s + b.total, 0), overdue: l.filter((b) => b.overdue).length, powerCut: L.powerCut(u.ac.bills, now) }; };
@@ -59,7 +66,17 @@ const unpaidSummary = (u, now) => { const l = billList(u, now).filter((b) => !b.
 router.get('/bills', async (req, res, next) => {
   try {
     const now = Date.now(), u = await issueBills(uid(req), now);
-    res.json({ cash: u.ac.cash, bills: billList(u, now), summary: unpaidSummary(u, now), cycle: L.cycleOf(now).key, event: L.publicEvent(L.currentEvent(now)) });
+    res.json({ cash: u.ac.cash, bills: billList(u, now), summary: unpaidSummary(u, now), cycle: L.cycleOf(now).key, event: L.publicEvent(L.currentEvent(now)), autopay: !!u.ac.billsAutopay });
+  } catch (e) { next(e); }
+});
+
+// Auto-pay from the Bank: on means every new bill is charged to the balance the day it is issued; off means you
+// pay each one yourself from Bank > Bills (or let it go overdue and risk the late fee / power cut).
+router.post('/bills/autopay', async (req, res, next) => {
+  try {
+    const on = !!(req.body && req.body.on);
+    const u = await User.findByIdAndUpdate(uid(req), { $set: { 'ac.billsAutopay': on } }, { new: true }).select('ac.billsAutopay');
+    res.json({ autopay: !!(u && u.ac && u.ac.billsAutopay) });
   } catch (e) { next(e); }
 });
 
@@ -150,7 +167,7 @@ router.get('/city', async (req, res, next) => {
     const q = await questState(me);
     res.json({
       now, event: L.publicEvent(ev), next: L.publicEvent(L.currentEvent(ev.endsAt + 1)), weatherLosses,
-      bills: unpaidSummary(u, now), daily: L.nextStreak(u.ac, now),
+      bills: { ...unpaidSummary(u, now), autopay: !!u.ac.billsAutopay }, daily: L.nextStreak(u.ac, now),
       quests: { done: q.list.filter((x) => x.done).length, total: q.list.length, claimable: q.list.filter((x) => x.done && !x.claimed).length, claimed: q.list.filter((x) => x.claimed).length }
     });
   } catch (e) { next(e); }

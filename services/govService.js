@@ -114,7 +114,8 @@ async function resolveElection(io, n, office, now) {
 }
 
 async function loadSchedule() { const d = await ACSetting.findById('electionSchedule').lean(); G.setRounds((d && d.value && d.value.rounds) || []); }
-async function refreshOffices() { await loadSchedule(); G.setOffices(await ACOffice.find().lean()); }
+async function loadOfficeSettings() { const d = await ACSetting.findById('govOffices').lean(); G.setOfficeSettings((d && d.value) || {}); }
+async function refreshOffices() { await loadSchedule(); await loadOfficeSettings(); G.setOffices(await ACOffice.find().lean()); }
 const fmtDate = (ms) => new Date(ms + G.HOUR).toISOString().replace('T', ' ').slice(0, 16) + ' (Lagos)';
 const noElection = (c) => fail(409, c.next ? `No election is on right now. The next one opens ${fmtDate(c.next.start)}.` : 'No election is on right now. The Electoral Commission has not announced the next election yet.');
 
@@ -141,6 +142,68 @@ async function cancelRound(n, now = Date.now()) {
   if (now >= r.start) throw fail(409, 'That election has already started. It cannot be cancelled.');
   await ACSetting.updateOne({ _id: 'electionSchedule' }, { $set: { value: { rounds: list.filter((x) => +x.n !== +n) } } });
   return listRounds();
+}
+
+
+/* ---------- admin: amounts for contesting, and editing / deleting elections and campaigns ---------- */
+const LIMITS = { fee: [0, 1e10], salary: [0, 1e10], minAgeDays: [0, 365], minFollowers: [0, 100000] };
+async function getOfficeSettings() {
+  await loadOfficeSettings();
+  return { offices: G.OFFICE_IDS.map((id) => ({ id, title: G.OFFICES[id].title, scope: G.OFFICES[id].scope, icon: G.OFFICES[id].icon, ...Object.fromEntries(G.OFFICE_KEYS.map((k) => [k, G.OFFICES[id][k]])), defaults: G.OFFICE_DEFAULTS[id] })) };
+}
+async function saveOfficeSettings(input) {
+  const out = {};
+  for (const id of G.OFFICE_IDS) { out[id] = {}; for (const k of G.OFFICE_KEYS) {
+    const raw = input && input[id] && input[id][k], v = Math.floor(Number(raw)), [lo, hi] = LIMITS[k];
+    if (raw === undefined || raw === '' || !Number.isFinite(v) || v < lo || v > hi) throw fail(400, `${G.OFFICES[id].title}: enter a number from ${lo.toLocaleString('en-NG')} to ${hi.toLocaleString('en-NG')} for ${k}.`);
+    out[id][k] = v; } }
+  await ACSetting.findOneAndUpdate({ _id: 'govOffices' }, { $set: { value: out } }, { upsert: true });
+  G.setOfficeSettings(out); return getOfficeSettings();
+}
+async function scheduleList() { const doc = await ACSetting.findById('electionSchedule').lean(); return (doc && doc.value && doc.value.rounds) || []; }
+/* Change the dates of an election that has not finished. What can move depends on how far it got. */
+async function updateRound(n, input, now = Date.now()) {
+  const list = await scheduleList(), r = list.find((x) => +x.n === +n); if (!r) throw fail(404, 'No such election.');
+  if (now >= r.end) throw fail(409, 'That election is over, so its dates cannot change.');
+  const next = { start: Number(input.start ?? r.start), shortlistAt: Number(input.shortlistAt ?? r.shortlistAt), end: Number(input.end ?? r.end) };
+  if (now >= r.start && next.start !== r.start) throw fail(409, 'The campaign already opened, so the opening date cannot change.');
+  if (now >= r.shortlistAt && next.shortlistAt !== r.shortlistAt) throw fail(409, 'The ballot is already set, so only the closing date can change.');
+  if (now >= r.start && now < r.shortlistAt && next.shortlistAt < now + 60e3) throw fail(400, 'The ballot date must be in the future.');
+  if (next.end <= now) throw fail(400, 'The election cannot end in the past.');
+  G.setRounds(list.filter((x) => +x.n !== +n));
+  const chk = G.checkRound(next, Math.min(now, next.start)); await loadSchedule(); if (!chk.ok) throw fail(400, chk.error);
+  await ACSetting.updateOne({ _id: 'electionSchedule' }, { $set: { value: { rounds: list.map((x) => +x.n === +n ? { n: +n, ...next } : x) } } });
+  return listRounds();
+}
+/* Delete an election. If it did not finish, every candidate gets the filing fee back. Past results are only removed from the record (a sitting officeholder keeps the office). */
+async function deleteRound(io, n, now = Date.now()) {
+  const list = await scheduleList(), r = list.find((x) => +x.n === +n); if (!r) throw fail(404, 'No such election (the built-in first rounds cannot be deleted).');
+  const els = await ACElection.find({ cycle: +n }).lean(), unfinished = now < r.end || els.some((e) => !e.resolved); let refunded = 0, people = 0;
+  if (unfinished) for (const e of els) for (const c of e.candidates || []) { const fee = await refundOnce(e._id, c.user, `${(G.OFFICES[e.office] || {}).title || 'Election'} filing fee refunded (election cancelled)`); if (fee) { refunded += fee; people++; notify(io, c.user, { icon: '🗳️', text: `The Electoral Commission cancelled this election. Your filing fee of ${G.naira(fee)} was refunded.`, kind: 'info' }).catch(() => {}); } }
+  await Promise.all([ACElection.deleteMany({ cycle: +n }), ACBallot.deleteMany({ cycle: +n }), ACFiling.deleteMany({ _id: new RegExp('^' + (+n) + ':') })]);
+  await ACSetting.updateOne({ _id: 'electionSchedule' }, { $set: { value: { rounds: list.filter((x) => +x.n !== +n) } } }); await loadSchedule();
+  console.log('[election]', JSON.stringify({ action: 'delete_round', n: +n, refunded, people, at: new Date().toISOString() }));
+  return { ...(await listRounds()), refunded, people };
+}
+async function listCampaigns(n) {
+  const els = await ACElection.find({ cycle: +n }).lean(), counts = await ACBallot.aggregate([{ $match: { cycle: +n, kind: 'support' } }, { $group: { _id: { o: '$office', c: '$candidate' }, n: { $sum: 1 } } }]);
+  const sup = {}; for (const c of counts) sup[c._id.o + ':' + c._id.c] = c.n;
+  const names = await userMap(els.flatMap((e) => e.candidates.map((x) => x.user)));
+  return { campaigns: els.flatMap((e) => (e.candidates || []).map((c) => ({ office: e.office, title: (G.OFFICES[e.office] || {}).title || e.office, user: c.user, name: (names.get(c.user) || {}).displayName || 'Player', username: (names.get(c.user) || {}).acUsername || '', slogan: c.slogan || '', fee: c.fee || 0, refunded: !!c.refunded, backers: sup[e.office + ':' + c.user] || 0, onBallot: (e.shortlist || []).includes(c.user), filedAt: c.filedAt }))) };
+}
+async function editCampaign(n, office, user, slogan) {
+  const t = String(slogan || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (t.length < 3) throw fail(400, 'The slogan must be at least 3 characters.');
+  const r = await ACElection.updateOne({ _id: eid(+n, office), 'candidates.user': String(user) }, { $set: { 'candidates.$.slogan': t } }); if (!r.matchedCount) throw fail(404, 'That campaign was not found.');
+  return { ok: true };
+}
+async function removeCampaign(io, n, office, user) {
+  user = String(user); const id = eid(+n, office), el = await ACElection.findById(id).lean(); const c = el && (el.candidates || []).find((x) => x.user === user); if (!c) throw fail(404, 'That campaign was not found.');
+  if (el.resolved) throw fail(409, 'That race is already decided.');
+  const fee = await refundOnce(id, user, `${(G.OFFICES[office] || {}).title || 'Election'} filing fee refunded (campaign removed)`);
+  await ACElection.updateOne({ _id: id }, { $pull: { candidates: { user }, shortlist: user } });
+  await Promise.all([ACFiling.deleteOne({ _id: `${+n}:${user}` }), ACBallot.deleteMany({ cycle: +n, office, candidate: user })]);
+  notify(io, user, { icon: '🗳️', text: 'The Electoral Commission removed your campaign.' + (fee ? ` Your filing fee of ${G.naira(fee)} was refunded.` : ''), kind: 'info' }).catch(() => {});
+  return { ok: true, refunded: fee };
 }
 
 /* Called every 30 seconds, and (throttled) when anybody opens State House. */
@@ -292,4 +355,4 @@ async function state(uid, query = {}, now = Date.now()) {
   return { now, cash: f.cash, voterOk: G.voterOk(f.ageDays), cycle: { n: c.n, start: c.start, end: c.end, shortlistAt: c.shortlistAt, phase: c.phase, next: c.next ? { start: c.next.start, shortlistAt: c.next.shortlistAt, end: c.next.end } : null }, shortlistSize: G.SHORTLIST_SIZE, offices: out };
 }
 
-module.exports = { tick, progress, refreshOffices, listRounds, scheduleRound, cancelRound, file, support, vote, announce, setPolicy, state, fail };
+module.exports = { tick, progress, refreshOffices, listRounds, scheduleRound, cancelRound, getOfficeSettings, saveOfficeSettings, updateRound, deleteRound, listCampaigns, editCampaign, removeCampaign, file, support, vote, announce, setPolicy, state, fail };

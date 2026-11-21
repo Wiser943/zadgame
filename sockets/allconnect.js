@@ -42,15 +42,50 @@ module.exports = function initAllConnect(io) {
       const p = sanitizePos(raw); if (!p) return;
       const o = online.get(socket.id); if (!o) return;
       const now = Date.now(); if (o.posAt && now - o.posAt < 70) return; o.posAt = now;
-      o.x = p.x; o.y = p.y; o.h = p.h; o.st = p.st;
-      socket.broadcast.emit('pos', { id: o.id, name: o.name, x: p.x, y: p.y, h: p.h, st: p.st });
-      if (!o.saveAt || now - o.saveAt > 8000) {
+      o.x = p.x; o.y = p.y; o.h = p.h; o.st = p.st; o.v = p.v; o.sp = p.sp; o.job = p.job; o.c = p.c;
+      socket.broadcast.emit('pos', { id: o.id, name: o.name, x: p.x, y: p.y, h: p.h, st: p.st, v: p.v, sp: p.sp, job: p.job, c: p.c });
+      if (!p.c && (!o.saveAt || now - o.saveAt > 8000)) {
         o.saveAt = now;
         User.updateOne({ _id: u.id }, { $set: { 'ac.mapPos': { x: p.x, y: p.y, h: p.h } } }).catch(() => {});
       }
     });
+    // Workplace scenes: everyone with the same job who has their workplace open sees each other (room 'work:<job>', max 24).
+    let wk = '';
+    const wkInfo = () => { const o = online.get(socket.id) || {}; return { id: u.id, name: u.displayName, g: o.g || '', t: o.wt || '', x: o.wx || 0, z: o.wz || 0, h: o.wh || 0 }; };
+    const wkLeave = () => { if (!wk) return; socket.to('work:' + wk).emit('work:leave', { id: u.id }); socket.leave('work:' + wk); wk = ''; const o = online.get(socket.id); if (o) o.wk = ''; };
+    socket.on('work:enter', async (raw) => {
+      const job = String((raw && raw.job) || '').replace(/[^a-z0-9_]/gi, '').slice(0, 20); if (!job) return;
+      wkLeave();
+      const room = 'work:' + job, inRoom = await nsp.in(room).fetchSockets().catch(() => []);
+      if (inRoom.length >= 24) return;
+      wk = job; socket.join(room); const o = online.get(socket.id); if (o) { o.wk = job; o.wt = String((raw && raw.title) || '').replace(/[^\w &'.-]/g, '').slice(0, 30); o.wx = 4.9; o.wz = 3; o.wh = 0; }
+      const seen = new Set([u.id]), list = [];
+      for (const [sid, v] of online) { if (v.wk === job && !seen.has(v.id)) { seen.add(v.id); list.push({ id: v.id, name: v.name, g: v.g || '', t: v.wt || '', x: v.wx || 0, z: v.wz || 0, h: v.wh || 0 }); } }
+      socket.emit('work:roster', list);
+      socket.to(room).emit('work:join', wkInfo());
+    });
+    socket.on('work:move', (raw) => {
+      if (!wk) return; const o = online.get(socket.id); if (!o) return;
+      const now = Date.now(); if (o.wkAt && now - o.wkAt < 90) return; o.wkAt = now;
+      const n = (v, lim) => { v = Number(v); return Number.isFinite(v) ? Math.max(-lim, Math.min(lim, v)) : 0; };
+      o.wx = n(raw && raw.x, 7); o.wz = n(raw && raw.z, 6); o.wh = n(raw && raw.h, 7); o.ws = (raw && raw.s) === 'work' ? 'work' : (raw && raw.s) === 'walk' ? 'walk' : 'idle';
+      socket.to('work:' + wk).emit('work:pos', { id: u.id, x: o.wx, z: o.wz, h: o.wh, s: o.ws });
+    });
+    // Talk and emote to everyone in the same workplace. Short, filtered, rate-limited; nothing is stored.
+    const EMOTES = ['wave', 'laugh', 'dance', 'abeg', 'hiss', 'clap'];
+    socket.on('work:say', (raw) => {
+      if (!wk) return; const o = online.get(socket.id); if (!o) return; const now = Date.now(); if (o.sayAt && now - o.sayAt < 1200) return; o.sayAt = now;
+      const text = require('../utils/profanity').clean(String((raw && raw.text) || '').replace(/\s+/g, ' ').trim().slice(0, 140)); if (!text) return;
+      nsp.to('work:' + wk).emit('work:said', { id: u.id, name: u.displayName, text, at: now });
+    });
+    socket.on('work:emote', (raw) => {
+      if (!wk) return; const o = online.get(socket.id); if (!o) return; const now = Date.now(); if (o.emAt && now - o.emAt < 800) return; o.emAt = now;
+      const e = String((raw && raw.e) || ''); if (!EMOTES.includes(e)) return;
+      socket.to('work:' + wk).emit('work:emoted', { id: u.id, name: u.displayName, e });
+    });
+    socket.on('work:leave', wkLeave);
     // The old tap-to-find gem was replaced by the admin-controlled daily gem hunt (routes/acgem.js).
-    socket.on('disconnect', () => { online.delete(socket.id); acPresence.disconnect(u.id); push(); });
+    socket.on('disconnect', () => { wkLeave(); online.delete(socket.id); acPresence.disconnect(u.id); push(); });
   });
 
   setInterval(() => { if (online.size) nsp.emit('players', roster()); }, 3500).unref();

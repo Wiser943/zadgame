@@ -93,11 +93,10 @@ const HUB = {
     const t = (fa, c, name, v, badge) => `<button class="htile" onclick="HUB.view('${v}')">${UI.ic(fa, c, 44)}<b>${name}</b>${badge ? `<i>${badge}</i>` : ''}</button>`;
     const m = this.me || { missions: {}, hub: {} };
     this.sheet('Naija hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
-      ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('newspaper', '#0ea5e9', 'Newspaper', 'news')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}
-      ${t('gamepad', '#e5484d', 'Play path', 'play')}${t('map', '#6366f1', 'Map legend', 'legend')}${t('circle-question', '#64748b', 'Help desk', 'help')}${t('road', '#10b981', 'Roadmap', 'roadmap')}
-      ${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
-      ${t('user-group', '#3b82f6', 'Invite', 'invite')}<button class="htile" onclick="SHEET.close();HUB.controls()">${UI.ic('hand-pointer', '#f59e0b', 44)}<b>Controls tutorial</b></button><button class="htile" onclick="SHEET.close();HUB.cityTour()">${UI.ic('route', '#14b8a6', 44)}<b>City tour</b></button>${t('signal', '#22b573', 'Status', 'status')}
-      ${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}</div>`, { id: 'menu', back: false });
+      ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}${t('gamepad', '#e5484d', 'Play path', 'play')}
+      ${t('circle-question', '#64748b', 'Help desk', 'help')}${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
+      ${t('signal', '#22b573', 'Status', 'status')}${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}<button class="htile" onclick="SHEET.close();HUB.cityTour()">${UI.ic('route', '#14b8a6', 44)}<b>City tour</b></button>
+      ${t('map', '#6366f1', 'Map legend', 'legend')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}<button class="htile" onclick="SHEET.close();HUB.controls()">${UI.ic('hand-pointer', '#f59e0b', 44)}<b>Controls tutorial</b></button></div>`, { id: 'menu', back: false });
   },
   async view(v) {
     const f = this['v_' + v]; if (!f) return;
@@ -177,7 +176,7 @@ const HUB = {
     const back = st > 0 ? `<button class="hlink" onclick="HUB.setup(${st - 1})">‹ Back</button>` : '';
     const pick = (list, key, fn) => `<div class="hopts">${list.map(o => `<button class="hopt ${su[key] === o.id ? 'on' : ''}" onclick="HUB.pick('${key}','${o.id}')"><span class="hem">${o.emoji || ''}</span><b>${this.esc(o.name)}</b><small>${this.esc(fn(o))}</small></button>`).join('')}</div>`;
     if (st === 0) return `${dots}<div class="hhero"><div class="hbig">🏙️</div><h3>${this.esc(NG.say(C.promise.tagline, 'Live your full Naija life, online.'))}</h3><p>${this.esc(NG.say(C.promise.line, 'Find work, pay your bills, fix your house, make padi, play games and watch 9ja change around you. AllConnect no dey reset: your life dey continue even when you close the app.'))}</p></div><ul class="hprom">${C.promise.day1.map(x => `<li><span class="fa-solid fa-circle-check"></span>${this.esc(x)}</li>`).join('')}</ul>${nextBtn(true, NG.say('Set up my life (1 minute)', 'Set up my life (1 minute)'))}<button class="hlink c" onclick="SHEET.close()">Skip for now</button>`;
-    if (st === 1) return `${dots}<h3 class="hq">${NG.say('Where will you live?', 'Where you wan live?')}</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
+    if (st === 1) return `${dots}<h3 class="hq">${C.stateName ? NG.say('Where will you live in ' + C.stateName + '?', 'Where you wan live for ' + C.stateName + '?') : NG.say('Where will you live?', 'Where you wan live?')}</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
     if (st === 2) return `${dots}<h3 class="hq">${NG.say('Choose a starter job', 'Pick your starter job')}</h3><p class="hsub">You can switch any time in Phone → Jobs.</p>${pick(C.jobs, 'job', o => `${o.startTitle} · ${this.fmt(o.startPay)} per shift`)}${nextBtn(!!su.job)}${back}`;
     if (st === 3) return `${dots}<h3 class="hq">${NG.say('What do you love?', 'Wetin you love?')}</h3><p class="hsub">We use this to suggest missions and a username.</p>${pick(C.hobbies, 'hobby', () => '')}${nextBtn(!!su.hobby)}${back}`;
     if (st === 4) {

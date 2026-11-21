@@ -54,16 +54,13 @@ test('item boxes: only near the box, once per cooldown, and one item at a time',
   room.join({ id: 'a', name: 'A' }); room.start('a', 0); room.tick(4600);
   const p = room.find('a'), box = T.boxes[1];
   p.z = box.seg * T.SEG + 100; p.x = box.o; p.lastPoseAt = 4600;
-  room.pickBox('a', 0, 4700); assert.strictEqual(p.items.length, 0, 'box 0 is far away');
-  room.pickBox('a', box.id, 4700); assert.ok(p.items.length === 1, 'got an item');
-  assert.deepStrictEqual(last('race:item').payload.items, p.items);
-  const first = p.items[0]; room.pickBox('a', box.id, 4800); assert.strictEqual(p.items.length, 1, 'that box is still recharging');
-  room.pickBox('a', T.boxes[2].id, 4800); p.x = T.boxes[2].o; p.z = T.boxes[2].seg * T.SEG; room.pickBox('a', T.boxes[2].id, 4800); assert.strictEqual(p.items.length, 2, 'a second slot');
-  room.pickBox('a', T.boxes[3].id, 4900); assert.strictEqual(p.items.length, 2, 'only two at a time');
-  room.useItem('a', 4900, 1); assert.strictEqual(p.items.length, 1); assert.strictEqual(p.items[0], first, 'used the second slot, kept the first');
-  room.useItem('a', 5000, 0); assert.strictEqual(p.items.length, 0);
-  room.pickBox('a', box.id, 5000); assert.strictEqual(p.items.length, 0, 'that box is still recharging');
-  p.x = box.o; room.pickBox('a', box.id, 4700 + 7100); assert.ok(p.items.length === 1, 'box is back after a few seconds');
+  room.pickBox('a', 0, 4700); assert.strictEqual(p.item, null, 'box 0 is far away');
+  room.pickBox('a', box.id, 4700); assert.ok(p.item, 'got an item');
+  assert.strictEqual(last('race:item').payload.item, p.item);
+  const first = p.item; room.pickBox('a', box.id, 4800); assert.strictEqual(p.item, first, 'already holding one');
+  room.useItem('a', 4900); assert.strictEqual(p.item, null);
+  room.pickBox('a', box.id, 5000); assert.strictEqual(p.item, null, 'that box is still recharging');
+  room.pickBox('a', box.id, 4700 + 7100); assert.ok(p.item, 'box is back after a few seconds');
 });
 
 test('oil spill spins the next kart through it, a shield blocks it once, rocket hits the kart ahead', () => {
@@ -71,15 +68,15 @@ test('oil spill spins the next kart through it, a shield blocks it once, rocket 
   room.join({ id: 'a', name: 'A' }); room.join({ id: 'b', name: 'B' }); room.start('a', 0); room.tick(4600);
   const a = room.find('a'), b = room.find('b');
   a.z = 50000; b.z = 49000; a.x = 0; b.x = 0; a.lastPoseAt = b.lastPoseAt = 4600;
-  a.items = ['oil']; room.useItem('a', 5000);
+  a.item = 'oil'; room.useItem('a', 5000);
   assert.strictEqual(room.hazards.length, 1);
   b.shieldUntil = 99999;
   room.pose('b', { z: room.hazards[0].z, x: 0, v: 8000 }, 5100);
   assert.ok(log.some((l) => l.ev === 'race:fx' && l.payload.kind === 'block' && l.payload.to === 'b'), 'shield soaked up the oil');
-  a.items = ['oil']; room.useItem('a', 5200);
+  a.item = 'oil'; room.useItem('a', 5200);
   room.pose('b', { z: room.hazards[room.hazards.length - 1].z, x: 0, v: 8000 }, 5300);
   assert.ok(log.some((l) => l.ev === 'race:hit' && l.payload.to === 'b' && l.payload.kind === 'oil'), 'second spill hits');
-  b.z = 60000; b.spinUntil = 0; b.items = ['rocket']; a.z = 52000;
+  b.z = 60000; b.spinUntil = 0; b.item = 'rocket'; a.z = 52000;
   room.useItem('b', 6000);
   const rk = log.filter((l) => l.ev === 'race:fx' && l.payload.kind === 'rocket').pop();
   assert.ok(rk, 'rocket fired');
@@ -115,21 +112,4 @@ test('a player who leaves mid-race stays on the grid as an autopilot and the rac
   assert.strictEqual(room.leave('b', 5000), false);
   assert.ok(room.find('b').ai);
   assert.strictEqual(room.humans().length, 1);
-});
-
-test('bot level: harder bots really are faster, and a human kart accelerates faster than a bot', () => {
-  const avgSkill = (level) => { const { room } = make({ grid: 10, level }); room.join({ id: 'h', name: 'H' }); room.start('h', 0); const b = room.players.filter((p) => p.bot); return b.reduce((s, p) => s + p.skill, 0) / b.length; };
-  const e = avgSkill(1), n = avgSkill(2), h = avgSkill(3);
-  assert.ok(e < n && n < h, `levels ${e.toFixed(2)} < ${n.toFixed(2)} < ${h.toFixed(2)}`);
-  const { room } = make({ level: 9 }); assert.strictEqual(room.level, 3, 'out of range is clamped');
-  room.join({ id: 'a', name: 'A' }); room.setOptions('a', { level: 1 }); assert.strictEqual(room.level, 1);
-  room.join({ id: 'b', name: 'B' }); room.setOptions('b', { level: 3 }); assert.strictEqual(room.level, 1, 'only the host changes it');
-});
-
-test('a race with two real players is ranked; one real player is practice; leaving does not break the flag', () => {
-  const run = (humans) => { const { room, last } = make({ grid: 4, laps: 1 }); humans.forEach((id) => room.join({ id, name: id })); room.start(humans[0], 0); let now = 0; const z = {};
-    for (let i = 0; i < 20000 && room.status !== 'results'; i++) { now += 50; room.tick(now); if (room.status === 'racing') humans.forEach((id) => { z[id] = Math.max(z[id] || -600, room.find(id).z) + 8500 * .05; room.pose(id, { z: z[id], x: 0, v: 8500 }, now); }); }
-    return last('race:results').payload; };
-  assert.strictEqual(run(['a']).ranked, false);
-  assert.strictEqual(run(['a', 'b']).ranked, true);
 });

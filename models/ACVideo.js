@@ -14,5 +14,9 @@ module.exports = mongoose.model('ACVideo', new mongoose.Schema({
   dur: Number,
   signed: { type: Boolean, default: false },   // signed (expiring) playback links
   cc: { type: Boolean, default: false },       // auto captions were requested
+  provider: { type: String, default: 'mux', index: true },   // which host stores the bytes (see services/video)
+  bytes: { type: Number, default: 0 },         // size counted against the host's byte limit
+  quota: { type: Boolean, default: true },     // true while this video holds a slot in its host's quota (so it is released exactly once)
+  ext: { type: mongoose.Schema.Types.Mixed, default: {} },   // host-specific ids (Cloudinary public_id, Vimeo uri, ImageKit fileId ...)
   createdAt: { type: Date, default: Date.now, index: true },
 }));

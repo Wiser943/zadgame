@@ -1,7 +1,7 @@
 /* Invest app (Phone -> Invest): land, street businesses and haulage trailers.
    All prices, payouts and sale values are decided by the server (routes/acinvest.js, utils/acinvest.js). */
 const INV = {
-  D: null, busy: false, ft: 0,
+  D: null, busy: false, ft: 0, mKey: null, mStaff: 0, mTier: 'standard',
   money: n => '₦' + Math.floor(Math.abs(n) < 1 ? 0 : n).toLocaleString('en-NG'),
   sg(n) { n = Math.round(n); return (n < 0 ? '-' : '+') + '₦' + Math.abs(n).toLocaleString('en-NG') },
   cls(n) { return n < 0 ? 'neg' : n > 0 ? 'pos' : '' },
@@ -50,7 +50,8 @@ const INV = {
     h += `<div class="lab2">OWN A BUSINESS</div>` + D.businesses.map(b => b.owned ? `<div class="ivbiz own"><div class="ivhead">${this.ico(b.emoji, 1)}<div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span>
           <span class="mk">Makes ${this.money(b.min)}–${this.money(b.max)} a day</span></div></div>
         <div class="ivstat"><b>Next payout ${this.nextText().replace('at 6:00 PM', 'at 6:00 PM')}.</b> ${b.total ? '' : 'No payouts counted yet. '}today <b class="${this.cls(b.today)}">${this.sg(b.today)}</b> · this week <b class="${this.cls(b.week)}">${this.sg(b.week)}</b> · total <b class="${this.cls(b.total)}">${this.sg(b.total)}</b> (before tax)</div>
-        <button class="ivbtn out full" onclick="INV.askSellBiz('${b.key}')">Sell · ${this.short(b.sell)}</button></div>`
+        <div class="ivstat">Running it: ${b.staff} staff · ${esc((b.tiers.find(t => t.id === b.tier) || {}).name || 'Standard')} pricing</div>
+        <div class="ivbtns"><button class="ivbtn out" onclick="INV.manageBiz('${b.key}')">Manage</button><button class="ivbtn out" onclick="INV.askSellBiz('${b.key}')">Sell · ${this.short(b.sell)}</button></div></div>`
       : `<div class="ivbiz"><div class="ivhead">${this.ico(b.emoji, 1)}<div class="rt"><b>${esc(b.name)} · ${esc(b.area)}</b><span>${esc(b.blurb)}</span><span class="mk">Makes ${this.money(b.min)}–${this.money(b.max)} a day</span></div></div>
         <button class="ivbtn grn full" onclick="INV.act('biz/buy',{key:'${b.key}'})">Buy · ${this.short(b.price)}</button></div>`).join('');
     h += `<p class="adfoot">Income is paid every evening at 6:00 PM (Naija time), minus ${s.taxPct}% tax. Prices and payouts are set by the server.</p>`;
@@ -74,6 +75,18 @@ const INV = {
   confirm(title, line, label, go) {
     PH.sheet(`<h3>${title}</h3><p class="hint2">${line}</p><button class="fopt red" onclick="${go}"><span>${label}</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Keep it</span></button>`)
   },
+  /* Running your own business: hire staff and pick a price tier (routes/acinvest.js POST biz/manage). */
+  manageBiz(key) {
+    const b = this.D.businesses.find(x => x.key === key); if (!b) return;
+    if (this.mKey !== key) { this.mKey = key; this.mStaff = b.staff; this.mTier = b.tier; }
+    const addCost = Math.max(0, this.mStaff - b.staff) * b.hireFee;
+    PH.sheet(`<h3>Run ${esc(b.name)}</h3><p class="hint2">Hire staff to boost daily takings, and pick how you price it.</p>
+      <div class="ivmrow"><span>Staff</span><div class="ivmstep"><button onclick="INV.mStaff=Math.max(0,INV.mStaff-1);INV.manageBiz('${key}')">−</button><b>${this.mStaff}</b><button onclick="INV.mStaff=Math.min(${b.maxStaff},INV.mStaff+1);INV.manageBiz('${key}')">+</button></div></div>
+      <div class="ivmrow"><span>Price tier</span><div class="trchips">${b.tiers.map(t => `<button class="${this.mTier === t.id ? 'on' : ''}" onclick="INV.mTier='${t.id}';INV.manageBiz('${key}')">${esc(t.name)}</button>`).join('')}</div></div>
+      <p class="hint2">${addCost ? `Hiring costs ${this.money(addCost)} (one-time, for the new staff). ` : ''}Staff cost ${this.money(b.wage)}/day each, taken from the payout.</p>
+      <button class="fopt" onclick="INV.saveBiz('${key}')"><span>Save</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Cancel</span></button>`);
+  },
+  saveBiz(key) { this.act('biz/manage', { key, staff: this.mStaff, tier: this.mTier }); this.mKey = null; },
   askSellLand(id) { const l = this.D.land.find(x => x.id === id); if (!l) return; this.confirm(`Sell ${esc(l.name)}?`, `You paid ${this.money(l.paid)}. You get ${this.money(l.worth)} now (${this.sg(l.delta)}).`, 'Sell for ' + this.money(l.worth), `INV.act('land/sell',{id:'${id}'})`) },
   askSellBiz(key) { const b = this.D.businesses.find(x => x.key === key); if (!b) return; this.confirm(`Sell ${esc(b.name)}?`, `It stops paying you. You get ${this.money(b.sell)} for it.`, 'Sell for ' + this.money(b.sell), `INV.act('biz/sell',{key:'${key}'})`) },
   askSellTruck() { const T = this.D.haulage; this.confirm('Sell a trailer?', `You get ${this.money(T.sellOne)} for one trailer.`, 'Sell for ' + this.money(T.sellOne), `INV.act('truck/sell',{})`) }

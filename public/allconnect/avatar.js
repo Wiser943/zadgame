@@ -745,7 +745,7 @@
       if (cv.offsetParent !== null) {
         const dt = (now - last) / 1000; last = now; av.update(dt);
         if (o.drag && !dragging) { ang += vel; vel *= .94; if (Math.abs(vel) < .0005) vel = 0 }
-        if (o.drag) av.h = PI / 2 + ang + (o.turn && !touched && !(av.ext && av.ext.reduce) ? Math.sin(now / 900) * .5 : 0);
+        if (o.drag) av.h = PI / 2 + ang;   // stands still until the player drags it
         else if (o.turn && !(av.ext && av.ext.reduce)) av.h = PI / 2 + Math.sin(now / 900) * .5;
         c.clearRect(0, 0, cv.width, cv.height);
         if (o.bg) { c.fillStyle = o.bg; c.fillRect(0, 0, cv.width, cv.height); }

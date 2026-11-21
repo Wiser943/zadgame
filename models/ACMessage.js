@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
-// Private chat between two friends. kind: text | money | food | invite | system
+// Private chat between two friends. kind: text | money | food | invite | system | bae
 const S = new mongoose.Schema({
   from: { type: String, required: true }, to: { type: String, required: true },
-  text: { type: String, default: '' }, kind: { type: String, default: 'text' }, propertyId: { type: String, default: '' }, amount: { type: Number, default: 0 },
+  text: { type: String, default: '' }, kind: { type: String, default: 'text' }, propertyId: { type: String, default: '' }, status: { type: String, default: '' },   // bae requests: '' (waiting) | accepted | declined
+  amount: { type: Number, default: 0 },
   reply: { mid: String, from: String, text: String },
   image: { url: String, thumb: String, w: Number, h: Number }, voice: { url: String, dur: Number },                  // optional photo (text becomes the caption)
   reactions: { type: [{ _id: false, u: String, e: String }], default: [] },     // one emoji per person

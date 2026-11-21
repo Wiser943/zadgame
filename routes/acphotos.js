@@ -7,7 +7,8 @@ const ACPhoto = require('../models/ACPhoto');
 const ACPhotoBlob = require('../models/ACPhotoBlob');
 const ensureAuth = require('../middleware/auth');
 const ACVideo = require('../models/ACVideo');
-const { muxOn, mux, syncPending, playback } = require('../utils/mux');
+const { playback } = require('../utils/mux');
+const videoRouter = require('../services/video');
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ router.use(ensureAuth);
 router.get('/', async (req, res, next) => {
   try {
     const uid = String(req.user.id);
-    await syncPending(uid).catch(() => {});
+    await videoRouter.syncUser(uid).catch(() => {});
     const [rows, vids] = await Promise.all([ACPhoto.find({ user: uid }).sort({ createdAt: -1 }).limit(MAX_LIBRARY).lean(), ACVideo.find({ user: uid, status: { $ne: 'pending' } }).sort({ createdAt: -1 }).limit(100).lean()]);
     const videos = vids.map((v) => { const pb = playback({ mux: { playbackId: v.playbackId, signed: v.signed }, url: v.url, poster: { url: v.poster, thumb: v.thumb } }); return { id: String(v._id), video: true, url: pb.url, thumb: pb.poster, medium: pb.poster, createdAt: v.createdAt, dur: v.dur || 0, assetId: v.assetId }; });
     const all = rows.map(pub).concat(videos).sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
@@ -132,11 +133,12 @@ router.post('/chat', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     if (!/^[a-f\d]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid photo.' });
-    // a video in the gallery: delete it from Mux and remove every reel/post that used it
-    const v = await ACVideo.findOneAndDelete({ _id: req.params.id, user: String(req.user.id) });
+    // a video in the gallery: delete it from the host that stores it (Mux, Cloudinary ...), free its quota slot, and remove every reel/post that used it
+    const v = await ACVideo.findOne({ _id: req.params.id, user: String(req.user.id) }).lean();
     if (v) {
       const removedPosts = await require('./acgist').removeVideoPosts(v.assetId).catch(() => 0);
-      if (muxOn()) mux('DELETE', '/video/v1/assets/' + v.assetId).catch((e) => console.error('[mux delete]', e.message));
+      try { await videoRouter.remove(v); }
+      catch (e) { console.error('[video delete]', e.message); return res.status(502).json({ message: 'The video host did not delete it. Nothing was removed, please try again.' }); }
       return res.json({ ok: true, removedPosts });
     }
     const p = await ACPhoto.findOneAndDelete({ _id: req.params.id, user: String(req.user.id) });
