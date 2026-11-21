@@ -21,15 +21,3 @@ test('publicPos only exposes a point when one exists', () => {
   assert.strictEqual(live.x, 120.4);
   assert.strictEqual(live.st, 'walk');
 });
-
-test('sanitizePos keeps vehicle, speed and job label for the 3D street world', () => {
-  const p = sanitizePos({ x: 10, y: 20, h: 1, st: 'drive', v: 'car', sp: 61.234, job: 'Danfo <b>driver</b>' });
-  assert.strictEqual(p.st, 'drive');
-  assert.strictEqual(p.v, 'car');
-  assert.strictEqual(p.sp, 61.2);
-  assert.ok(!/[<>]/.test(p.job));
-  const q = sanitizePos({ x: 1, y: 1, v: 'rocket', sp: 400 });
-  assert.strictEqual(q.v, undefined);
-  assert.strictEqual(q.sp, undefined);
-  assert.deepStrictEqual(publicPos({ x: 5, y: 6, h: 0, st: 'drive', v: 'car', sp: 30 }), { x: 5, y: 6, h: 0, st: 'drive', v: 'car', sp: 30 });
-});

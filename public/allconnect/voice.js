@@ -55,16 +55,14 @@
       if (audio) { audio.pause(); VN.reset(playing && playing.box) }
       audio = new Audio(box.dataset.u); playing = { box };
       const bar = box.querySelector('em'), t = box.querySelector('.vnt'), ic = btn.firstElementChild, dur = Number(box.dataset.d) || 1;
-      audio.ontimeupdate = () => { const d = audio.duration && isFinite(audio.duration) ? audio.duration : dur; const pc = Math.min(1, audio.currentTime / d); if (bar) bar.style.width = pc * 100 + '%'; VN.paint(box, pc); if (t) t.textContent = fmt(audio.currentTime) };
+      audio.ontimeupdate = () => { const d = audio.duration && isFinite(audio.duration) ? audio.duration : dur; if (bar) bar.style.width = Math.min(100, audio.currentTime / d * 100) + '%'; if (t) t.textContent = fmt(audio.currentTime) };
       audio.onplay = () => { ic.className = 'fa-solid fa-pause'; box.classList.add('on') };
       audio.onpause = () => { ic.className = 'fa-solid fa-play' };
       audio.onended = () => VN.reset(box);
       audio.onerror = () => { VN.reset(box); toast('Could not play that voice note') };
       audio.play().catch(() => { VN.reset(box); toast('Could not play that voice note') });
     },
-    /* the part of the wave that has played turns blue, the rest stays grey */
-    paint(box, pc) { const bs = box.querySelectorAll('.vnw i'), n = bs.length, upto = Math.round(pc * n); bs.forEach((b, i) => b.classList.toggle('pl', i < upto)) },
-    reset(box) { if (!box) return; box.querySelectorAll('.vnw i.pl').forEach((b) => b.classList.remove('pl')); box.classList.remove('on'); const i = box.querySelector('.vnpb span'); if (i) i.className = 'fa-solid fa-play'; const e = box.querySelector('em'); if (e) e.style.width = '0'; const t = box.querySelector('.vnt'); if (t) t.textContent = fmt(Number(box.dataset.d) || 0) }
+    reset(box) { if (!box) return; box.classList.remove('on'); const i = box.querySelector('.vnpb span'); if (i) i.className = 'fa-solid fa-play'; const e = box.querySelector('em'); if (e) e.style.width = '0'; const t = box.querySelector('.vnt'); if (t) t.textContent = fmt(Number(box.dataset.d) || 0) }
   };
   /* ================= WhatsApp-style mic: hold to record =================
      The round button next to a chat box is a microphone while the box is empty and turns into "send" as soon as you type (CSS only,

@@ -35,22 +35,11 @@ const USE = {
       { id: 'restock', label: 'Restock', sec: 14, pose: 'stand', fx: [[3, .06], [2, .03]], doing: 'Restocking…', done: 'Fully stocked' }
     ],
     stock: [{ id: 'check', label: 'Check the stock', sec: 8, pose: 'stand', fx: [[2, .03]], doing: 'Checking the stock…', done: 'Stock counted' }],
-    microwave: [{ id: 'warm', label: 'Warm some food', sec: 8, pose: 'stand', fx: [[0, .22]], doing: 'Warming food...', done: 'Hot and ready 🍲' }],
-    tvstand: [{ id: 'tv', label: 'Watch TV', sec: 25, pose: 'stand', fx: [[2, .22]], doing: 'Watching TV...', done: 'Good show 📺' }, { id: 'news', label: 'Catch the news', sec: 12, pose: 'stand', fx: [[2, .08]], doing: 'Catching the news...', done: 'Up to date' }],
-    treadmill: [{ id: 'run', label: 'Go for a run', sec: 20, pose: 'stand', fx: [[2, .12], [1, -.08]], doing: 'Running...', done: 'Great workout 💪' }],
-    piano: [{ id: 'play', label: 'Play the piano', sec: 20, pose: 'sit', fx: [[2, .2]], doing: 'Playing the piano...', done: 'Beautiful 🎹' }],
-    desk: [{ id: 'pc', label: 'Use the computer', sec: 18, pose: 'sit', fx: [[2, .12]], doing: 'On the computer...', done: 'Productive session 💻' }],
-    bathtub: [{ id: 'soak', label: 'Soak in the tub', sec: 25, pose: 'stand', fx: [[4, .7], [2, .05]], doing: 'Soaking...', done: 'So relaxing 🛁' }],
     table: [{ id: 'meal', label: 'Have a meal', sec: 12, pose: 'stand', fx: [[0, .35]], doing: 'Eating…', done: 'Yum! Ate jollof 🍛' }]
   },
-  HINT: { microwave: 'Warm some food', tvstand: 'Watch something', treadmill: 'Get fit', piano: 'Make some music', desk: 'Get online', bathtub: 'Have a soak', bed: 'Rest or freshen up', chair: 'Take a seat', stool: 'Take a seat', sofa: 'Take a seat', armchair: 'Take a seat', toilet: 'Nature calls', shower: 'Freshen up', bucket: 'Freshen up', cooker: 'Make something to eat', fridge: 'See what is inside', cooler: 'Something to eat', table: 'Time to eat', counter: 'Your shop', shelves: 'Your goods', stock: 'Storeroom' },
+  HINT: { bed: 'Rest or freshen up', chair: 'Take a seat', stool: 'Take a seat', sofa: 'Take a seat', armchair: 'Take a seat', toilet: 'Nature calls', shower: 'Freshen up', bucket: 'Freshen up', cooker: 'Make something to eat', fridge: 'See what is inside', cooler: 'Something to eat', table: 'Time to eat', counter: 'Your shop', shelves: 'Your goods', stock: 'Storeroom' },
   find(id) { return (S.items || []).find(i => i.id === id) || (window.ROOM3D && ROOM3D.fixture ? ROOM3D.fixture(id) : null) },
-  kindOf(it) {
-    if (it.fixture) return it.kind; const D = window.FURN && FURN.ITEMS[it.name]; const k = D && D.kind;
-    // new items behave like the closest thing that already has actions
-    const alias = { armchair: 'sofa', stool: 'chair', bunk: 'bed', diningset: 'table', island: 'table', plasticset: 'table', umbtable: 'chair', shelter: 'sofa', kiosk: 'counter', container: 'counter', stall: 'cooker', icestand: 'fridge', freezer: 'fridge' };
-    return alias[k] || k
-  },
+  kindOf(it) { if (it.fixture) return it.kind; const D = window.FURN && FURN.ITEMS[it.name]; const k = D && D.kind; return k === 'armchair' ? 'sofa' : k === 'stool' ? 'chair' : k },
   actsFor(it) { return this.ACTS[this.kindOf(it)] || [] },
   el: null, bar: null, timer: 0, cur: null,
   mount() {
@@ -61,8 +50,6 @@ const USE = {
   esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) },
   /* open the sheet for a tapped item; returns false when there is nothing to do with it (the caller keeps its old behaviour) */
   open(id) {
-    // visiting a friend: you can only use their things if they allow it (and never when you broke in)
-    if (window.VISIT && VISIT.on && !VISIT.allowUse) { toast(VISIT.burglar ? 'You are a burglar: hands off!' : `${VISIT.v && VISIT.v.host ? VISIT.v.host.name : 'The owner'} does not let visitors use their things.`); return }
     const it = this.find(id); if (!it) return false; const acts = this.actsFor(it); if (!acts.length) return false;
     this.mount(); const k = this.kindOf(it);
     this.el.innerHTML = `<div class="sheet usesheet"><h2>${this.esc(it.name)}<small onclick="USE.close()">✕</small></h2><p class="usesub">${this.esc(this.HINT[(!it.fixture && window.FURN && FURN.ITEMS[it.name] && FURN.ITEMS[it.name].kind) || k] || '')}</p>` +

@@ -58,7 +58,7 @@ window.AvatarView = {
       if (!on) return; raf = requestAnimationFrame(tick);
       if (!cv.isConnected) { on = false; return; }
       const dt = Math.min(.05, (now - last) / 1000 || .016); last = now;
-      if (false) az += dt * .35;   // auto-turn, like the preview this replaces; drag always overrides
+      if (!dragging && o.turn !== false && !(AV.ext && AV.ext.reduce)) az += dt * .35;   // auto-turn, like the preview this replaces; drag always overrides
       const sp = Math.sin(pol);
       AV.cam.position.set(dist * sp * Math.sin(az), ty + dist * Math.cos(pol), dist * sp * Math.cos(az));   // far enough back that the whole 1.65-tall model (hats included) sits inside the card from every angle
       AV.cam.lookAt(0, ty, 0);

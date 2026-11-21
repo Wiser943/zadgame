@@ -421,9 +421,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
       User.updateOne({ _id: winner.id, 'bestMoment.score': { $not: { $gte: momentScore } } },
         { $set: { bestMoment: { matchId: String(matchId), game: r.game, score: momentScore, at: new Date() } } }).catch(e => console.error('[bestMoment]', e.message));
     }
-    // Ratings move after every finished match between two real players (ranked at full weight, casual at half weight).
-    // Before this only ranked rooms touched the rating, so almost everyone stayed on 1000 and the board looked broken.
-    if (r.players.length === 2 && r.players.every((p) => !p.bot)) applyRanked(r, winnerIndex, reason, !r.ranked).catch((e) => console.error('[ranked]', e.message));
+    if (r.ranked && r.players.length === 2 && r.players.every((p) => !p.bot)) applyRanked(r, winnerIndex, reason).catch((e) => console.error('[ranked]', e.message));
     if (r.tournament) {
       const wid = winnerIndex != null && !r.players[winnerIndex].bot ? r.players[winnerIndex].id : null;
       tournaments.onMatchResult(r.tournament, wid).catch((e) => console.error('[tournament]', e.message));
@@ -599,7 +597,7 @@ module.exports = function initSockets(io, sessionMiddleware) {
   }, QUEUE_TICK_MS).unref();
 
   // Elo update for ranked 2-human matches (per-game rating + overall rating used for tiers).
-  async function applyRanked(r, winnerIndex, reason, casual = false) {
+  async function applyRanked(r, winnerIndex, reason) {
     const ids = r.players.map((p) => p.id);
     const users = await User.find({ _id: { $in: ids } }).select('rating gameRatings gameGames').lean();
     const get = (id) => users.find((u) => String(u._id) === String(id));
@@ -610,7 +608,6 @@ module.exports = function initSockets(io, sessionMiddleware) {
     const score = winnerIndex == null ? 0.5 : winnerIndex === 0 ? 1 : 0;
     const [da, db] = elo.eloDeltas(gr(ua), gr(ub), score, gg(ua), gg(ub));
     const deltas = [da, db];
-    if (casual) { deltas[0] = Math.round(deltas[0] / 2); deltas[1] = Math.round(deltas[1] / 2); if (winnerIndex != null && deltas[winnerIndex] < 1) deltas[winnerIndex] = 1; }
     // Disconnect/forfeit penalty on top of the normal loss
     if (winnerIndex != null && (reason === 'forfeit' || reason === 'strikes')) deltas[1 - winnerIndex] -= 8;
     await Promise.all([ua, ub].map((u, i) => {

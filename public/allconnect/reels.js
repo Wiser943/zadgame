@@ -1,5 +1,3 @@
-/* reel like icon: the flash is a real icon; other reactions keep their emoji */
-const RLI = k => k === 'like' ? '<i class="fa-solid fa-bolt" style="color:#ffc933"></i>' : RXE[k];
   /* Reels for P-Gist: full-screen vertical feed, direct browser-to-Mux upload, and support for the earlier P-Gist video API. */
 const RL = {
   tab: 'foryou', L: { foryou: { p: [], more: false, ok: false }, following: { p: [], more: false, ok: false } }, i: 0, muted: true, obs: null, seen: new Set(), busy: false, start: '', tapT: 0, gen: 0,
@@ -154,18 +152,20 @@ const RL = {
   card(p, i) {
     p = this.compatPost(p);
     const a = p.author, em = p.myRx ? RXE[p.myRx] : '';
+    const fol = !p.mine ? `<button class="rl-fol ${a.following ? 'on' : ''}" data-a="${a.id}" onclick="event.stopPropagation();RL.follow('${a.id}')">${a.following ? 'Following' : 'Follow'}</button>` : '';
     return `<section class="rl-card" data-id="${p.id}" data-i="${i}" tabindex="0" role="group" aria-label="Reel ${i + 1} by ${esc(a.displayName || a.username || 'creator')}. Press Space to play or pause; use arrow keys to move between Reels."><video class="rl-v" playsinline webkit-playsinline loop preload="none" ${p.video && p.video.poster ? `poster="${esc(this.src(p.video.poster))}"` : ''} data-src="${esc(p.video && p.video.kind === 'mux' ? p.video.url : this.src(p.video && p.video.url || ''))}" ${this.muted ? 'muted' : ''}></video>
       <div class="rl-wash"></div><span class="rl-no">${String(i + 1).padStart(2, '0')}</span><div class="rl-pz"><i class="fa-solid fa-play"></i></div><div class="rl-burst"></div>
       ${p.video.cc ? `<button class="rl-cc ${this.ccOn ? 'on' : ''}" onclick="event.stopPropagation();RL.cc()" aria-label="Captions">CC</button>` : ''}
       <button class="rl-snd" onclick="event.stopPropagation();RL.snd()" aria-label="Sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i></button>
-      <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>@${esc(a.username || a.displayName || 'player')}${GIST.vb(a)}</b><small>${esc(a.displayName || '')}</small></span>${a.id !== ((typeof NET !== 'undefined' && NET.user) || {}).id ? `<button class="rl-fol ${a.following ? 'on' : ''}" data-a="${a.id}" onclick="event.stopPropagation();RL.follow('${a.id}')">${a.following ? 'Following' : 'Follow'}</button>` : ''}</div>
+      <div class="rl-info"><div class="rl-who" onclick="event.stopPropagation();RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}<span class="rl-nm"><b>${a.username ? '@' + esc(a.username) : esc(a.displayName)}${GIST.vb(a)}</b><i>${esc(a.displayName)} · ${GIST.ago(p.createdAt)}</i></span>${fol}</div>
       ${this.descHtml(p.text)}${p.views ? `<small class="rl-views"><i class="fa-solid fa-eye"></i> ${this.fmt(p.views)} views</small>` : ''}</div>
-      <div class="rl-act">
-      <button class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RLI(p.myRx) : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
-      <button data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><span><i class="fa-regular fa-comment"></i></span><em>${this.fmt(p.comments) || 'Comment'}</em></button>
-      <button data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 3.5 10.8 14.2"/><path d="M21.5 3.5 14.7 20.5l-3.9-6.3-6.3-3.9z"/></svg></span><em>${this.fmt(p.shares) || 'Share'}</em></button>
-      <button data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><span><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i></span><em>${p.saved ? 'Saved' : 'Save'}</em></button>
-      </div>
+      <div class="rl-act"><button class="rl-more-btn" onclick="event.stopPropagation();RL.actions(this)" aria-label="More reel actions" aria-expanded="false"><span><i class="fa-solid fa-ellipsis"></i></span></button>
+      <div class="rl-actions-menu" role="menu" aria-label="Reel actions"><button role="menuitem" class="lk ${p.myRx ? 'on' : ''}" data-action="like" onclick="event.stopPropagation();RL.action('${p.id}','like')" aria-label="Like"><span class="rl-like-ico">${p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'}</span><em>${this.fmt(p.likes) || 'Like'}</em></button>
+      <button role="menuitem" data-action="comments" onclick="event.stopPropagation();RL.action('${p.id}','comments')" aria-label="Comments"><i class="fa-solid fa-comment-dots"></i><em>${this.fmt(p.comments) || 'Comments'}</em></button>
+      <button role="menuitem" data-action="share" onclick="event.stopPropagation();RL.action('${p.id}','share')" aria-label="Share"><i class="fa-solid fa-share"></i><em>${this.fmt(p.shares) || 'Share'}</em></button>
+      <button role="menuitem" data-action="save" onclick="event.stopPropagation();RL.action('${p.id}','save')" aria-label="${p.saved ? 'Remove saved Reel' : 'Save Reel'}"><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i><em>${p.saved ? 'Saved' : 'Save Reel'}</em></button>
+      <button role="menuitem" data-action="sound" onclick="event.stopPropagation();RL.action('${p.id}','sound')" aria-label="Toggle sound"><i class="fa-solid ${this.muted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i><em>${this.muted ? 'Unmute' : 'Mute'}</em></button>
+      <button role="menuitem" data-action="options" onclick="event.stopPropagation();RL.action('${p.id}','options')" aria-label="More post options"><i class="fa-solid fa-ellipsis"></i><em>Post options</em></button></div></div>
       <div class="rl-bar"><i></i></div></section>`
   },
   draw() {
@@ -187,13 +187,7 @@ const RL = {
   fit() { const f = this.feedEl(); if (f) f.style.setProperty('--rlh', f.clientHeight + 'px') },
   bind(f) {
     if (f._b) return; f._b = 1;
-    let ht = 0, hx = 0, hy = 0;
-    f.addEventListener('pointerdown', e => { const c = e.target.closest('.rl-card'); if (!c || e.target.closest('button,a,.rl-who,.rl-desc,input,textarea') || e.button > 0) return; hx = e.clientX; hy = e.clientY; clearTimeout(ht); ht = setTimeout(() => { this._hold = Date.now(); try { navigator.vibrate && navigator.vibrate(14) } catch (x) { } this.holdMenu(c.dataset.id) }, 480) });
-    f.addEventListener('pointermove', e => { if (Math.abs(e.clientX - hx) > 10 || Math.abs(e.clientY - hy) > 10) clearTimeout(ht) });
-    ['pointerup', 'pointercancel', 'pointerleave', 'scroll'].forEach(ev => f.addEventListener(ev, () => clearTimeout(ht), true));
-    f.addEventListener('contextmenu', e => { if (e.target.closest('.rl-card')) e.preventDefault() });
     f.addEventListener('click', e => {
-      if (Date.now() - (this._hold || 0) < 800) { e.stopPropagation(); return }
       const c = e.target.closest('.rl-card'); if (!c || e.target.closest('button,a,.rl-who')) return;
       const t = e.target.closest('[data-tag],[data-u]'); if (t) return;
       if (this.tapT) { clearTimeout(this.tapT); this.tapT = 0; this.dbl(c, e); return }
@@ -220,8 +214,7 @@ const RL = {
   cur(i) {
     const f = this.feedEl(); if (!f) return;
     if (this.i !== i) document.querySelectorAll('.rl-card.actions-open').forEach(c => { c.classList.remove('actions-open'); const b = c.querySelector('.rl-more-btn'); if (b) b.setAttribute('aria-expanded', 'false') });
-    const moved = this.i !== i; this.i = i; const cards = [...f.querySelectorAll('.rl-card')], F = this.List();
-    if (moved && this.cm && cards[i]) { const nid = cards[i].dataset.id; if (nid && nid !== this.cm.id) this.comments(nid) }
+    this.i = i; const cards = [...f.querySelectorAll('.rl-card')], F = this.List();
     cards.forEach((c, k) => {
       const v = c.querySelector('video'), d = Math.abs(k - i);
       const ahead = k - i, reach = this.saver() ? 1 : 3;   // data saver: preload 1 reel ahead, otherwise 3
@@ -253,26 +246,6 @@ const RL = {
     document.querySelectorAll('.rl-snd i,[data-action="sound"] i').forEach(i => { i.className = 'fa-solid ' + (this.muted ? 'fa-volume-xmark' : 'fa-volume-high') });
     document.querySelectorAll('[data-action="sound"] em').forEach(e => { e.textContent = this.muted ? 'Unmute' : 'Mute' })
   },
-  /* press and hold a reel (like TikTok): full screen, save, share, sound, follow and more */
-  holdMenu(id) {
-    const p = GIST.cache.get(id); if (!p) return; const a = p.author || {};
-    PH.sheet(`<h3>Reel options</h3>
-      <button class="fopt" onclick="PH.closeSheet();RL.fs(true)"><span><i class="fa-solid fa-expand"></i> Full screen</span></button>
-      <button class="fopt" onclick="PH.closeSheet();RL.action('${id}','save')"><span><i class="fa-${p.saved ? 'solid' : 'regular'} fa-bookmark"></i> ${p.saved ? 'Remove from saved' : 'Save'}</span></button>
-      <button class="fopt" onclick="PH.closeSheet();RL.action('${id}','share')"><span><i class="fa-solid fa-share"></i> Share</span></button>
-      <button class="fopt" onclick="PH.closeSheet();RL.snd()"><span><i class="fa-solid ${this.muted ? 'fa-volume-high' : 'fa-volume-xmark'}"></i> ${this.muted ? 'Turn sound on' : 'Mute'}</span></button>
-      ${p.mine ? '' : `<button class="fopt" onclick="PH.closeSheet();RL.follow('${a.id}')"><span><i class="fa-solid ${a.following ? 'fa-user-check' : 'fa-user-plus'}"></i> ${a.following ? 'Unfollow' : 'Follow'} ${esc(a.displayName || '')}</span></button>`}
-      <button class="fopt" onclick="PH.closeSheet();RL.action('${id}','options')"><span><i class="fa-solid fa-ellipsis"></i> More (report, not interested…)</span></button>`)
-  },
-  /* full screen: only the video. The For you / Following tabs, buttons and phone bars are hidden. Tap the X (top right) to leave. */
-  fs(on) {
-    const av = PH.$a(); if (!av) return; this.isFs = on === undefined ? !this.isFs : !!on; av.classList.toggle('rlfs', this.isFs);
-    let x = document.getElementById('rl_fsx');
-    if (this.isFs) { if (!x) { x = document.createElement('button'); x.id = 'rl_fsx'; x.className = 'rl-fsx'; x.setAttribute('aria-label', 'Exit full screen'); x.innerHTML = '<i class="fa-solid fa-compress"></i>'; x.onclick = e => { e.stopPropagation(); RL.fs(false) }; av.appendChild(x) }
-      try { const d = document.documentElement; if (d.requestFullscreen && !document.fullscreenElement) d.requestFullscreen().catch(() => { }) } catch (e) { }
-      if (!this._fsl) { this._fsl = 1; document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && this.isFs) this.fs(false) }) } }
-    else { if (x) x.remove(); try { if (document.fullscreenElement) document.exitFullscreen().catch(() => { }) } catch (e) { } }
-  },
   actions(btn) {
     const card = btn.closest('.rl-card'), open = !card.classList.contains('actions-open');
     document.querySelectorAll('.rl-card.actions-open').forEach(c => { c.classList.remove('actions-open'); const b = c.querySelector('.rl-more-btn'); if (b) b.setAttribute('aria-expanded', 'false') });
@@ -290,79 +263,20 @@ const RL = {
   sync(id) {
     const p = GIST.cache.get(id); if (!p) return;
     document.querySelectorAll(`.rl-card[data-id="${id}"]`).forEach(c => {
-      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RLI(p.myRx) : '<i class="fa-solid fa-bolt"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
-      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comment'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
+      const l = c.querySelector('[data-action="like"]'); l.classList.toggle('on', !!p.myRx); l.querySelector('.rl-like-ico').innerHTML = p.myRx ? RXE[p.myRx] : '<i class="fa-solid fa-bolt"></i>'; l.querySelector('em').textContent = this.fmt(p.likes) || 'Like';
+      const m = c.querySelector('[data-action="comments"] em'), s = c.querySelector('[data-action="share"] em'), save = c.querySelector('[data-action="save"]'); if (m) m.textContent = this.fmt(p.comments) || 'Comments'; if (s) s.textContent = this.fmt(p.shares) || 'Share'; if (save) { save.setAttribute('aria-label', p.saved ? 'Remove saved Reel' : 'Save Reel'); save.querySelector('em').textContent = p.saved ? 'Saved' : 'Save Reel'; save.querySelector('i').className = 'fa-' + (p.saved ? 'solid' : 'regular') + ' fa-bookmark' }
     })
   },
   follow(aid) {
     const all = Object.values(this.L).flatMap(F => F.p).filter(p => p.author.id === aid); if (!all.length) return;
     const was = !!all[0].author.following, set = v => { all.forEach(p => { p.author.following = v }); document.querySelectorAll(`.rl-fol[data-a="${aid}"]`).forEach(b => { b.classList.toggle('on', v); b.textContent = v ? 'Following' : 'Follow' }) };
     set(!was); Object.values(GIST.F).forEach(f => f.stale = true);
-    SYNCQ.queue('fl:' + aid, was, !was, () => ({ path: '/api/ac/gist/follow/' + aid, body: {} }), r => set(r.following), (w, msg) => { set(w); if (msg) toast(msg) }, was)
+    GIST.api('/follow/' + aid, { method: 'POST' }).then(r => set(r.following)).catch(e => { set(was); GIST.err(e) })
   },
   profile(id) { this.stop(); GIST.nav('profile', id) },
-  /* Comments open UNDER the video: the video squeezes up and keeps playing, like TikTok.
-     Laid out like the YouTube Music comment sheet: @handle · time, text, like / reply row, "N replies" expander, input pill at the bottom. */
-  cm: null,
-  async comments(id) {
-    const f = this.feedEl(); if (!f) return GIST.nav('post', id);
-    const root = f.parentNode; let pan = document.getElementById('rlcm');
-    if (!pan) { pan = document.createElement('div'); pan.id = 'rlcm'; root.appendChild(pan) }
-    const me = (typeof NET !== 'undefined' && NET.user) || {};
-    this.cm = { id, list: [], open: new Set(), replyTo: null }; root.classList.add('rl-split');
-    pan.innerHTML = `<div class="rlcm-grab"></div><div class="rlcm-h"><b>Comments</b><span id="rlcmn"></span><button type="button" onclick="RL.closeComments()" aria-label="Close comments"><i class="fa-solid fa-xmark"></i></button></div><div class="rlcm-l" id="rlcml"><p class="rlcm-e">Loading…</p></div><div class="rlcm-rt" id="rlcmrt" style="display:none"></div><form class="rlcm-f" onsubmit="RL.sendComment(event)"><span class="rlcm-me">${PH.av({ avatar: me.avatar, displayName: me.displayName, username: me.username })}</span><input id="rlcmi" maxlength="300" placeholder="Add a comment…" autocomplete="off"><button type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane"></i></button></form>`;
-    setTimeout(() => this.reflow(), 280);
-    try { const r = await GIST.api('/posts/' + id + '/comments'); if (this.cm && this.cm.id === id) { this.cm.list = r.comments || []; this.drawCm() } }
-    catch (e) { const l = document.getElementById('rlcml'); if (l) l.innerHTML = `<p class="rlcm-e">${esc(e.message || 'Could not load comments.')}</p>` }
-  },
-  reflow() { const f = this.feedEl(); if (!f) return; this.fit(); f.scrollTop = (this.i || 0) * f.clientHeight },
-  closeComments() { const pan = document.getElementById('rlcm'); if (pan) pan.remove(); this.cm = null; const f = this.feedEl(); if (f) f.parentNode.classList.remove('rl-split'); setTimeout(() => this.reflow(), 60) },
-  cmHandle(a) { a = a || {}; return '@' + String(a.username || a.displayName || 'player').replace(/\s+/g, '') },
-  cmRow(c, isReply) {
-    const a = c.author || {}, mine = (typeof NET !== 'undefined' && NET.user && NET.user.id === a.id);
-    return `<div class="rlcm-c${isReply ? ' rep' : ''}${c.pending ? ' pending' : ''}" data-cid="${c.id}"><span class="rlcm-a" onclick="RL.profile('${a.id}')">${PH.av({ avatar: a.avatar, displayName: a.displayName, username: a.username })}</span><div class="rlcm-b"><div class="rlcm-t"><b onclick="RL.profile('${a.id}')">${esc(this.cmHandle(a))}</b>${GIST.vb(a)}<small>· ${c.pending ? 'sending…' : GIST.ago(c.createdAt)}</small></div><div class="rlcm-x">${GIST.txt(c.text)}</div><div class="rlcm-act"><button type="button" class="${c.liked ? 'on' : ''}" onclick="RL.likeCm('${c.id}')" aria-label="Like comment"><i class="fa-${c.liked ? 'solid' : 'regular'} fa-thumbs-up"></i><em>${c.likes || ''}</em></button><button type="button" onclick="RL.replyTo('${c.id}')" aria-label="Reply"><i class="fa-regular fa-comment-dots"></i></button>${c.canDelete && !c.pending ? `<button type="button" class="del" onclick="RL.delCm('${c.id}')" aria-label="Delete comment"><i class="fa-regular fa-trash-can"></i></button>` : ''}</div></div></div>`
-  },
-  drawCm() {
-    const l = document.getElementById('rlcml'), n = document.getElementById('rlcmn'); if (!l || !this.cm) return; const L = this.cm.list, t = x => new Date(x.createdAt).getTime() || 0;
-    if (n) n.textContent = L.length ? String(L.length) : '';
-    if (!L.length) { l.innerHTML = '<p class="rlcm-e">No comments yet. Be the first!</p>'; return }
-    const kids = new Map(); L.filter(c => c.parent).forEach(c => { if (!kids.has(c.parent)) kids.set(c.parent, []); kids.get(c.parent).push(c) });
-    const top = L.filter(c => !c.parent).sort((x, y) => (y.likes || 0) - (x.likes || 0) || t(y) - t(x));
-    const keep = l.scrollTop;
-    l.innerHTML = top.map(c => {
-      const r = (kids.get(c.id) || []).sort((x, y) => t(x) - t(y)), open = this.cm.open.has(c.id);
-      return this.cmRow(c, false) + (r.length ? `<button type="button" class="rlcm-rp" onclick="RL.toggleReplies('${c.id}')"><i class="fa-solid fa-chevron-${open ? 'up' : 'down'}"></i> ${r.length} repl${r.length === 1 ? 'y' : 'ies'}</button>` : '') + (open ? `<div class="rlcm-rl">${r.map(x => this.cmRow(x, true)).join('')}</div>` : '')
-    }).join('');
-    l.scrollTop = keep
-  },
-  toggleReplies(cid) { if (!this.cm) return; this.cm.open.has(cid) ? this.cm.open.delete(cid) : this.cm.open.add(cid); this.drawCm() },
-  replyTo(cid) {
-    const c = this.cm && this.cm.list.find(x => x.id === cid); if (!c || String(cid).startsWith('tmp')) return;
-    this.cm.replyTo = c; const bar = document.getElementById('rlcmrt'), inp = document.getElementById('rlcmi'), h = this.cmHandle(c.author);
-    if (bar) { bar.style.display = 'flex'; bar.innerHTML = `<span>Replying to <b>${esc(h)}</b></span><button type="button" onclick="RL.cancelReply()" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button>` }
-    if (inp) { inp.value = c.parent ? h + ' ' : ''; inp.placeholder = 'Add a reply…'; inp.focus() }
-  },
-  cancelReply() { if (this.cm) this.cm.replyTo = null; const bar = document.getElementById('rlcmrt'), inp = document.getElementById('rlcmi'); if (bar) bar.style.display = 'none'; if (inp) inp.placeholder = 'Add a comment…' },
-  async sendComment(e) {
-    e.preventDefault(); const inp = document.getElementById('rlcmi'), t = (inp.value || '').trim(); if (!t || !this.cm) return; const id = this.cm.id, to = this.cm.replyTo, root = to ? (to.parent || to.id) : ''; inp.value = ''; this.cancelReply();
-    const me = (typeof NET !== 'undefined' && NET.user) || {}, tmp = { id: 'tmp' + Date.now(), text: t, parent: root, pending: true, likes: 0, author: { id: me.id, avatar: me.avatar, displayName: me.displayName, username: me.username }, createdAt: Date.now() };
-    this.cm.list.push(tmp); if (root) this.cm.open.add(root); this.drawCm();
-    try { const r = await GIST.api('/posts/' + id + '/comments', { method: 'POST', body: { text: t, parent: root } }); const k = this.cm && this.cm.list.indexOf(tmp); if (k >= 0) this.cm.list[k] = r.comment; this.drawCm(); const p = GIST.cache.get(id); if (p) { p.comments = (p.comments || 0) + 1; this.sync(id) } }
-    catch (x) { if (this.cm) { this.cm.list = this.cm.list.filter(c => c !== tmp); this.drawCm() } GIST.err(x) }
-  },
-  async delCm(cid) {
-    if (!this.cm || !confirm('Delete this comment?')) return; const id = this.cm.id;
-    try { const r = await GIST.api('/comments/' + cid, { method: 'DELETE' }); const gone = new Set([cid]); this.cm.list.forEach(c => { if (c.parent === cid) gone.add(c.id) }); this.cm.list = this.cm.list.filter(c => !gone.has(c.id)); this.drawCm(); const p = GIST.cache.get(id); if (p) { p.comments = Math.max(0, (p.comments || 0) - ((r && r.removed) || gone.size)); this.sync(id) } }
-    catch (x) { GIST.err(x) }
-  },
-  likeCm(cid) {
-    const c = this.cm && this.cm.list.find(x => x.id === cid); if (!c || String(cid).startsWith('tmp')) return; const before = { liked: !!c.liked, likes: c.likes || 0 };
-    c.liked = !c.liked; c.likes = Math.max(0, (c.likes || 0) + (c.liked ? 1 : -1)); this.drawCm();
-    SYNCQ.queue('cl:' + cid, before.liked, !!c.liked, () => ({ path: '/api/ac/gist/comments/' + cid + '/like', body: {} }), r => { c.liked = r.liked; c.likes = r.likes; this.drawCm() }, (sn, msg) => { c.liked = sn.liked; c.likes = sn.likes; this.drawCm(); if (msg) toast(msg) }, before)
-  },
-
+  comments(id) { this.stop(); GIST.nav('post', id) },
   removed(id) { Object.values(this.L).forEach(F => { F.p = F.p.filter(x => x.id !== id) }); this.start = ''; this.draw() },
-  stop() { if (this.cm) this.closeComments(); if (this.isFs) this.fs(false); this.flushWatch(); if (this.obs) { this.obs.disconnect(); this.obs = null } clearTimeout(this.tapT); this.tapT = 0; document.querySelectorAll('.rl-v,.gvid video').forEach(v => { try { v.pause() } catch (e) { } }) },
+  stop() { this.flushWatch(); if (this.obs) { this.obs.disconnect(); this.obs = null } clearTimeout(this.tapT); this.tapT = 0; document.querySelectorAll('.rl-v,.gvid video').forEach(v => { try { v.pause() } catch (e) { } }) },
   async openFrom(id) {
     if (!GIST.cache.has(id)) {
       try { const r = await GIST.api('/posts/' + encodeURIComponent(id)); if (r && r.post) GIST.put([this.compatPost(r.post)]) }
@@ -429,208 +343,29 @@ const RL = {
       if (!GIST.C) return URL.revokeObjectURL(url);
       if (GIST.C.video) URL.revokeObjectURL(GIST.C.video.url);
       if (GIST.C.images.length) { GIST.C.images = []; toast('A post has photos or a video, so your photos were removed.') }
-      GIST.C.video = { file, url, poster, dur: v.duration || 0, w: v.videoWidth, h: v.videoHeight }; GIST.C.set = GIST.C.set || { visibility: 'public', allowComments: true, allowReuse: true }; GIST.attDraw(); this.editor()
+      GIST.C.video = { file, url, poster, dur: v.duration || 0, w: v.videoWidth, h: v.videoHeight }; GIST.attDraw()
     };
     v.src = url
   },
-  /* ---------- composer pieces: cover thumbnail beside the caption, edit button, audience settings ---------- */
-  thumbHtml(C) {
-    const V = C.video;
-    if (V) return `<button type="button" class="gct" onclick="RL.previewVideo()" aria-label="Preview video">${V.poster ? `<img src="${V.poster}" alt="">` : `<video src="${V.url}#t=0.4" muted playsinline preload="metadata"></video>`}<span class="gct-play"><i class="fa-solid fa-play"></i></span><small>${this.dur(V.dur)}</small><i class="gct-x fa-solid fa-xmark" onclick="event.stopPropagation();RL.rm()" role="button" aria-label="Remove video"></i></button>`;
-    if (C.images && C.images.length) { const im = C.images[0]; return `<button type="button" class="gct" onclick="GIST.editImg(0)" aria-label="Edit photo"><img src="${esc(im.thumb || im.url)}" alt="">${C.images.length > 1 ? `<small>+${C.images.length - 1}</small>` : ''}<span class="gct-ed"><i class="fa-solid fa-pen"></i></span></button>` }
-    return ''
+  prevHtml(C) {
+    const V = C.video; if (!V) return '';
+    return `<div class="rl-prev"><video src="${V.url}" ${V.poster ? `poster="${V.poster}"` : ''} controls playsinline muted preload="metadata"></video><button onclick="RL.rm()" aria-label="Remove video"><i class="fa-solid fa-xmark"></i></button><small><i class="fa-solid fa-clapperboard"></i> ${this.dur(V.dur)} · ${(V.file.size / 1048576).toFixed(1)} MB</small></div>`
   },
-  editHtml(C) { return C.video ? `<button class="gevid" onclick="RL.editor()"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit video<small>${(C.video.file.size / 1048576).toFixed(1)} MB</small></button>` : (C.images && C.images.length === 1 ? `<button class="gevid" onclick="GIST.editImg(0)"><i class="fa-solid fa-wand-magic-sparkles"></i> Edit photo</button>` : '') },
-  setHtml(C) {
-    const T = C.set = C.set || { visibility: 'public', allowComments: true, allowReuse: true };
-    const sw = (k, on) => `<label class="rlsw"><input type="checkbox" ${on ? 'checked' : ''} onchange="RL.setOpt('${k}',this.checked)"><i></i></label>`;
-    return `<div class="rl-set"><div class="lab2">STEP 2 OF 2 · WHO CAN SEE IT</div>
-      <div class="sr"><span><b>Who can watch</b><small>Followers-only and private posts are hidden from everyone else</small></span><select onchange="RL.setOpt('visibility',this.value)"><option value="public" ${T.visibility === 'public' ? 'selected' : ''}>Everyone</option><option value="followers" ${T.visibility === 'followers' ? 'selected' : ''}>Followers</option><option value="private" ${T.visibility === 'private' ? 'selected' : ''}>Only me</option></select></div>
-      <div class="sr"><span><b>Allow comments</b><small>Let people comment on this post</small></span>${sw('allowComments', T.allowComments)}</div>
-      <div class="sr"><span><b>Allow reuse</b><small>Let others repost this to their feed</small></span>${sw('allowReuse', T.allowReuse)}</div></div>`
-  },
-  setOpt(k, v) { if (GIST.C && GIST.C.set) GIST.C.set[k] = v },
-  previewVideo() { const V = GIST.C && GIST.C.video; if (!V) return; PH.sheet(`<div class="rl-pvw"><video src="${V.url}" controls autoplay playsinline></video></div><button class="fopt" onclick="PH.closeSheet()"><span>Close</span></button>`) },
-  /* ---------- step 1 of 2: edit the video or photo (CapCut style: tap a tool at the bottom to open its options) ---------- */
-  FX: { none: ['Original', ''], warm: ['Warm', 'sepia(.25) saturate(1.2) hue-rotate(-10deg)'], cool: ['Cool', 'saturate(1.1) hue-rotate(15deg) brightness(1.03)'], bw: ['B&W', 'grayscale(1) contrast(1.1)'], vivid: ['Vivid', 'saturate(1.5) contrast(1.1)'], fade: ['Fade', 'contrast(.9) brightness(1.08) saturate(.85)'], vintage: ['Vintage', 'sepia(.5) contrast(1.05) brightness(.95)'] },
-  editor() {
-    const C = GIST.C, V = C && C.video, host = PH.$a(); if (!V || !host) return;
-    this.openEditor(host, 'video', { w: V.w || 9, h: V.h || 16 }, V.dur || 1, 'Edit video', 'Step 1 of 2', `<video id="rle_v" src="${V.url}" playsinline loop></video><button type="button" class="rle-snd" id="rle_snd" onclick="RL.edSound()" hidden><i class="fa-solid fa-volume-xmark"></i> Tap for sound</button>`)
-  },
-  /* resolves with the edited photo (data URL), the same photo if nothing changed, or null when the person closes the editor */
-  editPhoto(src, title, sub) {
-    const host = PH.$a(); if (!host) return Promise.resolve(src);
-    return new Promise(res => {
-      const im = new Image(); im.onload = () => { this._res = res; this._src = src; this.openEditor(host, 'photo', { w: im.naturalWidth, h: im.naturalHeight }, 0, title || 'Edit photo', sub || 'Step 1 of 2', `<img id="rle_v" src="${src}" alt="">`) }; im.onerror = () => res(src); im.src = src
-    })
-  },
-  openEditor(host, kind, dim, dur, title, sub, media) {
-    const old = host.querySelector('.rl-edit'); if (old) old.remove();
-    dur = Math.max(0.5, dur || 0.5); this._kind = kind; this._dim = dim; this._dur = dur; this.tool = '';
-    this.E = { ar: 'orig', rot: 0, mirror: false, speed: 1, start: 0, end: dur, bright: 0, contrast: 0, sat: 0, fx: 'none', mute: false }; this._pvMuted = false;
-    const T = kind === 'video' ? [['trim', 'fa-scissors', 'Trim'], ['speed', 'fa-gauge-high', 'Speed'], ['transform', 'fa-crop-simple', 'Crop'], ['mirror', 'fa-left-right', 'Mirror'], ['filters', 'fa-wand-magic-sparkles', 'Filters'], ['adjust', 'fa-sliders', 'Adjust'], ['mute', 'fa-volume-high', 'Mute']]
-      : [['transform', 'fa-crop-simple', 'Crop'], ['mirror', 'fa-left-right', 'Mirror'], ['filters', 'fa-wand-magic-sparkles', 'Filters'], ['adjust', 'fa-sliders', 'Adjust']];
-    const el = document.createElement('div'); el.className = 'rl-edit'; el.dataset.kind = kind; el.innerHTML = `<div class="rle-top"><button class="rle-ib sq" onclick="RL.editClose(false)" aria-label="Close editor"><i class="fa-solid fa-xmark"></i></button><b>${esc(title)}<span class="rle-step">${esc(sub)}</span></b><button class="rle-ib nx" id="rle_next" onclick="RL.editClose(true)" aria-label="Next">Next <i class="fa-solid fa-chevron-right"></i></button></div>
-      <div class="rle-stage" id="rle_stage"><div class="rle-box" id="rle_box">${media}</div></div>
-      <div class="rle-panel" id="rle_panel"></div>
-      <div class="rle-bar" id="rle_bar">${T.map(t => `<button class="rle-tb" data-t="${t[0]}" onclick="RL.edTool('${t[0]}')"><i class="fa-solid ${t[1]}"></i><span>${t[2]}</span></button>`).join('')}</div>`;
-    host.appendChild(el); this._edUp = () => this.edLayout(); window.addEventListener('resize', this._edUp); this.edLayout(); this.edApply();
-    const v = $('rle_v'); if (kind === 'video' && v) {
-      v.ontimeupdate = () => { const E = this.E; if (v.currentTime >= E.end - 0.05 || v.currentTime < E.start - 0.2) v.currentTime = E.start }; v.onloadedmetadata = () => this.edLayout();
-      /* play WITH sound; if the browser refuses, start muted and show a "Tap for sound" button */
-      v.muted = false; v.play().catch(() => { v.muted = true; this._pvMuted = true; const b = $('rle_snd'); if (b) b.hidden = false; v.play().catch(() => { }) })
-    }
-  },
-  edSound() { const v = $('rle_v'); if (!v) return; this._pvMuted = false; v.muted = !!this.E.mute; v.play().catch(() => { }); const b = $('rle_snd'); if (b) b.hidden = true },
-  /* tapping a tool opens just its options above the toolbar (tap it again, or the tick, to close). Mirror and Mute switch straight away. */
-  edTool(t) {
-    if (t === 'mirror') return this.edSet('mirror', !this.E.mirror);
-    if (t === 'mute') return this.edSet('mute', !this.E.mute);
-    this.tool = this.tool === t ? '' : t; this.edPanel(); this.edApply(); requestAnimationFrame(() => this.edLayout())
-  },
-  edPanel() {
-    const pn = $('rle_panel'), t = this.tool, E = this.E; if (!pn) return; if (!t) { pn.className = 'rle-panel'; pn.innerHTML = ''; return }
-    const chip = (k, val, label) => `<button data-c="${k}:${val}" onclick="RL.edSet('${k}',${typeof val === 'string' ? `'${val}'` : val})">${label}</button>`;
-    const sl = (k, label, v) => `<div class="rle-sl"><label>${label}</label><input type="range" min="-50" max="50" step="1" value="${v}" oninput="RL.edAdj('${k}',this.value)"><span id="rle_v_${k}">${v}</span></div>`;
-    const title = { trim: 'Trim', speed: 'Speed', transform: 'Crop & rotate', filters: 'Filters', adjust: 'Adjust' }[t];
-    const body = t === 'trim' ? `<div class="rle-sl"><label>Start</label><input type="range" id="rle_s" min="0" max="${this._dur}" step="0.1" value="${E.start}" oninput="RL.edTrim()"><span id="rle_sv">${E.start.toFixed(1)}s</span></div><div class="rle-sl"><label>End</label><input type="range" id="rle_e" min="0" max="${this._dur}" step="0.1" value="${E.end}" oninput="RL.edTrim()"><span id="rle_ev">${E.end.toFixed(1)}s</span></div>`
-      : t === 'speed' ? `<div class="rle-chips">${[0.5, 0.75, 1, 1.5, 2].map(x => chip('speed', x, x + 'x')).join('')}</div>`
-      : t === 'transform' ? `<div class="rle-chips">${[['orig', 'Original'], ['9:16', '9:16'], ['1:1', '1:1'], ['4:5', '4:5'], ['16:9', '16:9']].map(x => chip('ar', x[0], x[1])).join('')}<button onclick="RL.edRotate()"><i class="fa-solid fa-rotate-right"></i> Rotate</button></div><p class="rle-hint">Cropped from the centre to fit the ratio.</p>`
-      : t === 'filters' ? `<div class="rle-chips">${Object.keys(this.FX).map(k => chip('fx', k, this.FX[k][0])).join('')}</div>`
-      : `${sl('bright', 'Brightness', E.bright)}${sl('contrast', 'Contrast', E.contrast)}${sl('sat', 'Saturation', E.sat)}<button class="rle-reset" onclick="RL.edReset()">Reset</button>`;
-    pn.className = 'rle-panel open'; pn.innerHTML = `<div class="rle-ph"><b>${title}</b><button class="rle-ib sq" onclick="RL.edTool('${t}')" aria-label="Done"><i class="fa-solid fa-check"></i></button></div>${body}`
-  },
-  edRatio() { const d = this._dim || { w: 9, h: 16 }, a = this.E.ar, sw = this.E.rot % 180 !== 0; if (a === 'orig') return sw ? d.h / d.w : d.w / d.h; const [w, h] = a.split(':').map(Number); return w / h },
-  edLayout() {
-    const st = $('rle_stage'), bx = $('rle_box'), v = $('rle_v'); if (!st || !bx) return; const W = st.clientWidth - 28, H = st.clientHeight - 12, r = this.edRatio(), w = Math.max(60, Math.min(W, H * r)), h = w / r;
-    bx.style.width = w + 'px'; bx.style.height = h + 'px'; if (v) { const odd = this.E.rot % 180 !== 0; v.style.width = (odd ? h : w) + 'px'; v.style.height = (odd ? w : h) + 'px' }
-  },
-  /* colour filter text: the chosen preset plus the Adjust sliders (also used when the edit is baked into the file) */
-  edFilter(E) {
-    E = E || this.E; const f = (this.FX[E.fx] || [])[1] || '', a = (E.bright || E.contrast || E.sat) ? `brightness(${(1 + E.bright / 100).toFixed(2)}) contrast(${(1 + E.contrast / 100).toFixed(2)}) saturate(${(1 + E.sat / 50).toFixed(2)})` : '';
-    return (f + ' ' + a).trim()
-  },
-  edApply() {
-    const E = this.E, v = $('rle_v');
-    if (v) { v.style.transform = 'translate(-50%,-50%)' + (E.mirror ? ' scaleX(-1)' : '') + (E.rot ? ` rotate(${E.rot}deg)` : ''); v.style.filter = this.edFilter(E); if (this._kind === 'video') { v.playbackRate = E.speed; v.muted = !!E.mute || this._pvMuted } }
-    document.querySelectorAll('.rle-chips [data-c]').forEach(b => { const d = b.dataset.c, i = d.indexOf(':'), k = d.slice(0, i), val = d.slice(i + 1); b.classList.toggle('on', String(E[k]) === val) });
-    const mod = { trim: E.start > 0.05 || E.end < this._dur - 0.05, speed: E.speed !== 1, transform: E.ar !== 'orig' || !!E.rot, mirror: E.mirror, filters: E.fx !== 'none', adjust: !!(E.bright || E.contrast || E.sat), mute: E.mute };
-    document.querySelectorAll('#rle_bar [data-t]').forEach(b => { const t = b.dataset.t; b.classList.toggle('on', this.tool === t || (t === 'mirror' && E.mirror) || (t === 'mute' && E.mute)); b.classList.toggle('mod', !!mod[t] && t !== 'mirror' && t !== 'mute'); if (t === 'mute') { b.querySelector('i').className = 'fa-solid ' + (E.mute ? 'fa-volume-xmark' : 'fa-volume-high'); b.querySelector('span').textContent = E.mute ? 'Muted' : 'Mute' } }); this.edLayout()
-  },
-  edSet(k, v) { this.E[k] = v; this.edApply() },
-  edRotate() { this.E.rot = (this.E.rot + 90) % 360; this.edApply() },
-  edAdj(k, val) { this.E[k] = Number(val); const o = $('rle_v_' + k); if (o) o.textContent = val; this.edApply() },
-  edReset() { Object.assign(this.E, { bright: 0, contrast: 0, sat: 0 }); this.edPanel(); this.edApply() },
-  edTrim() { const E = this.E, s = $('rle_s'), e = $('rle_e'); let a = Number(s.value), b = Number(e.value); if (b - a < 0.5) { if (document.activeElement === s) { a = Math.max(0, b - 0.5); s.value = a } else { b = Math.min(Number(e.max), a + 0.5); e.value = b } } E.start = a; E.end = b; $('rle_sv').textContent = a.toFixed(1) + 's'; $('rle_ev').textContent = b.toFixed(1) + 's'; const v = $('rle_v'); if (v && (v.currentTime < a || v.currentTime > b)) v.currentTime = a; this.edApply() },
-  async editClose(apply) {
-    const host = PH.$a(), el = host && host.querySelector('.rl-edit'), photo = this._kind === 'photo', E = this.E;
-    const done = () => { window.removeEventListener('resize', this._edUp); const v = $('rle_v'); if (v && v.pause) { try { v.pause() } catch (e) { } } if (el) el.remove() };
-    if (photo) {
-      const res = this._res; this._res = null;
-      if (!apply) { done(); return res && res(null) }
-      const nb = $('rle_next'); if (nb) { nb.disabled = true; nb.textContent = 'Saving…' }
-      let out = this._src; try { out = await this.bakePhoto(this._src, E) } catch (e) { toast('Could not apply the edits, so the original photo is used.') }
-      done(); return res && res(out)
-    }
-    const C = GIST.C, V = C && C.video; if (!V) return done();
-    const finish = () => { done(); GIST.attDraw(); const t = $('gc_t'); if (t && !('ontouchstart' in window)) t.focus() };
-    if (!apply) return finish();
-    const nb = $('rle_next'); if (nb) { nb.disabled = true; nb.textContent = 'Applying…' }
-    try {
-      const r = await this.bake(V, E, f => { const b = $('rle_next'); if (b) b.textContent = Math.round(f * 100) + '%' });
-      if (r.file !== V.file) { URL.revokeObjectURL(V.url); V.file = r.file; V.url = URL.createObjectURL(r.file); V.w = r.w; V.h = r.h; V.dur = r.dur; V.poster = '' }
-    } catch (e) { toast('Could not apply the edits, so your original video will be used.') }
-    finish()
-  },
-  /* draws one frame to a canvas: rotate, flip, crop to the ratio, colour filter. Shared by video and photo baking. */
-  edDraw(g, src, sw, sh, ow, oh, E, flt) {
-    const odd = E.rot % 180 !== 0, rw = odd ? sh : sw, rh = odd ? sw : sh, s = Math.max(ow / rw, oh / rh);
-    g.save(); if (flt) g.filter = flt; g.translate(ow / 2, oh / 2); if (E.mirror) g.scale(-1, 1); if (E.rot) g.rotate(E.rot * Math.PI / 180); g.drawImage(src, -sw * s / 2, -sh * s / 2, sw * s, sh * s); g.restore()
-  },
-  edSize(sw, sh, E, maxSide) {
-    const odd = E.rot % 180 !== 0, rw = odd ? sh : sw, rh = odd ? sw : sh, r = this.edRatio(); let cw = rw, ch = rh; if (rw / rh > r) cw = rh * r; else ch = rw / r;
-    const sc = Math.min(1, maxSide / Math.max(cw, ch)); return [Math.max(2, Math.round(cw * sc / 2) * 2), Math.max(2, Math.round(ch * sc / 2) * 2)]
-  },
-  async bakePhoto(src, E) {
-    const same = E.ar === 'orig' && !E.rot && !E.mirror && !this.edFilter(E); if (same) return src;
-    const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = src }), [ow, oh] = this.edSize(im.naturalWidth, im.naturalHeight, E, 1600), cv = document.createElement('canvas'); cv.width = ow; cv.height = oh; const g = cv.getContext('2d');
-    let flt = this.edFilter(E); if (flt && !('filter' in g)) { flt = ''; toast('This browser cannot apply filters, so they were skipped.') }
-    this.edDraw(g, im, im.naturalWidth, im.naturalHeight, ow, oh, E, flt); return cv.toDataURL('image/jpeg', .9)
-  },
-  /* video: plays it frame by frame to a canvas, at the chosen speed between start and end, and records it again */
-  async bake(V, E, onp) {
-    const file = V.file, plain = { file, w: V.w, h: V.h, dur: V.dur };
-    const same = E.ar === 'orig' && !E.rot && !E.mirror && E.speed === 1 && E.start < 0.05 && E.end >= V.dur - 0.05 && !this.edFilter(E) && !E.mute; if (same) return plain;
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream || !(window.AudioContext || window.webkitAudioContext)) { toast('This browser cannot apply video edits, so your original video will be posted.'); return plain }
-    const mimes = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'], mime = mimes.find(m => MediaRecorder.isTypeSupported(m)); if (!mime) return plain;
-    const v = document.createElement('video'); v.src = V.url; v.playsInline = true; v.muted = false; v.preload = 'auto';
-    await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = no; setTimeout(no, 10000) });
-    const sw = v.videoWidth, sh = v.videoHeight, [ow, oh] = this.edSize(sw, sh, E, 1280), cv = document.createElement('canvas'); cv.width = ow; cv.height = oh; const g = cv.getContext('2d');
-    const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(), dest = ac.createMediaStreamDestination(); if (!E.mute) ac.createMediaElementSource(v).connect(dest); else v.muted = true;
-    const st = cv.captureStream(30); dest.stream.getAudioTracks().forEach(t => { if (!E.mute) st.addTrack(t) });
-    const rec = new MediaRecorder(st, { mimeType: mime, videoBitsPerSecond: 3000000, audioBitsPerSecond: 96000 }), chunks = []; rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) };
-    const stopped = new Promise(res => { rec.onstop = res });
-    v.currentTime = E.start; await new Promise(res => { v.onseeked = res; setTimeout(res, 1500) }); v.playbackRate = E.speed; try { v.preservesPitch = true } catch (e) { }
-    const span = Math.max(0.5, E.end - E.start); let alive = true;
-    const stop = () => { if (!alive) return; alive = false; try { rec.stop() } catch (e) { } v.pause() };
-    let flt = this.edFilter(E); if (flt && !('filter' in g)) { flt = ''; toast('This browser cannot apply filters, so they were skipped.') }
-    const draw = () => { if (!alive) return; this.edDraw(g, v, sw, sh, ow, oh, E, flt); onp(Math.min(0.99, (v.currentTime - E.start) / span)); if (v.currentTime >= E.end - 0.03) return stop(); v.requestVideoFrameCallback ? v.requestVideoFrameCallback(draw) : requestAnimationFrame(draw) };
-    const guard = setTimeout(stop, span / E.speed * 1000 + 15000); v.onended = stop;
-    rec.start(500); await ac.resume(); await v.play(); draw(); await stopped; clearTimeout(guard); ac.close().catch(() => { });
-    const blob = new Blob(chunks, { type: mime.split(';')[0] }); if (!blob.size) return plain;
-    return { file: new File([blob], 'reel.' + (blob.type.includes('mp4') ? 'mp4' : 'webm'), { type: blob.type }), w: ow, h: oh, dur: span / E.speed }
-  },
-  /* "Learn more" on a flagged video: why, what it means and what the creator can do (like TikTok) */
-  learnMore(id) {
-    const c = GIST.cache.get(id), m = c && c.moderation; if (!m) return; const L = m.learn || { title: 'Community guidelines', why: m.reason || 'This video may not follow our rules.', fix: 'Post videos that follow the community guidelines.' };
-    const what = m.status === 'appealed' ? 'Your review request is with the team. We will tell you what they decide.' : m.status === 'rejected' ? 'The team checked your video again and it stays hidden. You can delete it.' : 'Only you can see this video. It is hidden from everyone else until it is reviewed.';
-    PH.sheet(`<div class="rl-sh"><h3>${esc(L.title)}</h3><button class="rl-x" onclick="PH.closeSheet()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><p style="margin:6px 0 10px;line-height:1.45"><b>Why:</b> ${esc(m.reason || L.why)}</p><p style="margin:0 0 10px;line-height:1.45"><b>What this means:</b> ${esc(what)}</p><p style="margin:0 0 12px;line-height:1.45"><b>What you can do:</b> ${esc(L.fix)}</p>${m.reviewNote ? `<p style="margin:0 0 12px;line-height:1.45"><b>Note from the team:</b> ${esc(m.reviewNote)}</p>` : ''}${m.canAppeal ? `<button class="fopt" onclick="PH.closeSheet();RL.appealSheet('${id}',${esc(JSON.stringify(m.reason || ''))})"><span><i class="fa-solid fa-flag"></i> Request a review</span></button>` : ''}<button class="fopt red out" onclick="RL.delMine('${id}')"><span><i class="fa-solid fa-trash"></i> Delete this video</span></button>`)
-  },
-  async delMine(id) { if (!confirm('Delete this video for good?')) return; try { await GIST.api('/posts/' + id, { method: 'DELETE' }); GIST.cache.delete(id); PH.closeSheet(); toast('Video deleted'); this.goFeed() } catch (e) { GIST.err(e) } },
   rm() { const C = GIST.C; if (C && C.video) { URL.revokeObjectURL(C.video.url); C.video = null; GIST.attDraw() } },
   online() { return new Promise(r => { if (navigator.onLine) return r(); const f = () => { window.removeEventListener('online', f); r() }; window.addEventListener('online', f) }) },
   /* Proven direct-upload path: send the complete selected file from the browser to Mux. The Node server only creates the signed upload URL and checks processing status. */
-  /* One ticket from the server says HOW to upload: PUT the file, POST a form, or the tus protocol. */
-  async send(t, file, onp) {
-    onp(0);
-    if (t.method === 'TUS') { await this.tus(t.url, file, onp); return null }
-    if (t.method === 'POST') return this.postForm(t, file, onp);
-    await this.xhr(file, onp, t.url, t.headers); return null
-  },
-  async tus(url, file, onp) {
-    let off = 0; const chunk = 8 * 1024 * 1024;
-    while (off < file.size) {
-      const end = Math.min(file.size, off + chunk);
-      const r = await fetch(url, { method: 'PATCH', headers: { 'Tus-Resumable': '1.0.0', 'Upload-Offset': String(off), 'Content-Type': 'application/offset+octet-stream' }, body: file.slice(off, end) }).catch(() => { throw new Error('Could not connect to the video host. Check your connection and try again.') });
-      if (!r.ok) throw new Error(`The video host rejected the upload (HTTP ${r.status}).`);
-      const n = Number(r.headers.get('Upload-Offset')); off = Number.isFinite(n) && n > off ? n : end; onp(Math.min(1, off / file.size))
-    }
-    onp(1)
-  },
-  postForm(t, file, onp) {
-    return new Promise((resolve, reject) => {
-      const fd = new FormData(); Object.keys(t.fields || {}).forEach(k => fd.append(k, t.fields[k])); fd.append(t.fileField || 'file', file);
-      const req = new XMLHttpRequest(); req.open('POST', t.url, true); req.timeout = 45 * 60 * 1000;
-      req.upload.onprogress = e => { if (e.lengthComputable) onp(Math.min(1, e.loaded / e.total)) };
-      req.onload = () => { let j = {}; try { j = JSON.parse(req.responseText) } catch (e) {}
-        if (req.status >= 200 && req.status < 300) { onp(1); resolve(j) } else reject(new Error((j.error && (j.error.message || j.error)) || j.message || `The video host rejected the upload (HTTP ${req.status}).`)) };
-      req.onerror = () => reject(new Error('Could not connect to the video host. Check your connection and try again.'));
-      req.ontimeout = () => reject(new Error('The upload took too long. Check your connection and try again.'));
-      req.send(fd)
-    })
-  },
-  async xhr(file, onp, url, headers) {
+  async xhr(file, onp, url) {
     onp(0);
     await new Promise((resolve, reject) => {
       const req = new XMLHttpRequest(); req.open('PUT', url, true); req.timeout = 45 * 60 * 1000;
-      if (headers) Object.keys(headers).forEach(k => req.setRequestHeader(k, headers[k])); else req.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      req.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
       req.upload.onprogress = e => { if (e.lengthComputable) onp(Math.min(1, e.loaded / e.total)) };
       req.onload = () => {
         if (req.status >= 200 && req.status < 300) { onp(1); resolve(); return }
         let detail = ''; try { const j = JSON.parse(req.responseText); detail = j.error && (j.error.message || (j.error.messages || []).join(', ')) || '' } catch (e) {}
-        reject(new Error(detail || `The video host rejected the upload (HTTP ${req.status}).`))
+        reject(new Error(detail || `Mux rejected the video upload (HTTP ${req.status}). Check the Mux upload URL and app-origin CORS settings.`))
       };
-      req.onerror = () => reject(new Error('Could not connect to the video host. Check your connection and try again.'));
+      req.onerror = () => reject(new Error('Could not connect to Mux. Check your connection and the Mux upload CORS origin.'));
       req.ontimeout = () => reject(new Error('The upload timed out. Try again on a stable connection.'));
       req.onabort = () => reject(new Error('The upload was cancelled.'));
       req.send(file)
@@ -659,7 +394,7 @@ const RL = {
   },
   finishPublish(post, V) {
     post = this.compatPost(post); URL.revokeObjectURL(V.url); GIST.clearDraft(); GIST.C = null; GIST.put([post]); GIST.cache.set(post.id, post); GIST.afterPost(post, '');
-    this.L.foryou.p = [post, ...this.L.foryou.p.filter(p => p.id !== post.id)]; this.L.foryou.ok = true; this.tab = 'foryou'; GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast(post.moderation && post.moderation.status === 'review' ? 'Reel posted · under review' : 'Reel posted ✓'); this.show(post.id)
+    this.L.foryou.p = [post, ...this.L.foryou.p.filter(p => p.id !== post.id)]; this.L.foryou.ok = true; this.tab = 'foryou'; GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast('Reel posted ✓'); this.show(post.id)
   },
   /* file fingerprint = SHA-256 of the first + last 2 MB and the size; lets the server spot someone re-uploading another creator's clip */
   async fp(file) {
@@ -675,7 +410,7 @@ const RL = {
     GIST.stack = [{ fn: 'feed', args: [], scroll: 0 }]; toast('Reel held for review'); GIST.nav('post', post.id); setTimeout(() => this.appealSheet(post.id, flag && flag.reason), 350)
   },
   appealSheet(id, reason) {
-    PH.sheet(`<div class="rl-sh"><h3>Request a review</h3><button class="rl-x" onclick="PH.closeSheet()" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><p class="rl-why">${esc(reason || 'This video may not be original.')}</p><label class="rl-lab" for="rl_ap">Tell us why this video should be posted</label><textarea id="rl_ap" class="rl-ta" maxlength="500" rows="4" placeholder="e.g. I filmed and edited this myself"></textarea><button class="btn p rl-send" id="rl_apb" onclick="RL.sendAppeal('${id}')"><i class="fa-solid fa-paper-plane"></i> Send for review</button><p class="rl-fine">An admin will watch the video and decide. You will get a notification.</p>`)
+    PH.sheet(`<h3>Reel held for review</h3><p style="margin:6px 0 10px;line-height:1.45">${esc(reason || 'This video may not be original.')}</p><p class="muted" style="margin:0 0 8px;font-size:12.5px">If this is your own video, tell us why and an admin will watch it and decide.</p><textarea id="rl_ap" maxlength="500" rows="3" placeholder="e.g. I filmed this myself" style="width:100%;box-sizing:border-box"></textarea><button class="fopt" id="rl_apb" onclick="RL.sendAppeal('${id}')"><span><i class="fa-solid fa-paper-plane"></i> Appeal</span></button><button class="fopt" onclick="PH.closeSheet()"><span>Not now</span></button>`)
   },
   async sendAppeal(id) {
     const t = $('rl_ap'), b = $('rl_apb'); if (b) b.disabled = true;
@@ -699,39 +434,29 @@ const RL = {
     const C = GIST.C; if (!C || !C.video || C.busy) return; C.busy = true; C.text = ($('gc_t') && $('gc_t').value) || C.text; const V = C.video, b = $('gc_b'), set = t => { const e = $('gc_b'); if (e) { e.disabled = true; e.textContent = t } }; set('Uploading 0%');
     try {
       if (this._legacyApi) return await this.publishLegacy(C, V, set);
-      const prog = f => set('Uploading ' + Math.round(f * 100) + '%');
-      /* Ask the server for an upload link, send the file, and if THIS browser cannot reach that host (blocked network, CORS, rejected link)
-         ask for a link on the NEXT host and try again. Before, a failure on the first host stopped everything, so the other hosts were never used. */
-      this._muxWildTried = 0; let m = null, result = null; const tried = []; let lastErr = null, muxWild = false;
-      for (let attempt = 0; attempt < 7; attempt++) {
-        const body = { origin: muxWild ? '*' : location.origin, bytes: V.file.size, filename: V.file.name, skip: tried.slice(), abandon: m ? m.uploadId : undefined };
-        let next;
-        try { next = await GIST.api('/reels/upload', { method: 'POST', body }) }
-        catch (e) {
-          if (!attempt && e && e.status === 404) {
-            try { await this.legacyConfig() }
-            catch (legacyError) { if (legacyError && legacyError.status === 404) throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.'); throw legacyError }
-            return await this.publishLegacy(C, V, set)
-          }
-          if (lastErr) throw new Error('Your connection could not reach any of our video hosts (' + tried.join(', ') + '). Try again on a different network (Wi-Fi or mobile data), or turn off any VPN or data saver.');
-          throw e
-        }
-        m = next; muxWild = false;
-        if (!m || !m.uploadId || !m.url) throw new Error('The server did not return an upload URL.');
-        try { set('Uploading 0%'); result = await this.send(m, V.file, prog); lastErr = null; break }
-        catch (ue) {
-          lastErr = ue; if (/cancelled/i.test((ue && ue.message) || '')) throw ue;
-          await this.online();
-          if (m.provider === 'mux' && !tried.includes('mux') && !this._muxWildTried) { this._muxWildTried = 1; muxWild = true; set('Retrying…'); continue }   /* Mux links are tied to an origin: one more go with an any-origin link before moving on */
-          tried.push(m.provider); set('Trying another host…')
-        }
+      let m;
+      try { m = await GIST.api('/reels/mux-upload', { method: 'POST', body: { origin: location.origin } }) }
+      catch (e) {
+        if (!e || e.status !== 404) throw e;
+        try { await this.legacyConfig() }
+        catch (legacyError) { if (legacyError && legacyError.status === 404) throw new Error('The video API is missing. Deploy the full P-Gist backend and frontend together.'); throw legacyError }
+        return await this.publishLegacy(C, V, set)
       }
-      if (lastErr) throw lastErr;
+      if (!m || !m.uploadId || !m.url) throw new Error('The server did not return a Mux upload URL.'); try { await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url) }
+      catch (ue) {
+        // A blocked-by-CORS upload and a dropped connection look the same to the browser. Ask for a fresh upload link that
+        // accepts any origin and try once more before showing an error.
+        if (!ue || !/Could not connect to Mux/.test(ue.message || '')) throw ue;
+        await this.online(); set('Retrying…');
+        const m2 = await GIST.api('/reels/mux-upload', { method: 'POST', body: { origin: '*' } });
+        if (!m2 || !m2.uploadId || !m2.url) throw ue; m = m2;
+        await this.xhr(V.file, f => set('Uploading ' + Math.round(f * 100) + '%'), m.url)
+      }
       set('Processing…'); let mx = null;
-      for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/upload-status/' + m.uploadId, { method: 'POST', body: { result } }); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
+      for (let n = 0; n < 90 && !mx; n++) { await new Promise(r => setTimeout(r, n < 5 ? 2000 : 4000)); const st = await GIST.api('/reels/mux-status/' + m.uploadId); if (st.error) throw new Error(st.error); if (st.ready) mx = st }
       if (!mx) throw new Error('Your video is taking long to process. It will appear in your gallery when ready; try posting it again in a minute.');
       set('Posting…');
-      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { assetId: mx.assetId, provider: mx.provider, mux: mx.provider === 'mux' ? { assetId: mx.assetId } : undefined, dur: mx.dur }, poll: C.poll || undefined, settings: C.set || undefined, fingerprint: await this.fp(V.file) } });
+      const r = await GIST.api('/posts', { method: 'POST', body: { text: C.text, video: { mux: { assetId: mx.assetId }, dur: mx.dur }, poll: C.poll || undefined, fingerprint: await this.fp(V.file) } });
       if (r.flagged) return this.heldPublish(r.post, V, r.flagged);
       this.finishPublish(r.post, V)
     } catch (e) { C.busy = false; const e2 = $('gc_e'); if (e2) e2.textContent = e.message; GIST.btn(); const bb = $('gc_b'); if (bb) bb.textContent = 'Post'; GIST.err(e) }

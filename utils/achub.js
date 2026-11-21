@@ -27,50 +27,6 @@ const NEIGHBOURHOODS = [
   { id: 'ikorodu', name: 'Ikorodu', emoji: '⛴️', vibe: 'Boat rides, big markets, strong community.', perk: 'Everybody knows everybody.', cap: 60 },
   { id: 'epe', name: 'Epe', emoji: '🌾', vibe: 'Quiet, lagoon-side and a long way from the noise.', perk: 'Cheapest rent in the city.', cap: 54 }
 ];
-
-/* Where you can live depends on the state you are in now. Lagos keeps its original seven areas; Abuja, Port Harcourt (Rivers) and Abia
-   use the districts of their maps; every other state gets four starter areas so nobody is sent to a Lagos address. */
-const STATE_KEY = (label) => ({ 'FCT (Abuja)': 'abuja', Rivers: 'ph', 'Outside Nigeria': 'lagos' }[label] || String(label || '').toLowerCase().replace(/[^a-z]/g, '') || 'lagos');
-const mk = (state, id, name, emoji, vibe, perk, cap) => ({ id, name, emoji, vibe, perk, cap, state });
-const STATE_HOODS = {
-  lagos: NEIGHBOURHOODS.map((h) => ({ ...h, state: 'lagos' })),
-  abuja: [
-    mk('abuja', 'abuja-maitama', 'Maitama', '🌳', 'Quiet, leafy and full of big embassies.', 'Prestige and peace.', 18),
-    mk('abuja', 'abuja-wuse', 'Wuse', '🏢', 'Offices, malls and a busy night market.', 'Everything is close by.', 36),
-    mk('abuja', 'abuja-garki', 'Garki', '🏦', 'Banks, markets and a lot of life.', 'Busy and well connected.', 42),
-    mk('abuja', 'abuja-gwarinpa', 'Gwarinpa', '🏘', 'The big estate: neighbours, joggers and small shops.', 'Friendly streets.', 54),
-    mk('abuja', 'abuja-jabi', 'Jabi', '🏖', 'Lakeside walks, a mall and a calm evening.', 'Good for relaxing.', 30),
-    mk('abuja', 'abuja-nyanya', 'Nyanya', '🚌', 'Long bus rides, cheap rent and big dreams.', 'Low rent, early mornings.', 60)
-  ],
-  ph: [
-    mk('ph', 'ph-oldgra', 'Old GRA', '🌳', 'Leafy colonial-era avenues and quiet roads.', 'Calm and respected.', 24),
-    mk('ph', 'ph-newgra', 'New GRA', '🏡', 'New estates, restaurants and the nightlife strip.', 'Lively evenings.', 36),
-    mk('ph', 'ph-transamadi', 'Trans-Amadi', '🏭', 'Oil and gas offices and the industrial layout.', 'Great for working people.', 42),
-    mk('ph', 'ph-diobu', 'Diobu (Mile 1)', '🛒', 'The big market: stalls, noise and pepper soup.', 'Never boring.', 60),
-    mk('ph', 'ph-dline', 'D-Line', '🍽', 'Restaurants, bars and the cultural centre.', 'Good food close by.', 30),
-    mk('ph', 'ph-waterside', 'Waterside', '🛶', 'The river front: fishing boats and the old jetty.', 'Quiet and on the water.', 48)
-  ],
-  abia: [
-    mk('abia', 'abia-ngwaroad', 'Ngwa Road', '🏙', 'Shops, shoes and a million small factories.', 'Hustle everywhere.', 48),
-    mk('abia', 'abia-ariaria', 'Ariaria', '🧵', 'Leather, garments and everything made in Aba.', 'Great for traders.', 54),
-    mk('abia', 'abia-osisioma', 'Osisioma', '🏭', 'The industrial belt: factories and workshops.', 'Work is close.', 48),
-    mk('abia', 'abia-umuahia', 'Umuahia', '🏢', 'The state capital: government offices and tidy roads.', 'Calm and orderly.', 36),
-    mk('abia', 'abia-ohafia', 'Ohafia', '🥁', 'War-dance country: villages, hills and tradition.', 'Strong community.', 42),
-    mk('abia', 'abia-azumini', 'Azumini', '🛶', 'The blue river: boats and riverside bars.', 'Fresh air and fish.', 36)
-  ]
-};
-const { NG_STATES } = require('./acv2');
-for (const label of NG_STATES) {          // every remaining state gets four generic starter areas
-  const k = STATE_KEY(label); if (STATE_HOODS[k] || label === 'Outside Nigeria') continue;
-  STATE_HOODS[k] = [
-    mk(k, k + '-centre', label + ' city centre', '🏙', 'Shops, offices and the busiest roads in ' + label + '.', 'Everything is close by.', 40),
-    mk(k, k + '-gra', 'Government area', '🏛', 'Wide roads, offices and calmer streets.', 'Quiet and orderly.', 30),
-    mk(k, k + '-market', 'Market area', '🛒', 'Stalls, noise and the best food in town.', 'Never boring.', 54),
-    mk(k, k + '-outskirts', 'The outskirts', '🌾', 'More space, cheaper rent and a slower pace.', 'Cheapest rent around.', 60)
-  ];
-}
-const hoodsFor = (stateLabel) => STATE_HOODS[STATE_KEY(stateLabel)] || STATE_HOODS.lagos;
-const ALL_HOODS = Object.values(STATE_HOODS).flat();
 const HOBBIES = [
   { id: 'gaming', name: 'Gaming', emoji: '🎮', words: ['Gamer', 'Pro', 'Clutch'] },
   { id: 'music', name: 'Music', emoji: '🎧', words: ['Beat', 'Afro', 'Vibes'] },
@@ -81,7 +37,7 @@ const HOBBIES = [
   { id: 'tech', name: 'Tech', emoji: '👨🏾‍💻', words: ['Dev', 'Byte', 'Code'] },
   { id: 'art', name: 'Art & photos', emoji: '📸', words: ['Snap', 'Frame', 'Colour'] }
 ];
-const HOBBY_IDS = HOBBIES.map((h) => h.id), HOOD_IDS = ALL_HOODS.map((h) => h.id);
+const HOBBY_IDS = HOBBIES.map((h) => h.id), HOOD_IDS = NEIGHBOURHOODS.map((h) => h.id);
 const STARTER_JOBS = ['transport', 'fashion', 'tech', 'banking', 'health', 'oil'];     // ids in utils/acjobs.js
 
 const ONBOARD_STEPS = [
@@ -132,7 +88,7 @@ const PARCEL = [600, 750, 900, 1050, 1200, 1500, 2400];   // ~3% of the old amou
 const parcelFor = (n) => PARCEL[Math.min(PARCEL.length - 1, Math.max(0, n))];
 
 /* ---------- invites and welcome-back gift (first friend / group / streak rewards are missions) ---------- */
-const INVITE = { inviter: 50000, invitee: 30000, windowDays: 7, commissionPct: 5, commissionDays: 30 };   // commission: inviter earns this % of every shift their friend works, for commissionDays after the friend joins
+const INVITE = { inviter: 50000, invitee: 30000, windowDays: 7 };
 const RETURN = { minDays: 3, gift: 25000 };
 
 /* ---------- protection ---------- */
@@ -199,7 +155,7 @@ const HELP = [
 /* ---------- roadmap + feature voting ---------- */
 const ROADMAP = [
   /* lane: 'Now' = building today / 'Next' = planned, up next / 'Later' = planned, further out. Shown in What's new -> Building and Planned. */
-  { id: 'r_pay', lane: 'Now', title: 'Real top-up and withdrawals', note: 'Top-up is built and goes live when payments are switched on. Withdrawals follow the withdrawal seasons.' },
+  { id: 'r_pay', lane: 'Now', title: 'Real top-up and withdrawals', note: 'Deposit and bank transfer are coming soon.' },
   { id: 'r_prop', lane: 'Now', title: 'Home upkeep and weather', note: 'Repairs, storm damage and insurance for the place you live in.' },
   { id: 'r_econ', lane: 'Now', title: 'Living costs that move', note: 'Prices and light, water and waste bills that follow what is happening in the city.' },
   { id: 'r_cars', lane: 'Next', title: 'Car ownership', note: 'Servicing, fuel, insurance and fines for your own car.' },
@@ -221,35 +177,6 @@ const VBYID = Object.fromEntries(VOTES.map((v) => [v.id, v]));
 
 /* ---------- changelog ---------- */
 const CHANGELOG = [
-  { v: '2.8', date: '2026-11-12', title: 'Frosted glass and a softer glow', items: [
-    'Pop-ups and sheets now have the same frosted-glass look as the buttons on your home screen',
-    'Switch your room light on with the bulb button for a warm, slightly brighter room',
-    'Plus everything from 2.7: Invite and earn, Free will, first-person view and more'
-  ] },
-  { v: '2.7', date: '2026-11-11', title: 'Invite and earn, plus a calmer home', items: [
-    'Invite is now its own app: your link, friends who joined, join bonuses and a 5% commission on their shifts for 30 days',
-    'Help now lives inside Guide, and the Suggestion box is in Settings. Tell us what to add any time',
-    'Free will: your Sim can look after their needs while you are away',
-    'Need alerts only show when a need is really low, and never all at once',
-    'The bulb is a light switch, and the eye button puts you inside your Sim for a first-person view',
-    'NEPA news now arrives as a notification you can tap for details',
-    'Settings: Push notifications, What reaches you (with quiet hours) and Blocked players',
-    'Smaller bottom bar, bigger top bar, tidier Naija hub and a mall that turns 180 degrees',
-    'Transport now pays the least on purpose, so every other career is worth more'
-  ] },
-  { v: '2.6', date: '2026-11-08', title: 'A fresh look, and more of Nigeria', items: [
-    'New phone look with smaller buttons and a character sheet: Needs, Feelings, Traits and a Memory book',
-    'Pick three traits in "Who are you?" and watch how they change how you feel',
-    'Top up your wallet in Naira or USD (live as soon as payments are switched on)',
-    'Catalogue: search, price filter and Pick several',
-    'Privacy: read receipts, who can message you or send you money, change password and verify email',
-    'Map: tap an icon to see its name and an Open button. On a computer the map is a flat 2D plan that shows where things are happening, and the 3D streets are there when you step outside',
-    'Two new cities to visit: Port Harcourt and Abia',
-    'The mall: turn it sideways, zoom in and out, and meet shoppers who look like the people in your home',
-    'Tell us your home state, the state you are in now and your birthday. On your birthday we post a card for you on P-Gist',
-    'Hair colour now shows on your character before you pay',
-    'Uploads now tell you what went wrong'
-  ] },
   { v: '2.5', date: '2026-11-01', title: 'Your screen, your way', items: ['Floating Songify player can be dragged anywhere on the screen', 'Hold any home or map button, then drag it where you like', 'Settings: new Reset button & player positions', 'Settings: removed Reduce animations, Larger text, High contrast and Colour-blind friendly', 'What\'s new now shows what is added, being built and planned'] },
   { v: '2.4', date: '2026-10-09', title: 'Welcome to Lagos hub', items: ['New player setup: area, job, hobby and username', 'What can I do now? button on the home screen', 'Beginner missions with visible rewards', 'City newspaper, ticker, help desk, roadmap and voting', 'Result cards for work, promotions and investment payouts', 'Fixed the Manage requirements list overlap'] },
   { v: '2.3', date: '2026-10-05', title: 'Lagos Life', items: ['City events every 12 hours', 'Weekly bills and power cuts', 'Starter quests and the daily streak', 'Creator programme screen'] },
@@ -297,7 +224,7 @@ function progressMap(h, m) {
 
 const cleanId = (v, list) => (list.includes(String(v)) ? String(v) : '');
 module.exports = {
-  PROMISE, PROTECT_DAYS, PROTECT, NEIGHBOURHOODS: ALL_HOODS, hoodsFor, STATE_KEY, HOBBIES, HOBBY_IDS, HOOD_IDS, STARTER_JOBS, ONBOARD_STEPS, usernameSuggestions,
+  PROMISE, PROTECT_DAYS, PROTECT, NEIGHBOURHOODS, HOBBIES, HOBBY_IDS, HOOD_IDS, STARTER_JOBS, ONBOARD_STEPS, usernameSuggestions,
   MISSIONS, MBYID, PLACEMENT_NEEDED, personalTasks, PARCEL, parcelFor, INVITE, RETURN, protectedUntil, isProtected, protectionLeftDays,
   THEMES, weeklyTheme, newspaper, ticker, HELP, ROADMAP, VOTES, VBYID, CHANGELOG, LORE, ANTHEM, recapKind, progressMap, cleanId, dayKey
 };

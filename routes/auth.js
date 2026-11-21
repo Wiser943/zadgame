@@ -10,8 +10,7 @@ const publicUser = (u) => ({ id: u.id, displayName: u.displayName, avatar: u.ava
 
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, identifier, password } = req.body || {}, { NG_STATES } = require('../utils/acv2');
-    const so = String((req.body || {}).stateOrigin || ''), sc = String((req.body || {}).stateCurrent || '');
+    const { name, identifier, password } = req.body || {};
     if (!name || !identifier || !password) return res.status(400).json({ message: 'Name, email or phone, and password are all required.' });
     if (String(password).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters.' });
 
@@ -26,8 +25,7 @@ router.post('/register', async (req, res, next) => {
     const user = await User.create({
       displayName: String(name).trim().slice(0, 40) || 'Player',
       passwordHash,
-      [id.type]: id.value,
-      ...(NG_STATES.includes(so) && NG_STATES.includes(sc) ? { ac: { stateOrigin: so, stateCurrent: sc } } : {})
+      [id.type]: id.value
     });
     req.login(user, (err) => (err ? next(err) : res.json({ user: publicUser(user) })));
   } catch (err) {

@@ -19,8 +19,9 @@
     casual: 'men/casual_character.glb', businessman: 'men/business_man.glb', hoodie: 'men/hoodie_character.glb', beach: 'men/beach_character.glb',
     farmer: 'men/farmer.glb', adventurer: 'men/adventurer.glb', king: 'men/king.glb', punk: 'men/punk.glb', swat: 'men/swat.glb', astronaut: 'men/astronaut.glb', menworker: 'men/worker.glb',
     // things
-    sportscar: 'vehicles/sports_car.glb', motorcycle: 'vehicles/motorcycle.glb', office: 'world/business_building.glb', houseinterior: 'world/house_interior.glb',
-    rocks: 'nature/rocks.glb', bushes: 'nature/bushes.glb', flowerbushes: 'nature/flower_bushes.glb', flowers: 'nature/flowers.glb'
+    sportscar: 'vehicles/sports_car.glb', motorcycle: 'vehicles/motorcycle.glb', roads: 'world/road_bits.glb', office: 'world/business_building.glb', houseinterior: 'world/house_interior.glb',
+    rocks: 'nature/rocks.glb', trees: 'nature/trees.glb', palms: 'nature/palm_trees.glb', pines: 'nature/pine_trees.glb', maples: 'nature/maple_trees.glb', birches: 'nature/birch_trees.glb',
+    bushes: 'nature/bushes.glb', flowerbushes: 'nature/flower_bushes.glb', flowers: 'nature/flowers.glb', grass: 'nature/grass.glb'
   };
   const CHARACTERS = ['casual', 'woman', 'worker', 'businessman', 'hoodie', 'beach', 'farmer', 'adventurer', 'king', 'punk', 'swat', 'astronaut', 'menworker', 'suit'];
   const CHAR_H = 1.65;                           // character height in room units (one floor cell = 1 unit)
@@ -94,7 +95,7 @@
       const clips = gl.animations || [], mixer = clips.length ? new THREE.AnimationMixer(obj) : null;
       return { root, obj, clips, mixer }
     },
-    /* one named piece of a multi-object pack, e.g. M3D.part('rocks', 'Rock_1', { height: 1 }) */
+    /* one named piece of a multi-object pack, e.g. M3D.part('palms', 'PalmTree_2', { height: 3 }) */
     async part(key, name, o) {
       o = o || {}; const gl = await this.get(key); let src = null; gl.scene.traverse(n => { if (!src && n.name === name) src = n });
       if (!src) throw new Error(name + ' not in ' + key);
@@ -107,28 +108,26 @@
     },
 
     /* ---------- the Market Shop's built-in counter, shelves, crates and barrels (tap them to use) ---------- */
-    dropFixtures(room) { room.fxWalls = null; if (room.fxG && room.scene) { room.scene.remove(room.fxG); room.fxG.traverse(o => { if (o.geometry) o.geometry.dispose() }) } room.fxG = null },
+    dropFixtures(room) { if (room.fxG && room.scene) { room.scene.remove(room.fxG); room.fxG.traverse(o => { if (o.geometry) o.geometry.dispose() }) } room.fxG = null },
     /* ---------- bedroom plans (homes with added bedrooms): low partition walls with doorways, tinted bedroom floors, name tags ---------- */
     bedroomRooms(room, L) {
       if (!room.scene || !window.THREE) return; this.dropFixtures(room);
       const g = new THREE.Group(), mats = {}, M = (c, o) => mats[c] || (mats[c] = new THREE.MeshLambertMaterial(Object.assign({ color: c }, o || {})));
       const box = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(c)); m.position.set(x, y, z); g.add(m); return m };
-      const WALL_H = 1.55, T = .14, lux = !!(typeof S !== 'undefined' && S.activeProperty && S.activeProperty.finish === 'luxury'), wallColor = lux ? '#f4ead2' : '#efe6d2', capColor = lux ? '#d4af37' : '#cdbd9c';
+      const WALL_H = 1.55, T = .14, wallColor = '#efe6d2', capColor = '#cdbd9c';
       // every wall edge "ax,az|bx,bz" becomes one slab on the line between the two cells
-      room.fxWalls = [];
       for (const e of L.walls) {
         const [a, b] = e.split('|').map(t => t.split(',').map(Number));
         const cx = room.cc(a[0]) + (b[0] - a[0]) / 2, cz = room.cc(a[1]) + (b[1] - a[1]) / 2;
-        let w1, c1;
-        if (a[0] !== b[0]) { w1 = box(T, WALL_H, 1 + T, wallColor, cx, WALL_H / 2, cz); c1 = box(T + .04, .05, 1 + T + .04, capColor, cx, WALL_H + .02, cz) }
-        else { w1 = box(1 + T, WALL_H, T, wallColor, cx, WALL_H / 2, cz); c1 = box(1 + T + .04, .05, T + .04, capColor, cx, WALL_H + .02, cz) }
-        room.fxWalls.push({ w: w1, c: c1, h: WALL_H })
+        if (a[0] !== b[0]) { box(T, WALL_H, 1 + T, wallColor, cx, WALL_H / 2, cz); box(T + .04, .05, 1 + T + .04, capColor, cx, WALL_H + .02, cz) }
+        else { box(1 + T, WALL_H, T, wallColor, cx, WALL_H / 2, cz); box(1 + T + .04, .05, T + .04, capColor, cx, WALL_H + .02, cz) }
       }
       // a soft rug-coloured floor and a name tag in each bedroom
       const tag = (text) => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const x = cv.getContext('2d'); x.fillStyle = 'rgba(27,34,54,.82)'; x.beginPath(); (x.roundRect ? x.roundRect(4, 4, 248, 56, 28) : x.rect(4, 4, 248, 56)); x.fill(); x.fillStyle = '#fff'; x.font = '800 30px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 128, 34); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false })); sp.scale.set(1.9, .475, 1); sp.renderOrder = 5; return sp };
       for (const r of L.rooms || []) {
         const w = r.x1 - r.x0 + 1, d = r.z1 - r.z0 + 1, cx = room.cc(r.x0) + (w - 1) / 2, cz = room.cc(r.z0) + (d - 1) / 2;
         const f = new THREE.Mesh(new THREE.PlaneGeometry(w - .1, d - .1), M('#d9c3a0', { transparent: true, opacity: .55 })); f.rotation.x = -Math.PI / 2; f.position.set(cx, .012, cz); g.add(f);
+        const t = tag(r.name); t.position.set(cx, 2.05, cz); g.add(t);
       }
       room.scene.add(g); room.fxG = g
     },
@@ -178,13 +177,13 @@
           o.material = mat; o.frustumCulled = false
         });
         const g = new THREE.Group(); g.add(obj); g.scale.setScalar(m.k); g.position.set(m.tx, m.ty, m.tz);
-        try { const top = new THREE.Box3().setFromObject(obj).max.y; room.shellTop = top > 2 && top < 4.5 ? top : null } catch (e) { room.shellTop = null } room.scene.add(g); room.shellG = g; room.shellWalls = walls; room.shellPlane = plane; if (room.fpv) room.ceiling()
+        room.scene.add(g); room.shellG = g; room.shellWalls = walls
       } catch (e) {
         this.fail('house model', e);       // fallback: a bare floor the size of the plan, walls come from the blocked cells
         if (room._stok === tok && room.floor) { room.floor.geometry.dispose(); room.floor.geometry = new THREE.PlaneGeometry(L.w, L.d); room.floor.position.set(room.offX, 0, room.offZ); room.floor.material.map.repeat.set(L.w / 2, L.d / 2); room.floor.visible = true }
       }
     },
-    dropShell(room) { room._stok = (room._stok || 0) + 1; if (room.shellG && room.scene) room.scene.remove(room.shellG); room.shellG = null; room.shellWalls = null; room.shellPlane = null },
+    dropShell(room) { room._stok = (room._stok || 0) + 1; if (room.shellG && room.scene) room.scene.remove(room.shellG); room.shellG = null; room.shellWalls = null },
 
     /* ---------- the yard around the house: bushes, rocks and flowers, a ride once the home is expanded, the shop for the Family House ---------- */
     yard(room) {
@@ -303,17 +302,8 @@
       bone.quaternion.copy(q1.invert().multiply(r).multiply(q2)); bone.updateMatrixWorld(true)
     },
     /* sitting: thighs forward, shins down, feet (separate IK bones) back under the knees, hips on the seat */
-    /* The rig only animates some bones, so the leg bones kept whatever rotation we gave them last frame, and every frame the pose was measured
-       from that rotated skeleton and rotated again: the legs slowly spun and the mesh stretched ("legs hanging" / long black strands). Fix: remember the legs as they
-       are when the sit starts and put them back to that pose at the start of EVERY frame, so each frame's sit pose is computed from the same clean skeleton. */
-    legBase(g, restore) {
-      const B = g.bones, names = ['UpperLeg.L', 'UpperLeg.R', 'LowerLeg.L', 'LowerLeg.R']; if (!B) return;
-      if (restore) { if (!g.sitBase) return; names.forEach(n => { if (B[n] && g.sitBase[n]) B[n].quaternion.copy(g.sitBase[n]) }); ['L', 'R'].forEach(x => { const f = B['Foot.' + x]; if (f && g.sitBase['Foot.' + x]) f.position.copy(g.sitBase['Foot.' + x]) }); if (g.root) g.root.updateMatrixWorld(true); return }
-      g.sitBase = {}; names.forEach(n => { if (B[n]) g.sitBase[n] = B[n].quaternion.clone() }); ['L', 'R'].forEach(x => { const f = B['Foot.' + x]; if (f) g.sitBase['Foot.' + x] = f.position.clone() })
-    },
     sitPose(g, av, seatTop) {
       const B = g.bones; if (!B || !B.Hips || !B['UpperLeg.L'] || !B['Foot.L']) return;
-      if (!g.sitBase) this.legBase(g, false); else { this.legBase(g, true); av.updateMatrixWorld(true) }
       const V = THREE.Vector3, X = new V(1, 0, 0).applyQuaternion(av.getWorldQuaternion(new THREE.Quaternion())), v = new V(), w = new V(), off = {};
       av.updateMatrixWorld(true); B.Hips.getWorldPosition(v); const hipRel = v.y - av.getWorldPosition(w).y;
       ['L', 'R'].forEach(s => { B['LowerLeg.' + s].getWorldPosition(v); B['Foot.' + s].getWorldPosition(w); off[s] = w.clone().sub(v) });
@@ -321,14 +311,14 @@
       // thigh * sin(slope) = (hip height above the floor) - (shin height) ; the shins stay vertical, the feet stay flat.
       B['UpperLeg.L'].getWorldPosition(v); const uy = v.y - av.getWorldPosition(w).y; B['LowerLeg.L'].getWorldPosition(w); const knee = w.clone(); B['Foot.L'].getWorldPosition(w);
       const baseY = av.getWorldPosition(new V()).y, thigh = Math.max(.15, knee.distanceTo(v)), shin = Math.max(0, knee.y - w.y), footY = w.y - baseY;
-      const hipJoint = seatTop + .03 - hipRel + uy, slope = Math.asin(Math.max(-.5, Math.min(.85, (hipJoint - footY - shin) / thigh))), ang = Math.max(.25, Math.min(1.75, Math.PI / 2 - slope)); if (!isFinite(ang) || !isFinite(hipRel)) return;
+      const hipJoint = seatTop + .03 - hipRel + uy, slope = Math.asin(Math.max(-.5, Math.min(.85, (hipJoint - footY - shin) / thigh))), ang = Math.PI / 2 - slope;
       ['L', 'R'].forEach(s => { this.rotW(B['UpperLeg.' + s], X, -ang); this.rotW(B['LowerLeg.' + s], X, ang) });
       ['L', 'R'].forEach(s => { const f = B['Foot.' + s]; B['LowerLeg.' + s].getWorldPosition(v); v.add(off[s]); f.parent.updateWorldMatrix(true, false); f.parent.worldToLocal(v); f.position.copy(v); f.updateMatrixWorld(true) });
       g.root.position.set(0, seatTop + .03 - hipRel, -.05)
     },
     /* an action is running (room.act): lie on the bed, sit on the seat, or stand and use the thing */
     stepAct(room, g, dt) {
-      const A = room.act, av = room.avatar; g.posed = true; if (g.sitFor !== A) { if (g.sitBase) this.legBase(g, true); g.sitBase = null; g.sitFor = A }
+      const A = room.act, av = room.avatar; g.posed = true;
       g.root.rotation.set(0, 0, 0); g.root.position.set(0, 0, 0); g.spin = 0;
       this.play(g, A.kind === 'stand' ? 'use' : 'rest'); g.mixer.update(dt);
       if (g.anch) g.anch.hA.visible = g.anch.tA.visible = A.kind !== 'lie';
@@ -339,7 +329,7 @@
     /* drives the GLB character instead of the procedural joints (same signature as ROOM3D.animate) */
     step(room, t, dt, moving) {
       const g = room.glb; if (room.act) return this.stepAct(room, g, dt);
-      if (g.posed) { g.posed = false; if (g.sitBase) { this.legBase(g, true); g.sitBase = null; g.sitFor = null } g.root.rotation.set(0, 0, 0); g.root.position.set(0, 0, 0); if (g.anch) g.anch.hA.visible = g.anch.tA.visible = true; g.cur = null }
+      if (g.posed) { g.posed = false; g.root.rotation.set(0, 0, 0); g.root.position.set(0, 0, 0); if (g.anch) g.anch.hA.visible = g.anch.tA.visible = true; g.cur = null }
       if (room.em && moving) { room.em = null; if (window.emoteEnded) window.emoteEnded() }
       const ext = room.ext || {}, st = moving ? 'walk' : (room.em || 'idle'), dn = room.dn || 0, dm = dn % 4;
       g.dn = dn; g.tt += dt;

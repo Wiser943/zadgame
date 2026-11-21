@@ -66,15 +66,12 @@ function billAmount(key, items, ev, wealth = 0) {
   const tier = wealth >= 25000000 ? 2.4 : wealth >= 10000000 ? 1.85 : wealth >= 5000000 ? 1.4 : wealth >= 2000000 ? 1.12 : 1;
   return Math.round(a * m * tier / 100) * 100;
 }
-// One source of truth for what a home is worth (utils/acproperties.js), instead of the same price list copied
-// into this file, the weather-loss code and the home-insurance code.
-const { assetValue } = require('./acproperties');
 // Bills that should exist for this cycle but do not yet. Returns the full list to push.
 function newBills(user, now = Date.now()) {
   const ac = user.ac || {}, c = cycleOf(now);
   if (now - new Date(user.createdAt || now).getTime() < FREE_DAYS * DAY) return [];
   const have = new Set((ac.bills || []).filter((b) => b.cycle === c.key).map((b) => b.key));
-  return Object.keys(BILLS).filter((k) => !have.has(k)).map((k) => ({ key: k, cycle: c.key, amount: billAmount(k, ac.items, currentEvent(now), Number(ac.cash || 0) + (ac.properties || []).reduce((sum, p) => sum + assetValue(p.type), 0)), due: new Date(c.due), paidAt: null, fee: 0 }));
+  return Object.keys(BILLS).filter((k) => !have.has(k)).map((k) => ({ key: k, cycle: c.key, amount: billAmount(k, ac.items, currentEvent(now), Number(ac.cash || 0) + (ac.properties || []).reduce((sum, p) => sum + ({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[p.type] || 0), 0)), due: new Date(c.due), paidAt: null, fee: 0 }));
 }
 const lateFee = (b, now = Date.now()) => (!b.paidAt && now > new Date(b.due).getTime() ? Math.round(b.amount * LATE_PCT / 100) * 100 : 0);
 const owed = (b, now) => b.paidAt ? 0 : b.amount + lateFee(b, now);

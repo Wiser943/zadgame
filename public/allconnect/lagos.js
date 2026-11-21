@@ -96,15 +96,9 @@ const LAGOS = {
       <div class="lgr"><b>${this.fmt(b.paid ? b.amount : b.total)}</b>${b.paid ? '<span class="lgok"><span class="fa-solid fa-check"></span></span>' : `<button class="lgbtn" onclick="LAGOS.pay('${b.cycle}','${b.key}',this)">Pay</button>`}</div></div>`;
     el.innerHTML = `${s.powerCut ? '<div class="lgwarn"><span class="fa-solid fa-bolt-slash"></span> Light don go. Pay your electricity bill to bring it back.</div>' : ''}
       <div class="lgsum"><div><small>You owe</small><b>${this.fmt(s.total)}</b></div>${unpaid.length > 1 ? `<button class="lgbtn big" onclick="LAGOS.pay(null,null,this,true)">Pay all</button>` : ''}</div>
-      <button class="trow lgauto" onclick="LAGOS.autopay(this)"><span class="tl">Auto-pay bills<small class="sub">Charge each new bill to your balance the moment it arrives</small></span><span class="sw2 ${r.autopay ? 'on' : ''}"><i></i></span></button>
       ${unpaid.length ? unpaid.map(row).join('') : '<p class="empty">All bills paid. Well done! New bills arrive every Monday.</p>'}
       <p class="lgnote">Bills come every Monday and are due by Sunday night. Late bills cost 10% more, and unpaid electricity means a power cut. The more appliances you have, the higher the bill. The city event changes prices too.</p>
       ${paid.length ? `<h4>Paid recently</h4>${paid.map(row).join('')}` : ''}`;
-  },
-  async autopay(btn) {
-    const on = !(this.B && this.B.autopay); if (btn) btn.disabled = true;
-    try { const r = await NET.api('/api/ac/lagos/bills/autopay', { method: 'POST', body: { on } }); this.B.autopay = !!r.autopay; toast(r.autopay ? 'Auto-pay is on' : 'Auto-pay is off'); this.loadBills() }
-    catch (e) { toast(e.message); if (btn) btn.disabled = false }
   },
   async pay(cycle, key, btn, all) {
     if (btn) btn.disabled = true;
