@@ -71,3 +71,10 @@ body.dk #wRight{bottom:118px}
 body.dk #app.inworld #dkRadio{display:none}
 body.dk #app.inworld #dkAct .dka{height:40px}
 @media (max-width:899px){#wRc{top:12px}#wMini{width:96px;height:96px}#wUse{bottom:170px}}
+
+/* ---------- street HUD (v31): less clutter, radio bottom right, arrow-button option ---------- */
+#wMob,#wChips,#wRc .wcol,#wDist{display:none!important}
+#wBot{left:auto!important;right:14px!important;transform:none!important;flex-direction:row-reverse}
+#wPad{display:none;position:absolute;left:16px;bottom:16px;z-index:6}
+body.mv-btns #world.wtouch:not(.drv) #wPad{display:block}
+body.mv-btns #world.wtouch:not(.drv) #wJoy{display:none!important}

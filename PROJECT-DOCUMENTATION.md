@@ -827,3 +827,12 @@ Homes keep the existing prices: Mainland Room rent ₦25,000 for 7 days; owned h
 - **GLB animation lookup fix** in world3d.js: clip names such as `CharacterArmature|Idle_Neutral` are also registered by their short name; the old fallback played the first clip ("Death"), so every street character walked around lying down.
 - **Closed workplace**: still enterable, but empty (no staff, no customers) and the card says it is closed.
 - **Street mode** hides the home HUD (`body.inworld`) and lifts the street controls above the nav.
+
+## v31 additions
+- **Street HUD**: removed the clock/home/phone chips (`#wMob`), Convoy/Race chips, the camera/sound/recentre column and the district label; the Radio button sits bottom-right.
+- **Movement controls** setting (Joystick | Buttons): `dpad.js` gives four arrow buttons that feed the same vectors as the joystick (street `X.joy`, home walk / first-person `ROOM3D.setJoy`). `body.mv-btns` switches the street control.
+- **Nav**: the separate Outside button is gone. The first button reads **Home** in the street and everywhere else, and **Outside** while you are at the home screen (phone `V2.navSync/homeBtn`, desktop `DK.paint`).
+
+## v32 additions
+- **Street day/night follows real Lagos time** (`X.applyTime` in world3d.js uses `PREFX.lagosMin()`, the same clock as the home screen). It used the fast game clock `S.min`, so the street cycled through a whole day in about 72 minutes and often looked like night at midday.
+- **Road markings** (`buildMarkings` in world3d.js): every road is two lanes (traffic already drove on lane offsets of 3.6 m each way). Double solid yellow centre line, solid white edge lines, white stop lines before junctions, dashed white line on bridges. Flat real geometry (crisp at any zoom, dimmed at night with the sun), instead of 1-pixel paint on the ground texture.

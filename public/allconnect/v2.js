@@ -84,13 +84,13 @@
     add('v2radio', '<span>📻</span> Radio').onclick = () => { nav('phone'); setTimeout(() => { try { SONGIFY.open() } catch (e) { toast('Radio is not ready yet') } }, 80) };
     $('v2radio').className = 'v2p'; $('v2radio').setAttribute('role', 'button');
     add('v2act', `<button class="cb" id="v2mic" onclick="V2.mic()" aria-label="Voice" style="display:none">${I.mic}</button><button class="cb" id="v2eye" onpointerdown="V2.eyeDown(event)" onpointerup="V2.eyeUp(event)" onpointercancel="V2.eyeCancel()" oncontextmenu="return false" aria-label="Look around. Press and hold to walk around">${I.eye}</button><button class="cb" onclick="openBank()" aria-label="Wallet">${I.bag}</button><div class="wk"><button id="v2work" onclick="V2.work()">${I.work}<span>Work</span></button><button class="car" onclick="V2.car()" aria-label="Transport">🚗<span style="font-size:11px">⌃</span></button></div>`);
-    add('v2nav', `<button class="me" onclick="V2.sheet('char')" aria-label="Your character"><div class="in" id="v2av"></div><span class="mf" id="v2mf2">😊</span></button><div class="cap"><button data-p="home" onclick="nav('home')">${I.home}<span class="t">Home</span></button><button data-p="outside" id="v2out" onclick="V2.outside()" aria-label="Go outside">${I.door}<span class="t">Outside</span></button><button data-p="buy" onclick="nav('buy')" aria-label="Buy mode">${I.chair}<span class="t">Buy mode</span></button><button data-p="map" onclick="nav('map')" aria-label="Map">${I.map}<span class="t">Map</span></button></div><button class="ph" onclick="PHONEUI.open()" aria-label="Phone">${I.phone}<i id="v2phdot" style="display:none"></i></button>`);
+    add('v2nav', `<button class="me" onclick="V2.sheet('char')" aria-label="Your character"><div class="in" id="v2av"></div><span class="mf" id="v2mf2">😊</span></button><div class="cap"><button data-p="home" id="v2home" onclick="V2.homeBtn()">${I.home}<span class="t">Home</span></button><button data-p="buy" onclick="nav('buy')" aria-label="Buy mode">${I.chair}<span class="t">Buy mode</span></button><button data-p="map" onclick="nav('map')" aria-label="Map">${I.map}<span class="t">Map</span></button></div><button class="ph" onclick="PHONEUI.open()" aria-label="Phone">${I.phone}<i id="v2phdot" style="display:none"></i></button>`);
     const sh = document.createElement('div'); sh.id = 'v2sheet'; host.appendChild(sh);
     $('v2av').addEventListener('error', () => {}, true);
   }
   function tick() {
     if (!$('v2top')) return; const S = SS() || {};
-    document.body.classList.toggle('v2m', mq.matches); if (!mq.matches) return;
+    document.body.classList.toggle('v2m', mq.matches); try { document.body.classList.toggle('mv-btns', !!(window.GP && GP.get().move === 'btns')) } catch (e) {} if (!mq.matches) return;
     ['home', 'map', 'buy', 'phone'].forEach(p => document.body.classList.toggle('pg-' + p, S.page === p)); document.body.classList.toggle('clean', !!S.clean);
     const clk = ($('clk') || {}).textContent || '--:--', m = clk.match(/^(\S+)\s*(AM|PM)?/i);
     try { V2.musicIcon(); V2.micSync(); V2.floorBtn() } catch (e) {} $('v2clk').textContent = m ? m[1] : clk; $('v2ap').textContent = m && m[2] ? m[2].toUpperCase() : ''; $('v2ic').textContent = ($('hico') || {}).textContent || '🌙';
@@ -159,7 +159,7 @@
     joyShow(on) {
       document.body.classList.toggle('fpmode', !!on && !this.walking);
       let j = $('v2joy');
-      if (on && !j) { j = document.createElement('div'); j.id = 'v2joy'; j.innerHTML = '<div class="jb"><div class="jk"></div></div>'; document.getElementById('app').appendChild(j); this.joyBind(j) }
+      if (on && !j) { j = document.createElement('div'); j.id = 'v2joy'; const pad = window.DPAD && DPAD.use(); j.innerHTML = pad ? DPAD.html() : '<div class="jb"><div class="jk"></div></div>'; document.getElementById('app').appendChild(j); if (pad) DPAD.bind(j, (x, y) => { try { ROOM3D.setJoy(x, y) } catch (e) {} }); else this.joyBind(j) }
       if (!on && j) { j.remove(); try { ROOM3D.setJoy(0, 0) } catch (e) {} }
     },
     joyBind(el) {
@@ -179,11 +179,19 @@
       if (typeof BAN !== 'undefined' && BAN.light === false && !(R.power && R.power())) { toast('NEPA don carry light. Pay your bills or get a Gen Set.'); try { LAGOS.open('bills') } catch (e) {} return }
       const on = R.roomLight === false; R.setLight(on); toast(on ? 'Lights on 💡' : 'Lights off 🌙'); tick() },
     /* nav highlight + the Outside button: it turns into an "Inside" button while your character is out on the street */
+    /* The first nav button: in the street it is "Home" (takes you back). At home it turns into "Outside" (takes you out). Anywhere else it is "Home". */
+    inWorld() { const a = document.getElementById('app'); return !!(a && a.classList.contains('inworld')) },
     navSync() {
-      const out = S.page === 'map' && !!(window.MAP3D && MAP3D.isOutside && MAP3D.isOutside()), cur = S.page === 'buy' ? 'buy' : out ? 'outside' : S.page === 'map' ? 'map' : 'home';
+      const w = this.inWorld(), cur = S.page === 'buy' ? 'buy' : S.page === 'map' && !w ? 'map' : 'home';
       document.querySelectorAll('#v2nav .cap button').forEach(b => b.classList.toggle('on', b.dataset.p === cur));
-      const b = $('v2out'); if (!b || b.dataset.in === String(out)) return; b.dataset.in = String(out);
-      b.innerHTML = (out ? I.inside : I.door) + `<span class="t">${out ? 'Inside' : 'Outside'}</span>`; b.setAttribute('aria-label', out ? 'Go back inside' : 'Go outside');
+      const b = $('v2home'); if (!b) return; const out = !w && S.page === 'home';      // at home (not in the street): offer "Outside"
+      if (b.dataset.out === String(out)) return; b.dataset.out = String(out);
+      b.innerHTML = (out ? I.door : I.home) + `<span class="t">${out ? 'Outside' : 'Home'}</span>`; b.setAttribute('aria-label', out ? 'Go outside' : 'Go home');
+    },
+    homeBtn() {
+      if (this.inWorld()) { try { if (window.WORLD && WORLD.exit) WORLD.exit(true) } catch (e) {} nav('home'); setTimeout(() => this.navSync(), 150); return }
+      if (S.page === 'home') { this.outsideGo(); setTimeout(() => this.navSync(), 250); setTimeout(() => this.navSync(), 900); return }
+      nav('home'); setTimeout(() => this.navSync(), 150)
     },
     outside() {
       if (S.page === 'map' && window.MAP3D && MAP3D.isOutside && MAP3D.isOutside()) { nav('home'); setTimeout(() => this.navSync(), 120); return }

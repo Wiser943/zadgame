@@ -236,3 +236,12 @@ body.v2m.inworld #wRight{bottom:calc(88px + var(--sab,0px))}
 body.v2m.inworld #wBot{bottom:calc(84px + var(--sab,0px))}
 body.v2m.inworld #wUse{bottom:calc(172px + var(--sab,0px))}
 body.v2m.inworld #wHelp{display:none}
+
+/* ---------- arrow-button movement (Settings -> Movement controls) ---------- */
+.dpad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,54px);gap:6px;touch-action:none;user-select:none;-webkit-user-select:none}
+.dpad button{border:2px solid rgba(255,255,255,.35);border-radius:16px;background:rgba(20,26,52,.5);color:#fff;font-size:20px;display:grid;place-items:center;padding:0;touch-action:none;backdrop-filter:blur(4px)}
+.dpad button.on{background:rgba(255,255,255,.75);color:#15171d}
+.dpad [data-d=u]{grid-column:2;grid-row:1}.dpad [data-d=l]{grid-column:1;grid-row:2}.dpad [data-d=d]{grid-column:2;grid-row:2}.dpad [data-d=r]{grid-column:3;grid-row:2}
+body.v2m.inworld #wPad{bottom:calc(88px + var(--sab,0px))}
+#v2joy .dpad{margin:0}
+body.v2m.inworld #wBot{left:auto;right:12px}

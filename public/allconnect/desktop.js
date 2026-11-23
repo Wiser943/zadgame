@@ -7,6 +7,7 @@
   const MQ = window.matchMedia('(min-width:900px) and (min-height:560px)');
   const ICON = {
     home: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9H4z"/></svg>',
+    door: '<svg viewBox="0 0 24 24"><path d="M13 4h3a2 2 0 0 1 2 2v14M2 20h20M13 4 6 6v14h7zM10 12h.01"/></svg>',
     shop: '<svg viewBox="0 0 24 24"><path d="M5 11V8a2 2 0 012-2h10a2 2 0 012 2v3"/><path d="M3 13a2 2 0 014 0v2h10v-2a2 2 0 014 0v5H3z"/><path d="M5 18v2M19 18v2"/></svg>',
     map: '<svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/></svg>',
     phone: '<svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>',
@@ -53,7 +54,7 @@
       $('dkHome').onclick = () => this.go('home');
       $('dkWallet').onclick = () => { if (window.openBank) openBank(); };
       $('dkPlus').onclick = e => { e.stopPropagation(); if (window.openBank) openBank(true); };
-      $('dkNav').onclick = e => { const b = e.target.closest('button[data-p]'); if (b) this.go(b.dataset.p); };
+      $('dkNav').onclick = e => { const b = e.target.closest('button[data-p]'); if (!b) return; if (b.dataset.p === 'home' && b.dataset.out === 'true') this.outside(); else this.go(b.dataset.p); };
       $('dkPhone').onclick = () => { if (window.PHONEUI) PHONEUI.open(); };
       $('dkAv').onclick = () => { if (typeof nav === 'function') { nav('phone'); try { PH.open('style'); } catch (e) { } } };
       $('dkRadio').onclick = () => { try { nav('phone'); SONGIFY.open(); } catch (e) { if (typeof toast === 'function') toast('Radio is not available right now.'); } };
@@ -101,9 +102,11 @@
       const on = $('dkOn'), vis = $('vis'), onl = $('onl'); if (on && vis && onl) on.innerHTML = '👁 <b>' + vis.textContent + '</b> <u>● ' + onl.textContent + ' active today</u>';
       [].forEach.call($('dkNav').querySelectorAll('button'), b => b.classList.toggle('on', b.dataset.p === (m === 'phone' ? this.lastPage : m)));
       if (m !== 'phone') this.lastPage = m === 'world' ? '' : m;
+      // the first nav button: "Home" in the street and everywhere else, "Outside" while you are at home
+      { const hb = $('dkNav').querySelector('[data-p="home"]'), iw = m === 'world' || !!(window.WORLD && WORLD.on), outNow = m === 'home' && !iw; if (hb && hb.dataset.out !== String(outNow)) { hb.dataset.out = String(outNow); hb.innerHTML = (outNow ? ICON.door : ICON.home) + '<span>' + (outNow ? 'Outside' : 'Home') + '</span>'; } }
       // Go outside / Go inside
       const out = $('dkOut'), inWorld = m === 'world' || (window.WORLD && WORLD.on);
-      out.hidden = !(m === 'home' || m === 'map' || inWorld) || !!(window.WORLD && WORLD.on && WORLD.me.mode === 'car');
+      out.hidden = !(m === 'map' || inWorld) || !!(window.WORLD && WORLD.on && WORLD.me.mode === 'car');
       out.textContent = inWorld ? (window.WORLD && WORLD.nearHome && WORLD.nearHome() ? '🚪 Go inside' : '🏠 Go home') : m === 'map' ? '🚶 Explore in 3D' : '🚪 Go outside';
       $('dkRadio').hidden = m === 'map' || m === 'buy';
       $('dkWork').parentNode.hidden = m === 'buy';

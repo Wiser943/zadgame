@@ -21,6 +21,7 @@
       '<button id="wUse"><kbd>E</kbd><span></span></button>' +
       '<div id="wHelp">WASD move · Shift run · drag to look · click to walk · E use · G dance · V wave</div>' +
       '<div id="wJoy"><i></i></div>' +
+      '<div id="wPad"></div>' +
       '<div id="wCar"><div id="wSteer"><b>◀</b><i></i><b>▶</b></div>' +
       '<div id="wRight"><div class="wtop"><button id="wHorn">HORN</button><button id="wOut">🚪 Get out</button></div><div class="wped"><button id="wBrake">BRAKE<small>HOLD · R</small></button><button id="wGas">GAS</button></div></div></div>';
     app.appendChild(w);
@@ -50,6 +51,7 @@
     pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); pset(e); }); pad.addEventListener('pointermove', e => { if (pad.hasPointerCapture(e.pointerId)) pset(e); });
     const prel = () => { X.pedal.steer = 0; th.style.transform = ''; }; pad.addEventListener('pointerup', prel); pad.addEventListener('pointercancel', prel);
     // touch stick for walking
+    if (window.DPAD) { $('wPad').innerHTML = DPAD.html(); DPAD.bind($('wPad'), (x, y) => { X.joy.x = x; X.joy.y = -y; if (x || y) X.audio(); }); }
     const joy = $('wJoy'), jt = joy.querySelector('i');
     const jset = e => { const r = joy.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), m = r.width / 2 - 14, l = Math.hypot(dx, dy) || 1, k = Math.min(1, l / m); X.joy.x = dx / l * k; X.joy.y = dy / l * k; jt.style.transform = 'translate(' + (dx / l * k * m) + 'px,' + (dy / l * k * m) + 'px)'; };
     joy.addEventListener('pointerdown', e => { joy.setPointerCapture(e.pointerId); jset(e); X.audio(); }); joy.addEventListener('pointermove', e => { if (joy.hasPointerCapture(e.pointerId)) jset(e); });

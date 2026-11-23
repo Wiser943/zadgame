@@ -2,7 +2,7 @@
    profile edit, socials, tutorial, about, legal, shop, sound/theme/accessibility toggles, voice, language, log out.
    GameHub preferences are stored in the same localStorage key ('ghPrefs'), so the game picks changes up live. */
 const socialList=()=>Object.keys(window.SOCIAL||{}).filter(k=>SOC_META[k]).map(k=>[SOC_META[k][1],SOC_META[k][3],window.SOCIAL[k]]);
-const GP_DEF={theme:'light',night:'off',darkness:50,saver:'auto',camAuto:false,walls:'auto',music:true,sound:true,vibration:true,voice:true,lowPower:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm',appLayout:'horizontal',iconStyle:'classic'};
+const GP_DEF={theme:'light',night:'off',darkness:50,saver:'auto',camAuto:false,walls:'auto',move:'joy',music:true,sound:true,vibration:true,voice:true,lowPower:false,winnerReplay:true,voiceCmd:false,voiceURI:'',voiceRate:1,lang:'pcm',appLayout:'horizontal',iconStyle:'classic'};
 /* Removed options (reduce animations, larger text, high contrast, colour-blind friendly). Wipe any saved value once, so nobody is stuck with one still on. */
 try{const o=JSON.parse(localStorage.getItem('ghPrefs')||'null');if(o&&('reducedMotion' in o||'largeText' in o||'highContrast' in o||'colorSafe' in o)){['reducedMotion','largeText','highContrast','colorSafe'].forEach(k=>delete o[k]);localStorage.setItem('ghPrefs',JSON.stringify(o))}}catch(e){}
 const GP={
@@ -27,7 +27,7 @@ Object.assign(PH,{
   nightHint(p){const m=window.PREFX&&PREFX.night(p||GP.get());return m==='auto'?`Auto: dark from 6:30 pm to 6:30 am, Naija time (${PREFX.nightNow(p)?'on':'off'} now).`:''},
   saverHint(p){const m=window.PREFX&&PREFX.saver(p||GP.get());if(m!=='auto')return m==='on'?'On: nothing loads in the background and music stays off.':'';const r=PREFX.saverReason();return `Auto: turns on when battery is low or network is slow (${PREFX.saverNow(p)?'on now'+(r?', '+r:''):'off now'}).`},
   paintDisplayHints(){const a=document.getElementById('segh-night'),b=document.getElementById('segh-saver');if(a)a.textContent=this.nightHint();if(b)b.textContent=this.saverHint()},
-  setSeg(k,v){const val=k==='camAuto'?v==='true':v;GP.set(k,val);
+  setSeg(k,v){const val=k==='camAuto'?v==='true':v;GP.set(k,val);if(k==='move')document.body.classList.toggle('mv-btns',v==='btns');
     const row=document.querySelector(`.segrow[data-seg="${k}"]`);if(row)row.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.v===v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
     const h=document.getElementById('segh-'+k);if(h)h.textContent=k==='night'?this.nightHint():k==='saver'?this.saverHint():(val?'On: the map camera swings round to follow the way you walk.':'');
     if(k==='saver'){if(window.BGM)BGM.sync();if(window.refreshMute)refreshMute();const now=PREFX.saverNow();now?toast('Saver mode on: nothing loads in the background'):(toast('Saver mode off'),window.warmUp&&warmUp(true))}
@@ -49,6 +49,7 @@ Object.assign(PH,{
         <button class="trow" data-k="autoPost" onclick="PH.tglAuto()"><span class="ti"><i class="fa-solid fa-trophy"></i></span><span class="tl">Auto-post my match wins</span><span class="sw2 ${auto?'on':''}"><i></i></span></button></div>
       <div class="lab2">SOUND</div><div class="sgrp">${this.trow('sound','Sound effects','fa-solid fa-volume-high',this.isOn('sound',p))}${FX_SOUND.map(f=>this.trow(f[0],f[1],f[2],this.isOn(f[0],p))).join('')}</div>
       <div class="lab2">DISPLAY</div><div class="sgrp">${this.seg('night','🌙','Night mode','Darker screens for the evening, easier on your eyes. Applies to AllConnect, your phone apps and GameHub.',[['off','Off'],['on','On'],['auto','Auto']],p.night,this.nightHint(p))}
+        ${this.seg('move','🕹️','Movement controls','Walk with an on-screen joystick or with arrow buttons (home walk mode, first-person view and the street).',[['joy','Joystick'],['btns','Buttons']],p.move||'joy')}
         ${this.seg('walls','🧱','Walls in first-person & walk view','Auto: only the wall that blocks your view goes see-through. Clear: every wall is see-through. Solid: walls stay solid.',[['auto','Auto'],['clear','Clear'],['solid','Solid']],p.walls||'auto')}
         ${this.seg('camAuto','🎥','Camera turns by itself','The camera stays where you leave it. Drag to turn it.',[['false','Off'],['true','On']],String(!!p.camAuto),p.camAuto?'On: the map camera swings round to follow the way you walk.':'')}
         ${this.seg('appLayout','📱','App layout','How the apps sit on your phone home screen. Horizontal swipes between pages, vertical is one list you scroll up and down.',[['horizontal','Horizontal'],['vertical','Vertical']],p.appLayout==='vertical'?'vertical':'horizontal')}

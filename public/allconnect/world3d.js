@@ -153,7 +153,8 @@
   const C = c => new THREE.Color(c);
   X.applyTime = function () {
     if (!X.scene || typeof S === 'undefined') return;
-    const h = ((S.min % 1440) + 1440) % 1440 / 60; X.hour = h;
+    // the same clock as the home screen's sun/moon: real Lagos time (S.min is the fast game clock and made the street cycle day/night every ~70 minutes)
+    const nowMin = (typeof PREFX !== 'undefined' && PREFX.lagosMin) ? PREFX.lagosMin() : S.min, h = ((nowMin % 1440) + 1440) % 1440 / 60; X.hour = h;
     const day = sm(5.2, 7.4, h) * (1 - sm(17.4, 19.6, h)), glow = Math.max(sm(4.8, 6, h) * (1 - sm(6, 7.6, h)), sm(16.8, 18.4, h) * (1 - sm(18.4, 20.2, h)));
     X.day = day; X.nightF = 1 - day;
     const top = C('#070d24').lerp(C('#4f9be0'), day), hor = C('#23264c').lerp(C('#bfe3f7'), day).lerp(C('#e0875a'), glow * .8);
@@ -168,10 +169,48 @@
     if (X.halo) X.halo.material.opacity = clamp(X.nightF * 1.2, 0, .95);
     if (X.lampMat) X.lampMat.color.set('#ffd9a0').multiplyScalar(.45 + .55 * X.nightF);
     if (X.groundMat) X.groundMat.emissiveIntensity = .05 + .18 * X.nightF;
+    if (X.lineMats) { const dim = .5 + .5 * day; X.lineMats.white.color.set('#f1eee4').multiplyScalar(dim); X.lineMats.yellow.color.set('#f2c230').multiplyScalar(.6 + .4 * day) }
   };
 
   /* ---------------------------------------------------------------- ground ---------------------------------------------------------------- */
   const VX = [], ZM = [120, 240, 350], ZI = [640, 750, 860, 940]; for (let x = 100; x <= 900; x += 100) VX.push(x);
+  /* ---------------------------------------------------------------- road markings ----------------------------------------------------------------
+     Every road is two lanes (one each way): double solid yellow centre line, solid white edge lines, white stop lines before each junction.
+     Real flat geometry, not paint on the 2 px-per-metre ground texture, so the lines stay crisp from the street and from the air. */
+  function buildMarkings() {
+    const quads = { white: [], yellow: [] }, Y = .045;
+    const rect = (k, x0, z0, x1, z1) => { if (x1 - x0 > 0 && z1 - z0 > 0) quads[k].push(x0, z0, x1, z1) };
+    const juncZ = [].concat(ZM, ZI), juncX = VX, HALF = 10, STOP = 11.4;
+    // vertical roads (run along z)
+    VX.forEach(x => [[30, 382], [575, 968]].forEach(([a, b]) => {
+      const js = juncZ.filter(z => z > a - 1 && z < b + 1).sort((p, q) => p - q); let z0 = a;
+      const spans = []; js.forEach(j => { spans.push([z0, j - HALF]); z0 = j + HALF }); spans.push([z0, b]);
+      spans.forEach(([s0, s1]) => { if (s1 - s0 < 3) return;
+        rect('yellow', x - .32, s0, x - .12, s1); rect('yellow', x + .12, s0, x + .32, s1);          // double solid yellow centre
+        rect('white', x - 6.6, s0, x - 6.38, s1); rect('white', x + 6.38, s0, x + 6.6, s1);          // edge lines
+      });
+      js.forEach(j => { rect('white', x - 6.4, j - STOP - .25, x - .45, j - STOP + .25); rect('white', x + .45, j + STOP - .25, x + 6.4, j + STOP + .25) });   // stop lines (drive on the right)
+    }));
+    // horizontal roads (run along x)
+    ZM.concat(ZI).forEach(z => { let x0 = 30; const spans = [];
+      juncX.forEach(j => { spans.push([x0, j - HALF]); x0 = j + HALF }); spans.push([x0, 970]);
+      spans.forEach(([s0, s1]) => { if (s1 - s0 < 3) return;
+        rect('yellow', s0, z - .32, s1, z - .12); rect('yellow', s0, z + .12, s1, z + .32);
+        rect('white', s0, z - 6.6, s1, z - 6.38); rect('white', s0, z + 6.38, s1, z + 6.6);
+      });
+      juncX.forEach(j => { rect('white', j - STOP - .25, z + .45, j - STOP + .25, z + 6.4); rect('white', j + STOP - .25, z - 6.4, j + STOP + .25, z - .45) });
+    });
+    // bridges: a plain dashed white centre line
+    (MAP3D.bridges || []).forEach(b => { for (let zz = b[1]; zz < b[1] + b[3]; zz += 10) rect('white', b[0] + b[2] / 2 - .12, zz, b[0] + b[2] / 2 + .12, Math.min(zz + 5, b[1] + b[3])) });
+    X.lineMats = {};
+    ['white', 'yellow'].forEach(k => {
+      const q = quads[k]; if (!q.length) return; const pos = new Float32Array(q.length / 4 * 18); let o = 0;
+      for (let i = 0; i < q.length; i += 4) { const x0 = q[i], z0 = q[i + 1], x1 = q[i + 2], z1 = q[i + 3]; [x0, Y, z0, x0, Y, z1, x1, Y, z1, x0, Y, z0, x1, Y, z1, x1, Y, z0].forEach(v => pos[o++] = v) }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const m = new THREE.MeshBasicMaterial({ color: k === 'white' ? '#f1eee4' : '#f2c230', polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, side: THREE.DoubleSide });
+      X.lineMats[k] = m; const mesh = new THREE.Mesh(g, m); mesh.renderOrder = 1; X.scene.add(mesh);
+    });
+  }
   function buildGround() {
     const PX = 2048, k = PX / SZ, m = document.createElement('canvas'); m.width = m.height = 500; const mc = m.getContext('2d'), id = mc.createImageData(500, 500);
     for (let i = 0; i < 250000; i++) { id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = 255; id.data[i * 4 + 3] = X.land[i] ? 255 : 0; } mc.putImageData(id, 0, 0);
@@ -188,8 +227,7 @@
     (MAP3D.bridges || []).forEach(b => { rect(b[0] - 1, b[1], b[0] + b[2] + 1, b[1] + b[3], '#8f8f94'); rect(b[0] + 1, b[1], b[0] + b[2] - 1, b[1] + b[3], '#44474c'); });
     // centre dashes (skipped through junctions)
     l.fillStyle = '#e9e6dc'; const near = (v, a) => a.some(q => Math.abs(q - v) < 11);
-    VX.forEach(x => { [[30, 382, ZM], [575, 968, ZI]].forEach(s => { for (let z = s[0]; z < s[1]; z += 14) if (!near(z + 3, s[2])) l.fillRect((x - .25) * k, z * k, .5 * k, 6 * k); }); });
-    ZM.concat(ZI).forEach(z => { for (let x = 30; x < 970; x += 14) if (!near(x + 3, VX)) l.fillRect(x * k, (z - .25) * k, 6 * k, .5 * k); });
+    // (the road centre lines, edge lines and stop lines are real geometry now: see buildMarkings)
     (MAP3D.bridges || []).forEach(b => { for (let z = b[1]; z < b[1] + b[3]; z += 12) l.fillRect((b[0] + b[2] / 2 - .25) * k, z * k, .5 * k, 5 * k); });
     // zebra crossings
     const zebra = (cx, cz, ax) => { for (let i = -5; i <= 5; i++) { if (ax === 'v') l.fillRect((cx + i * 1.2 - .4) * k, (cz - 9.5) * k, .8 * k, 2.2 * k); else l.fillRect((cx - 9.5) * k, (cz + i * 1.2 - .4) * k, 2.2 * k, .8 * k); } };
@@ -201,7 +239,7 @@
     X.groundMat = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: .1 });
     const gm = new THREE.Mesh(new THREE.PlaneGeometry(SZ, SZ), X.groundMat); gm.rotation.x = -Math.PI / 2; gm.position.set(SZ / 2, 0, SZ / 2); X.scene.add(gm);
     const wm = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), mat('#1d5a85')); wm.rotation.x = -Math.PI / 2; wm.position.set(SZ / 2, -.35, SZ / 2); X.scene.add(wm); X.water = wm;
-    X.roadsList = rd;
+    X.roadsList = rd; try { buildMarkings(); } catch (e) { console.warn('road markings failed', e); }
   }
 
   /* ---------------------------------------------------------------- buildings ---------------------------------------------------------------- */
