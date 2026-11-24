@@ -45,15 +45,10 @@ router.get('/state', ensureAuth, async (req, res, next) => {
 
 router.post('/save', ensureAuth, async (req, res, next) => {
   try {
-    const clean = sanitizeSave(req.body); let conflict = null;
-    // the browser says which version of "needs" it started from; if the server changed them since (a friend fed you), keep the server's and tell the browser
-    if (clean.needs && Number.isFinite(Number(req.body && req.body.v))) {
-      const cur = await User.findById(req.user.id).select('ac.needs ac.needsV').lean(), v = (cur && cur.ac && cur.ac.needsV) || 0;
-      if (Number(req.body.v) !== v) { conflict = { needs: (cur.ac && cur.ac.needs) || clean.needs, v }; delete clean.needs; }
-    }
+    const clean = sanitizeSave(req.body);
     const $set = Object.fromEntries(Object.entries(clean).map(([k, v]) => ['ac.' + k, v]));
     if (Object.keys($set).length) await User.updateOne({ _id: req.user.id }, { $set });
-    res.json(conflict ? { ok: true, conflict: true, needs: conflict.needs, v: conflict.v } : { ok: true });
+    res.json({ ok: true });
   } catch (e) { next(e); }
 });
 
@@ -80,7 +75,6 @@ router.post('/new', ensureAuth, async (req, res, next) => {
   try {
     const u = await User.findByIdAndUpdate(req.user.id, { $set: { 'ac.cash': 2000000, 'ac.paint': '#d9a93a', 'ac.owned': ['Classic Cream'], 'ac.needs': [.9, .9, .9, .9, .9, .9], 'ac.min': 19 * 60, 'ac.jobId': '', 'ac.jobShifts': {}, 'ac.lastShift': null, 'ac.shiftsToday': 0, 'ac.items': F.starterItems(), 'ac.properties': [], 'ac.v2': true, 'ac.wish': [] } }, { new: true });
     await require('../models/ACInvest').deleteOne({ user: String(req.user.id) });   // Invest holdings reset with the balance, so a reset can't be used to keep assets AND get fresh cash
-    await require('./acpet').resetPet(String(req.user.id));                 // the pet's clothes and spending history go with the old balance too
     await require('./acstyle').resetWardrobe(String(req.user.id));          // same for the wardrobe: bought clothes go with the old balance. Body, skin, hair, pronouns and privacy stay.
     res.json({ ac: publicAC(u.ac) });
   } catch (e) { next(e); }

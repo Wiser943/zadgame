@@ -99,19 +99,18 @@ const TICKET = { chance: 0.1, min: 2500, max: 7500 };      // street (unparked) 
 const CRASH = { chance: 0.02, worn: 0.05, pct: 0.012, min: 2000 };   // crash chance per motor trip, higher when condition is under 50
 
 /* ---------------- routes: bus business (91) and airport shuttle (95) ---------------- */
-const ROUTE_DAILY_CAP = 60000;                              // most a player can collect from bus and shuttle routes in one day (transport is meant to be the smallest earner)
 const MAX_ROUTE_HOURS = 12;                                  // a route earns for at most 12 hours before you must collect
 const ROUTE_WEAR = 0.4;                                      // condition lost per hour on a route
 const ROUTES = [
-  { id: 'oshodi-yaba',   kind: 'bus',  name: 'Oshodi → Yaba',            rate: 1400, burn: 2.5, minRep: 0 },
-  { id: 'iyana-ikeja',   kind: 'bus',  name: 'Iyana-Ipaja → Ikeja',      rate: 1600, burn: 2.6, minRep: 0 },
-  { id: 'ikorodu-tbs',   kind: 'bus',  name: 'Ikorodu → TBS',            rate: 1800, burn: 3,   minRep: 20 },
-  { id: 'ajah-obalende', kind: 'bus',  name: 'Ajah → Obalende',          rate: 1900, burn: 3.2, minRep: 40 },
-  { id: 'mile12-cms',    kind: 'bus',  name: 'Mile 12 → CMS',            rate: 2100, burn: 3.4, minRep: 60 },
-  { id: 'mma-ikeja',     kind: 'van',  name: 'Airport ⇄ Ikeja GRA',      rate: 1400, burn: 2,   minRep: 0 },
-  { id: 'mma-vi',        kind: 'van',  name: 'Airport ⇄ Victoria Island', rate: 1800, burn: 2.3, minRep: 20 },
-  { id: 'mma-lekki',     kind: 'van',  name: 'Airport ⇄ Lekki',          rate: 2000, burn: 2.6, minRep: 40 },
-  { id: 'mma-ajah',      kind: 'van',  name: 'Airport ⇄ Ajah',           rate: 2200, burn: 2.8, minRep: 60 }
+  { id: 'oshodi-yaba',   kind: 'bus',  name: 'Oshodi → Yaba',            rate: 11000, burn: 2.5, minRep: 0 },
+  { id: 'iyana-ikeja',   kind: 'bus',  name: 'Iyana-Ipaja → Ikeja',      rate: 12500, burn: 2.6, minRep: 0 },
+  { id: 'ikorodu-tbs',   kind: 'bus',  name: 'Ikorodu → TBS',            rate: 14000, burn: 3,   minRep: 20 },
+  { id: 'ajah-obalende', kind: 'bus',  name: 'Ajah → Obalende',          rate: 15500, burn: 3.2, minRep: 40 },
+  { id: 'mile12-cms',    kind: 'bus',  name: 'Mile 12 → CMS',            rate: 17000, burn: 3.4, minRep: 60 },
+  { id: 'mma-ikeja',     kind: 'van',  name: 'Airport ⇄ Ikeja GRA',      rate: 11500, burn: 2,   minRep: 0 },
+  { id: 'mma-vi',        kind: 'van',  name: 'Airport ⇄ Victoria Island', rate: 14000, burn: 2.3, minRep: 20 },
+  { id: 'mma-lekki',     kind: 'van',  name: 'Airport ⇄ Lekki',          rate: 16000, burn: 2.6, minRep: 40 },
+  { id: 'mma-ajah',      kind: 'van',  name: 'Airport ⇄ Ajah',           rate: 18000, burn: 2.8, minRep: 60 }
 ];
 const ROUTE_BY = Object.fromEntries(ROUTES.map((r) => [r.id, r]));
 // how busy a route is at a Lagos hour: rush hours pay more, the dead of night barely pays
@@ -213,7 +212,7 @@ function gradeLight(plan, times) {
 const lightMinElapsed = (plan, times) => plan.reduce((s, d) => s + d, 0) + times.reduce((s, t) => s + (t > 0 ? t : 0), 0);
 
 /* ---------------- Okada minigame (84) ---------------- */
-const OKADA = { rounds: 6, lanes: 3, base: 600, perSafe: 250, cooldownMs: 45000, perDay: 25, minMs: 3000, cap: 25000, hours: 0.4 };   // hours: how much of an hour of fuel and wear one ride costs
+const OKADA = { rounds: 6, lanes: 3, base: 2500, perSafe: 1000, cooldownMs: 45000, perDay: 25, minMs: 3000, cap: 120000, hours: 0.4 };   // hours: how much of an hour of fuel and wear one ride costs
 const PASSENGERS = ['Tolu', 'Amaka', 'Chidi', 'Hauwa', 'Segun', 'Ngozi', 'Bashir', 'Funmi', 'Emeka', 'Zainab'];
 const TRIPS = [['Yaba', 'Surulere'], ['Oshodi', 'Ikeja'], ['Lekki Phase 1', 'Ajah'], ['Maryland', 'Ojota'], ['Ikorodu', 'Mile 12'], ['Obalende', 'CMS'], ['Ojuelegba', 'Mushin'], ['Berger', 'Ojodu']];
 /* each round shows hazards in some lanes (a bit-set per lane); at least one lane is always free */
@@ -305,43 +304,10 @@ const newVehicle = (kind, now = Date.now()) => { const d = VEHICLES[kind]; retur
 /* the three one-time quests that live in the Lagos Life quest list */
 const questDone = (tr) => ({ licence: hasLicence(tr), ride: vehiclesOf(tr).length > 0, insure: vehiclesOf(tr).some((v) => v.insTier && v.insUntil) });
 
-// Residency / "Visa" tiers (Transport app → Residency tab). A player's own home state issues a residence-style
-// paper when they first settle in Lagos, so this plays as a document you pick up from the LASG desk inside
-// Transport rather than from a separate app. Tiers upgrade automatically as the conditions are met, except
-// Investor (a one-time fee, since it is the one you actively buy — see routes/actransport.js).
-const VISA_INVESTOR_FEE = 1350000;
-const VISA = {
-  arrival: { name: 'New Arrival Pass', blurb: 'Explore Lagos, socialise and look for work. Get hired to move up to a Work Permit.', cost: 0 },
-  work: { name: 'Work Permit', blurb: 'Granted the moment you get hired.', cost: 0 },
-  investor: { name: 'Investor Permit', blurb: 'Needed to open your own business or run a shop.', cost: VISA_INVESTOR_FEE },
-  indigene: { name: 'Lagos Indigene Status', blurb: 'Everything open. The top tier — meet any one of the requirements below.', cost: 0 }
-};
-// Every alternate path to Indigene Status (meeting ANY ONE is enough — mirrors the old "level, net worth OR
-// property" rule, broadened to also cover social life, posting, pet care and home styling as requested).
-// `ctx` is the same flat shape utils/acmilestones.js uses, plus `vetVisits`.
-function indigeneChecklist(ctx) {
-  const c = ctx || {};
-  return [
-    { id: 'wealth', label: 'Net worth of ₦50,000,000 or more', done: (c.cash || 0) >= 50000000 },
-    { id: 'property', label: 'Own a property worth ₦40,000,000 or more', done: !!c.topHome },
-    { id: 'career', label: 'Reached the top of a career ladder', done: !!c.jobTop },
-    { id: 'social', label: 'Thrown a house party or made 10+ friends', done: (c.partiesThrown || 0) >= 1 || (c.friends || 0) >= 10 },
-    { id: 'posting', label: 'Posted 50+ times on P-Gist or reached 50+ followers', done: (c.posts || 0) >= 50 || (c.followers || 0) >= 50 },
-    { id: 'pet', label: 'Taken a pet in for vet care', done: (c.vetVisits || 0) >= 1 },
-    { id: 'styling', label: 'Furnished a home with 5+ pieces', done: (c.furniture || 0) >= 5 }
-  ];
-}
-function visaStatus(ctx, investorPaid) {
-  const c = ctx || {}, list = indigeneChecklist(c), indigene = list.some((x) => x.done);
-  const tier = indigene ? 'indigene' : investorPaid ? 'investor' : c.jobId ? 'work' : 'arrival';
-  return { tier, tiers: Object.entries(VISA).map(([id, v]) => ({ id, ...v, have: id === tier || (id === 'work' && (tier === 'investor' || tier === 'indigene')) || (id === 'investor' && tier === 'indigene') })), checklist: list, indigeneEligible: indigene };
-}
-
 module.exports = {
   HOUR, DAY, dayKey, hourOf, r100, naira, VEHICLES, KINDS, MAX_VEHICLES, vdef, sellPrice, RENT, FUEL_BASE, fuelPrice, fareMult, fuelCost, serviceCost, condLabel,
   PAINTS, PAINT_BY, paintPrice, MODS, TIP_CAP, modPrice, modsFor, tipPct, INS, INS_DAYS, insDiscount, insPrice, insured, cover, ASSIST, isMember, LOTS, LOT_BY, PARK_MAX_HOURS, parked,
-  TICKET, CRASH, ROUTE_DAILY_CAP, MAX_ROUTE_HOURS, ROUTE_WEAR, ROUTES, ROUTE_BY, demand, repMult, accrue, SIGNS, RULES, QUIZ, shuffle, buildQuiz, gradeQuiz, signsReward,
+  TICKET, CRASH, MAX_ROUTE_HOURS, ROUTE_WEAR, ROUTES, ROUTE_BY, demand, repMult, accrue, SIGNS, RULES, QUIZ, shuffle, buildQuiz, gradeQuiz, signsReward,
   LIGHT, lightPlan, lightPoints, gradeLight, lightMinElapsed, OKADA, okadaPlan, gradeOkada, okadaFare, ROADS, REPORT_KINDS, REPORTS, summarize, REP, REP_TIERS, tierOf,
-  hasLicence, vehiclesOf, rentActive, pickVehicle, incident, describe, newId, newVehicle, questDone,
-  VISA, VISA_INVESTOR_FEE, indigeneChecklist, visaStatus
+  hasLicence, vehiclesOf, rentActive, pickVehicle, incident, describe, newId, newVehicle, questDone
 };

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const S = new mongoose.Schema({
   user: { type: String, required: true, unique: true },
   land: { type: [{ _id: false, id: String, place: String, paid: Number, at: Number }], default: [] },
-  biz: { type: [{ _id: false, key: String, paid: Number, at: Number, staff: { type: Number, default: 0 }, tier: { type: String, default: 'standard' } }], default: [] },
+  biz: { type: [{ _id: false, key: String, paid: Number, at: Number }], default: [] },
   trucks: { type: [{ _id: false, id: String, paid: Number, at: Number }], default: [] },
   lastPayoutAt: { type: Date, default: null },          // the last 6 PM that has been paid. Moved atomically so an evening is paid once.
   since: { type: Date, default: null },                 // first purchase ("payouts counted from ...")

@@ -19,7 +19,7 @@ const LAGOS = {
   draw() {
     const el = document.getElementById('q3'), d = this.d; if (!el || !d) return;
     const ev = d.event, n = this.todo();
-    el.innerHTML = `${this.ic(ev.fa, ev.color, 28)}<div><b>${this.esc(NG.pcm() ? ev.pidgin : ev.title)}</b><span>${this.esc(NG.pcm() ? ev.title : ev.pidgin)}</span></div>${n ? `<em class="lgdot">${n}</em>` : ''}`;
+    el.innerHTML = `${this.ic(ev.fa, ev.color, 28)}<div><b>${this.esc(ev.title)}</b><span>${this.esc(ev.pidgin)}</span></div>${n ? `<em class="lgdot">${n}</em>` : ''}`;
     el.style.display = '';
     if (typeof drawApps === 'function') drawApps();
   },
@@ -38,7 +38,7 @@ const LAGOS = {
   open(tab) {
     if (!this.d) return toast('Loading the city…');
     this.tab = tab || 'today';
-    SHEET.open({ id: 'lagos', title: NG.say('Naija Life', 'Naija Life'), tab: this.tab, onTab: t => { this.tab = t; if (t === 'quests') this.loadQuests(true) },
+    SHEET.open({ id: 'lagos', title: 'Lagos Life', tab: this.tab, onTab: t => { this.tab = t; if (t === 'quests') this.loadQuests(true) },
       tabs: () => { const d = this.d; return [{ id: 'today', label: 'Today', badge: d.daily && d.daily.claimable ? 1 : 0 }, { id: 'quests', label: 'Quests', badge: d.quests.claimable }, { id: 'bills', label: 'Bills', badge: d.bills.count }] },
       body: t => this.bodyFor(t) });
   },
@@ -55,7 +55,7 @@ const LAGOS = {
     const mins = Math.max(1, Math.round((ev.endsAt - Date.now()) / 60000)), left = mins >= 60 ? Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm' : mins + ' min';
     const dist = Object.entries(ev.districts || {}).map(([k, v]) => `<li><b>${this.esc(k)}</b><span>${this.esc(v)}</span></li>`).join('');
     const dl = d.daily;
-    return `<div class="lgev" style="--c:${ev.color}">${this.ic(ev.fa, ev.color, 46)}<div><h3>${this.esc(NG.pcm() ? ev.pidgin : ev.title)}</h3><p class="pg">${this.esc(ev.pidginText)}</p><p>${this.esc(ev.text)}</p><small>${NG.say('Changes in', 'E go change in')} ${left}</small></div></div>
+    return `<div class="lgev" style="--c:${ev.color}">${this.ic(ev.fa, ev.color, 46)}<div><h3>${this.esc(ev.title)}</h3><p class="pg">${this.esc(ev.pidginText)}</p><p>${this.esc(ev.text)}</p><small>Changes in ${left}</small></div></div>
       ${eff.length ? `<div class="lgfx">${eff.map(e => `<span class="${e[2] ? 'bad' : 'good'}">${this.esc(e[0])} <b>${e[1]}</b></span>`).join('')}</div>` : ''}
       ${dist ? `<h4>Around the city</h4><ul class="lgdist">${dist}</ul>` : ''}
       <div class="lgnext">Next up: ${this.ic(nx.fa, nx.color, 22)} <b>${this.esc(nx.title)}</b></div>
@@ -75,7 +75,7 @@ const LAGOS = {
   async loadQuests(refresh) { try { this.Q = (await NET.api('/api/ac/lagos/quests')).quests; if (refresh && this.tab === 'quests') this.paint() } catch (e) { toast(e.message) } },
   questsHtml() {
     const q = this.Q || [], done = q.filter(x => x.claimed).length;
-    return `<div class="lgprog"><div><b>${done} of ${q.length} done</b><small>${NG.say('Finish these to get started in 9ja. Each one pays.', 'Finish these to start for 9ja. Each one dey pay.')}</small></div><i style="width:${Math.round(done / Math.max(1, q.length) * 100)}%"></i></div>` +
+    return `<div class="lgprog"><div><b>${done} of ${q.length} done</b><small>Finish these to get started in Lagos. Each one pays.</small></div><i style="width:${Math.round(done / Math.max(1, q.length) * 100)}%"></i></div>` +
       q.map(x => `<div class="lgq ${x.claimed ? 'cl' : x.done ? 'rd' : ''}">${this.ic(x.claimed ? 'check' : x.fa, x.claimed ? '#22b573' : x.done ? '#f59e0b' : '#94a3b8', 36)}<div><b>${this.esc(x.title)}</b><small>${x.claimed ? 'Claimed' : this.esc(x.hint)}</small></div>
         ${x.claimed ? '' : x.done ? `<button class="lgbtn" onclick="LAGOS.claim('${x.id}',this)">+${this.fmt(x.reward)}</button>` : `<span class="lgrw">${this.fmt(x.reward)}</span>`}</div>`).join('');
   },
@@ -96,15 +96,9 @@ const LAGOS = {
       <div class="lgr"><b>${this.fmt(b.paid ? b.amount : b.total)}</b>${b.paid ? '<span class="lgok"><span class="fa-solid fa-check"></span></span>' : `<button class="lgbtn" onclick="LAGOS.pay('${b.cycle}','${b.key}',this)">Pay</button>`}</div></div>`;
     el.innerHTML = `${s.powerCut ? '<div class="lgwarn"><span class="fa-solid fa-bolt-slash"></span> Light don go. Pay your electricity bill to bring it back.</div>' : ''}
       <div class="lgsum"><div><small>You owe</small><b>${this.fmt(s.total)}</b></div>${unpaid.length > 1 ? `<button class="lgbtn big" onclick="LAGOS.pay(null,null,this,true)">Pay all</button>` : ''}</div>
-      <button class="trow lgauto" onclick="LAGOS.autopay(this)"><span class="tl">Auto-pay bills<small class="sub">Charge each new bill to your balance the moment it arrives</small></span><span class="sw2 ${r.autopay ? 'on' : ''}"><i></i></span></button>
       ${unpaid.length ? unpaid.map(row).join('') : '<p class="empty">All bills paid. Well done! New bills arrive every Monday.</p>'}
       <p class="lgnote">Bills come every Monday and are due by Sunday night. Late bills cost 10% more, and unpaid electricity means a power cut. The more appliances you have, the higher the bill. The city event changes prices too.</p>
       ${paid.length ? `<h4>Paid recently</h4>${paid.map(row).join('')}` : ''}`;
-  },
-  async autopay(btn) {
-    const on = !(this.B && this.B.autopay); if (btn) btn.disabled = true;
-    try { const r = await NET.api('/api/ac/lagos/bills/autopay', { method: 'POST', body: { on } }); this.B.autopay = !!r.autopay; toast(r.autopay ? 'Auto-pay is on' : 'Auto-pay is off'); this.loadBills() }
-    catch (e) { toast(e.message); if (btn) btn.disabled = false }
   },
   async pay(cycle, key, btn, all) {
     if (btn) btn.disabled = true;

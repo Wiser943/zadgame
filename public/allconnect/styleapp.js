@@ -3,7 +3,6 @@
    This file also keeps the player's look in sync with the map, the 3D room, the HUD portrait and the live roster. */
 const STYLE = {
   D: null, tab: 'body', sub: '', pv: null, busy: false, tried: '', fetching: null, timers: [],
-  _settingsChain: Promise.resolve(), _settingsSeq: 0, _settingsPending: 0, _settingsFailed: false, _settingsBase: null,
   JK: { j_neck: 'neck', j_ear: 'ear', j_wrist: 'wrist', j_ring: 'ring', j_waist: 'waist', j_ankle: 'ankle' },
   MK: { m_lips: 'lips', m_eyes: 'eyes', m_cheeks: 'cheeks', m_liner: 'liner', m_glow: 'glow' },
   TABS: [['body', 'Body', '🧍'], ['salon', 'Salon', '💇'], ['clothes', 'Clothes', '👕'], ['culture', 'Culture', '🪘'], ['work', 'Work', '🦺'], ['season', 'Seasonal', '🍂'], ['shoes', 'Shoes', '👟'], ['jewel', 'Jewels', '💎'],
@@ -75,31 +74,6 @@ const STYLE = {
     try { const r = await NET.api('/api/ac/style' + path, { method: method || 'POST', body: body || {} }); this.take(r); return r }
     catch (e) { toast(e.message); return null } finally { this.busy = false }
   },
-  optimisticSetting(path, body, mutate) {
-    if (!this.me) return Promise.resolve(null);
-    const before = JSON.parse(JSON.stringify(this.me));
-    if (!this._settingsPending) this._settingsBase = before;
-    this._settingsPending++; const seq = ++this._settingsSeq;
-    mutate(); this.apply(); this.paint(); this.busy = true;
-    const task = this._settingsChain.catch(() => {}).then(async () => {
-      try {
-        const r = await NET.api('/api/ac/style' + path, { method: 'PUT', body });
-        if (seq === this._settingsSeq) { if (this._settingsFailed) await this.load(); else this.take(r); }
-        return r;
-      } catch (e) {
-        this._settingsFailed = true; toast(e.message);
-        if (seq === this._settingsSeq) {
-          try { await this.load(); }
-          catch { this.D.me = this._settingsBase || before; S.cash = this.me.cash; this.apply(); this.paint(); }
-        }
-        return null;
-      } finally {
-        this._settingsPending--;
-        if (seq === this._settingsSeq && !this._settingsPending) { this.busy = false; this._settingsFailed = false; this._settingsBase = null; }
-      }
-    });
-    this._settingsChain = task; return task;
-  },
 
   /* ---------- helpers about items ---------- */
   owns(id) {
@@ -131,28 +105,14 @@ const STYLE = {
   /* ---------- the app ---------- */
   async open() {
     PH.view = 'style'; if (PH.TINT && !PH.TINT.style) PH.TINT.style = '#ffffff';
-    PH.shell('Boutique', 'STYLE.close()', `<div class="abody stx" id="ab"><div class="stleft"><div class="stpv"><canvas id="stCv" width="300" height="400" role="img" aria-label="Your avatar"></canvas><div class="sttry" id="stTry" style="display:none"><span></span><button onclick="STYLE.resetTry()">Reset</button></div></div><div id="stDesc" class="stdesc" style="display:none"></div></div><div class="sttabs" id="stTabs"></div><div id="stBody"><p class="empty">Loading…</p></div></div>`);
+    PH.shell('Style', 'STYLE.close()', `<div class="abody stx" id="ab"><div class="stpv"><canvas id="stCv" width="300" height="400" role="img" aria-label="Your avatar"></canvas><div class="sttry" id="stTry" style="display:none"><span></span><button onclick="STYLE.resetTry()">Reset</button></div></div><div id="stDesc" class="stdesc" style="display:none"></div><div class="sttabs" id="stTabs"></div><div id="stBody"><p class="empty">Loading…</p></div></div>`);
     if (!this.D) { try { await this.load() } catch (e) { toast(e.message); return } }
     if (PH.view !== 'style') return; this.mountPreview(); this.paint(true);
   },
   close() { this.stopPreview(); PH.close() },
   mountPreview() {
     this.stopPreview(); const cv = document.getElementById('stCv'); if (!cv) return;
-    const gen = (this._pvGen = (this._pvGen || 0) + 1), look = () => ({ render: S.render, turn: true, drag: true, ext: this.ext(), onTouch: () => { const h = document.getElementById('stHint'); if (h) h.style.opacity = 0 } });
-    this.pv = ACAvatar.preview(cv, S.render.g, look());   // flat 2D first (drag to spin works here too), so there is never a blank gap
-    if (window.AvatarView && AvatarView.canUpgrade()) {
-      // then quietly upgrade to the smooth, lit 3D model (same renderer as the house) once Three.js is ready
-      AvatarView.ready().then(ok => {
-        if (!ok || gen !== this._pvGen) return;                          // 3D never became available, or the player moved on already
-        const old = document.getElementById('stCv'); if (!old || !old.parentNode) return;
-        // a canvas that already drew in 2D cannot switch to WebGL, so the 3D model gets a fresh canvas in the same spot
-        const cv2 = document.createElement('canvas'); cv2.id = 'stCv'; cv2.width = old.width; cv2.height = old.height; cv2.className = old.className;
-        ['role', 'aria-label', 'style'].forEach(a => { if (old.hasAttribute(a)) cv2.setAttribute(a, old.getAttribute(a)) });
-        if (this.pv) this.pv.stop(); old.parentNode.replaceChild(cv2, old);
-        this.pv = AvatarView.mount(cv2, S.render.g, look()) || ACAvatar.preview(cv2, S.render.g, look());   // if WebGL says no, keep the flat preview
-      });
-    }
-    if (!document.getElementById('stHint')) { const h = document.createElement('div'); h.id = 'stHint'; h.className = 'sthint'; h.textContent = '↔ Drag to spin'; cv.parentNode.appendChild(h) } this.setDesc();
+    this.pv = ACAvatar.preview(cv, S.render.g, { render: S.render, turn: true, ext: this.ext() }); this.setDesc();
   },
   stopPreview() { if (this.pv) { this.pv.stop(); this.pv = null } },
   go(t, sub) { this.tab = t; this.sub = sub || ''; this.resetTry(); this.paint(); const ab = document.getElementById('ab'); if (ab) ab.scrollTop = 0 },
@@ -230,7 +190,7 @@ const STYLE = {
   t_body() {
     const me = this.me, C = this.D.catalog;
     return `<div class="lab2">BASE MODEL</div><p class="hint2">This only sets the frame your outfits are fitted to. Your pronouns are separate (see Identity).</p>
-      ${this.chips([['male', 'Model 1 · broader frame'], ['female', 'Model 2 · slimmer frame']], me.render.g, 'STYLE.model').replace('class="stchips"', 'class="stchips stpair"')}
+      ${this.chips([['male', 'Model 1 · broader frame'], ['female', 'Model 2 · slimmer frame']], me.render.g, 'STYLE.model')}
       <div class="lab2">BODY TYPE</div><div class="stlist">${C.bodies.map(b => `<button class="stcard ${me.look.body === b.id ? 'eq' : ''}" onclick="STYLE.setBody('${b.id}')"><div class="stmain"><div class="stnm">${esc(b.name)}</div><div class="stsub">${b.h > 1.05 ? 'Taller' : b.h < .95 ? 'Shorter' : 'Average height'} · ${b.tw > 1.15 ? 'fuller' : b.tw < .9 ? 'slimmer' : 'balanced'} build</div></div><span class="stb ${me.look.body === b.id ? 'on' : ''}">${me.look.body === b.id ? 'Selected' : 'Choose'}</span></button>`).join('')}</div>
       <div class="lab2">SKIN TONE</div>${this.swatches(C.skin.map((c, i) => [ACAvatar.SKIN_HEX && ['Very light', 'Light', 'Light tan', 'Tan', 'Medium brown', 'Brown', 'Deep brown', 'Dark brown', 'Very dark brown', 'Deepest brown'][i], c]), me.look.skin, 'STYLE.setSkin')}<p class="hint2">Body types and skin tones are always free.</p>`;
   },
@@ -253,7 +213,7 @@ const STYLE = {
       <div class="stcard"><div class="stmain"><div class="stnm">Facial glow</div><div class="stsub">Fresh for 3 days</div></div><div class="stact"><button class="stb buy" onclick="STYLE.salon('spa')">${this.money(C.salon.spa)}</button></div></div></div>
       ${s.history.length ? `<div class="lab2">RECENT VISITS</div><div class="sgrp">${s.history.slice(0, 5).map(h => `<div class="trow"><span class="tl">${esc(h.name)}</span><span class="stsub">${this.money(h.cost)}</span></div>`).join('')}</div>` : ''}`;
   },
-  pickHC(c) { this.hc = c; this.paint(); const r = JSON.parse(JSON.stringify(S.render)); r.hair = Object.assign({}, r.hair, { color: c }); this.tried = 'hair'; if (this.pv) this.pv.look(r); const b = document.getElementById('stTry'); if (b) { b.style.display = 'flex'; b.querySelector('span').textContent = 'Trying this hair colour' } },
+  pickHC(c) { this.hc = c; this.paint() },
   tryHair(id) { const r = JSON.parse(JSON.stringify(S.render)); r.hair = { style: id, color: this.hc || r.hair.color }; this.tried = 'hair'; this.pv && this.pv.look(r); const b = document.getElementById('stTry'); if (b) { b.style.display = 'flex'; b.querySelector('span').textContent = 'Trying ' + this.D.catalog.hair.find(h => h.id === id).name } },
   async salon(svc, extra) {
     const body = Object.assign({ svc }, extra || {}); if (svc === 'style' && this.hc) body.color = this.hc;
@@ -285,7 +245,7 @@ const STYLE = {
   t_work() {
     const me = this.me, job = me.jobId; const jn = job && this.D.catalog.items.find(i => i.job === job);
     return `<div class="stinfo">${job ? 'Your job uniform is <b>free to wear</b> while you work there.' : 'Get a job in the Jobs app to wear its uniform for free.'}</div>
-      <button class="trow stt" onclick="STYLE.autoUni()"><span class="tl">Wear my uniform at work<small class="nsub">Weekdays 8am to 5pm (Naija time) while employed</small></span><span class="sw2 ${me.identity.autoUniform ? 'on' : ''}"><i></i></span></button>
+      <button class="trow stt" onclick="STYLE.autoUni()"><span class="tl">Wear my uniform at work<small class="nsub">Weekdays 8am to 5pm (Lagos time) while employed</small></span><span class="sw2 ${me.identity.autoUniform ? 'on' : ''}"><i></i></span></button>
       ${this.list(this.of(i => i.cat === 'uniform').sort((a, b) => (b.job === job) - (a.job === job)))}`;
   },
   autoUni() { return this.call('/identity', 'PUT', { autoUniform: !this.me.identity.autoUniform }) },
@@ -365,8 +325,8 @@ const STYLE = {
       <div class="lab2">WALK STYLE</div>${this.list(this.of(i => i.slot === 'walk')).replace(/onclick="STYLE.wear\('(walk_[a-z]+)'\)"/g, `onclick="STYLE.wear('$1');STYLE.demo('walk','$1')"`)}
       <div class="lab2">IDLE ANIMATION</div>${this.list(this.of(i => i.slot === 'idle')).replace(/onclick="STYLE.wear\('(idle_[a-z]+)'\)"/g, `onclick="STYLE.wear('$1');STYLE.demo('idle','$1')"`)}`;
   },
-  async setMood(m) { return this.optimisticSetting('/motion', { mood: m, autoMood: false }, () => { this.me.motion.mood = m; this.me.motion.autoMood = false; }) },
-  autoMood() { const autoMood = !this.me.motion.autoMood; return this.optimisticSetting('/motion', { autoMood }, () => { this.me.motion.autoMood = autoMood; }) },
+  async setMood(m) { await this.call('/motion', 'PUT', { mood: m, autoMood: false }) },
+  autoMood() { return this.call('/motion', 'PUT', { autoMood: !this.me.motion.autoMood }) },
   demo(kind, id) { if (!this.pv) return; this.pv.ext(Object.assign(this.ext(), { [kind]: id })); this.pv.state(kind === 'walk' ? 'walk' : 'idle'); this.pv.av.speed = 1.5; clearTimeout(this.dt); if (kind === 'walk') this.dt = setTimeout(() => this.pv && this.pv.state('idle'), 3500) },
 
   /* ----- 155 photo studio ----- */
@@ -413,8 +373,8 @@ const STYLE = {
       <button class="fopt red out" onclick="STYLE.clearId()"><span>Erase my pronouns and title</span></button>`;
   },
   seen(label, rel) { const pv = this.me.identity.privacy, can = v => v === 'everyone' || (v === 'friends' && rel === 'friend'), pr = this.me.identity.pronouns; const list = [['look', 'outfit'], ['pronouns', 'pronouns'], ['mood', 'mood'], ['collection', 'collections'], ['poses', 'photo poses']].filter(x => can(pv[x[0]])).map(x => x[1]); if (rel === 'stranger' && !pv.roster) list.splice(list.indexOf('outfit'), 1); return `<b>${label}</b> can see: ${list.length ? list.join(', ') : 'nothing about your look'}${pr ? '' : ' (no pronouns set)'}.` },
-  acc(k) { const value = !this.me.identity.access[k]; return this.optimisticSetting('/identity', { access: { [k]: value } }, () => { this.me.identity.access[k] = value; }); },
-  priv(k, v) { return this.optimisticSetting('/identity', { privacy: { [k]: v } }, () => { this.me.identity.privacy[k] = v; }); },
+  acc(k) { return this.call('/identity', 'PUT', { access: { [k]: !this.me.identity.access[k] } }) },
+  priv(k, v) { return this.call('/identity', 'PUT', { privacy: { [k]: v } }) },
   setPron(v) { return this.call('/identity', 'PUT', { pronouns: v }) }, setCustom(v) { return this.call('/identity', 'PUT', { custom: v }) }, setTitle(v) { return this.call('/identity', 'PUT', { title: v }) },
   clearId() { if (!confirm('Erase your pronouns and collector title?')) return; this.call('/identity/clear', 'POST').then(r => r && toast('Erased')) }
 };

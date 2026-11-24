@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 const path = require('path');
-const fs = require('fs');
 const express = require('express');
 const http = require('http');
 const session = require('express-session');
@@ -20,7 +19,6 @@ const socialRoutes = require('./routes/social');
 const tournamentRoutes = require('./routes/tournaments');
 const allconnectRoutes = require('./routes/allconnect');
 const acPhotoRoutes = require('./routes/acphotos');
-const acVoiceRoutes = require('./routes/acvoice');
 const acPoliceRoutes = require('./routes/acpolice');
 const acGistRoutes = require('./routes/acgist');
 const acSocialRoutes = require('./routes/acsocial');
@@ -35,19 +33,15 @@ const publicAdsRoutes = require('./routes/publicads');
 const acBankRoutes = require('./routes/acbank');
 const acLagosRoutes = require('./routes/aclagos');
 const acCreatorRoutes = require('./routes/accreator');
-const payoutRoutes = require('./routes/payouts');
 const acMusicRoutes = require('./routes/acmusic');
 const acHubRoutes = require('./routes/achub');
 const acStyleRoutes = require('./routes/acstyle');
 const acPushRoutes = require('./routes/acpush');
-const lagosRunRoutes = require('./routes/lagosrun');
 const acTransportRoutes = require('./routes/actransport');
+const acHustleRoutes = require('./routes/achustle');
+const acMarketRoutes = require('./routes/acmarket');
 const acGovRoutes = require('./routes/acgov');
 const acGemRoutes = require('./routes/acgem');
-const acPetRoutes = require('./routes/acpet');
-const acHealthRoutes = require('./routes/achealth');
-const acAgeRoutes = require('./routes/acage');
-const acFeatureRoutes = require('./routes/acfeatures');
 const reportRoutes = require('./routes/reports');
 const developerRoutes = require('./routes/developers');
 const govService = require('./services/govService');
@@ -55,7 +49,6 @@ const initAllConnect = require('./sockets/allconnect');
 const tournamentService = require('./services/tournaments');
 const initSockets = require('./sockets');
 const { loadGameSettings } = require('./config/gameSettings');
-const siteSeo = require('./utils/siteSeo');
 
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) throw new Error('SESSION_SECRET must be at least 32 characters in production.');
@@ -90,9 +83,6 @@ async function main() {
     next();
   });
   app.use((req,res,next)=>{ res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('X-Frame-Options','SAMEORIGIN'); res.setHeader('Referrer-Policy','same-origin'); res.setHeader('Permissions-Policy','camera=(self), microphone=(self), geolocation=()'); next(); });
-  app.use('/api/ac/gist/mux-webhook', express.raw({ type: '*/*', limit: '1mb' })); // Mux webhooks must reach the signature check untouched
-  app.use('/api/ac/v2/topup/webhook', express.raw({ type: '*/*', limit: '200kb' }), require('./routes/acv2').webhook); // Paystack webhook: needs the raw body for its signature
-  app.use('/api/ac/voice', express.json({ limit: '1.4mb' })); // voice notes arrive as base64 JSON
   app.use('/api/ac/photos', express.json({ limit: '6mb' })); // camera photos arrive as base64 JSON (must come before the global parser)
   app.use(express.json({ limit: '1.5mb' })); // profile photos come in as base64 JSON
 
@@ -123,26 +113,19 @@ async function main() {
   app.use('/admin-api', adminRoutes);
   app.use('/api/social', socialRoutes);
   app.use('/api/tournaments', tournamentRoutes);
-  app.use('/api/ac/voice', acVoiceRoutes);
   app.use('/api/ac/photos', acPhotoRoutes);
   app.use('/api/ac/police', acPoliceRoutes);
   app.use('/api/ac/gist', acGistRoutes);
   app.use('/api/ac/groups', acGroupRoutes);
   app.use('/api/ac/jobs', acJobRoutes);
+  app.use('/api/ac/hustle', acHustleRoutes);
+  app.use('/api/ac/market', acMarketRoutes);
   app.use('/api/ac/ads', acAdRoutes);
   app.use('/api/ac/items', acItemRoutes);
   app.use('/api/ac/properties', acPropertyRoutes);
   app.use('/api/ac/invest', acInvestRoutes);
   app.use('/api/ac/transport', acTransportRoutes);
   app.use('/api/ac/gem', acGemRoutes);      // Daily gem hunt
-  app.use('/api/ac/health', acHealthRoutes); // Health app: sickness, chemist, hospital, player pharmacies, Fresh Market
-  app.use('/api/ac/batch', require('./routes/acbatch'));   // many queued taps (likes, saves, follows) in one request
-  app.use('/api/ac/verify', require('./routes/acverify'));  // verified badge: request + paid subscription
-  app.use('/api/ac/party', require('./routes/acparty'));  // house parties
-  app.use('/api/ac/v2', require('./routes/acv2'));  // traits, memory book, privacy, password, email, wallet top-up
-  app.use('/api/ac/age', acAgeRoutes);       // 18+ attestation
-  app.use('/api/ac/pet', acPetRoutes);      // Pet app: needs, shop, clothes, mini-games (all paid from the main balance)
-  app.use('/api/ac/features', acFeatureRoutes); // saved, scheduled and collaborative cross-app features
   app.use('/api/ac/gov', acGovRoutes);          // State House: elections, announcements, policies
   app.use('/api/ac/venues', acVenuesRoutes);
   app.use('/api/public', publicAdsRoutes);   // no login: prices + live numbers for /advertise and /stats
@@ -150,7 +133,6 @@ async function main() {
   app.use('/api/ac', acSocialRoutes);
   app.use('/api/ac/lagos', acLagosRoutes);
   app.use('/api/ac/creator', acCreatorRoutes);
-  app.use('/api/ac/payouts', payoutRoutes);
   app.use('/api/ac/bank', acBankRoutes);   // AllConnect platform state (same login as GameHub)
   app.use('/api/ac/music', acMusicRoutes);
   app.use('/api/ac/public', acHubRoutes.pub);   // no login: public status + account recovery
@@ -164,28 +146,15 @@ async function main() {
     const ok = db && (!redis.configured || redis.ok);
     res.status(ok ? 200 : 503).json({ ok, db, redis, time: new Date().toISOString() });
   });
-  // The admin page changes with new features, so the browser must always check for the latest copy.
-  const adminPage = (req, res) => { res.set('Cache-Control', 'no-cache'); res.sendFile(path.join(__dirname, 'public', 'admin.html')); };
-  app.get('/admin', adminPage);
-  app.get('/admin.html', adminPage);
+  app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
-  // Drive: a full-screen app (own folder, own service-worker scope, own manifest).
-  // It has no login of its own: its API (/lagosrun/api) uses the AllConnect session, so a signed-in player is signed in to the game too.
-  app.use('/lagosrun/api', lagosRunRoutes);
+  // Lagos Run: a standalone full-screen app (own folder, own service-worker scope, own manifest).
+  // Its leaderboard/account API is not part of AllConnect, so it answers "offline" and the game runs in guest mode.
+  app.use('/lagosrun/api', (req, res) => res.status(503).json({ ok: false, error: 'offline' }));
   app.get(['/lagosrun', '/lagosrun/'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'lagosrun', 'index.html')));
 
-  app.get('/landing.html', (_req, res) => res.redirect(301, '/'));
-  app.get('/allconnect/index.html', (_req, res) => res.redirect(301, '/play'));
-  app.get('/index.html', (_req, res) => res.redirect(301, '/gamehub'));
   app.use('/assets', express.static(path.join(__dirname, 'assets')));
   app.use(express.static(path.join(__dirname, 'public'), { index: false }));
-
-  app.get('/robots.txt', (_req, res) => res.type('text/plain').send(siteSeo.robots()));
-  app.get('/sitemap.xml', (_req, res) => {
-    const xml = siteSeo.sitemap();
-    if (!xml) return res.status(503).type('text/plain').send('Set PUBLIC_SITE_URL or CLIENT_URL to the public HTTPS origin to enable the sitemap.');
-    res.set('Cache-Control', 'public, max-age=3600').type('application/xml').send(xml);
-  });
 
   // Marketing landing at /. The life-sim is /play. GameHub stays at /gamehub.
   // Old GameHub invite/share links (/?code=..., ?spectate=..., ?h=..., ?by=...) still open GameHub directly.
@@ -194,18 +163,11 @@ async function main() {
   const ALLCONNECT = path.join(__dirname, 'public', 'allconnect', 'index.html');
   app.get('/', (req, res) => {
     const q = req.query || {};
-    if (q.code || q.spectate || q.h || q.by) return sendWithPreview(GAMEHUB)(req, res);
-    const html = fs.readFileSync(LANDING, 'utf8');
-    res.type('html').send(siteSeo.renderLanding(html, siteSeo.publicOrigin() || siteSeo.requestOrigin(req)));
+    if (q.code || q.spectate || q.h || q.by) return res.sendFile(GAMEHUB);
+    res.sendFile(LANDING);
   });
-  // /play is a single-page app: /play/home, /play/map, /play/buy, /play/phone, /play/phone/bank ... all serve the same shell and the client router picks the screen.
-  const sendWithPreview = (file) => (req, res) => {
-    res.set('X-Robots-Tag', 'noindex, nofollow');
-    const o = siteSeo.publicOrigin() || siteSeo.requestOrigin(req);
-    res.type('html').send(String(fs.readFileSync(file, 'utf8')).replace('<!--PUBLIC_SEO_ORIGIN-->', siteSeo.metadataTags(o, '/').replace(/\n\s*<link rel="canonical"[^\n]*/, '')));
-  };
-  app.get(['/play', '/play/', '/play/*'], sendWithPreview(ALLCONNECT));
-  app.get('/gamehub', sendWithPreview(GAMEHUB));
+  app.get('/play', (req, res) => res.sendFile(ALLCONNECT));
+  app.get('/gamehub', (req, res) => res.sendFile(GAMEHUB));
   app.get('/advertise', (req, res) => res.sendFile(path.join(__dirname, 'public', 'advertise.html')));
   app.get('/status', (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
   app.get('/stats', (req, res) => res.sendFile(path.join(__dirname, 'public', 'stats.html')));
@@ -213,7 +175,7 @@ async function main() {
   app.get('/developers', (req, res) => res.sendFile(path.join(__dirname, 'public', 'developers.html')));
 
   // GameHub's own client-side routes (/lobby, /shop, /friends ...) fall through to GameHub
-  app.get('*', (req, res) => { res.set('X-Robots-Tag', 'noindex, nofollow'); res.sendFile(GAMEHUB); });
+  app.get('*', (req, res) => res.sendFile(GAMEHUB));
 
   // Central error handler. Without this, any error passed to next(err) (e.g.
   // a DB error inside the Google OAuth verify callback) falls through to
@@ -227,7 +189,7 @@ async function main() {
     console.error('[error]', req.method, req.originalUrl, err);
     if (res.headersSent) return next(err);
     if (req.path.startsWith('/auth/google')) {
-      return res.redirect((process.env.CLIENT_URL || '') + '/play?auth_error=1');
+      return res.redirect((process.env.CLIENT_URL || '/') + '?auth_error=1');
     }
 
     const name = String(err && err.name || '');
@@ -239,7 +201,7 @@ async function main() {
       return res.status(400).json({ message: 'Some information is missing or invalid. Check your entries and try again.' });
     }
     if (name === 'CastError') {
-      return res.status(400).json({ message: 'Something in that request was not valid. Refresh and try again.' });
+      return res.status(400).json({ message: 'That item or player could not be found. Refresh and try again.' });
     }
     if (name === 'MongooseServerSelectionError' || name === 'MongoNetworkError' || name === 'MongoServerSelectionError') {
       return res.status(503).json({ message: 'The game database is temporarily unavailable. Please wait a moment and try again.' });
@@ -267,36 +229,7 @@ async function main() {
   await govService.refreshOffices().catch((e) => console.error('[gov load]', e.message));
   setTimeout(() => govService.tick(io).catch((e) => console.error('[gov tick]', e.message)), 15000).unref();
   setInterval(() => govService.tick(io).catch((e) => console.error('[gov tick]', e.message)), 30 * 1000).unref();
-  /* pets: hungry / ill alerts for owners who are away (every 10 minutes; each pet is claimed once across instances) */
-  const petAlerts = require('./services/petalerts');
-  setTimeout(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 60000).unref();
-  setInterval(() => petAlerts.tick(io).catch((e) => console.error('[pet alerts]', e.message)), 10 * 60 * 1000).unref();
-  setInterval(() => require('./routes/acproperties').notifyReady(app.get('io')).catch((e) => console.error('[build notify]', e.message)), 60 * 1000).unref();    // "your builders are done"
-  setInterval(async () => {          // 9 to 5 workday: pay every full hour to clocked-in players (and clock them out at 5 PM), even if the game is closed
-    try {
-      const User = require('./models/User'), jobs = require('./routes/acjobs');
-      const due = await User.find({ 'ac.clockAt': { $ne: null } }).select('_id').limit(500).lean();
-      for (const d of due) await jobs.settle(String(d._id), app.get('io'));
-    } catch (e) { console.error('[workday sweep]', e.message); }
-  }, 5 * 60 * 1000).unref();
-  setInterval(async () => {          // pay out house parties that have ended, even if the host never opens the app again
-    try {
-      const User = require('./models/User'), party = require('./routes/acparty');
-      const due = await User.find({ 'ac.party.settled': false, 'ac.party.endsAt': { $lte: new Date() } }).select('_id').limit(50).lean();
-      for (const d of due) await party.settleIfDue(String(d._id), Date.now(), app.get('io'));
-    } catch (e) { console.error('[party sweep]', e.message); }
-  }, 60 * 1000).unref();
-  setInterval(() => require('./utils/acverify').sweep(app.get('io')).catch((e) => console.error('[verify sweep]', e.message)), 60 * 60 * 1000).unref();
   setInterval(() => tournamentService.tick().catch((e) => console.error('[tournament tick]', e.message)), 30 * 1000).unref();
-  /* withdrawal seasons: tell players when a season/batch opens or is about to close (each notice is sent once) */
-  /* birthdays: post a birthday card on P-Gist for everyone whose birthday it is (checked every 30 minutes, once per player per year) */
-  const birthdays = require('./services/birthdays');
-  setTimeout(() => birthdays.tick(io).catch((e) => console.error('[birthdays]', e.message)), 45000).unref();
-  setInterval(() => birthdays.tick(io).catch((e) => console.error('[birthdays]', e.message)), 30 * 60 * 1000).unref();
-  const withdrawalNotices = require('./services/withdrawalNotices');
-  setTimeout(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 20000).unref();
-  setInterval(() => withdrawalNotices.tick(io).catch((e) => console.error('[withdrawal notices]', e.message)), 60 * 1000).unref();
-  require('./services/video').boot().catch((e) => console.error('[video boot]', e.message));   // seeds the storage_providers rows, re-counts usage, tidies unfinished uploads
   server.listen(PORT, () => {
     console.log(`[server] AllConnect running on http://localhost:${PORT}`);
   });

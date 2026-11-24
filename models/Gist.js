@@ -11,19 +11,7 @@ const GistPostSchema = new Schema({
   game: { key: String, name: String, code: String },   // game reference / room link
   match: { game: String, name: String, score: String, opponent: String, result: String },  // auto-posted match win card
   election: { office: String, kind: String, slogan: String, votes: Number },   // State House cards: campaign / result / announce (see services/govService.js)
-  birthday: { name: String, wish: String, theme: Number },   // the automatic birthday card (see services/birthdays.js)
   poll: { options: { type: [PollOption], default: undefined }, endsAt: Date },
-  song: { title: String, artist: String, albumArt: String, streamUrl: String },   // a Songify track shared to the feed: tapping it opens Songify and plays it
-  video: { uploadId: String, assetId: String, playbackId: String, duration: Number, kind: String, mux: { assetId: String, playbackId: String, signed: Boolean, captions: Boolean }, url: String, fileId: String, mime: String, size: Number, dur: Number, poster: { url: String, thumb: String } },   // legacy Mux fields remain readable while current reels use the nested mux record
-  fingerprint: { type: String, default: '', index: true, sparse: true },   // reel file fingerprint (hash of the file head/tail + size), used to spot re-uploads of someone else's clip
-  // review state of videos/reels: '' = none | 'review' (live, waiting for an admin) | 'flagged' | 'appealed' | 'approved' (posted) | 'rejected'. category = why it was flagged (see utils/modCategories.js). Flagged/appealed/rejected reels are also hidden:true (only the author still sees them).
-  moderation: { status: { type: String, default: '' }, category: String, submittedAt: Date, reason: String, source: String, flaggedAt: Date, appealText: String, appealedAt: Date, videoUrl: String, reviewedAt: Date, reviewNote: String },
-  visibility: { type: String, enum: ['public', 'followers', 'private'], default: 'public' },   // who can watch (reel settings step)
-  allowComments: { type: Boolean, default: true },
-  allowReuse: { type: Boolean, default: true },        // others may repost / reuse this content
-  views: { type: Number, default: 0 },
-  plays: { type: Number, default: 0 }, watchMs: { type: Number, default: 0 }, completions: { type: Number, default: 0 },   // watch analytics, used to rank reels
-  reporters: { type: [String], default: [] }, hidden: { type: Boolean, default: false },                              // 3 different reports hide a post from feeds
   tags: { type: [String], default: [], index: true },  // lowercase hashtags (no #)
   mentions: { type: [String], default: [] },           // user ids mentioned with @username
   sharedFrom: { type: String, default: '' },           // id of the original post when this is a reshare
@@ -38,10 +26,6 @@ const GistPostSchema = new Schema({
 GistPostSchema.index({ author: 1, createdAt: -1 });
 GistPostSchema.index({ 'images.url': 1 });
 GistPostSchema.index({ tags: 1, createdAt: -1 });
-GistPostSchema.index({ text: 'text' }, { name: 'gist_text_search' });
-GistPostSchema.index({ 'video.url': 1, createdAt: -1 }, { sparse: true });
-GistPostSchema.index({ 'video.playbackId': 1 }, { sparse: true });
-GistPostSchema.index({ 'moderation.status': 1, 'moderation.appealedAt': -1 }, { sparse: true });
 
 const GistLikeSchema = new Schema({ post: { type: String, index: true }, user: String, type: { type: String, default: 'like' }, createdAt: { type: Date, default: Date.now } });
 GistLikeSchema.index({ post: 1, user: 1 }, { unique: true });
@@ -65,13 +49,6 @@ const GistFollowSchema = new Schema({ follower: String, following: String, creat
 GistFollowSchema.index({ follower: 1, following: 1 }, { unique: true });
 GistFollowSchema.index({ following: 1, createdAt: -1 });
 
-const GistSaveSchema = new Schema({ user: { type: String, index: true }, post: { type: String, index: true }, createdAt: { type: Date, default: Date.now } });
-GistSaveSchema.index({ user: 1, post: 1 }, { unique: true });
-GistSaveSchema.index({ user: 1, createdAt: -1 });
-
-const GistMuteSchema = new Schema({ user: { type: String, index: true }, muted: { type: String, index: true }, createdAt: { type: Date, default: Date.now } });
-GistMuteSchema.index({ user: 1, muted: 1 }, { unique: true });
-
 module.exports = {
   GistPost: mongoose.model('GistPost', GistPostSchema),
   GistLike: mongoose.model('GistLike', GistLikeSchema),
@@ -79,6 +56,4 @@ module.exports = {
   GistCommentLike: mongoose.model('GistCommentLike', GistCommentLikeSchema),
   GistVote: mongoose.model('GistVote', GistVoteSchema),
   GistFollow: mongoose.model('GistFollow', GistFollowSchema),
-  GistSave: mongoose.model('GistSave', GistSaveSchema),
-  GistMute: mongoose.model('GistMute', GistMuteSchema),
 };
