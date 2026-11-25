@@ -8,7 +8,7 @@ const KEYS = {
   fine() { try { return window.matchMedia('(min-width:768px) and (min-height:520px) and (pointer:fine)').matches } catch (e) { return false } },
   typing(e) { const t = e.target, n = t && t.tagName; return n === 'INPUT' || n === 'TEXTAREA' || n === 'SELECT' || (t && t.isContentEditable) },
   open() {
-    SHEET.open({ id: 'keys', title: '⌨️ Keyboard shortcuts', body: () => `<p class="hsub">Play Lagos Life without a mouse</p>${this.list.map(([k, t]) => `<div class="kbrow"><kbd>${UI.esc(k)}</kbd><span>${UI.esc(t)}</span></div>`).join('')}` });
+    SHEET.open({ id: 'keys', title: '⌨️ Keyboard shortcuts', body: () => `<p class="hsub">Play Naija Life without a mouse</p>${this.list.map(([k, t]) => `<div class="kbrow"><kbd>${UI.esc(k)}</kbd><span>${UI.esc(t)}</span></div>`).join('')}` });
   },
   toggle() { if (SHEET.isOpen('keys')) SHEET.close(); else this.open() },
   mount() {

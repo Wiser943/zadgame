@@ -20,7 +20,7 @@ const EVENTS = [
   { id: 'rain', icon: '🌧️', fa: 'cloud-showers-heavy', color: '#0ea5e9', title: 'Rain and flood watch', pidgin: 'Rain dey fall, flood fit show!', text: 'Citywide weather is shared by all players. Intensity ranges from drizzle to thunderstorms; low-lying areas may flood.', pidginText: 'Rain dey fall for everybody. Some areas fit flood, especially low ground.', mult: { fare: 1.25, water: 1.35, food: 1.1, job: { all: 0.95 } }, districts: { Ajah: 'Low-lying streets at flood risk', Surulere: 'Gutters overflowing', Ikorodu: 'Floodwater disrupting roads' } },
   { id: 'owambe', icon: '🎉', fa: 'champagne-glasses', color: '#d946ef', title: 'Owambe weekend', pidgin: 'Owambe dey this weekend!', text: 'Aso-ebi everywhere. Food sellers and service jobs are busy and pay a little more.', pidginText: 'Owambe everywhere, aso-ebi dey shine. Food sellers and service workers dey chop.', mult: { food: 0.92, job: { all: 1.1 } }, districts: { Lekki: 'Live band outside every event hall', Ikeja: 'Jollof pots as big as a car', 'Victoria Island': 'Spraying naira, valets overwhelmed' } },
   { id: 'market', icon: '🛍️', fa: 'store', color: '#10b981', title: 'Balogun market day', pidgin: 'Market don open for Balogun!', text: 'Traders are cutting prices. Food and goods are cheaper today.', pidginText: 'Traders dey drop price. Chop and market things cheap today.', mult: { food: 0.88, job: { all: 1.03 } }, districts: { Yaba: 'Thrift stalls packed', Surulere: 'Bargain shouts everywhere', Ikeja: 'Computer Village rush' } },
-  { id: 'calm', icon: '☀️', fa: 'sun', color: '#22b573', title: 'A normal Lagos day', pidgin: 'Today dey calm.', text: 'No big news today. Prices are normal.', pidginText: 'Nothing special today, everything dey normal.', mult: { job: { all: 1 } }, districts: { Lekki: 'Joggers on the beachfront', Yaba: 'Students and startups', Ikeja: 'Planes overhead, as usual' } }
+  { id: 'calm', icon: '☀️', fa: 'sun', color: '#22b573', title: 'A normal Naija day', pidgin: 'Today dey calm.', text: 'No big news today. Prices are normal.', pidginText: 'Nothing special today, everything dey normal.', mult: { job: { all: 1 } }, districts: { Lekki: 'Joggers on the beachfront', Yaba: 'Students and startups', Ikeja: 'Planes overhead, as usual' } }
 ];
 const BYID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 
@@ -66,12 +66,15 @@ function billAmount(key, items, ev, wealth = 0) {
   const tier = wealth >= 25000000 ? 2.4 : wealth >= 10000000 ? 1.85 : wealth >= 5000000 ? 1.4 : wealth >= 2000000 ? 1.12 : 1;
   return Math.round(a * m * tier / 100) * 100;
 }
+// One source of truth for what a home is worth (utils/acproperties.js), instead of the same price list copied
+// into this file, the weather-loss code and the home-insurance code.
+const { assetValue } = require('./acproperties');
 // Bills that should exist for this cycle but do not yet. Returns the full list to push.
 function newBills(user, now = Date.now()) {
   const ac = user.ac || {}, c = cycleOf(now);
   if (now - new Date(user.createdAt || now).getTime() < FREE_DAYS * DAY) return [];
   const have = new Set((ac.bills || []).filter((b) => b.cycle === c.key).map((b) => b.key));
-  return Object.keys(BILLS).filter((k) => !have.has(k)).map((k) => ({ key: k, cycle: c.key, amount: billAmount(k, ac.items, currentEvent(now), Number(ac.cash || 0) + (ac.properties || []).reduce((sum, p) => sum + ({ mainland_room: 150000, self_contained: 350000, mini_flat: 900000, two_bedroom: 2200000 }[p.type] || 0), 0)), due: new Date(c.due), paidAt: null, fee: 0 }));
+  return Object.keys(BILLS).filter((k) => !have.has(k)).map((k) => ({ key: k, cycle: c.key, amount: billAmount(k, ac.items, currentEvent(now), Number(ac.cash || 0) + (ac.properties || []).reduce((sum, p) => sum + assetValue(p.type), 0)), due: new Date(c.due), paidAt: null, fee: 0 }));
 }
 const lateFee = (b, now = Date.now()) => (!b.paidAt && now > new Date(b.due).getTime() ? Math.round(b.amount * LATE_PCT / 100) * 100 : 0);
 const owed = (b, now) => b.paidAt ? 0 : b.amount + lateFee(b, now);
@@ -98,7 +101,7 @@ const QUESTS = [
 const QBYID = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
 
 /* ----- daily streak: each consecutive day pays a bit more, up to day 7, then it loops ----- */
-const STREAK = [10000, 15000, 20000, 25000, 30000, 40000, 75000];
+const STREAK = [300, 450, 600, 750, 900, 1200, 2250];   // about 3% of the first version (₦10,000 ... ₦75,000)
 const streakReward = (n) => STREAK[(Math.max(1, n) - 1) % STREAK.length];
 function nextStreak(ac, now = Date.now()) {
   const today = dayKey(now), yest = dayKey(now - DAY);

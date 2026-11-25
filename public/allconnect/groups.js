@@ -8,7 +8,7 @@ Object.assign(PH, {
   isAdm() { return !!this.g && this.g.group.role !== 'member' },
   /* ----- list shown in Messages -> Chats (matches the "Groups" block in the design) ----- */
   groupSection() {
-    const me = NET.user.id, prev = l => !l ? 'No messages yet' : l.deleted ? '🚫 Message deleted' : l.kind === 'text' ? (l.from === me ? 'You: ' : '') + (l.image ? '📷 ' : '') + esc(l.text || (l.image ? 'Photo' : '')) : esc(l.text);
+    const me = NET.user.id, prev = l => !l ? 'No messages yet' : l.deleted ? '🚫 Message deleted' : l.kind === 'text' ? (l.from === me ? 'You: ' : '') + (l.image ? '📷 ' : '') + esc(l.text || (l.image ? 'Photo' : l.voice ? '🎤 Voice note' : '')) : esc(l.text);
     return `<div class="grph"><span class="lab2">GROUPS</span><button class="newg" onclick="PH.newGroup()">+ New group</button></div>` +
       (this.groups.length ? this.groups.map(g => `<div class="row tap" onclick="PH.group('${g.id}')">${this.gav(1)}<div class="rt"><b>${esc(g.name)}</b><span class="pv">${prev(g.last)}</span></div><div class="rm"><small>${this.rel(g.last ? g.last.at : g.lastAt)}</small>${g.unread ? `<em class="cnt">${g.unread}</em>` : ''}</div></div>`).join('')
         : `<div class="gpromo" onclick="PH.newGroup()"><span class="gpi">👯</span><div><b>Make a group with your friends</b><small>Add them by username, chat together and plan Quilox nights 🍾</small></div></div>`)
@@ -58,7 +58,7 @@ Object.assign(PH, {
     const g = this.g.group, adm = this.isAdm(), locked = g.onlyAdmins && !adm, typed = keep !== undefined ? keep : (document.getElementById('cinput') || {}).value || '';
     this.shell(`<span onclick="PH.groupInfo()" style="cursor:pointer">${esc(g.name)}</span>`, 'PH.messages()', `<div class="abody chat" id="ab"><div class="cmsgs" id="cm"></div></div>` +
       (locked ? `<div class="glock">🔒 Only admins can send messages in this group</div>` : `<div class="emo" id="emo" style="display:none">${['😂', '😍', '🙏🏾', '🔥', '👏🏾', '😭', '🎉', '🍾'].map(e => `<button onclick="PH.emoji('${e}')">${e}</button>`).join('')}</div>
-        <div id="crep"></div><div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><button class="ebtn" onclick="CHATX.pick()" aria-label="Send a photo"><span class="fa-solid fa-image"></span></button><input id="cinput" placeholder="Message the group…" maxlength="500" autocomplete="off" onkeydown="if(event.key==='Enter')PH.gSendInput()"><button class="sbtn" onclick="PH.gSendInput()">➤</button></div>`),
+        <div id="crep"></div><div class="cin"><button class="ebtn" onclick="document.getElementById('emo').style.display=document.getElementById('emo').style.display==='none'?'flex':'none'">☺</button><button class="ebtn" onclick="CHATX.pick()" aria-label="Send a photo"><span class="fa-solid fa-image"></span></button><input id="cinput" placeholder="Message the group…" maxlength="500" autocomplete="off" onkeydown="if(event.key==='Enter')PH.gSendInput()"><button class="sbtn vnmic" data-vn="chat" aria-label="Send, or hold to record a voice note"><span class="vnic mic fa-solid fa-microphone"></span><span class="vnic snd">➤</span></button></div>`),
       `<div class="csub" onclick="PH.groupInfo()" style="cursor:pointer">👥 ${this.g.members.length} members${g.onlyAdmins ? ' · admins only' : ''} · tap for group info</div>`);
     const i = document.getElementById('cinput'); if (i) i.value = typed;
     this.gmsgs();
@@ -142,7 +142,7 @@ Object.assign(PH, {
     const inChat = (this.view === 'group' || this.view === 'groupinfo') && this.gid === (p.group || p.id);
     if (ev === 'gmsg') {
       if (inChat && this.g) { this.gpush(p); if (this.view === 'group') NET.api('/api/ac/groups/' + this.gid).catch(() => {}); return }
-      if (p.kind === 'text' && p.from !== NET.user.id) { this.badges.messages++; toast('👥 New group message'); this.drawBadges() }
+      if (p.kind === 'text' && p.from !== NET.user.id) { this.badges.messages++; this.banner({ icon: '👥', app: 'Groups', title: 'New group message', text: String(p.text || 'Open the group to read it').slice(0, 140), tap: () => this.bannerOpen('group', p.group || p.id) }); this.drawBadges() }
     } else if (ev === 'group') {
       if (p.type === 'removed' && inChat) { toast('You are no longer in that group'); return this.messages('chats') }
       if (inChat && p.type !== 'new') this.gRefresh()

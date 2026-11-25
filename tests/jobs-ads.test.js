@@ -75,6 +75,6 @@ test('invest: land sells for its fee-adjusted price plus growth', () => {
   assert.ok(I.landWorth(l, 10 * I.DAY_MS) > I.landWorth(l, 0));
 });
 test('economy: stakes are positive numbers and shop/challenge amounts are scaled to ₦', () => {
-  assert.ok(E.stakeFor('chess') > 0); assert.equal(E.DAILY_REWARD, 25 * E.COIN);
+  assert.ok(E.stakeFor('chess') > 0); assert.equal(E.DAILY_REWARD, undefined);
   assert.ok(require('../config/shop').CATALOG.filter((i) => i.price > 0).every((i) => i.price >= 40 * E.COIN));
 });

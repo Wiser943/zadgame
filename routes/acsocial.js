@@ -25,9 +25,9 @@ const rxEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const io = (req) => req.app.get('io');
 const label = (u) => (u.acUsername ? '@' + u.acUsername : u.displayName);
 const pub = (u) => ({ id: String(u._id), username: u.acUsername || '', displayName: u.displayName, avatar: u.avatar || '', online: acPresence.isOnline(u._id) || ghPresence.isOnline(u._id) });
-const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, propertyId: m.propertyId || '', amount: m.amount || 0, read: !!m.read, at: m.at,
+const mv = (m) => ({ id: String(m._id), from: m.from, to: m.to, text: m.deleted ? '' : m.text, kind: m.kind, propertyId: m.propertyId || '', amount: m.amount || 0, status: m.status || '', read: !!m.read, at: m.at,
   reply: m.reply && m.reply.mid ? { id: m.reply.mid, from: m.reply.from, text: m.reply.text } : undefined,
-  image: CH.imageView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
+  image: CH.imageView(m), voice: CH.voiceView(m), reactions: CH.reactionsView(m), edited: !!m.edited, deleted: !!m.deleted, fwd: !!m.fwd });
 const between = (a, b) => ({ $or: [{ requester: a, recipient: b }, { requester: b, recipient: a }] });
 const areFriends = (a, b) => Friendship.exists({ ...between(a, b), status: 'accepted' });
 const isBlocked = (a, b) => Friendship.exists({ ...between(a, b), status: 'blocked' });
@@ -49,15 +49,15 @@ async function friendOr(req, res) {
 async function peerOr(req, res) {
   const me = uid(req), other = String(req.params.id);
   if (!isId(other) || other === me) { bad(res, 400, 'Invalid player.'); return null; }
-  const target = await User.findById(other).select('displayName avatar acUsername');
+  const target = await User.findById(other).select('displayName avatar acUsername ac.prefs');
   if (!target) { bad(res, 404, 'Player not found.'); return null; }
   if (await isBlocked(me, other)) { bad(res, 403, 'You cannot message this player.'); return null; }
   return { me, other, target, friend: !!(await areFriends(me, other)) };
 }
-async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, fwd, propertyId = '' }) {
-  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(fwd ? { fwd: true } : {}) });
+async function addMessage(req, { to, text, kind = 'text', amount = 0, reply, image, voice, fwd, propertyId = '' }) {
+  const m = await ACMessage.create({ from: uid(req), to, text, kind, amount, propertyId, ...(reply ? { reply } : {}), ...(image ? { image } : {}), ...(voice ? { voice } : {}), ...(fwd ? { fwd: true } : {}) });
   emitUser(io(req), to, 'dm', mv(m));
-  if (kind === 'text') push.sendToUser(to, { title: `New message from ${req.user.displayName || 'a player'}`, body: (image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
+  if (kind === 'text') push.sendToUser(to, { cat: 'messages', title: `New message from ${req.user.displayName || 'a player'}`, body: (voice ? CH.VOICE_LABEL : image ? CH.PHOTO_LABEL + (text ? ' ' + text : '') : String(text)).slice(0, 240), icon: '/pwa-192.png', target: { type: 'chat', id: uid(req), mid: String(m._id) } }).catch((e) => console.error('[push dm]', e.message));
   return mv(m);
 }
 
@@ -206,24 +206,30 @@ router.get('/messages/:id', async (req, res, next) => {
     const rows = await ACMessage.find({ $or: [{ from: f.me, to: f.other }, { from: f.other, to: f.me }], hidden: { $ne: f.me } }).sort({ at: -1 }).limit(60).lean();
     await ACMessage.updateMany({ from: f.other, to: f.me, read: false }, { $set: { read: true } });
     emitUser(io(req), f.other, 'seen', { by: f.me });
-    res.json({ messages: rows.reverse().map(mv), peer: pub(f.target), isFriend: f.friend });
+    const noRead = f.target.ac && f.target.ac.prefs && f.target.ac.prefs.readReceipts === false;   // they turned read receipts off: you never see their blue ticks
+    const myB = await baeOf(f.me), thB = await baeOf(f.other);
+    res.json({ messages: rows.reverse().map((m) => { const v = mv(m); if (noRead && m.from === f.me) v.read = false; return v; }), peer: pub(f.target), isFriend: f.friend, bae: { together: myB.list.includes(f.other), mineFull: myB.n >= 3, theirsFull: thB.n >= 3 } });
   } catch (e) { next(e); }
 });
 router.post('/messages/:id', async (req, res, next) => {
   try {
     if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
     const f = await peerOr(req, res); if (!f) return;
+    if (!f.friend && f.target.ac && f.target.ac.prefs && f.target.ac.prefs.whoCanMessage === 'friends') return bad(res, 403, `${label(f.target)} only takes messages from friends. Send a friend request first.`);
     const b = req.body || {};
-    let text = profanity.clean(String(b.text || '').trim().slice(0, 300)), image = null, fwd = false;
+    let text = profanity.clean(String(b.text || '').trim().slice(0, 300)), image = null, voice = null, fwd = false;
     if (b.forward) {   // forward: the server copies the original so it cannot be faked
       const src = await CH.resolveForward(b.forward, f.me);
       if (!src) return bad(res, 404, 'That message is no longer available to forward.');
-      text = profanity.clean(src.text.slice(0, 300)); image = src.image; fwd = true;
+      text = profanity.clean(src.text.slice(0, 300)); image = src.image; voice = src.voice; fwd = true;
     } else if (b.image) {
       image = CH.cleanImage(b.image);
       if (!image) return bad(res, 400, 'That photo could not be sent.');
+    } else if (b.voice) {
+      voice = CH.cleanVoice(b.voice);
+      if (!voice) return bad(res, 400, 'That voice note could not be sent.');
     }
-    if (!text && !image) return bad(res, 400, 'Type a message first.');
+    if (!text && !image && !voice) return bad(res, 400, 'Type a message first.');
     // Optional WhatsApp-style reply: the client sends the id of the message it is replying to; we look it up so the quote cannot be faked.
     let reply;
     const rid = String(b.replyTo || '');
@@ -232,7 +238,7 @@ router.post('/messages/:id', async (req, res, next) => {
       const same = o && o.kind === 'text' && !o.deleted && ((o.from === f.me && o.to === f.other) || (o.from === f.other && o.to === f.me));
       if (same) reply = { mid: String(o._id), from: o.from, text: CH.quoteText(o) };
     }
-    res.json({ message: await addMessage(req, { to: f.other, text, reply, image, fwd }) });
+    res.json({ message: await addMessage(req, { to: f.other, text, reply, image, voice, fwd }) });
   } catch (e) { next(e); }
 });
 
@@ -265,7 +271,7 @@ router.put('/message/:mid', async (req, res, next) => {
     if (c.m.from !== c.me) return bad(res, 403, 'You can only edit your own messages.');
     if (!CH.canEdit(c.m, c.me)) return bad(res, 403, 'You can only edit a message within 15 minutes of sending it.');
     const text = profanity.clean(String((req.body && req.body.text) || '').trim().slice(0, 300));
-    if (!text && !(c.m.image && c.m.image.url)) return bad(res, 400, 'A message cannot be empty.');
+    if (!text && !(c.m.image && c.m.image.url) && !(c.m.voice && c.m.voice.url)) return bad(res, 400, 'A message cannot be empty.');
     if (text !== c.m.text) { c.m.text = text; c.m.edited = true; await c.m.save(); }
     res.json({ message: pushUpd(req, c) });
   } catch (e) { next(e); }
@@ -280,7 +286,7 @@ router.delete('/message/:mid', async (req, res, next) => {
     if (c.m.from !== c.me) return bad(res, 403, 'You can only delete your own messages for everyone.');
     if (c.m.deleted) return res.json({ ok: true, message: mv(c.m) });
     if (!CH.canDeleteAll(c.m, c.me)) return bad(res, 403, 'You can delete for everyone only within 2 days. You can still delete it for yourself.');
-    c.m.deleted = true; c.m.text = ''; c.m.reactions = []; c.m.set('image', undefined); await c.m.save();
+    c.m.deleted = true; c.m.text = ''; c.m.reactions = []; c.m.set('image', undefined); c.m.set('voice', undefined); await c.m.save();
     res.json({ ok: true, scope: 'all', message: pushUpd(req, c) });
   } catch (e) { next(e); }
 });
@@ -299,35 +305,117 @@ router.post('/invite/:id', async (req, res, next) => {
     res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} invited you to ${propertyName} 🏠`, kind: 'invite', propertyId }) });
   } catch (e) { next(e); }
 });
+/* ---------- "Be my bae": ask a friend, they accept or decline in the chat. Up to 3 baes each, kept in sync on both sides. ---------- */
+const MAX_BAE = 3;
+const baeOf = async (id) => { const u = await User.findById(id).select('ac.baes').lean(); const list = ((u && u.ac && u.ac.baes) || []).map((b) => b.partner); return { list, n: list.length }; };
+router.post('/bae/:id', async (req, res, next) => {
+  try {
+    if (limited(uid(req))) return bad(res, 429, 'Slow down a little.');
+    const f = await friendOr(req, res); if (!f) return;
+    const mine = await baeOf(f.me), theirs = await baeOf(f.other);
+    if (mine.list.includes(f.other)) return bad(res, 409, `You and ${label(f.target)} are already bae 💞`);
+    if (mine.n >= MAX_BAE) return bad(res, 409, `You already have ${MAX_BAE} baes. End one first.`);
+    if (theirs.n >= MAX_BAE) return bad(res, 409, `${label(f.target)} already has ${MAX_BAE} baes.`);
+    if (await ACMessage.exists({ from: f.me, to: f.other, kind: 'bae', status: '', at: { $gt: new Date(Date.now() - 86400000) } })) return bad(res, 409, 'You already asked. Give them a little time 😅');
+    notify(io(req), f.other, { icon: '💕', text: `${label(req.user)} asked you to be their bae`, kind: 'friend' }).catch(() => {});
+    res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} is asking: will you be my bae? 💕`, kind: 'bae' }) });
+  } catch (e) { next(e); }
+});
+router.post('/bae/:id/respond', async (req, res, next) => {
+  try {
+    const f = await friendOr(req, res); if (!f) return;      // f.other = the one who asked
+    const yes = !!(req.body && req.body.accept);
+    const q = await ACMessage.findOne({ from: f.other, to: f.me, kind: 'bae', status: '' }).sort({ at: -1 });
+    if (!q) return bad(res, 404, 'That request is no longer open.');
+    const mine = await baeOf(f.me), theirs = await baeOf(f.other);
+    if (yes && (mine.n >= MAX_BAE || theirs.n >= MAX_BAE || mine.list.includes(f.other))) { q.status = 'declined'; await q.save(); return bad(res, 409, mine.n >= MAX_BAE ? `You already have ${MAX_BAE} baes.` : `${label(f.target)} already has ${MAX_BAE} baes.`); }
+    q.status = yes ? 'accepted' : 'declined'; await q.save();
+    if (yes) {
+      const since = new Date();
+      // $ne guard keeps it idempotent; showRelationships is switched on so the new relationship shows on both profiles (they can turn it off in Privacy)
+      await Promise.all([
+        User.updateOne({ _id: f.me, 'ac.baes.partner': { $ne: f.other } }, { $push: { 'ac.baes': { partner: f.other, since } }, $set: { 'ac.prefs.showRelationships': true } }),
+        User.updateOne({ _id: f.other, 'ac.baes.partner': { $ne: f.me } }, { $push: { 'ac.baes': { partner: f.me, since } }, $set: { 'ac.prefs.showRelationships': true } })]);
+    }
+    const text = yes ? `💞 ${label(req.user)} said yes. You two are bae now!` : `💔 ${label(req.user)} said not right now.`;
+    notify(io(req), f.other, { icon: yes ? '💞' : '💔', text, kind: 'friend' }).catch(() => {});
+    emitUser(io(req), f.other, 'dm', mv(q));
+    res.json({ message: await addMessage(req, { to: f.other, text, kind: 'system' }), request: mv(q), together: yes });
+  } catch (e) { next(e); }
+});
+router.post('/bae/:id/end', async (req, res, next) => {
+  try {
+    const f = await friendOr(req, res); if (!f) return;
+    const mine = await baeOf(f.me); if (!mine.list.includes(f.other)) return bad(res, 409, 'You are not bae with this player.');
+    await Promise.all([User.updateOne({ _id: f.me }, { $pull: { 'ac.baes': { partner: f.other } } }), User.updateOne({ _id: f.other }, { $pull: { 'ac.baes': { partner: f.me } } })]);
+    res.json({ message: await addMessage(req, { to: f.other, text: `${label(req.user)} ended the bae thing 💔`, kind: 'system' }) });
+  } catch (e) { next(e); }
+});
 router.get('/visit/:id', async (req, res, next) => {
   try {
     const f = await friendOr(req, res); if (!f) return;
     await ensureAC(f.other);
     const host = await User.findById(f.other).select('displayName acUsername ac');
-    const propertyId = String(req.query.propertyId || '').slice(0, 32);
-    let paint = host.ac.paint, items = host.ac.items || [], propertyName = 'Starter Room';
+    // with no home named, show the home the host is living in RIGHT NOW (their live home), not the Starter Room
+    let propertyId = String(req.query.propertyId || '').slice(0, 80);
+    if (!propertyId) propertyId = String(host.ac.activeProperty || '').slice(0, 80);
+    const A = require('../utils/acproperties');
+    let paint = host.ac.paint, items = host.ac.items || [], propertyName = 'Starter Room', property = null;
     if (propertyId) {
-      const property = (host.ac.properties || []).find(x => x.id === propertyId);
-      if (!property || (property.tenure === 'rent' && property.leaseExpiresAt && new Date(property.leaseExpiresAt) <= new Date())) return bad(res, 404, 'That home is no longer available.');
-      paint = property.paint || paint; items = property.items || [];
-      propertyName = require('../utils/acproperties').HOMES[property.type]?.name || 'Home';
+      property = (host.ac.properties || []).find(x => x.id === propertyId) || null;
+      const gone = !property || (property.tenure === 'rent' && property.leaseExpiresAt && new Date(property.leaseExpiresAt) <= new Date());
+      if (gone && req.query.propertyId) return bad(res, 404, 'That home is no longer available.');
+      if (gone) { property = null; propertyId = '' }       // their live home ran out: fall back to the Starter Room
     }
-    notify(io(req), f.other, { icon: '👋', text: `${label(req.user)} visited your place`, kind: 'friend' }).catch(() => {});
-    res.json({
-      host: {
-        id: f.other,
-        name: label(host),
-        username: host.acUsername || host.displayName,
-        paint,
-        items,
-        itemsCount: items.length,
-        propertyId,
-        propertyName,
-        gender: (host.ac && host.ac.gender) || 'male',
-        look: (host.ac && host.ac.render) || null
-      }
-    });
+    if (property) { paint = property.paint || paint; items = property.items || []; propertyName = (A.HOMES[property.type] && A.HOMES[property.type].name) || 'Home' }
+    const plain = (it) => ({ id: it.id, name: it.name, x: it.x, z: it.z, rot: it.rot || 0, floor: Number(it.floor) || 0, placed: it.placed !== false });
+    // Visiting only works while the owner is online. If they are away it is a break-in: they get a burglar alert and can kick you out.
+    const now = new Date(), vis = host.ac.visit || {};
+    const k = (vis.kicked || []).find((x) => String(x.id) === String(f.me) && new Date(x.until) > now);
+    if (k) return bad(res, 403, `${label(host)} asked you to leave. Try again in ${Math.max(1, Math.ceil((new Date(k.until) - now) / 60000))} min.`);
+    const online = acPresence.isOnline(f.other), burglar = !online;
+    await User.updateOne({ _id: f.other }, { $pull: { 'ac.visit.guests': { id: String(f.me) } } });
+    await User.updateOne({ _id: f.other }, { $push: { 'ac.visit.guests': { id: String(f.me), name: label(req.user), at: now, burglar } } });
+    notify(io(req), f.other, burglar
+      ? { icon: '🚨', text: `Burglar alert! ${label(req.user)} broke into your home while you were away. Open House Parties to kick them out.`, kind: 'warn' }
+      : { icon: '👋', text: `${label(req.user)} is visiting your place. You can kick them out in House Parties.`, kind: 'friend' }).catch(() => {});
+    res.json({ host: { id: f.other, name: label(host), paint, items: items.length, propertyId, propertyName, property: property ? A.publicHome(property) : null, placed: items.map(plain), burglar, allowUse: !!vis.allowUse && !burglar } });
   } catch (e) { next(e); }
+});
+// the visitor's heartbeat: tells them if they were kicked and whether the owner is home now
+router.post('/visit/:id/ping', async (req, res, next) => {
+  try {
+    const f = await friendOr(req, res); if (!f) return;
+    const host = await User.findById(f.other).select('ac.visit'), vis = (host && host.ac && host.ac.visit) || {}, now = new Date();
+    const kicked = (vis.kicked || []).some((x) => String(x.id) === String(f.me) && new Date(x.until) > now), here = (vis.guests || []).some((g) => String(g.id) === String(f.me));
+    if (kicked || !here) return res.json({ kicked: true });
+    await User.updateOne({ _id: f.other, 'ac.visit.guests.id': String(f.me) }, { $set: { 'ac.visit.guests.$.at': now } });
+    const online = acPresence.isOnline(f.other);
+    res.json({ kicked: false, ownerOnline: online, allowUse: !!vis.allowUse && online });
+  } catch (e) { next(e); }
+});
+router.post('/visit/:id/leave', async (req, res, next) => {
+  try { const f = await friendOr(req, res); if (!f) return; await User.updateOne({ _id: f.other }, { $pull: { 'ac.visit.guests': { id: String(f.me) } } }); res.json({ ok: true }); } catch (e) { next(e); }
+});
+// the owner's side: who is in my home right now, kick them, and decide whether guests may use my things
+router.get('/visitors', async (req, res, next) => {
+  try {
+    const me = await User.findById(uid(req)).select('ac.visit'), vis = (me && me.ac && me.ac.visit) || {}, cut = Date.now() - 90000;
+    res.json({ allowUse: !!vis.allowUse, guests: (vis.guests || []).filter((g) => new Date(g.at).getTime() > cut).map((g) => ({ id: g.id, name: g.name, burglar: !!g.burglar, at: g.at })) });
+  } catch (e) { next(e); }
+});
+router.post('/visitors/kick', async (req, res, next) => {
+  try {
+    const gid = String((req.body && req.body.userId) || ''); if (!gid) return bad(res, 400, 'Who should leave?');
+    const mins = Math.max(5, Math.min(240, Number(req.body && req.body.minutes) || 30)), until = new Date(Date.now() + mins * 60000);
+    await User.updateOne({ _id: uid(req) }, { $pull: { 'ac.visit.guests': { id: gid }, 'ac.visit.kicked': { id: gid } } });
+    await User.updateOne({ _id: uid(req) }, { $push: { 'ac.visit.kicked': { id: gid, until } } });
+    notify(io(req), gid, { icon: '🚪', text: `${label(req.user)} asked you to leave their home.`, kind: 'warn' }).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+router.post('/visitors/settings', async (req, res, next) => {
+  try { await User.updateOne({ _id: uid(req) }, { $set: { 'ac.visit.allowUse': !!(req.body && req.body.allowUse) } }); res.json({ allowUse: !!(req.body && req.body.allowUse) }); } catch (e) { next(e); }
 });
 router.post('/buy-food/:id', async (req, res, next) => {
   try {
@@ -339,7 +427,7 @@ router.post('/buy-food/:id', async (req, res, next) => {
     const sender = await User.findOneAndUpdate({ _id: f.me, 'ac.cash': { $gte: price } }, { $inc: { 'ac.cash': -price } }, { new: true });
     if (!sender) return bad(res, 402, 'Not enough ₦.');
     const r = await User.findById(f.other).select('ac.needs'); const cur = (r.ac.needs && r.ac.needs[0]) || 0;
-    await User.updateOne({ _id: f.other }, { $set: { 'ac.needs.0': Math.min(1, cur + item.fill) } });
+    await User.updateOne({ _id: f.other }, { $set: { 'ac.needs.0': Math.min(1, cur + item.fill) }, $inc: { 'ac.needsV': 1 } });
     notify(io(req), f.other, { icon: item.emoji, text: `${label(req.user)} bought you ${item.name}`, kind: 'good' }).catch(() => {});
     emitUser(io(req), f.other, 'cash', { delta: 0 });
     res.json({ cash: sender.ac.cash, message: await addMessage(req, { to: f.other, text: `${label(req.user)} bought you ${item.name} ${item.emoji}`, kind: 'food' }) });

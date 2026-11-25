@@ -1,3 +1,5 @@
+/* Landing-page links (/play?open=gamehub, /play?open=lagosrun) go through the normal splash, sign-in and Continue flow; the wish is kept until the game has started. */
+try { const o = new URLSearchParams(location.search).get('open'); if (o === 'gamehub' || o === 'lagosrun' || o === 'drive') sessionStorage.setItem('ac:open', o === 'drive' ? 'lagosrun' : o) } catch (e) {}
 /* ================= AllConnect client =================
    Login: same accounts as GameHub (POST /auth/login, /auth/register, Google). Realtime: Socket.io namespace /ac. */
 const NET = {
@@ -8,7 +10,7 @@ const NET = {
     const r = await fetch(url, { method: opt.method || 'GET', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: opt.body ? JSON.stringify(opt.body) : undefined });
     let j = {};
     try { j = await r.json() } catch {}
-    if (!r.ok) throw Object.assign(new Error(j.message || 'Something went wrong. Try again.'), { status: r.status });
+    if (!r.ok) throw Object.assign(new Error(j.message || 'Something went wrong. Try again.'), { status: r.status, data: j });
     return j
   },
   /* ---- instant UI: stale-while-revalidate cache. cb(data, fromCache) fires immediately with cached data (if any),
@@ -48,7 +50,7 @@ const NET = {
   save() {
     if (!this.user) return;
     clearTimeout(this.saveT);
-    this.saveT = setTimeout(() => this.api('/api/ac/save', { method: 'POST', body: { paint: S.paint, needs: S.needs, min: S.min, gender: S.gender || undefined } }).catch(() => {}), 1500)
+    this.saveT = setTimeout(() => this.api('/api/ac/save', { method: 'POST', body: { paint: S.paint, needs: S.needs, v: S.needsV, min: S.min, gender: S.gender || undefined } }).then(r => { if (r && r.conflict) { S.needs = r.needs; S.needsV = r.v; render() } }).catch(() => {}), 1500)
   }
 };
 const fmtN = n => n >= 1e6 ? (n / 1e6).toFixed(1) + 'm' : n >= 1e4 ? (n / 1e3).toFixed(1) + 'k' : String(n);
@@ -60,17 +62,68 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 
 function drawPlayers(list) { if (window.MAP3D) MAP3D.setPlayers(list || []) }
 function mapChip(btn) { const k = btn.getAttribute('data-f'); if (!window.MAP3D || !k) return; const on = !MAP3D.hud[k]; MAP3D.setFilter(k, on); btn.classList.toggle('on', !!on) }
-function mapCity(btn) { if (!window.MAP3D) return; document.querySelectorAll('#mapcities button').forEach(b => b.classList.toggle('on', b === btn)); MAP3D.setCity(btn.getAttribute('data-city')) }
+// legend rows now double as the map's layer filter toggles (the old separate chip row was removed)
+function legendToggle(k) { if (!window.MAP3D) return; MAP3D.setFilter(k, !MAP3D.hud[k]); if (typeof SHEET !== 'undefined' && SHEET.isOpen('legend')) SHEET.paint() }
+/* every Nigerian state, for the map's city/state switcher: Lagos, Port Harcourt (Rivers) and Abuja (FCT) stay first since
+   they're what the map actually has built; the toast in MAP3D.setCity() tells players the rest are coming soon. */
+const NG_STATES = [
+  { key: 'lagos', label: 'Lagos' }, { key: 'ph', label: 'Port Harcourt' }, { key: 'abuja', label: 'Abuja' },
+  { key: 'abia', label: 'Abia' }, { key: 'adamawa', label: 'Adamawa' }, { key: 'akwaibom', label: 'Akwa Ibom' },
+  { key: 'anambra', label: 'Anambra' }, { key: 'bauchi', label: 'Bauchi' }, { key: 'bayelsa', label: 'Bayelsa' },
+  { key: 'benue', label: 'Benue' }, { key: 'borno', label: 'Borno' }, { key: 'crossriver', label: 'Cross River' },
+  { key: 'delta', label: 'Delta' }, { key: 'ebonyi', label: 'Ebonyi' }, { key: 'edo', label: 'Edo' },
+  { key: 'ekiti', label: 'Ekiti' }, { key: 'enugu', label: 'Enugu' }, { key: 'gombe', label: 'Gombe' },
+  { key: 'imo', label: 'Imo' }, { key: 'jigawa', label: 'Jigawa' }, { key: 'kaduna', label: 'Kaduna' },
+  { key: 'kano', label: 'Kano' }, { key: 'katsina', label: 'Katsina' }, { key: 'kebbi', label: 'Kebbi' },
+  { key: 'kogi', label: 'Kogi' }, { key: 'kwara', label: 'Kwara' }, { key: 'nasarawa', label: 'Nasarawa' },
+  { key: 'niger', label: 'Niger' }, { key: 'ogun', label: 'Ogun' }, { key: 'ondo', label: 'Ondo' },
+  { key: 'osun', label: 'Osun' }, { key: 'oyo', label: 'Oyo' }, { key: 'plateau', label: 'Plateau' },
+  { key: 'sokoto', label: 'Sokoto' }, { key: 'taraba', label: 'Taraba' }, { key: 'yobe', label: 'Yobe' },
+  { key: 'zamfara', label: 'Zamfara' }
+];
+function cityBtn(s) { return `<button type="button" data-city="${s.key}" data-label="${esc(s.label)}" onclick="mapCity(this)">${esc(s.label)}</button>` }
+function renderCityTabs() {
+  const main = document.getElementById('mapcities'), more = document.getElementById('mapcitiesMore');
+  if (!main || !more) return;
+  main.innerHTML = NG_STATES.slice(0, 4).map(cityBtn).join('');
+  more.innerHTML = NG_STATES.slice(4).map(cityBtn).join('');
+  const first = main.querySelector('button'); if (first) first.classList.add('on');
+}
+function toggleCityMore(open) {
+  const p = document.getElementById('mapcitiesMore'), b = document.getElementById('citymoreBtn'); if (!p || !b) return;
+  const on = open !== undefined ? !!open : p.style.display !== 'flex';
+  p.style.display = on ? 'flex' : 'none';
+  b.classList.toggle('open', on);
+  b.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+renderCityTabs();
+function mapCity(btn) {
+  if (!window.MAP3D) return;
+  const city = btn.getAttribute('data-city');
+  const label = btn.getAttribute('data-label') || btn.textContent;
+  const switched = MAP3D.setCity(city, label);
+  if (switched) document.querySelectorAll('#mapcities button, #mapcitiesMore button').forEach(b => b.classList.toggle('on', b.getAttribute('data-city') === city));
+  if (btn.closest('#mapcitiesMore')) toggleCityMore(false); // picked from the overflow list: collapse it back down
+}
 
 function applyAC(ac) {
-  Object.assign(S, { cash: ac.cash, paint: ac.paint, needs: ac.needs, min: ac.min, gender: ac.gender || S.gender || '' });
+  // needs: the browser is the live copy. Take the server's only the first time, or when the server itself changed them (a friend fed you).
+  const takeNeeds = !S._needsInit || (ac.needsV != null && ac.needsV !== S.needsV);
+  Object.assign(S, { cash: ac.cash, paint: ac.paint, min: ac.min, gender: ac.gender || S.gender || '' });
+  if (takeNeeds) { S.needs = ac.needs; S.needsV = ac.needsV || 0; S._needsInit = true }
   S.owned = Object.fromEntries(ac.owned.map(n => [n, 1]));
   S.legacyItems = ac.items || []; S.legacyPaint = ac.paint; S.properties = ac.properties || [];
+  /* first load after opening or refreshing the game: go back into the home the player entered last (saved on the server) */
+  if (!S.homeSynced) { S.homeSynced = true; let saved = ac.activeProperty; if (saved === undefined) { try { saved = localStorage.getItem('ac:home') || '' } catch (e) { saved = '' } } if (saved && !S.activePropertyId) S.activePropertyId = saved }
   S.activeProperty = S.activePropertyId ? S.properties.find(p => p.id === S.activePropertyId) || null : null;
   if (!S.activeProperty) S.activePropertyId = '';
   S.items = S.activeProperty ? S.activeProperty.items : S.legacyItems;
-  if (S.activeProperty) S.paint = S.activeProperty.paint || S.legacyPaint;
-  else S.paint = S.legacyPaint;
+  S.grid = window.homeGrid ? homeGrid(S.activeProperty) : 6;
+  if (S.floorFor !== S.activePropertyId) { S.floor = 0; S.floorFor = S.activePropertyId }       // a different home always starts on the ground floor
+  if (!S.activeProperty || (S.floor === 1 && !S.activeProperty.upstairs)) S.floor = 0;     // the yard (floor 2) exists for every home
+  S.layout = window.homeLayout ? homeLayout(S.activeProperty, S.floor || 0) : null;
+  S.paint = S.activeProperty ? (S.activeProperty.paint || S.legacyPaint) : S.legacyPaint;
+  if (window.VISIT && VISIT.on) VISIT.reapply();                 // you are visiting a friend: leave their room on screen
   S.wish = ac.wish || [];
   S.mapPos = ac.mapPos || null;
   if (S.mapPos && window.MAP3D && !S._mapRestored) { S._mapRestored = true; MAP3D.restorePos(S.mapPos); }
@@ -86,21 +139,24 @@ function authMode(m) {
   $('tl').className = m == 'login' ? 'on' : '';
   $('tr').className = m == 'login' ? '' : 'on';
   $('fname').style.display = m == 'login' ? 'none' : 'block';
+  $('fsto').style.display = $('fscu').style.display = m == 'login' ? 'none' : 'block';
   $('abtn').textContent = m == 'login' ? 'Sign in' : 'Create account';
   $('fpw').autocomplete = m == 'login' ? 'current-password' : 'new-password';
   $('aerr').textContent = ''
 }
 if (location.hash === '#register' || location.hash === '#sign-up') authMode('register');
 async function doAuth() {
+  if (window.AGE && AM == 'register' && !AGE.hasFull()) return AGE.gate(() => doAuth());   // sign-up asks for the full date of birth once; signing in never asks (the server already knows)
   const id = $('fid').value.trim(),
     pw = $('fpw').value,
     name = $('fname').value.trim(),
     b = $('abtn');
   $('aerr').textContent = '';
   if (!id || !pw || (AM == 'register' && !name)) return $('aerr').textContent = AM == 'register' ? 'Enter your name, email/phone and password.' : 'Enter your email/phone and password.';
+  if (AM == 'register' && (!$('fsto').value || !$('fscu').value)) return $('aerr').textContent = 'Tell us which state you are from and which state you are in now.';
   b.disabled = true;
   try {
-    await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw } });
+    await NET.api(AM == 'login' ? '/auth/login' : '/auth/register', { method: 'POST', body: AM == 'login' ? { identifier: id, password: pw } : { name, identifier: id, password: pw, stateOrigin: $('fsto').value, stateCurrent: $('fscu').value } });
     window.JUST_AUTHED = true;
     await boot();
     window.JUST_AUTHED = false
@@ -110,32 +166,34 @@ async function doAuth() {
 
 function logout() { location.href = (window.API_BASE || '') + '/auth/logout' }
 async function boot() {
-  if (window.top !== window.self) { window.top.location.href = '/'; return } // GameHub logout redirects here: never nest the platform
+  if (window.top !== window.self) { window.top.location.href = '/play'; return } // GameHub logout redirects here: never nest the platform
   try {
     const j = await NET.api('/api/ac/state');
     NET.user = j.user;
     applyAC(j.ac);
     $('uname').textContent = j.user.displayName;
-    $('uname2').textContent = j.user.displayName;
     $('auth').style.display = 'none';
     $('resume').style.display = 'block';
+    try { welcomeInfo(j.user) } catch (e) {}
     initCharacter();
     NET.connect();
     render();
     if (window.PH) PH.init();
     if (window.PUSH) PUSH.init();
+    if (window.AGE) AGE.sync();
     warmUp()
   }
   catch (e) {
     $('auth').style.display = 'block';
     $('resume').style.display = 'none';
+    if (window.AGE && !AGE.ok()) AGE.gate();
     if (e.status && e.status !== 401) $('aerr').textContent = e.message;
     else if (!e.status) $('aerr').textContent = 'Cannot reach the server. Check your connection and try again.';
     else if (window.JUST_AUTHED) $('aerr').textContent = 'Signed in, but your session was not saved. Allow cookies for this site and try again.'
   }
   if (/auth_error/.test(location.search)) {
     $('aerr').textContent = 'Google sign-in is not available right now. Use email or phone.';
-    history.replaceState(null, '', '/')
+    history.replaceState(null, '', '/play')
   }
 }
 
@@ -163,18 +221,23 @@ function hubQuiet(cb) {
   first ? f.addEventListener('load', () => hubRun(cb), { once: true }) : hubRun(cb)
 }
 
-/* Lagos Run opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
+/* Shop tab safety net: loads /allconnect/mall.js on demand (cache-busted) if the page came up without it */
+function loadMallScript() {
+  if (window.MALL) return Promise.resolve(true);
+  return new Promise(res => { const s = document.createElement('script'); s.src = '/allconnect/mall.js?v=' + Date.now(); s.onload = () => res(!!window.MALL); s.onerror = () => res(false); document.head.appendChild(s) })
+}
+/* Drive opens as its own full-screen app (the game loads on first open and is unloaded on close so it never runs in the background) */
 function openLagosRun() {
   const f = $('lrf');
   if (f.getAttribute('src') !== '/lagosrun/') f.src = '/lagosrun/'; /* closing sets it to about:blank, so each open starts the game fresh */
   $('lagosrun').style.display = 'block';
-  try { if (window.BGM) BGM.pause() } catch (e) {}
+  try { if (window.BGM) { BGM.hold('drive', true); BGM.pause() } } catch (e) {}
   try { document.documentElement.requestFullscreen && !document.fullscreenElement && /Android|iPad/.test(navigator.userAgent) && document.documentElement.requestFullscreen().catch(() => {}) } catch (e) {}
 }
 function closeLagosRun() {
   const f = $('lrf'); $('lagosrun').style.display = 'none'; f.removeAttribute('src'); f.src = 'about:blank';
   try { if (document.fullscreenElement) document.exitFullscreen() } catch (e) {}
-  try { if (window.BGM) BGM.sync() } catch (e) {}
+  try { if (window.BGM) { BGM.hold('drive', false); BGM.sync() } } catch (e) {}
   nav('home')
 }
 
@@ -223,74 +286,33 @@ function render() {
   $('bal').title = $('bal2').title = fmt(S.cash);
   const q1 = $('q1');
   if (q1 && window.JOBS) JOBS.quest(q1);
-  const NEED_NAMES = ['Hunger 🍛', 'Energy ⚡', 'Fun 🎉', 'Social 💬', 'Hygiene 🫧', 'Bladder 🚽'];
-  const NEED_ACTIONS = ['eat(event)', 'rest(event)', 'entertain(event)', 'socialize(event)', 'shower(event)', 'relieve(event)'];
-  $('needs').innerHTML = S.needs.map((v, i) => `
-    <div class="n" onclick="${NEED_ACTIONS[i]}" title="${NEED_NAMES[i]} (${Math.round(v*100)}%): tap to restore" style="cursor:pointer;">
-      <span>${NEED[i]}</span>
-      <div class="bar"><u style="width:${v*100}%;${v<.5?'background:#f5a623':''}"></u></div>
-    </div>
-  `).join('');
+  $('needs').innerHTML = S.needs.map((v, i) => `<div class="n"><span>${NEED[i]}</span><div class="bar"><u style="width:${v*100}%;${v<.5?'background:#f5a623':''}"></u></div></div>`).join('');
   const lo = Math.min(...S.needs);
-  const loIdx = S.needs.indexOf(lo);
-  const moodDesc = lo > .75 ? '😄 Very Happy' : lo > .5 ? '🙂 Balanced' : loIdx === 0 ? '🍛 Hungry' : loIdx === 1 ? '😴 Exhausted' : loIdx === 2 ? '🥱 Bored' : loIdx === 3 ? '🥺 Lonely' : loIdx === 4 ? '🚿 Smelly' : '🚽 Urgent';
-  $('mood').textContent = moodDesc;
+  $('mood').textContent = lo > .7 ? '😄 Very Happy' : lo > .4 ? '🙂 Okay' : '😩 Hungry'
 }
-const NEEDN = ['You are getting hungry — eat something 🍛', 'Energy is getting low — take a rest ⚡', 'Your fun is running out — play or party 🎉', 'You are feeling lonely — gist with friends 💬', 'You need a fresh bath 🫧', 'Nature is calling — use the restroom 🚽'],
+const NEEDN = ['You are getting hungry — eat something 🍛', 'Energy is getting low!', 'Your fun is running out 🎉', 'You are feeling lonely 💬', 'You need a bath 🫧', 'Nature is calling 🚽'],
   NEEDI = ['🥧', '⚡', '🎉', '💬', '🫧', '🚽'],
-  LOW = {};
+  LOW = {}, NEED_BOOT = Date.now(), LOWN = {}, needAt = () => { try { return JSON.parse(localStorage.getItem('needAlertAt') || '{}') } catch (e) { return {} } };
 setInterval(() => {
   S.min++;
   S.needs = S.needs.map(v => Math.max(0, v - .004));
-  S.needs.forEach((v, i) => { if (v < .3 && !LOW[i]) { LOW[i] = 1; if (window.PH) PH.local_(NEEDI[i], NEEDN[i], 'warn') } else if (v > .5) LOW[i] = 0 });
+  /* Need alerts (hungry, tired, bored, lonely, dirty, toilet): never on opening the game, one at a time, and each need at most once every 8 minutes (remembered across visits). */
+  const nowT = Date.now(); let said = false;
+  S.needs.forEach((v, i) => {
+    if (v > .5) { LOW[i] = 0; LOWN[i] = 0; return }
+    LOWN[i] = v < .25 ? (LOWN[i] || 0) + 1 : 0;      // only a need that is really low (under 25%) and has stayed low for a few seconds counts
+    if (said || LOWN[i] < 3 || nowT - NEED_BOOT < 60000 || nowT - (needAt()[i] || 0) < 8 * 60000) return;
+    said = true; LOW[i] = 1; const m = needAt(); m[i] = nowT; try { localStorage.setItem('needAlertAt', JSON.stringify(m)) } catch (e) {}
+    if (window.PH) PH.local_(NEEDI[i], NEEDN[i], 'warn')
+  });
   render()
 }, 3000);
 
 function eat(e) {
-  if (e && e.stopPropagation) e.stopPropagation();
+  e.stopPropagation();
   S.needs[0] = Math.min(1, S.needs[0] + .4);
-  toast('Yum! Ate hot jollof 🍛');
+  toast('Yum! Ate jollof 🍛');
   if (window.PH) PH.local_('🍛', 'You ate something · hunger restored', 'good');
-  render()
-}
-
-function rest(e) {
-  if (e && e.stopPropagation) e.stopPropagation();
-  S.needs[1] = Math.min(1, S.needs[1] + .4);
-  toast('Refreshed! Power nap taken ⚡💤');
-  if (window.PH) PH.local_('⚡', 'You rested · energy restored', 'good');
-  render()
-}
-
-function entertain(e) {
-  if (e && e.stopPropagation) e.stopPropagation();
-  S.needs[2] = Math.min(1, S.needs[2] + .4);
-  toast('Fun restored! Listened to Afrobeats 🎉🎶');
-  if (window.PH) PH.local_('🎉', 'Had some fun · mood boosted', 'good');
-  render()
-}
-
-function socialize(e) {
-  if (e && e.stopPropagation) e.stopPropagation();
-  S.needs[3] = Math.min(1, S.needs[3] + .4);
-  toast('Gisted with paddies! Social meter up 🤝💬');
-  if (window.PH) PH.local_('🤝', 'Shared gist · social restored', 'good');
-  render()
-}
-
-function shower(e) {
-  if (e && e.stopPropagation) e.stopPropagation();
-  S.needs[4] = Math.min(1, S.needs[4] + .45);
-  toast('Fresh bath! Feeling clean & sharp 🫧🚿');
-  if (window.PH) PH.local_('🫧', 'Took a shower · hygiene restored', 'good');
-  render()
-}
-
-function relieve(e) {
-  if (e && e.stopPropagation) e.stopPropagation();
-  S.needs[5] = Math.min(1, S.needs[5] + .5);
-  toast('Relieved! Bladder empty 🚽✨');
-  if (window.PH) PH.local_('🚽', 'Used restroom · bladder relieved', 'good');
   render()
 }
 
@@ -333,10 +355,7 @@ function openBank(dep) {
   window.addEventListener('offline', show); window.addEventListener('online', hide);
   if (!navigator.onLine) show()
 })();
-function toggleClean() {
-  S.clean = !S.clean;
-  nav('home', true)
-}
+function toggleClean() { S.clean = false }      // the hide-the-buttons mode was removed
 /* Phone power behavior: the physical side button and Phone navigation toggle the same device. */
 const PHONEUI = {
   busy:false,
@@ -348,14 +367,14 @@ window.PHONEUI=PHONEUI;
 
 const NAV = [
   ['home', 'Home', '<path d="M4 11l8-7 8 7v9H4z"/>'],
-  ['buy', 'Buy', '<rect x="4" y="9" width="16" height="8" rx="2"/><path d="M6 9V7a2 2 0 012-2h8a2 2 0 012 2v2M7 17v2M17 17v2"/>'],
+  ['buy', 'Shop', '<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6.5a3 3 0 016 0V8"/>'],
   ['map', 'Map', '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14"/>'],
   ['phone', 'Phone', '<rect x="7" y="3" width="10" height="18" rx="2"/>']
 ];
 
 function nav(w, keep) {
   if (w === 'phone' && S.page === 'phone') { if (window.PHONEUI) PHONEUI.close(); else nav('home'); return; }
-  if (S.page === 'buy' && w !== 'buy' && window.BUY) BUY.leave();
+  if (S.page === 'buy' && w !== 'buy') { if (window.BUY) BUY.leave(); if (window.MALL) MALL.leave() }
   S.page = w;
   if (!keep) S.clean = false;
   if (w !== 'phone' && window.PH && PH.view) PH.close();
@@ -367,10 +386,10 @@ function nav(w, keep) {
   $('buy').style.display = w == 'buy' ? 'block' : 'none';
   $('phone').style.display = w == 'phone' ? 'block' : 'none';
   $('room').style.display = (w == 'map') ? 'none' : 'block';
-  const cl = S.clean && home;
-  $('needsbar').style.display = ((home && !cl) || w == 'map') ? 'flex' : 'none';
+  const cl = false && home;
+  $('needsbar').style.display = (w == 'map') ? 'flex' : 'none';   /* home no longer shows the avatar + needs strip (needs live in the Goals sheet) */
   $('nav').style.display = (w == 'buy' || w == 'phone' || cl) ? 'none' : 'flex';
-  $('menubtn').style.display = cl ? 'flex' : 'none';
+  if ($('menubtn')) $('menubtn').style.display = 'none';
   $('viewctl').style.display = (home || w == 'map') ? 'flex' : 'none';
   $('app').classList.toggle('onmap', w == 'map'); try { CAMV.toggle(false) } catch (e) {}
   $('emotes').style.display = (home || w == 'map') ? 'flex' : 'none';
@@ -389,8 +408,8 @@ function nav(w, keep) {
   if (window.GEM && typeof NET !== 'undefined' && NET.user) GEM.boot();
   if (window.GOALS && typeof NET !== 'undefined' && NET.user) GOALS.boot();
   if (w == 'buy') {
-    $('room').style.top = '44px';
-    BUY.enter()
+    if (window.MALL) MALL.enter();   /* Shop tab: the 3D mall, or "My Home" (the old Buy mode) */
+    else loadMallScript().then(ok => { if (S.page !== 'buy') return; if (ok && window.MALL) MALL.enter(); else { $('room').style.top = '44px'; BUY.enter() } })   /* mall.js did not load (old cached page, missing file): fetch it fresh once before giving up and showing the old house */
   } else $('room').style.top = '';
   if (w == 'map') {
     if (window.ADS) ADS.paintMap()
@@ -423,34 +442,47 @@ const APPS = [
   ['Contacts', '📞', 'linear-gradient(#34d399,#16a34a)'],
   ['Bank', '<i class="fa-solid fa-building-columns"></i>', '#151a35'],
   ['GameHub', '🎮', '#151a35'],
-  ['Lagos Run', '🚌', 'linear-gradient(135deg,#f2b705,#e0301e 60%,#14110f)'],
+  ['Drive', '🚌', 'linear-gradient(135deg,#f2b705,#e0301e 60%,#14110f)'],
   ['Jobs', '💼', 'linear-gradient(#34d399,#10b981)'],
-  ['Hustle', '🔥', 'linear-gradient(135deg,#f59e0b,#d97706)', 1],
-  ['Market', '🧺', 'linear-gradient(135deg,#10b981,#047857)', 1],
   ['Transport', '🚕', 'linear-gradient(135deg,#fbbf24,#d97706)', 1],
   ['State House', '🏛️', 'linear-gradient(135deg,#1d4ed8,#0f766e)', 1],
   ['Messages', '💬', 'linear-gradient(#60a5fa,#2563eb)'],
-  ['Invest', '📈', 'linear-gradient(135deg,#84cc16,#15803d)', 1],
   ['Venues', '🏪', 'linear-gradient(135deg,#a855f7,#6d28d9)', 1],
-  ['Ads', '📢', 'linear-gradient(135deg,#f472b6,#be185d)', 1],
-  ['Style', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
+  ['Homes', '🏠', 'linear-gradient(135deg,#34d399,#0ea5a5)', 1],
+  ['Play Store', '<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="#00c3ff" d="M4 3 12.5 12 4 21z"/><path fill="#00e676" d="M4 3 17.3 10.5 12.5 12z"/><path fill="#ffc400" d="M17.3 10.5 21 12 17.3 13.5 12.5 12z"/><path fill="#ff3d57" d="M12.5 12 17.3 13.5 4 21z"/></svg>', 'linear-gradient(135deg,#ffffff,#dbe7ff)', 1],
+  ['Boutique', '👗', 'linear-gradient(135deg,#f472b6,#8b5cf6)', 1],
+  ['Pet', '🐱', 'linear-gradient(135deg,#fcd34d,#f97316)', 1],
+  ['Health', '💊', 'linear-gradient(135deg,#34d399,#0f766e)', 1],
   ['Police', '🚓', 'linear-gradient(#3b5bdb,#1e2a78)'],
   ['P-Gist', '<i class="fa-solid fa-microphone-lines"></i>', 'linear-gradient(135deg,#ff7a18,#e8337a)'],
   ['City', '<i class="fa-solid fa-city"></i>', 'linear-gradient(135deg,#f59e0b,#e8337a)', 1],
   ['Gazette', '<i class="fa-solid fa-newspaper"></i>', 'linear-gradient(135deg,#0ea5e9,#1e3a8a)'],
-  ["What's New", '<i class="fa-solid fa-clock-rotate-left"></i>', 'linear-gradient(135deg,#f97316,#c2410c)'],
   ['Search', '<i class="fa-solid fa-magnifying-glass"></i>', 'linear-gradient(#64748b,#334155)'],
   ['Songify', '<i class="fa-solid fa-music"></i>', 'linear-gradient(135deg,#15142d,#7b2cbf 58%,#f15a29)'],
+  ['Leaderboard', '<i class="fa-solid fa-trophy"></i>', 'linear-gradient(135deg,#fbbf24,#f59e0b 55%,#ea580c)', 1],
+  ['Guide', '<i class="fa-solid fa-book-open"></i>', 'linear-gradient(135deg,#60a5fa,#4f46e5)', 1],
+  ['Invite', '<i class="fa-solid fa-user-group"></i>', 'linear-gradient(135deg,#3b82f6,#7c3aed)', 1],
   ['Settings', '<i class="fa-solid fa-gear"></i>', 'linear-gradient(#9ca3af,#4b5563)']
 ];
 
-const OPEN = { GameHub: 'openHub()', 'Lagos Run': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Hustle: "PH.open('hustle')", Market: "PH.open('market')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "PH.open('invest')", Venues: "PH.open('venues')", Ads: "PH.open('ads')", Style: "PH.open('style')", City: 'HUB.menu()', Gazette: "HUB.view('news')", "What's New": "HUB.view('changelog')" }; 
-/* Phone home screen (iPhone style): page 1 = clock, "Happening in Lagos" card and 8 apps; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
+const OPEN = { GameHub: 'openHub()', 'Drive': 'openLagosRun()', Contacts: "PH.open('contacts')", Messages: "PH.open('messages')", Settings: "PH.open('settings')", Bank: "PH.open('bank')", Camera: "PH.open('camera')", Police: "PH.open('police')", "P-Gist": "PH.open('gist')", Songify: 'SONGIFY.open()', Search: 'APPSEARCH.open()', Jobs: "PH.open('jobs')", Transport: 'TR.open()', 'State House': 'GOV.open()', Invest: "VEN.open('invest')", Venues: "PH.open('venues')", 'Play Store': "PH.open('ads')", Boutique: "PH.open('style')",
+Health: "PH.open('health')", Pet: 'PET.open()', City: 'HUB.menu()', Gazette: "HUB.view('news')" }; 
+OPEN.Homes = "PH.open('homes')";
+OPEN.Leaderboard = 'LB.open()';
+OPEN.Guide = "PH.open('guide')";
+OPEN.Invite = "PH.open('invite')";
+/* App icon styles (Settings > Display): classic = the icons as they always were, emoji = one emoji per app, 3d = the same emoji on raised glossy tiles */
+const EMO = { Camera: '📷', Contacts: '📞', Bank: '🏦', GameHub: '🎮', Drive: '🚌', Jobs: '💼', Transport: '🚕', 'State House': '🏛️', Messages: '💬', Venues: '🏪', Homes: '🏠', 'Play Store': '🛍️', Boutique: '👗', Pet: '🐱', Health: '💊', Police: '🚓', 'P-Gist': '🎙️', City: '🏙️', Gazette: '📰', Search: '🔍', Songify: '🎵', Leaderboard: '🏆', Guide: '📖', Invite: '👥', Settings: '⚙️' };
+const iconStyle = () => { try { const v = (typeof GP !== 'undefined' && GP.get().iconStyle) || 'classic'; return ['classic', 'emoji', '3d'].includes(v) ? v : 'classic' } catch (e) { return 'classic' } };
+const appIc = a => iconStyle() === 'classic' ? a[1] : (EMO[a[0]] || a[1]);
+const layoutMode = () => { try { return (typeof GP !== 'undefined' && GP.get().appLayout) === 'vertical' ? 'vertical' : 'horizontal' } catch (e) { return 'horizontal' } };
+/* Phone home screen (iPhone style): page 1 = clock, "Happening in 9ja" card and as many rows of apps as fit; next pages = more apps (+ a goals card); a dock of 4 apps stays on every page. */
 const DOCK = ['Messages', 'Jobs', 'Bank', 'Contacts'];
-const FIRST = ['GameHub', 'Lagos Run', 'Camera', 'P-Gist', 'Transport', 'Style', 'Songify', 'Settings'];
-const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${a[1]}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
+const FIRST = ['GameHub', 'Drive', 'Camera', 'P-Gist', 'Transport', 'Boutique', 'Songify', 'Settings'];
+const appBtn = (a, dock) => `<button class="app" data-app="${a[0]}" onclick="PH.pauseGistMedia();${OPEN[a[0]]||`toast('${a[0]} opens soon')`}" aria-label="${a[0]}"><b class="bdg"></b>${a[3]&&!dock?'<span class="nw">NEW</span>':''}<div class="ic" style="background:${a[2]}">${appIc(a)}</div>${dock?'':`<em>${a[0]}</em>`}</button>`;
 const adIc = a => a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.replaceWith(document.createTextNode('📱'))">` : esc(a.emoji || '📱');
 const adBtn = a => `<button class="app adapp" onclick="ADS.openApp('${a.id}')"><div class="ic adic">${adIc(a)}</div><em>${esc(a.title)}</em></button>`;
+const HOMEFIT = { per: 8 };
 function drawApps() {
   const el = $('apps'), dots = $('pgdots'), dk = $('dock'); if (!el) return;
   const byName = Object.fromEntries(APPS.map(a => [a[0], a]));
@@ -458,12 +490,35 @@ function drawApps() {
   const items = [...FIRST.map(n => byName[n]).filter(Boolean), ...rest].map(a => appBtn(a)).concat(((window.ADS && ADS.apps) || []).map(adBtn));
   const keep = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
   const L = window.LAGOS && LAGOS.d, ev = L && L.event, me = (typeof NET !== 'undefined' && NET.user && NET.user.displayName) || 'player';
-  const hap = `<div class="happen"><span class="hi">${ev ? `<span class="fa-solid fa-${ev.fa}" style="color:${ev.color}"></span>` : '🌙'}</span><div><small>Happening in Lagos</small><b>${ev ? esc(ev.title) : 'Loading the city…'}</b></div><button onclick="LAGOS.open('today')">Go ›</button></div>`;
+  const hap = `<div class="happen"><span class="hi">${ev ? `<span class="fa-solid fa-${ev.fa}" style="color:${ev.color}"></span>` : '🌙'}</span><div><small>${NG.say('Happening in 9ja', 'Wetin dey happen for 9ja')}</small><b>${ev ? esc(NG.pcm() && ev.pidgin ? ev.pidgin : ev.title) : NG.say('Loading the city…', 'City dey load…')}</b></div><button onclick="LAGOS.open('today')">Go ›</button></div>`;
   const lock = `<div class="lock"><b id="pb">--:--</b><span id="pd"></span><span class="hello">How far, ${esc(me)} <i>👋</i> · <i class="od"></i>${esc(($('onl') || {}).textContent || '')} online</span></div>`;
-  const goal = `<div class="goalcard" onclick="GOALS.open()"><small>🎯 ${window.GOALS ? GOALS.label() : 'GOALS'}</small><b>${window.GOALS ? esc(GOALS.nextTitle()) : 'Start your Lagos life'}</b></div>`;
-  const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, 8).join('')}</div></div>`];
-  for (let i = 8, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div>${n === 0 ? goal : ''}</div>`);
-  el.classList.add('h'); el.innerHTML = pages.join('');
+  const goal = `<div class="goalcard" onclick="GOALS.open()"><small>🎯 ${window.GOALS ? GOALS.label() : 'GOALS'}</small><b>${window.GOALS ? esc(GOALS.nextTitle()) : NG.say('Start your Naija life', 'Start your Naija life o')}</b></div>`;
+  // page 1 shows as many rows of apps as the free space allows (at least 2); the rest go to the next pages
+  const build = per => {
+    const pages = [`<div class="pg pg1">${lock}${hap}<div class="grid">${items.slice(0, per).join('')}</div></div>`];
+    for (let i = per, n = 0; i < items.length || n === 0; i += 11, n++) pages.push(`<div class="pg"><div class="grid">${items.slice(i, i + 11).join('')}</div></div>`);
+    el.classList.add('h'); el.innerHTML = pages.join('')
+  };
+  let cur = HOMEFIT.per;
+  /* tablet / desktop frame: ONE vertically scrolling list, 3 apps per row, on the right of the clock + city card (no horizontal pages) */
+  const tabx = !!(window.matchMedia && matchMedia('(min-width:900px) and (min-height:560px)').matches), vert = !tabx && layoutMode() === 'vertical';
+  el.classList.toggle('tabx', tabx); el.classList.toggle('vert', vert); document.body.dataset.icons = iconStyle();
+  if (vert) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollTop = 0; el.scrollLeft = 0 }
+  else if (tabx) { el.classList.add('h'); el.innerHTML = `<div class="pg pg1">${lock}${hap}${goal}<div class="grid">${items.join('')}</div></div>`; el.scrollLeft = 0 } else build(cur);
+  if (!tabx && !vert && el.clientHeight > 0) {
+    let grew = false;
+    for (let k = 0; k < 8; k++) {
+      const pg = el.querySelector('.pg1'), grid = pg && pg.querySelector('.grid'), a = grid && grid.querySelector('.app'); if (!a) break;
+      const gs = getComputedStyle(grid), cols = Math.max(1, gs.gridTemplateColumns.split(' ').length), rowH = a.offsetHeight + (parseFloat(gs.rowGap) || 0);
+      const pr = pg.getBoundingClientRect(); let used = 0; [...pg.children].forEach(c => { used = Math.max(used, c.getBoundingClientRect().bottom) });
+      const free = pr.bottom - used - 6, rows = Math.max(2, Math.round(cur / cols)); let next = cur;
+      if (cur % cols || cur < cols * 2) next = rows * cols;                                              // whole rows only
+      else if (pg.scrollHeight > pg.clientHeight + 2 && rows > 2) { next = cur - cols; if (grew) { cur = next; build(cur); break } }
+      else if (free >= rowH + 4 && rows < 5 && cur < items.length) { next = cur + cols; grew = true }
+      if (next === cur) break; cur = next; build(cur)
+    }
+  }
+  HOMEFIT.per = cur;
   if (dk) dk.innerHTML = DOCK.map(n => appBtn(byName[n], true)).join('');
   el.scrollLeft = keep * el.clientWidth; paintDots();
   try { CLOCK.tick() } catch (e) {}
@@ -475,6 +530,8 @@ function paintDots() {
   d.innerHTML = n > 1 ? Array.from({ length: n }, (_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('') : ''
 }
 $('apps').addEventListener('scroll', paintDots, { passive: true });
+/* re-fit the rows of apps when the phone/tablet frame changes size (rotate, resize, opened for the first time) */
+if (window.ResizeObserver) { let rt, lw = 0, lh = 0; new ResizeObserver(() => { const e = $('apps'); if (!e || (e.clientWidth === lw && e.clientHeight === lh)) return; lw = e.clientWidth; lh = e.clientHeight; clearTimeout(rt); rt = setTimeout(() => { if (e.clientHeight > 0) drawApps() }, 120) }).observe($('apps')) }
 /* Search app: find any app on the phone by name */
 const APPSEARCH = {
   res: [],
@@ -493,26 +550,70 @@ const APPSEARCH = {
     const box = $('appres'); if (!box) return;
     box.innerHTML = this.res.length ? this.res.map((a, i) => `<div class="row tap" onclick="APPSEARCH.go(${i})"><div class="ic sic" style="background:${a.bg}">${a.ic}</div><div class="rt"><b>${esc(a.name)}</b><span>${a.ad ? 'Sponsored app' : 'App'}</span></div></div>`).join('') : '<p class="empty">No apps found.</p>'
   },
-  go(i) { const a = this.res[i]; if (a) a.run() }
+  go(i) { const a = this.res[i]; if (a) { PH.pauseGistMedia(); a.run() } }
 };
 drawApps();
 try { window.matchMedia('(min-width:768px) and (min-height:520px)').addEventListener('change', () => drawApps()) } catch (e) {}
 /* ?ref=<code> invite links: remembered until the player has finished setup (see HUB.redeemRef) */
 try { const rf = new URLSearchParams(location.search).get('ref'); if (rf && /^[A-Za-z0-9_]{2,40}$/.test(rf)) { localStorage.setItem('ac:ref', rf); history.replaceState(null, '', location.pathname) } } catch (e) {}
+/* small pill shown over the room while ROOM3D (room3d.js) gets ready — see its init(). The flat starter-room
+   SVG underneath doesn't reflect the player's actual furniture, so it's hidden for that window instead of
+   flashing on screen; the percentage is staged like cityLoader's bar below, just smaller. */
+const RLOAD = {
+  t: null, pct: 0,
+  paint() { const b = $('roomLoadBar'), p = $('roomLoadPct'), n = Math.round(this.pct); if (b) b.style.width = n + '%'; if (p) p.textContent = n + '%' },
+  start() {
+    const app = $('app'); if (!app) return;
+    app.classList.remove('r3d'); app.classList.add('rloading');
+    const pill = $('roomLoad'); if (pill) pill.classList.remove('off');
+    this.pct = 0; this.paint(); clearInterval(this.t);
+    this.t = setInterval(() => { this.pct += (92 - this.pct) * 0.18 + 1.5; if (this.pct > 92) this.pct = 92; this.paint() }, 120);
+  },
+  done() {
+    clearInterval(this.t); this.pct = 100; this.paint();
+    const pill = $('roomLoad'); if (pill) pill.classList.add('off');
+    setTimeout(() => { const app = $('app'); if (app) app.classList.remove('rloading'); if (pill) pill.classList.remove('off'); this.pct = 0; this.paint() }, 360);
+  }
+};
+window.RLOAD = RLOAD;
 /* city-world loading sequence: a few Lagos lines while the room and map get ready */
 function cityLoader() {
-  const L = ['Waking up Lagos…', 'Starting the generators…', 'Sweeping Third Mainland Bridge…', 'Heating the jollof…', 'Tuning the danfo horns…', 'Opening your front door…'], T = ['Tip: pay bills before Sunday night so the light stays on.', 'Tip: tick "Go automatically" in Jobs and your shifts run themselves.', 'Tip: the city event changes every 12 hours.', 'Tip: new players are protected from big-money risks for 7 days.'];
+  const L = [NG.say('Waking up 9ja…', '9ja dey wake…'), NG.say('Starting the generators…', 'We dey start generator…'), NG.say('Sweeping Third Mainland Bridge…', 'We dey sweep Third Mainland Bridge…'), NG.say('Heating the jollof…', 'Jollof dey cook…'), NG.say('Tuning the danfo horns…', 'Danfo horn dey ready…'), NG.say('Opening your front door…', 'We dey open your door…')], T = ['Tip: pay bills before Sunday night so the light stays on.', 'Tip: tick "Go automatically" in Jobs and your shifts run themselves.', 'Tip: the city event changes every 12 hours.', 'Tip: new players are protected from big-money risks for 7 days.'];
   const el = document.createElement('div'); el.id = 'cityload'; el.innerHTML = `<div class="sk">🏙️</div><b>AllConnect</b><p id="clmsg">${L[0]}</p><div class="bar"><i id="clbar"></i></div><small>${T[Math.floor(Math.random() * T.length)]}</small>`;
   $('app').appendChild(el); let i = 0; const t0 = Date.now();
   const tm = setInterval(() => { i = Math.min(L.length - 1, i + 1); const m = $('clmsg'), b = $('clbar'); if (m) m.textContent = L[i]; if (b) b.style.width = Math.round((i + 1) / L.length * 100) + '%' }, 420);
   requestAnimationFrame(() => { const b = $('clbar'); if (b) b.style.width = '12%' });
   return () => { const wait = Math.max(0, 1500 - (Date.now() - t0)); setTimeout(() => { clearInterval(tm); const b = $('clbar'); if (b) b.style.width = '100%'; el.classList.add('off'); setTimeout(() => el.remove(), 400) }, wait) };
 }
+
+/* ---------- welcome card: what you have, when you last played, unread, install, slow network ---------- */
+function welcomeInfo(user) {
+  const short = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'm' : n >= 1e4 ? Math.round(n / 1e3) + 'k' : Math.round(n).toLocaleString('en-NG');
+  const when = t => { const s = (Date.now() - t) / 1000; return s < 90 ? 'just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : Math.floor(s / 86400) + ' d ago' };
+  const day = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+  $('sd').textContent = day + (S.cash != null ? ' · ₦' + short(S.cash) : '');
+  let last = 0; try { last = Number(localStorage.getItem('ac:last:' + ((user && user.id) || 'x'))) || 0 } catch (e) {}
+  $('lastp').textContent = last ? 'Last played ' + when(last) : '';
+  const chips = [], c = navigator.connection || {};
+  if (c.saveData || /(^|-)2g$|3g/.test(c.effectiveType || '')) chips.push('<span class="wchip warn">📶 Slow network. Saver mode will help</span>');
+  if (window.__installEvt) chips.push('<a class="wchip" onclick="installApp()">⬇️ Install app</a>');
+  $('wsum').innerHTML = chips.join('');
+  // the unread count now lives in the bottom pill (where "Official" used to be) instead of a red chip in the card
+  NET.api('/api/ac/badges').then(b => SFOOT.setBell((b.messages || 0) + (b.updates || 0) + (b.requests || 0))).catch(() => {});
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__installEvt = e; if ($('wsum') && !document.querySelector('#wsum [onclick="installApp()"]')) $('wsum').insertAdjacentHTML('beforeend', '<a class="wchip" onclick="installApp()">⬇️ Install app</a>') });
+function installApp() { const e = window.__installEvt; if (!e) return; e.prompt(); e.userChoice.finally(() => { window.__installEvt = null; const a = document.querySelector('#wsum [onclick="installApp()"]'); if (a) a.remove() }) }
+function newLifeAsk(show) {
+  const b = $('nlbox'), open = show === undefined ? b.style.display === 'none' : show;
+  b.style.display = open ? 'block' : 'none'; $('nlink').style.display = open ? 'none' : ''; const rs = $('resume'); if (rs) rs.classList.toggle('nl-open', !!open);   // open: the card shows only the confirm box; Cancel brings Continue back
+  if (open) { const i = $('nlin'); i.value = ''; i.classList.remove('ok'); $('nlgo').disabled = true; setTimeout(() => { try { i.focus({ preventScroll: true }) } catch (e) {} }, 60) }
+}
 async function start(n) {
-  stopPreviews();
+  stopPreviews(); SPLASHBG.pause();
+  try { localStorage.setItem('ac:last:' + ((NET.user && NET.user.id) || 'x'), String(Date.now())) } catch (e) {}
   const loaded = cityLoader();
   if (window.ROOM3D) ROOM3D.init();
-  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
+  if (n) { try { applyAC((await NET.api('/api/ac/new', { method: 'POST' })).ac); if (window.DRAGPOS) DRAGPOS.reset(true) } catch (e) { loaded(); return toast(e.message) } } $('splash').style.display = 'none';
   render();
   nav('home');
   if (window.PH) setTimeout(() => PH.openDeepLink && PH.openDeepLink(), 80);
@@ -546,7 +647,7 @@ const CLOCK = {
       c = $('pd');
     if (a) a.textContent = m[1];
     if (b) b.textContent = m[1];
-    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') + ' · Lagos · ' + (($('hico') || {}).textContent || '');
+    if (c) c.textContent = d.toLocaleDateString('en-GB', { ...o, weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') + ' · Naija · ' + (($('hico') || {}).textContent || '');
     const hc = $('clk'),
       hi = $('hico');
     if (hc) hc.textContent = m[1] + ' ' + m[2]; { const hr = parseInt(d.toLocaleString('en-US', { ...o, hour: 'numeric', hour12: false }), 10) % 24,
@@ -579,12 +680,42 @@ boot();
     for (let k = 0; k < N; k++) s += `<polygon points="${P(i/N,k/N)} ${P((i+1)/N,k/N)} ${P((i+1)/N,(k+1)/N)} ${P(i/N,(k+1)/N)}" fill="${(i+k)%2?'#c58a52':'#a8693a'}"/>`;
   f.innerHTML = s
 })();
-(function() {
-  const r = document.getElementById('room');
-  if (!r) return;
-  let s = r.outerHTML.replace(/ id="room"/, '').replace(/ onclick="walk\(event\)"/, '').replace(/id="(ck|lg)"/g, 'id="$1s"').replace(/url\(#(ck|lg)\)/g, 'url(#$1s)').replace(/ id="(me|wl|wr)"/g, '').replace('class="room"', 'class="room splash-room"');
-  const sp = document.getElementById('splash');
-  sp.insertAdjacentHTML('afterbegin', s)
+/* ================= sign-in screen background =================
+   1. If /allconnect/splash.mp4 (or .webm) exists, that video plays behind the sign-in card.
+   2. If there is no video, the 3D map (the one that sways over the city) plays instead.
+   The card, logo row and buttons stay hidden (#splash.sp-loading) until the background has its first frame, so a refresh
+   never shows a blank or half-built scene. A hard time limit keeps the screen from ever waiting forever. */
+const SPLASHBG = {
+  VIDEOS: [['/allconnect/splash.mp4', 'video/mp4'], ['/allconnect/splash.webm', 'video/webm']],
+  done: false, dio: null,
+  release() { if (this.done) return; this.done = true; clearTimeout(this.cap); const sp = document.getElementById('splash'); if (sp) sp.classList.remove('sp-loading') },
+  pause() { const v = document.getElementById('splashVideo'); if (v) try { v.pause() } catch (e) {} },
+  /* resolves true once the first video frame is ready, false when there is no (playable) video */
+  tryVideo(v) {
+    return new Promise(res => {
+      let i = 0, fin = false; const end = ok => { if (fin) return; fin = true; clearTimeout(t); v.onerror = v.onloadeddata = null; if (!ok) { try { v.pause(); v.removeAttribute('src'); v.load() } catch (e) {} } res(ok) };
+      const t = setTimeout(() => end(false), 4000);
+      v.onloadeddata = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); end(true) };
+      const next = () => { if (i >= this.VIDEOS.length) return end(false); v.src = this.VIDEOS[i][0]; i++; v.load() };
+      v.onerror = next; next()
+    })
+  },
+  async go() {
+    const sp = document.getElementById('splash'); if (!sp) return;
+    let saver = false; try { saver = !!JSON.parse(localStorage.getItem('ghPrefs') || '{}').lowPower } catch (e) {}
+    if (saver) return this.release();                      // saver mode: sky and clouds only, nothing heavy loads
+    this.cap = setTimeout(() => this.release(), 6500);
+    const v = document.getElementById('splashVideo');
+    if (v && await this.tryVideo(v)) { v.classList.add('on'); return this.release() }
+    if (!window.DIORAMA) return this.release();
+    try { this.dio = await DIORAMA.mount(document.getElementById('dio'), { mode: 'top', shiftY: .06, shiftYWide: 0 }) } catch (e) {}
+    this.release()
+  }
+};
+(function () {
+  const run = () => SPLASHBG.go();
+  /* diorama.js is deferred, so it is ready by DOMContentLoaded (no need to wait for every image and font to finish) */
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run()
 })();
 
 /* ================= instant feel: preload everything in the background (unless Saver mode is on) ================= */
@@ -639,6 +770,8 @@ const ENV = {
   calc(m) { const c = x => Math.max(0, Math.min(1, x)); return Math.min(c((m - 330) / 120), c((1170 - m) / 120)) },
   mix(a, b, t) { const h = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16)); const A = h(a),
       B = h(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('') },
+  /* small stars show on roughly half of the nights, picked from the date so a night is either starry or not for everybody */
+  starNight() { const d = new Date(), k = d.getFullYear() * 400 + d.getMonth() * 31 + d.getDate(), r = Math.sin(k * 12.9898) * 43758.5453; return (r - Math.floor(r)) < .5 },
   apply(min) {
     const day = min >= 390 && min < 1110,
       hi = $('hico');
@@ -657,6 +790,7 @@ const ENV = {
     a.style.setProperty('--sky1', this.mix(T[0][0], T[1][0], T[2]));
     a.style.setProperty('--sky2', this.mix(T[0][1], T[1][1], T[2]));
     a.style.setProperty('--dl', dl.toFixed(3));
+    a.style.setProperty('--stars', (this.starNight() && dl < .35 ? 1 - dl / .35 : 0).toFixed(2));
     if (window.ROOM3D) ROOM3D.env(dl)
   }
 };
@@ -670,12 +804,22 @@ async function loadSocials() {
     const d = await r.json();
     window.SOCIAL = d.socials || {};
   } catch (e) { window.SOCIAL = {} }
-  const f = $('sfoot'),
-    ks = Object.keys(SOC_META).filter(k => window.SOCIAL[k]);
-  if (!f) return;
-  f.innerHTML = ks.length ? '<span class="official"><i class="fa-solid fa-circle-check"></i> Official</span>' + ks.map(k => `<a href="${esc(window.SOCIAL[k])}" target="_blank" rel="noopener noreferrer" aria-label="${SOC_META[k][0]}"><i class="${SOC_META[k][1]}"></i></a>`).join('') : '';
-  f.style.display = ks.length ? 'flex' : 'none'
+  SFOOT.paint()
 }
+/* Bottom pill row on the welcome screen. The first pill shows the bell + unread count when there is something new,
+   and is not drawn at all when there is nothing (it reuses the old "Official" pill's look). */
+const SFOOT = {
+  bell: 0,
+  paint() {
+    const f = $('sfoot'); if (!f) return;
+    const ks = Object.keys(SOC_META).filter(k => window.SOCIAL && window.SOCIAL[k]), n = this.bell;
+    const bell = n > 0 ? `<span class="official bellp" role="button" tabindex="0" onclick="openNotifs()" onkeydown="if(event.key==='Enter')openNotifs()" aria-label="${n} new notifications"><i class="fa-solid fa-bell"></i> ${n > 99 ? '99+' : n}</span>` : '';
+    f.innerHTML = bell + ks.map(k => `<a href="${esc(window.SOCIAL[k])}" target="_blank" rel="noopener noreferrer" aria-label="${SOC_META[k][0]}"><i class="${SOC_META[k][1]}"></i></a>`).join('');
+    f.style.display = (bell || ks.length) ? 'flex' : 'none'
+  },
+  setBell(n) { this.bell = Math.max(0, Number(n) || 0); this.paint() }
+};
+function openNotifs() { try { sessionStorage.setItem('ac:open', 'updates') } catch (e) {} start(false) }
 loadSocials();
 
 /* ================= HUD mute: one tap mutes / unmutes ALL game sound (music, effects, announcer) ================= */
@@ -695,6 +839,9 @@ window.addEventListener('storage', e => { if (e.key === 'ghPrefs') refreshMute()
 setTimeout(refreshMute, 0); window.addEventListener('load', refreshMute);
 
 /* ================= NEPA & city banners: pop up now and then ================= */
+/* how well the active home rides out NEPA: 'full' (own backup power), 'partial' or 'none' (set by the server per home) */
+function homePowerTier() { const p = typeof S !== 'undefined' && S.activeProperty; return (p && p.power) || 'none' }
+window.homePowerTier = homePowerTier;
 const BAN = {
   t: 0,
   show(text, ms = 4800) { const b = $('banner'); if (!b) return;
@@ -703,22 +850,36 @@ const BAN = {
     clearTimeout(b.h);
     b.h = setTimeout(() => b.classList.remove('show'), ms) },
   light: true,
+  /* NEPA news arrives as a phone notification (tap it for the full story) instead of a banner across the screen. */
+  note(up) {
+    try { if (up && window.V2) V2.lastUp = Date.now() } catch (e) {}
+    const icon = up ? '💡' : '🕯️', title = up ? 'UP NEPA! Light don come' : 'NEPA took light', text = up ? 'Power is back in your area.' : 'Power cut. Tap to see what to do.';
+    const open = () => { try { CARD.show({ icon, title, tone: up ? 'good' : 'warn', text: up ? 'The grid is back. Your lamps, fridge and gadgets work again, and you can see in the dark.' : 'NEPA has taken the light for now. It usually comes back within a few minutes.', lines: up ? [['Room', 'Lights work again'], ['Bulb button', 'Still switches your room light'], ['Tip', 'Keep fuel for the Gen Set']] : [['Room', 'Dark until power returns'], ['Lamps', 'Stop working'], ['Gen Set', 'Keeps lights on (needs fuel)'], ['Bills', 'Pay early so supply is not cut']], btn: up ? 'Nice' : 'Check bills', go: up ? '' : "LAGOS.open('bills')" }) } catch (e) { toast(icon + ' ' + title) } };
+    if (window.PH && PH.local_) PH.local_(icon, title + '. ' + text, 'info');
+    if (window.BANNER && BANNER.show({ icon, app: 'NEPA', title, text, tap: open })) return;
+    toast(icon + ' ' + title)
+  },
+  /* NEPA is now an occasional event, not a constant flicker: on average light stays ~20 minutes, then goes for 2-4 minutes.
+     Mansions and homes with 4+ bedrooms have their own backup power (never cut); 3-bedroom homes lose light 3x less often. */
   cycle() {
     clearTimeout(this.t);
+    const tier = window.homePowerTier ? homePowerTier() : 'none';
     this.t = setTimeout(() => {
       const idle = $('splash').style.display !== 'none' || $('hub').style.display === 'flex';
-      if (!idle) {
+      const tierNow = window.homePowerTier ? homePowerTier() : 'none';
+      if (tierNow === 'full' && !this.light) { this.light = true; $('app').classList.remove('blackout'); if (window.ROOM3D) ROOM3D.dark(false) }
+      if (!idle && tierNow !== 'full') {
         if (this.light) { this.light = false;
           $('app').classList.add('blackout'); if (window.ROOM3D) ROOM3D.dark(true);
-          this.show('🕯️ NEPA took light! 🕯️');
-          this.t = setTimeout(() => this.cycle(), 20000 + Math.random() * 25000); return }
+          this.note(false);
+          this.t = setTimeout(() => this.cycle(), 120000 + Math.random() * 120000); return }       // out for 2-4 minutes
         this.light = true;
         $('app').classList.remove('blackout');
         if (window.ROOM3D) ROOM3D.dark(false);
-        this.show('💡 UP NEPA! Light don come! 💡')
+        this.note(true)
       }
       this.cycle()
-    }, this.light ? 45000 + Math.random() * 75000 : 1000)
+    }, this.light ? (tier === 'partial' ? 3 : 1) * (900000 + Math.random() * 600000) : 1000)       // light stays 15-25 min (45-75 min in a 3-bedroom home)
   }
 };
 BAN.cycle();
@@ -798,7 +959,7 @@ function initCharacter() { paintPortraits() }
    It is asked once; after that it is changed in Phone → Settings → Avatar → Style (Model 1 / Model 2). */
 function charPickerHtml() {
   const g = S.gender || '';
-  return `<div class="gp" id="gp"><p>Choose your character</p><div class="gpr">
+  return `<div class="chpk" id="gp"><p>Choose your character</p><div class="gpr">
    <button type="button" id="gpM" class="${g === 'male' ? 'on' : ''}" onclick="pickChar('male')"><canvas id="gpMc" width="220" height="280"></canvas><span>Male</span></button>
    <button type="button" id="gpF" class="${g === 'female' ? 'on' : ''}" onclick="pickChar('female')"><canvas id="gpFc" width="220" height="280"></canvas><span>Female</span></button></div>
    <small class="gpnote">You pick this once. Change it any time in Settings → Avatar.</small></div>`
@@ -861,7 +1022,7 @@ const PREFX = {
 window.PREFX = PREFX;
 function applyTheme() {
   const p = PREFX.prefs(), dark = PREFX.nightNow(p);
-  const level = Math.max(0, Math.min(100, Number(p.darkness ?? 100)));
+  const level = 50;                                   // dark mode is fixed at 50%: the Darkness slider was removed
   const mix = (base) => Math.round(base * (1 - level / 100));
   const root = document.documentElement;
   root.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -870,7 +1031,6 @@ function applyTheme() {
   root.style.setProperty('--dark-card', `rgb(${mix(31)},${mix(33)},${mix(44)})`);
   root.style.setProperty('--dark-panel', `rgb(${mix(39)},${mix(41)},${mix(55)})`);
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? (level >= 95 ? '#000000' : `rgb(${mix(20)},${mix(21)},${mix(29)})`) : '#075BFF');
-  try { if (window.ROOM3D && ROOM3D.env) ROOM3D.env(dark ? 0.12 : (window.ENV && ENV.dl >= 0 ? ENV.dl : 1.0)); } catch (e) {}
 }
 window.applyTheme = applyTheme;
 applyTheme();
@@ -915,4 +1075,15 @@ window.HAPTIC = HAPTIC;
     else if (y > p + 8 && !off && y > 90) { av.classList.add('hdr-off'); lock = Date.now() + 320 }
     else if (y < p - 8 && off) { av.classList.remove('hdr-off'); lock = Date.now() + 320 }
   }, true);
+})();
+
+/* map: the rarely used buttons (Tools, weather, Legend, Walk Yaba, City Tour) live behind one button */
+function toggleMapMore(force) { const m = document.getElementById('map'), b = document.getElementById('mapMore'); if (!m) return; const on = typeof force === 'boolean' ? force : !m.classList.contains('mopen'); m.classList.toggle('mopen', on); if (b) { b.setAttribute('aria-expanded', on ? 'true' : 'false'); b.innerHTML = on ? '<i class="fa-solid fa-xmark"></i>' : '<i class="fa-solid fa-ellipsis"></i>' } }
+
+
+/* Save needs the moment the page is hidden or closed, so a refresh right after eating never loses it. */
+(function () {
+  const flush = () => { try { if (typeof NET !== 'undefined' && NET.user && navigator.sendBeacon) navigator.sendBeacon('/api/ac/save', new Blob([JSON.stringify({ paint: S.paint, needs: S.needs, v: S.needsV, min: S.min })], { type: 'application/json' })) } catch (e) { } };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush() });
+  window.addEventListener('pagehide', flush);
 })();

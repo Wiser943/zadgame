@@ -5,6 +5,7 @@ const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '�
 const EDIT_MS = 15 * 60 * 1000;          // a message can be edited for 15 minutes
 const DELETE_ALL_MS = 48 * 3600 * 1000;  // "delete for everyone" works for 2 days (group admins can always remove)
 const PHOTO_LABEL = '📷 Photo';
+const VOICE_LABEL = '🎤 Voice note';
 const isId = (s) => /^[a-f\d]{24}$/i.test(String(s));
 
 // Only photos that WE stored (imgbb link or our own backup route) can be attached to a message.
@@ -15,6 +16,12 @@ function cleanImage(i) {
   const n = (v) => { v = Math.round(Number(v)); return v > 0 && v < 10000 ? v : undefined; };
   return { url: i.url, thumb: okUrl(i.thumb) ? i.thumb : i.url, w: n(i.w), h: n(i.h) };
 }
+// Voice notes: only clips that WE stored (see routes/acvoice.js) can be attached to a message.
+function cleanVoice(v) {
+  if (!v || typeof v !== 'object' || typeof v.url !== 'string' || !/^\/api\/ac\/voice\/raw\/[a-f\d]{24}$/i.test(v.url)) return null;
+  const d = Math.round(Number(v.dur)); return { url: v.url, dur: d >= 1 && d <= 60 ? d : 1 };
+}
+const voiceView = (m) => (!m.deleted && m.voice && m.voice.url ? { url: m.voice.url, dur: m.voice.dur || 1 } : undefined);
 const imageView = (m) => (!m.deleted && m.image && m.image.url ? { url: m.image.url, thumb: m.image.thumb || m.image.url, w: m.image.w || undefined, h: m.image.h || undefined } : undefined);
 const reactionsView = (m) => (m.deleted ? [] : (m.reactions || []).map((r) => ({ u: r.u, e: r.e })));
 
@@ -27,7 +34,7 @@ function toggleReaction(list, user, emoji) {
 }
 const canEdit = (m, me, now = Date.now()) => !!m && m.from === me && !m.deleted && m.kind === 'text' && now - new Date(m.at).getTime() <= EDIT_MS;
 const canDeleteAll = (m, me, now = Date.now()) => !!m && m.from === me && !m.deleted && now - new Date(m.at).getTime() <= DELETE_ALL_MS;
-const quoteText = (o) => String(o.text || '').slice(0, 120) || (o.image && o.image.url ? PHOTO_LABEL : '');
+const quoteText = (o) => String(o.text || '').slice(0, 120) || (o.image && o.image.url ? PHOTO_LABEL : '') || (o.voice && o.voice.url ? VOICE_LABEL : '');
 
 // Forwarding: the client names the message; the server copies it, so nobody can fake a forwarded message.
 async function resolveForward(src, me) {
@@ -36,9 +43,9 @@ async function resolveForward(src, me) {
   if (src.kind === 'group') {
     const m = await ACGroupMsg.findOne({ _id: src.id, kind: 'text', deleted: { $ne: true } }).lean();
     if (!m || !(await ACGroup.exists({ _id: m.group, members: me }))) return null;
-    return { text: String(m.text || ''), image: cleanImage(m.image) };
+    return { text: String(m.text || ''), image: cleanImage(m.image), voice: cleanVoice(m.voice) };
   }
   const m = await ACMessage.findOne({ _id: src.id, kind: 'text', deleted: { $ne: true }, $or: [{ from: me }, { to: me }] }).lean();
   return m ? { text: String(m.text || ''), image: cleanImage(m.image) } : null;
 }
-module.exports = { REACTIONS, EDIT_MS, DELETE_ALL_MS, PHOTO_LABEL, isId, cleanImage, imageView, reactionsView, toggleReaction, canEdit, canDeleteAll, quoteText, resolveForward };
+module.exports = { REACTIONS, EDIT_MS, DELETE_ALL_MS, PHOTO_LABEL, VOICE_LABEL, isId, cleanImage, imageView, cleanVoice, voiceView, reactionsView, toggleReaction, canEdit, canDeleteAll, quoteText, resolveForward };

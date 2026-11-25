@@ -1,6 +1,6 @@
 {
-  "name": "Lagos Run",
-  "short_name": "Lagos Run",
+  "name": "Drive",
+  "short_name": "Drive",
   "description": "Drive the danfo from Ojuelegba to Yaba. Pick up passengers and dodge the go-slow.",
   "start_url": "/lagosrun/",
   "id": "/lagosrun/",

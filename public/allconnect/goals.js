@@ -1,11 +1,11 @@
 /* Goals sheet: opens from the goal pill on the home screen and from the goals card on the phone.
-   Shows today's hustle (daily bonus), a money dream with progress, and the starter missions (the same quests as Lagos Life). */
+   Shows today's hustle (daily bonus), a money dream with progress, and the starter missions (the same quests as Naija Life). */
 const GOALS = {
   DREAMS: [[1e6, 'Lekki Landlord', '🏡'], [1e7, 'Island Big Boy', '🏝️'], [1e8, 'Eko Mogul', '🏙️'], [1e9, 'Lagos Legend', '👑']],
   list() { return (window.LAGOS && LAGOS.Q) || [] },
   next() { return this.list().find(q => !q.claimed) || null },
   label() { const l = this.list(); return l.length ? `GOALS · ${l.filter(q => q.claimed).length}/${l.length} DONE` : 'GOALS' },
-  nextTitle() { const n = this.next(), l = this.list(); return n ? n.title : l.length ? 'All goals done' : 'Start your Lagos life' },
+  nextTitle() { const n = this.next(), l = this.list(); return n ? n.title : l.length ? 'All goals done' : NG.say('Start your Naija life', 'Start your Naija life o') },
   boot() { if (this.t) return; this.t = setInterval(() => this.refresh(), 120000); this.refresh() },
   async refresh() { if (!window.LAGOS) return; await LAGOS.loadQuests(); this.paintPill(); if (typeof drawApps === 'function') drawApps(); if (SHEET.isOpen('goals')) SHEET.paint() },
   /* the pill under the balance: shows the next goal */
@@ -19,7 +19,7 @@ const GOALS = {
   },
   head() {
     const nm = (typeof NET !== 'undefined' && NET.user && NET.user.displayName) || 'You', mood = ((document.getElementById('mood') || {}).textContent || '').replace(/^\S+\s/, '');
-    return `<div class="glh"><span class="avi" style="background:#6366f1;width:46px;height:46px;font-size:19px">${UI.esc(nm[0] || '?').toUpperCase()}</span><div><b>${UI.esc(nm)}</b><small>${UI.esc(mood || 'Happy')}</small></div></div>`;
+    return `<div class="glh">${window.PH && PH.av ? PH.av({ avatar: (typeof NET !== 'undefined' && NET.user && NET.user.avatar) || '', displayName: nm }) : `<span class="avi" style="background:#6366f1">${UI.esc(nm[0] || '?').toUpperCase()}</span>`}<div><b>${UI.esc(nm)}</b><small>${UI.esc(mood || 'Happy')}</small></div></div>`;
   },
   needsHtml() {
     return this.head() + `<div class="gln">${S.needs.map((v, i) => `<div><span>${NEED[i]} ${['Hunger', 'Energy', 'Fun', 'Friends', 'Hygiene', 'Bladder'][i]}</span>${UI.bar(v * 100)}</div>`).join('')}</div><p class="lgnote">Eat, rest, have fun and see friends to keep these up.</p>`;

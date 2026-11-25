@@ -13,18 +13,23 @@
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const pick = a => a[Math.floor(rnd() * a.length)];
 
-  /* ---------- the world ---------- */
-  const MAINLAND = [[30, 30], [970, 30], [970, 372], [900, 384], [760, 372], [610, 392], [470, 376], [330, 392], [180, 378], [30, 386]];
-  const ISLAND = [[30, 566], [190, 556], [340, 574], [500, 560], [660, 578], [820, 560], [970, 572], [970, 970], [30, 970]];
-  const OFFSHORE = [[868, 452], [900, 428], [946, 424], [972, 446], [972, 492], [944, 512], [896, 510], [872, 484]];   // 60 offshore island zone
-  const BRIDGES = [[240, 372, 24, 204], [530, 380, 24, 190], [815, 372, 24, 200], [918, 506, 24, 66]];   // x, y, w, h (the last one is the jetty to the offshore island)
-  const LAND = [MAINLAND, ISLAND, OFFSHORE];
+  /* ---------- the world ----------
+     Lagos's geometry below (coastline, bridges, pins, ground tints) is kept exactly as it was, just renamed with a
+     _LAGOS suffix; MAINLAND/ISLAND/OFFSHORE/BRIDGES/PINS/ZONES/LAND are now `let`s pointing at whichever city is
+     active, reassigned (and the world rebuilt) by loadCity() near the CITIES registry below. Nothing that reads
+     these names elsewhere in the file had to change — they still resolve to "the current city" either way. */
+  const MAINLAND_LAGOS = [[30, 30], [970, 30], [970, 372], [900, 384], [760, 372], [610, 392], [470, 376], [330, 392], [180, 378], [30, 386]];
+  const ISLAND_LAGOS = [[30, 566], [190, 556], [340, 574], [500, 560], [660, 578], [820, 560], [970, 572], [970, 970], [30, 970]];
+  const OFFSHORE_LAGOS = [[868, 452], [900, 428], [946, 424], [972, 446], [972, 492], [944, 512], [896, 510], [872, 484]];   // 60 offshore island zone
+  const BRIDGES_LAGOS = [[240, 372, 24, 204], [530, 380, 24, 190], [815, 372, 24, 200], [918, 506, 24, 66]];   // x, y, w, h (the last one is the jetty to the offshore island)
+  let MAINLAND = MAINLAND_LAGOS, ISLAND = ISLAND_LAGOS, OFFSHORE = OFFSHORE_LAGOS, BRIDGES = BRIDGES_LAGOS;
+  let LAND = [MAINLAND, ISLAND, OFFSHORE];
   const inPoly = (x, y, p) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) if ((p[i][1] > y) !== (p[j][1] > y) && x < (p[j][0] - p[i][0]) * (y - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) c = !c; return c; };
   const onBridge = (x, y) => BRIDGES.some(b => x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3]);
   const isLand = (x, y) => onBridge(x, y) || LAND.some(p => inPoly(x, y, p));
 
   /* name, emoji, x, y, kind, action ('home' | 'soon' | 'soon-y') */
-  const PINS = [
+  const PINS_LAGOS = [
     ['Naija Radio', '📻', 200, 150, 'radio'], ['Viewing Centre', '⚽', 280, 235, 'hall'], ['Amala Shitta', '🍲', 175, 300, 'shop'],
     ['Home', '🏠', 470, 255, 'home', 'home'], ['CcHub', '💡', 740, 190, 'glass'], ['UNILAG', '🎓', 800, 300, 'dome'],
     ['Airport', '✈️', 110, 100, 'airport'], ['Refinery · Coming soon', '🛢️', 88, 330, 'refinery', 'soon-y'], ['Boat Cruise', '⛵', 600, 470, 'boat'],
@@ -53,8 +58,39 @@
     ['Rural Outskirts', '🌾', 935, 188, 'rural', 'district', 'farms, a barn and open fields', 30],
     ['Offshore Island', '🏝', 924, 466, 'offshore', 'district', 'reached by the jetty: lighthouse, villas and a marina', 70]
   ];
+  let PINS = PINS_LAGOS;
+  /* ---------- player homes, placed by chosen neighbourhood ----------
+     Each onboarding "hood" (utils/achub.js on the server) gets a cluster of numbered house spots here, centred on
+     the district that matches its vibe — Ikorodu and Epe aren't separate districts on this map, so Ikorodu's houses
+     sit by the port (its waterside community) and Epe's sit out in the rural outskirts (its quiet lagoon-side town).
+     `cap` must match the server's NEIGHBOURHOODS cap for that hood: it's how many houses fit before new movers start
+     sharing the last spot — small for a spacious, prominent area like Lekki, larger for a denser, affordable one. */
+  const HOOD_HOMES = {
+    yaba: { x: 605, y: 190, cap: 36 }, surulere: { x: 100, y: 770, cap: 42 }, lekki: { x: 595, y: 880, cap: 18 },
+    ikeja: { x: 415, y: 78, cap: 36 }, ajah: { x: 870, y: 922, cap: 60 }, ikorodu: { x: 858, y: 612, cap: 60 }, epe: { x: 935, y: 188, cap: 54 }
+  };
+  const homeSlotCache = {};
+  function hoodSlotXY(hood, slot) {                   // the nth house in that hood's cluster: rings of spots spiralling out from its anchor point
+    const def = HOOD_HOMES[hood]; if (!def) return null;
+    let pts = homeSlotCache[hood];
+    if (!pts) {
+      pts = []; const step = 24;
+      for (let ring = 0; pts.length < def.cap && ring < 14; ring++) {
+        if (ring === 0) { if (isLand(def.x, def.y)) pts.push([def.x, def.y]); continue; }
+        const n = ring * 8;
+        for (let i = 0; i < n && pts.length < def.cap; i++) {
+          const a = (i / n) * TAU, x = def.x + Math.cos(a) * ring * step, y = def.y + Math.sin(a) * ring * step;
+          if (x < 30 || x > 970 || y < 30 || y > 970 || !isLand(x, y)) continue;
+          pts.push([x, y]);
+        }
+      }
+      homeSlotCache[hood] = pts;
+    }
+    return pts[clamp(slot | 0, 0, pts.length - 1)] || [def.x, def.y];
+  }
+
   /* ground tint for each district (own = generic city blocks are not built inside it) */
-  const ZONES = [
+  const ZONES_LAGOS = [
     { x: 40, y: 582, w: 170, h: 98, c: '#e6d3b0', own: 1 }, { x: 490, y: 668, w: 150, h: 92, c: '#c9d6e6', own: 1 }, { x: 545, y: 150, w: 125, h: 80, c: '#ead7f2', own: 1 },
     { x: 345, y: 42, w: 140, h: 76, c: '#cfd6de', own: 1 }, { x: 40, y: 720, w: 125, h: 100, c: '#bfe3b0', own: 1 }, { x: 520, y: 845, w: 150, h: 72, c: '#7a6aa6', own: 1 },
     { x: 790, y: 888, w: 172, h: 66, c: '#d8ead2', own: 0 }, { x: 305, y: 262, w: 118, h: 84, c: '#f0d9a8', own: 1 }, { x: 40, y: 158, w: 115, h: 72, c: '#c8ccd2', own: 1 },
@@ -63,7 +99,46 @@
     { x: 497, y: 42, w: 115, h: 76, c: '#e9d0c0', own: 1 }, { x: 620, y: 268, w: 115, h: 90, c: '#e8dcc8', own: 1 }, { x: 232, y: 42, w: 105, h: 76, c: '#dfe3d4', own: 1 },
     { x: 905, y: 128, w: 60, h: 122, c: '#cfe39a', own: 1 }
   ];
+  let ZONES = ZONES_LAGOS;
   const inZone = (x, y, pad) => ZONES.some(z => z.own && x > z.x - (pad || 0) && x < z.x + z.w + (pad || 0) && y > z.y - (pad || 0) && y < z.y + z.h + (pad || 0));
+  let PLOT_ANCHOR = { x: 282, y: 410 };               // where this city's buyable-land grid sits (drawPlots below) — Lagos's sits out in the lagoon
+
+  /* ================= Abuja: a second, deliberately simpler city — inland, one landmass, no bridges =================
+     Real Abuja has no lagoon splitting it, so this is a single rectangle rather than Lagos's mainland + island pair,
+     and the district list leans on its real quadrant layout (Three Arms Zone at the centre; Maitama/Asokoro/Wuse/
+     Garki around it; Gwarinpa and Kubwa as the big satellite estates further out; Jabi for the lake). Buildings are
+     generic clusters (see Object.assign(BUILD,...) above), not Lagos's one-off hand-placed dioramas — broad coverage
+     over fine detail, so the map isn't mostly empty. */
+  const MAINLAND_ABUJA = [[30, 30], [970, 30], [970, 970], [30, 970]];
+  const PINS_ABUJA = [
+    ['Home', '🏠', 500, 500, 'home', 'home'],                                             // no player ever actually lives here; kept only so setHome() has somewhere harmless to no-op into
+    ['Nnamdi Azikiwe Int\'l', '✈️', 500, 905, 'airport'],
+    ['National Stadium', '🏟', 180, 820, 'court'],
+    ['Aso Rock View', '🏔', 760, 300, 'tower'],
+    ['Jabi Lake Mall', '🛍', 250, 555, 'hall'],
+    /* ---- districts ---- */
+    ['Central Area', '🏛', 500, 500, 'centralArea', 'district', 'the Three Arms Zone: National Assembly, the villa and the government plaza', 70],
+    ['Wuse', '🏢', 430, 350, 'wuse', 'district', 'malls, banks and the main commercial strip', 60],
+    ['Garki', '🏦', 560, 650, 'garki', 'district', 'ministries, finance houses and busy roundabouts', 54],
+    ['Maitama', '🌳', 380, 150, 'maitama', 'district', 'embassies, leafy avenues and big walled compounds', 46],
+    ['Asokoro', '🏡', 760, 400, 'asokoro', 'district', 'the hilltop district: mansions and a quiet close', 42],
+    ['Gwarinpa', '🏘', 220, 100, 'gwarinpa', 'district', 'Nigeria\'s largest housing estate: row after row of homes', 50],
+    ['Kubwa', '🚏', 90, 280, 'kubwa', 'district', 'a satellite town of its own, packed and busy', 40],
+    ['Jabi', '🏖', 250, 555, 'jabi', 'district', 'the lake, the mall and the boardwalk', 40],
+    ['Nyanya', '🚌', 880, 700, 'nyanya', 'district', 'the motor-park end of town: loud, cheap, alive', 36]
+  ];
+  const ZONES_ABUJA = [
+    { x: 400, y: 420, w: 220, h: 170, c: '#dfe3e6', own: 1 },                               // Central Area
+    { x: 350, y: 270, w: 170, h: 120, c: '#c9d6e6', own: 1 },                               // Wuse
+    { x: 470, y: 580, w: 190, h: 150, c: '#cfd6de', own: 1 },                               // Garki
+    { x: 290, y: 60, w: 190, h: 140, c: '#bfe3b0', own: 1 },                                // Maitama
+    { x: 670, y: 320, w: 190, h: 160, c: '#ead7f2', own: 1 },                                // Asokoro
+    { x: 100, y: 30, w: 240, h: 150, c: '#f1e2b0', own: 1 },                                // Gwarinpa
+    { x: 30, y: 200, w: 150, h: 180, c: '#e6d3b0', own: 1 },                                // Kubwa
+    { x: 150, y: 480, w: 200, h: 150, c: '#bfe0b0', own: 1 },                                // Jabi
+    { x: 780, y: 600, w: 190, h: 200, c: '#d8ead2', own: 1 }                                // Nyanya
+  ];
+  const PLOT_ANCHOR_ABUJA = { x: 300, y: 820 };       // buyable-land grid sits south of Garki, between it and the airport
 
   const ads = { plots: new Map(), billboards: [], n: 30 };
   const objs = [];            // standing things, depth-sorted every frame
@@ -72,7 +147,7 @@
   const boards = [];
 
   function box(x, y, w, d, h, wall, roof, o) {
-    o = o || {}; objs.push({ t: 'box', x, y, w, d, h, wall, roof, style: o.style || 'flat', rh: o.rh || 0, r: Math.max(w, d), o });
+    o = o || {}; objs.push({ t: 'box', x, y, w, d, h, hb: h, rb: o.rh || 0, wall, roof, style: o.style || 'flat', rh: o.rh || 0, r: Math.max(w, d), o });
     if (!o.walk) blocks.push([x - w / 2 - 5, y - d / 2 - 5, x + w / 2 + 5, y + d / 2 + 5]);
   }
   function tree(x, y, s) { objs.push({ t: 'tree', x, y, s: s || 1, r: 12, c: pick(['#3f8f4a', '#2f7d3f', '#4c9c52', '#378443']) }); }
@@ -168,8 +243,43 @@
       pad(902, 500, 40, 6, '#8b6d44'); [[894, 456], [920, 450], [958, 480], [902, 486], [944, 470]].forEach(([tx, ty]) => tree(tx, ty, 1)); objs.push({ t: 'boat', x: 836, y: 468, r: 30 });
     }
   };
+  /* ---------- Abuja's districts: simpler, generic clusters (not hand-fitted the way Lagos's are) — see buildAbuja() ---------- */
+  Object.assign(BUILD, {
+    centralArea(x, y) {                                          // the Three Arms Zone: assembly dome flanked by two wings, plus a plaza
+      D(x, y, 70, 46, 40, '#f4f1e6', '#1f6fd0', 'dome', 26); D(x - 60, y + 6, 34, 30, 30, '#eceef1', '#8397ad'); D(x + 60, y + 6, 34, 30, 30, '#eceef1', '#8397ad');
+      pad(x - 90, y + 34, 180, 14, '#cfd2d6');
+    },
+    wuse(x, y) {                                                 // commercial mid-rises
+      [[-44, -10, 70], [0, -10, 96], [44, -10, 64], [-22, 32, 42], [22, 32, 50]].forEach(([dx, dy, h], i) => D(x + dx, y + dy, 26, 24, h, GLASS[i % 4], '#cfe6f8'));
+    },
+    garki(x, y) {                                                // banks and ministries
+      [[-40, 0, 54], [0, 0, 66], [40, 0, 48]].forEach(([dx, dy, h], i) => D(x + dx, y + dy, 30, 28, h, pick(['#d8dfe6', '#cdd8e3']), '#8397ad'));
+      pad(x - 56, y + 20, 112, 10, '#b4b8bd');
+    },
+    maitama(x, y) {                                              // embassies and big leafy compounds
+      [[-50, -14], [10, -14], [-50, 26], [10, 26]].forEach(([dx, dy]) => D(x + dx, y + dy, 34, 26, 20, pick(['#f1e6cf', '#e8dcc2', '#f4efe3']), pick(['#3f8f6a', '#2f7d3f'])));
+      for (let i = 0; i < 6; i++) tree(x - 70 + rnd() * 140, y - 30 + rnd() * 60, 1);
+    },
+    asokoro(x, y) {                                              // hilltop mansions, bigger plots
+      [[-46, -8], [20, -8], [-13, 30]].forEach(([dx, dy]) => D(x + dx, y + dy, 38, 34, 24, pick(['#f2e9d8', '#e8d3b9']), pick(['#8b2d22', '#a4452c']), 'hip', 10));
+    },
+    gwarinpa(x, y) {                                             // dense estate grid — Africa's largest housing estate
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) D(x - 60 + i * 40, y - 30 + j * 30, 18, 18, 14, pick(['#f2e9d8', '#dbe6ee', '#e8d3b9']), pick(['#2f7d3f', '#3f8f6a']), 'hip', 6);
+    },
+    kubwa(x, y) {                                                // a satellite town: smaller, closer-packed boxes
+      for (let i = 0; i < 5; i++) D(x - 56 + i * 28, y + (i % 2 ? 14 : -10), 20, 18, 16 + rnd() * 20, pick(['#e7e9ea', '#dfe3e6', '#f0e2c9']), pick(['#9c3b22', '#8c8f94']));
+    },
+    jabi(x, y) {                                                 // the lake, a mall and the boardwalk
+      flats.push({ c: '#3d9ad8', p: [[x - 70, y - 20], [x - 10, y - 34], [x + 56, y - 14], [x + 46, y + 30], [x - 30, y + 36]] });
+      D(x + 70, y - 10, 40, 30, 26, '#eceef1', '#8397ad'); pad(x + 40, y + 10, 30, 8, '#8b6d44');
+    },
+    nyanya(x, y) {                                               // the motor-park end of town: market stalls and a bus terminal
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) D(x - 30 + i * 16, y - 18 + j * 13, 10, 8, 8, '#f6f1e6', pick(WARM), 'hip', 3, true);
+      D(x + 56, y, 46, 26, 16, '#cfd4d8', '#6d7075');
+    }
+  });
 
-  function build() {
+  function buildLagos() {
     seed = 7; objs.length = flats.length = blocks.length = boards.length = 0;
     // parks
     flats.push({ c: '#8cc277', p: [[620, 40], [760, 40], [760, 120], [620, 120]] });
@@ -198,6 +308,7 @@
       if (k === 'radio') objs.push({ t: 'mast', x: x + 12, y, h: 150, r: 6 });
     });
     const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    const hitsRoad = (x0, y0, x1, y1) => flats.some(f => f.r && f.c === '#b4b8bd' && x1 > f.r[0] && x0 < f.r[0] + f.r[2] && y1 > f.r[1] && y0 < f.r[1] + f.r[3]);  // true if that footprint would sit on top of a road strip
     // airport: terminal, apron, taxiway, parked aircraft (isometric city-map layout)
     flats.push({ c: '#9aa3ab', r: [28, 42, 210, 92] });
     flats.push({ c: '#6d7075', r: [28, 128, 268, 24] }); flats.push({ c: '#cfd4d8', r: [42, 136, 240, 5] });
@@ -231,14 +342,14 @@
         const n = 1 + Math.floor(rnd() * 3);
         for (let i = 0; i < n; i++) {
           const w = 24 + rnd() * 34, d = 24 + rnd() * 30, x = cx - 40 + (i + .5) * (80 / n) + (rnd() - .5) * 6, y = cy + (rnd() - .5) * ((y1 - y0) - d - 20);
-          if (near(x, y, 62) || inZone(x, y, 10) || !isLand(x, y) || !isLand(x - w / 2, y + d / 2)) continue;
+          if (near(x, y, 62) || inZone(x, y, 10) || !isLand(x, y) || !isLand(x - w / 2, y + d / 2) || hitsRoad(x - w / 2, y - d / 2, x + w / 2, y + d / 2)) continue;
           box(x, y, w, d, 16 + rnd() * rnd() * 70, pick(pals), pick(roofs), { style: rnd() < .22 ? 'hip' : 'flat', rh: 8 });
         }
       }
     }
     // Lekki estate: grid of small houses
     for (let x = 720; x < 960; x += 30) for (let y = 650; y < 950; y += 32) {
-      if (near(x, y, 60) || inZone(x, y, 6) || (y > 625 && Math.abs(((y - 650) % 96) - 0) < 1)) continue;
+      if (near(x, y, 60) || inZone(x, y, 6) || (y > 625 && Math.abs(((y - 650) % 96) - 0) < 1) || hitsRoad(x - 9, y - 9, x + 9, y + 9)) continue;
       if ((Math.floor((y - 650) / 32)) % 3 === 2) continue;      // lanes
       box(x, y, 18, 18, 12, pick(['#f2e9d8', '#e8d3b9', '#dbe6ee']), pick(['#3f8f6a', '#2e8b57', '#36996a']), { style: 'hip', rh: 7 });
     }
@@ -250,6 +361,194 @@
     PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
     buildGrid();
     lrBuild(); lampBuild(); extendWorld();
+  }
+
+  /* Abuja's own build pipeline — same primitives as buildLagos() (box/tree/pad/D), far less hand-placed set-dressing:
+     one broad road grid (no mainland/island split, so no bridges needed), the handful of named landmarks above,
+     each district's generic cluster, then the same generic-block-filler and tree-scatter Lagos uses to cover the
+     rest of the ground so the map doesn't read as mostly empty. */
+  function buildAbuja() {
+    seed = 51; objs.length = flats.length = blocks.length = boards.length = 0;
+    ZONES.forEach(z => flats.push({ c: z.c, r: [z.x, z.y, z.w, z.h] }));
+    const roadsX = []; for (let i = 0; i < 9; i++) roadsX.push(100 + i * 100);
+    const ysA = [140, 320, 500, 680, 860];
+    ysA.forEach(y => flats.push({ c: '#b4b8bd', r: [30, y - 7, 940, 14] }));
+    roadsX.forEach(x => flats.push({ c: '#b4b8bd', r: [x - 7, 30, 14, 940] }));
+    const LM = { airport: [132, 58, 22, '#e8edf2', '#b8c2cc', 'flat'], court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22], tower: [40, 40, 100, '#e9dcc0', '#d9a93a', 'flat'], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18] };
+    PINS.forEach(p => { if (p[5] === 'district' || p[4] === 'home') return; const [, , x, y, k] = p, L = LM[k]; if (L) box(x, y, L[0], L[1], L[2], L[3], L[4], { style: L[5], rh: L[6] || 0, pin: 1, tag: k }); });
+    [[460, 885, 0], [540, 895, .3]].forEach(([px, py, hdg]) => objs.push({ t: 'plane', x: px, y: py, hdg, r: 14 }));
+    [[560, 460, 120], [600, 500, 150]].forEach(([tx, ty, h]) => box(tx, ty, 34, 34, h, '#8fc4e8', '#6fa8d8', { style: 'flat' }));  // a couple of CBD investment towers
+    const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    const hitsRoad = (x0, y0, x1, y1) => flats.some(f => f.r && f.c === '#b4b8bd' && x1 > f.r[0] && x0 < f.r[0] + f.r[2] && y1 > f.r[1] && y0 < f.r[1] + f.r[3]);
+    const pals = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6', '#ead4c8', '#e3e0d3', '#cfd8e0', '#f2eee2'], roofs = ['#b0b6bb', '#9c3b22', '#c0b9a6', '#a4aeb8', '#8c8f94'];
+    for (let cx = 150; cx < 970; cx += 100) {
+      for (let yi = 0; yi < ysA.length - 1; yi++) {
+        const y0 = ysA[yi] + 14, y1 = ysA[yi + 1] - 14, cy = (y0 + y1) / 2;
+        if (!isLand(cx - 50, cy) || !isLand(cx + 40, cy)) continue;
+        const n = 1 + Math.floor(rnd() * 3);
+        for (let i = 0; i < n; i++) {
+          const w = 24 + rnd() * 34, d = 24 + rnd() * 30, x = cx - 40 + (i + .5) * (80 / n) + (rnd() - .5) * 6, y = cy + (rnd() - .5) * ((y1 - y0) - d - 20);
+          if (near(x, y, 60) || inZone(x, y, 10) || !isLand(x, y) || hitsRoad(x - w / 2, y - d / 2, x + w / 2, y + d / 2)) continue;
+          box(x, y, w, d, 16 + rnd() * rnd() * 60, pick(pals), pick(roofs), { style: rnd() < .22 ? 'hip' : 'flat', rh: 8 });
+        }
+      }
+    }
+    for (let i = 0; i < 220; i++) {
+      const x = 40 + rnd() * 920, y = 40 + rnd() * 930;
+      if (!isLand(x, y) || near(x, y, 50) || inZone(x, y, 2) || hitsRoad(x - 6, y - 6, x + 6, y + 6)) continue;
+      if (blocks.some(b => x > b[0] - 6 && x < b[2] + 6 && y > b[1] - 6 && y < b[3] + 6)) continue;
+      tree(x, y, .8 + rnd() * .6);
+    }
+    PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
+    buildGrid();
+    lrBuild(); lampBuild(); extendWorld();
+  }
+
+
+  /* ================= Port Harcourt (Rivers) and Abia (Aba / Umuahia) =================
+     Two more visitable cities built with the same pipeline as Abuja: one landmass, a broad road grid, a few named landmarks,
+     and a generic building cluster for each district. Port Harcourt sits on the Bonny River (everything south of its coast is
+     water, with a port, cranes and boats); Abia is fully inland. Nothing here is buyable as a home yet. */
+  const circ = (cx, cy, r) => Array.from({ length: 14 }, (_, i) => [cx + Math.cos(i / 14 * TAU) * r, cy + Math.sin(i / 14 * TAU) * r]);
+  const MAINLAND_PH = [[30, 30], [970, 30], [970, 800], [30, 800]];
+  const PINS_PH = [
+    ['Home', '🏠', 500, 500, 'home', 'home'],
+    ['Port Harcourt Int\'l', '✈️', 830, 130, 'airport'],
+    ['Sharks Stadium', '🏟', 150, 690, 'court'],
+    ['Genesis Centre', '🛍', 430, 470, 'hall'],
+    ['Hotel Presidential', '🏨', 560, 300, 'hotel'],
+    ['Pleasure Park', '🌳', 270, 330, 'park'],
+    ['Bonny River Cruise', '⛴️', 690, 790, 'boat'],
+    ['Trans-Amadi Refinery · Coming soon', '🛢️', 900, 600, 'refinery', 'soon-y'],
+    ['Old GRA', '🌳', 335, 190, 'oldGra', 'district', 'leafy colonial-era avenues, big old houses and quiet roads', 46],
+    ['New GRA', '🏡', 595, 415, 'newGra', 'district', 'newer estates, restaurants and the busy nightlife strip', 48],
+    ['Trans-Amadi', '🏭', 790, 440, 'transAmadi', 'district', 'oil and gas offices, depots and the industrial layout', 50],
+    ['Diobu (Mile 1)', '🛒', 645, 610, 'diobu', 'district', 'Mile 1 market: stalls, noise and the best pepper soup', 46],
+    ['Rumuola', '🚏', 200, 470, 'rumuola', 'district', 'a busy junction town of mid-rises and minibuses', 40],
+    ['D-Line', '🍽', 435, 640, 'dLine', 'district', 'restaurants, bars and the cultural centre', 38],
+    ['Rumuokoro', '🚌', 100, 270, 'rumuokoro', 'district', 'the big roundabout and a sprawl of homes', 40],
+    ['Choba (Uniport)', '🎓', 185, 100, 'choba', 'district', 'the university: lecture halls and student hostels', 42],
+    ['Waterside', '🛶', 830, 745, 'waterside', 'district', 'the river front: fishing boats and the old jetty', 40]
+  ];
+  const ZONES_PH = [
+    { x: 260, y: 140, w: 150, h: 100, c: '#bfe3b0', own: 1 }, { x: 520, y: 360, w: 150, h: 110, c: '#ead7f2', own: 1 }, { x: 720, y: 380, w: 190, h: 130, c: '#cfd2d6', own: 1 },
+    { x: 570, y: 560, w: 150, h: 100, c: '#f1e2b0', own: 1 }, { x: 140, y: 420, w: 120, h: 100, c: '#e6d3b0', own: 1 }, { x: 370, y: 590, w: 130, h: 100, c: '#c9d6e6', own: 1 },
+    { x: 40, y: 210, w: 120, h: 120, c: '#d8ead2', own: 1 }, { x: 110, y: 50, w: 150, h: 100, c: '#c9d8c4', own: 1 }, { x: 760, y: 700, w: 150, h: 80, c: '#cfe8f0', own: 1 }
+  ];
+  const MAINLAND_ABIA = [[30, 30], [970, 30], [970, 970], [30, 970]];
+  const PINS_ABIA = [
+    ['Home', '🏠', 500, 500, 'home', 'home'],
+    ['Enyimba Int\'l Stadium', '🏟', 250, 790, 'court'],
+    ['Ariaria Int\'l Market', '🛍', 730, 330, 'hall'],
+    ['Government House', '🏛', 800, 850, 'hall'],
+    ['Aba Power Plant · Coming soon', '⚡', 920, 720, 'refinery', 'soon-y'],
+    ['Ngwa Road', '🏙', 500, 500, 'ngwaRoad', 'district', 'shops, shoes and a million small factories', 60],
+    ['Ariaria', '🧵', 690, 260, 'ariaria', 'district', 'leather, garments and everything made in Aba', 50],
+    ['Osisioma', '🏭', 830, 590, 'osisioma', 'district', 'the industrial belt: factories and workshops', 44],
+    ['Umuahia', '🏢', 775, 755, 'umuahia', 'district', 'the state capital: government offices and tidy roads', 46],
+    ['Ohafia', '🥁', 200, 200, 'ohafia', 'district', 'war-dance country: villages, hills and tradition', 44],
+    ['Arochukwu', '🗿', 110, 520, 'arochukwu', 'district', 'the old Aro oracle: caves and a long history', 40],
+    ['Isiala Ngwa', '🌴', 420, 230, 'isialaNgwa', 'district', 'palm-oil country: farms and roadside stalls', 42],
+    ['Azumini', '🛶', 300, 640, 'azumini', 'district', 'the blue river: boats and riverside bars', 40]
+  ];
+  const ZONES_ABIA = [
+    { x: 400, y: 420, w: 210, h: 160, c: '#e8dcc8', own: 1 }, { x: 620, y: 200, w: 180, h: 130, c: '#f0d9a8', own: 1 }, { x: 760, y: 520, w: 170, h: 140, c: '#cfd2d6', own: 1 },
+    { x: 680, y: 690, w: 190, h: 130, c: '#cfd6de', own: 1 }, { x: 110, y: 140, w: 180, h: 130, c: '#bfe3b0', own: 1 }, { x: 40, y: 450, w: 140, h: 140, c: '#e6d3b0', own: 1 },
+    { x: 340, y: 170, w: 160, h: 120, c: '#d8ead2', own: 1 }, { x: 230, y: 590, w: 150, h: 110, c: '#bfe0b0', own: 1 }
+  ];
+  const HUTS = ['#e7c9a0', '#dcc1a8', '#f2e3c4'], PALE = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6'], ROOFS2 = ['#9c3b22', '#8c8f94', '#6d7075'];
+  Object.assign(BUILD, {
+    /* ---- Port Harcourt ---- */
+    oldGra(x, y) { [[-60, -18], [0, -18], [60, -18], [-60, 24], [0, 24], [60, 24]].forEach(([dx, dy], i) => D(x + dx, y + dy, 34, 26, 18 + (i % 2) * 6, pick(['#f1e6cf', '#e8dcc2', '#f4efe3']), pick(['#3f8f6a', '#8b2d22']), 'hip', 9)); for (let i = 0; i < 8; i++) tree(x - 90 + rnd() * 180, y - 40 + rnd() * 80, 1.1) },
+    newGra(x, y) { [[-50, -16, 70], [0, -16, 96], [50, -16, 64]].forEach(([dx, dy, h], i) => D(x + dx, y + dy, 26, 24, h, GLASS[i % 4], '#cfe6f8')); [[-40, 30], [10, 30], [56, 30]].forEach(([dx, dy]) => D(x + dx, y + dy, 30, 22, 16, pick(['#f2e9d8', '#e8d3b9']), pick(['#8b2d22', '#a4452c']), 'hip', 8)) },
+    transAmadi(x, y) { [[-60, -14], [0, -14], [60, -14]].forEach(([dx, dy]) => D(x + dx, y + dy, 50, 30, 16, '#cfd4d8', '#6d7075')); for (let i = 0; i < 4; i++) objs.push({ t: 'tank', x: x - 70 + i * 46, y: y + 34, s: 1 + (i % 2) * .15, r: 14, h: 16 }); mast(x + 84, y - 30, 90); pad(x - 90, y + 14, 190, 10, '#b4b8bd') },
+    diobu(x, y) { for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) D(x - 36 + i * 16, y - 20 + j * 13, 10, 8, 8, '#f6f1e6', pick(WARM), 'hip', 3, true); D(x + 58, y - 6, 40, 28, 18, '#e8dcc8', '#8b2d22', 'hip', 8) },
+    rumuola(x, y) { D(x + 50, y, 44, 26, 14, '#cfd4d8', '#6d7075'); for (let i = 0; i < 4; i++) D(x - 50 + i * 24, y - 14 + (i % 2) * 20, 18, 16, 16 + rnd() * 20, pick(PALE), pick(ROOFS2)) },
+    dLine(x, y) { [[-48, -10], [-8, -10], [32, -10], [-28, 28], [12, 28]].forEach(([dx, dy], i) => D(x + dx, y + dy, 28, 22, 14 + (i % 3) * 4, pick(['#f5a3c7', '#ffd24a', '#8fd3c7', '#f59a5b']), '#7a3ea1', 'hip', 7)); pad(x - 60, y + 4, 120, 8, '#f2c94c') },
+    rumuokoro(x, y) { flats.push({ c: '#b4b8bd', p: circ(x, y, 34) }); flats.push({ c: '#6fb36a', p: circ(x, y, 16) }); [[-70, -8], [64, -10], [-6, 58], [8, -56], [-60, 40], [58, 42]].forEach(([dx, dy]) => D(x + dx, y + dy, 22, 18, 14 + rnd() * 10, pick(PALE), pick(ROOFS2), 'hip', 6)) },
+    choba(x, y) { D(x, y, 56, 38, 34, '#f4f1e6', '#1f6fd0', 'dome', 20); [[-70, 34], [0, 42], [70, 34]].forEach(([dx, dy]) => D(x + dx, y + dy, 50, 16, 16, '#e8dcc2', '#8b6d44')); for (let i = 0; i < 6; i++) tree(x - 90 + rnd() * 180, y - 50 + rnd() * 24, 1) },
+    waterside(x, y) { pad(x - 80, y + 10, 160, 8, '#8b6d44'); for (let i = 0; i < 5; i++) D(x - 72 + i * 34, y - 12 + (i % 2) * 10, 18, 14, 10, pick(HUTS), pick(['#b3392b', '#6d7075']), 'hip', 4, true) },
+    /* ---- Abia ---- */
+    ngwaRoad(x, y) { for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) D(x - 60 + i * 40, y - 20 + j * 40, 28, 24, 14 + rnd() * 30, pick(PALE), pick(ROOFS2)); pad(x - 80, y + 14, 160, 8, '#b4b8bd') },
+    ariaria(x, y) { for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) D(x - 48 + i * 22, y - 22 + j * 16, 14, 10, 8, '#f6f1e6', pick(WARM), 'hip', 3, true); D(x + 74, y - 8, 40, 32, 20, '#e8dcc8', '#8b2d22', 'hip', 8) },
+    osisioma(x, y) { [[-52, -14], [4, -14], [60, -14]].forEach(([dx, dy]) => D(x + dx, y + dy, 46, 28, 16, '#cfd4d8', '#6d7075')); for (let i = 0; i < 3; i++) objs.push({ t: 'tank', x: x - 50 + i * 44, y: y + 34, s: 1, r: 14, h: 16 }); mast(x + 76, y + 20, 80) },
+    umuahia(x, y) { D(x, y, 60, 40, 32, '#f4f1e6', '#1f6fd0', 'dome', 22); D(x - 56, y + 6, 32, 28, 24, '#eceef1', '#8397ad'); D(x + 56, y + 6, 32, 28, 24, '#eceef1', '#8397ad'); pad(x - 80, y + 32, 160, 12, '#cfd2d6') },
+    ohafia(x, y) { for (let i = 0; i < 7; i++) D(x - 70 + (i % 4) * 44 + rnd() * 8, y - 24 + Math.floor(i / 4) * 42 + rnd() * 8, 20, 18, 10, pick(HUTS), '#b08a4a', 'hip', 8, true); for (let i = 0; i < 7; i++) tree(x - 90 + rnd() * 180, y - 50 + rnd() * 100, 1.2) },
+    arochukwu(x, y) { D(x, y, 40, 30, 14, '#c9bfae', '#8c8272'); D(x - 40, y + 18, 26, 22, 10, '#b9b0a0', '#8c8272'); D(x + 40, y + 16, 26, 22, 12, '#d6cbb8', '#8c8272', 'dome'); for (let i = 0; i < 5; i++) tree(x - 60 + rnd() * 120, y - 40 + rnd() * 20, 1) },
+    isialaNgwa(x, y) { [0, 1, 2].forEach(i => pad(x - 70, y - 30 + i * 24, 140, 16, i % 2 ? '#c9d38a' : '#a7c06a')); for (let i = 0; i < 6; i++) tree(x - 76 + rnd() * 152, y + 40 + rnd() * 14, 1.3); D(x + 56, y + 8, 24, 20, 12, pick(HUTS), '#b08a4a', 'hip', 8, true) },
+    azumini(x, y) { flats.push({ c: '#3d9ad8', p: [[x - 80, y - 26], [x - 10, y - 38], [x + 70, y - 16], [x + 56, y + 34], [x - 36, y + 40]] }); objs.push({ t: 'boat', x: x + 4, y: y - 2, r: 30 }); D(x + 82, y - 4, 30, 24, 14, '#f2e3c4', '#b3392b', 'hip', 6); pad(x + 48, y + 16, 32, 8, '#8b6d44') }
+  });
+  /* the one pipeline both cities use (same shape as buildAbuja) */
+  function buildCity(c) {
+    seed = c.seed; objs.length = flats.length = blocks.length = boards.length = 0;
+    ZONES.forEach(z => flats.push({ c: z.c, r: [z.x, z.y, z.w, z.h] }));
+    const ROAD = '#b4b8bd', xs = []; for (let i = 0; i < 9; i++) xs.push(100 + i * 100);
+    c.ys.forEach(y => flats.push({ c: ROAD, r: [30, y - 7, 940, 14] }));
+    xs.forEach(x => flats.push({ c: ROAD, r: [x - 7, 30, 14, c.bottom - 30] }));
+    PINS.forEach(p => { if (p[5] === 'district' || p[4] === 'home') return; const [, , x, y, k] = p, L = c.LM[k]; if (L) box(x, y, L[0], L[1], L[2], L[3], L[4], { style: L[5], rh: L[6] || 0, pin: 1, tag: k }) });
+    c.extra();
+    const near = (x, y, r) => PINS.some(p => Math.hypot(p[2] - x, p[3] - y) < r);
+    const hitsRoad = (x0, y0, x1, y1) => flats.some(f => f.r && f.c === ROAD && x1 > f.r[0] && x0 < f.r[0] + f.r[2] && y1 > f.r[1] && y0 < f.r[1] + f.r[3]);
+    const pals = ['#e7e9ea', '#dfe3e6', '#f0e2c9', '#d8dfe6', '#ead4c8', '#e3e0d3', '#cfd8e0', '#f2eee2'], roofs = ['#b0b6bb', '#9c3b22', '#c0b9a6', '#a4aeb8', '#8c8f94'];
+    for (let cx = 150; cx < 970; cx += 100) {
+      for (let yi = 0; yi < c.ys.length - 1; yi++) {
+        const y0 = c.ys[yi] + 14, y1 = c.ys[yi + 1] - 14, cy = (y0 + y1) / 2;
+        if (!isLand(cx - 50, cy) || !isLand(cx + 40, cy)) continue;
+        const n = 1 + Math.floor(rnd() * 3);
+        for (let i = 0; i < n; i++) {
+          const w = 24 + rnd() * 34, d = 24 + rnd() * 30, x = cx - 40 + (i + .5) * (80 / n) + (rnd() - .5) * 6, y = cy + (rnd() - .5) * ((y1 - y0) - d - 20);
+          if (near(x, y, 60) || inZone(x, y, 10) || !isLand(x, y) || hitsRoad(x - w / 2, y - d / 2, x + w / 2, y + d / 2)) continue;
+          box(x, y, w, d, 16 + rnd() * rnd() * 60, pick(pals), pick(roofs), { style: rnd() < .22 ? 'hip' : 'flat', rh: 8 });
+        }
+      }
+    }
+    for (let i = 0; i < c.trees; i++) {
+      const x = 40 + rnd() * 920, y = 40 + rnd() * (c.maxY - 40);
+      if (!isLand(x, y) || near(x, y, 50) || inZone(x, y, 2) || hitsRoad(x - 6, y - 6, x + 6, y + 6)) continue;
+      if (blocks.some(b => x > b[0] - 6 && x < b[2] + 6 && y > b[1] - 6 && y < b[3] + 6)) continue;
+      tree(x, y, .8 + rnd() * .6);
+    }
+    PINS.forEach(p => { if (p[5] === 'district' && BUILD[p[4]]) BUILD[p[4]](p[2], p[3]); });
+    buildGrid();
+    lrBuild(); lampBuild(); extendWorld();
+  }
+  const CITY_PH = {
+    seed: 61, ys: [130, 290, 450, 610, 770], bottom: 800, trees: 200, maxY: 780,
+    LM: { airport: [132, 58, 22, '#e8edf2', '#b8c2cc', 'flat'], court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22], hotel: [40, 40, 112, '#cfe6f8', '#9fd0f2', 'flat'], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18] },
+    extra() {
+      [[760, 150, 0], [830, 175, .3]].forEach(([px, py, hdg]) => objs.push({ t: 'plane', x: px, y: py, hdg, r: 14 }));
+      pad(225, 298, 100, 66, '#8fd38a'); for (let i = 0; i < 7; i++) tree(235 + rnd() * 80, 306 + rnd() * 50, 1);                       // Pleasure Park
+      [[560, 775, 70], [610, 775, 86], [660, 775, 70]].forEach(([x, y, h]) => mast(x, y, h));                                          // the port: cranes and containers
+      [['#e8505b', 540], ['#2f6fd8', 572], ['#f2a93b', 604], ['#2fa36b', 636]].forEach(([col, x]) => pad(x, 738, 26, 14, col));
+      [[560, 860], [720, 880], [860, 840]].forEach(([bx, by]) => objs.push({ t: 'boat', x: bx, y: by, r: 30 }));
+      for (let i = 0; i < 3; i++) objs.push({ t: 'tank', x: 880 + i * 26, y: 600, s: 1, r: 14, h: 16 });                                  // the refinery that is coming soon
+    }
+  };
+  const CITY_ABIA = {
+    seed: 73, ys: [140, 320, 500, 680, 860], bottom: 970, trees: 230, maxY: 960,
+    LM: { court: [66, 46, 36, '#f3efe6', '#8b2d22', 'hip', 22], hall: [64, 44, 34, '#e7d9bb', '#a4452c', 'hip', 18] },
+    extra() { for (let i = 0; i < 3; i++) objs.push({ t: 'tank', x: 900 + i * 26, y: 720, s: 1, r: 14, h: 16 }); pad(220, 760, 60, 60, '#8fd38a') }
+  };
+
+  /* ---------- switching the active city ----------
+     Lagos is who you live in (homes, hoods, the lagoon, bridges); the other tabs are places you can visit. Each
+     entry reassigns every piece of geometry the rest of the file reads through the `let`s above, then reruns that
+     city's own build pipeline — everything downstream (roads, A* grid, lamps, road textures, traffic) is generated
+     fresh from whatever is currently assigned, so nothing here needs to know which city it's drawing. */
+  const CITIES = {
+    lagos: { land: [MAINLAND_LAGOS, ISLAND_LAGOS, OFFSHORE_LAGOS], bridges: BRIDGES_LAGOS, pins: PINS_LAGOS, zones: ZONES_LAGOS, plotAnchor: { x: 282, y: 410 }, build: () => buildLagos(), spawn: [470, 290] },
+    abuja: { land: [MAINLAND_ABUJA], bridges: [], pins: PINS_ABUJA, zones: ZONES_ABUJA, plotAnchor: PLOT_ANCHOR_ABUJA, build: () => buildAbuja(), spawn: [500, 540] },
+    ph: { land: [MAINLAND_PH], bridges: [], pins: PINS_PH, zones: ZONES_PH, plotAnchor: { x: 250, y: 712 }, build: () => buildCity(CITY_PH), spawn: [500, 540] },
+    abia: { land: [MAINLAND_ABIA], bridges: [], pins: PINS_ABIA, zones: ZONES_ABIA, plotAnchor: { x: 300, y: 890 }, build: () => buildCity(CITY_ABIA), spawn: [500, 560] }
+  };
+  const CITY_NAME = { lagos: 'Lagos', abuja: 'Abuja', ph: 'Port Harcourt', abia: 'Abia' };
+  const CITY_WELCOME = { lagos: '🏠 Back in Lagos', abuja: '🏛️ Welcome to Abuja — look around, nothing here is buyable as a home yet', ph: '⚓ Welcome to Port Harcourt, the Garden City on the Bonny River. Look around, nothing here is buyable as a home yet', abia: '🛍️ Welcome to Abia: Aba makes it, Umuahia runs it. Look around, nothing here is buyable as a home yet' };
+  function loadCity(id) {
+    const c = CITIES[id]; if (!c) return false;
+    [MAINLAND, ISLAND, OFFSHORE] = [c.land[0], c.land[1] || [], c.land[2] || []];
+    LAND = [MAINLAND, ISLAND, OFFSHORE]; BRIDGES = c.bridges; PINS = c.pins; ZONES = c.zones; PLOT_ANCHOR = c.plotAnchor;
+    c.build();
+    return true;
   }
 
   /* ---------- walking grid + A* ---------- */
@@ -299,7 +598,7 @@
   }
 
   /* ---------- state ---------- */
-  const M = { cv: null, ctx: null, cam: null, on: false, raf: 0, last: 0, w: 0, h: 0, dpr: 1, D: 300, tD: 300, follow: true, me: null, others: new Map(), hits: [], emote: null, path: null, pi: 0, dest: null, vel: [0, 0] };
+  const M = { hs: 1, flat: false, outside: false, force3d: false, wasFlat: false, ease3d: false, liveT: 0, cv: null, ctx: null, cam: null, on: false, raf: 0, last: 0, w: 0, h: 0, dpr: 1, D: 300, tD: 300, follow: true, me: null, others: new Map(), hits: [], emote: null, path: null, pi: 0, dest: null, vel: [0, 0] };
   const HUD = { goslow: 1, ads: 1, neighbours: 1, sea: 1, gov: 1, city: 'lagos' };
   const cam = new Camera({ F: 500, tilt: 1.02, yaw: -.28, D: 340 }); M.cam = cam;
   const getS = () => (typeof S !== 'undefined' ? S : null), getNET = () => (typeof NET !== 'undefined' ? NET : null);
@@ -324,13 +623,34 @@
   }
   const rect = (x, y, w, h, z) => [[x, y, z], [x + w, y, z], [x + w, y + h, z], [x, y + h, z]];
 
-  /* ---------- Lagos Run art on the map ----------
-     Textures, road decals and the danfo come from the Lagos Run game (/lagosrun/assets/sprites/...):
+  /* ---------- Drive art on the map ----------
+     Textures, road decals and the danfo come from the Drive game (/lagosrun/assets/sprites/...):
      asphalt on the roads, potholes / manholes / puddles / litter / skid marks / zebra crossings on them,
      corrugated-zinc, red-metal and tarp roofs on the small flat-roofed buildings, and danfos driving the horizontal roads.
      Everything is optional: if an image has not loaded (or Saver mode is on) the map simply draws as before. */
   const LRA = '/lagosrun/assets/sprites/';
   const LRX = { img: {}, on: false, tiles: [], decals: [], buses: [], asph: null, started: false };
+  /* ---------- Kenney road textures on top of the Drive layer ----------
+     Two cropped, transparent-background tiles (from the kenney_road-textures CC0 pack) laid over every road exactly
+     the way lrTex() already lays the asphalt down: 'straight' repeats along each road's length (rotated 90° for a
+     horizontal road vs a vertical one, since its lane-divider line has a direction), 'cross' is a single clean,
+     rounded-corner 4-way junction stamped at every point two roads actually meet. Same opt-in pattern as LRX: if
+     the images never load, the roads simply look the way they did before (flat colour + the Drive layer). */
+  const KXA = '/allconnect/assets/';
+  const KX = { img: {}, on: false, started: false, straight: [], cross: [], cars: [] };
+  const KX_CAR_COLS = ['red', 'green', 'orange', 'white'];      // kenney_racing-kit: four body colours, each with a front (S) and back (N) sprite
+  function kxLoad() {
+    if (KX.started || lrSaver()) return; KX.started = true;
+    const files = [['straight', 'road-straight.png'], ['cross', 'road-cross.png']];
+    KX_CAR_COLS.forEach(c => { files.push([`car-${c}-N`, `cars/${c}-N.png`], [`car-${c}-S`, `cars/${c}-S.png`]); });
+    let left = files.length;
+    files.forEach(([k, file]) => {
+      const im = new Image(); im.decoding = 'async';
+      im.onload = () => { KX.img[k] = im; if (!--left) KX.on = true; };
+      im.onerror = () => { left--; };
+      im.src = KXA + file;
+    });
+  }
   const EXT = 650, GAP = 70, XLAND = [], XOBJ = [];       // the extended world: sea gap, outer land and decorative buildings beyond the playable 1000x1000
   const LAMPS = [];                                  // street lights: [x, y] world positions along both edges of every road
   const LR_FILES = { asphalt: 'textures/asphalt-seamless', zinc: 'textures/zinc-patchwork', red: 'textures/roof-red-metal', tarp: 'textures/roof-blue-tarp', cloth: 'textures/roof-clothesline', sat: 'textures/roof-satellite', tank: 'textures/roof-watertank',
@@ -405,25 +725,35 @@
   let glowSprite = null;
   function glow() {                                                                  // one soft warm blob, drawn scaled for every lamp
     if (glowSprite) return glowSprite;
+    // soft wide bloom only — the hot bulb core is drawn separately so a lamp reads as a bright point with a glow around it, not a flat tinted disc
     const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    r.addColorStop(0, 'rgba(255,236,170,1)'); r.addColorStop(.18, 'rgba(255,214,120,.75)'); r.addColorStop(.5, 'rgba(255,180,70,.22)'); r.addColorStop(1, 'rgba(255,170,60,0)');
+    r.addColorStop(0, 'rgba(255,220,140,.55)'); r.addColorStop(.3, 'rgba(255,190,90,.28)'); r.addColorStop(.65, 'rgba(255,170,60,.1)'); r.addColorStop(1, 'rgba(255,160,50,0)');
     g.fillStyle = r; g.fillRect(0, 0, 64, 64); return (glowSprite = c);
   }
   function drawLamps(ctx, amt) {
-    const low = lrSaver(), spr = glow(), tmp = {}; ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const low = lrSaver(), spr = glow(), tmp = {}, base = {}; ctx.save();
+    ctx.globalAlpha = amt; ctx.strokeStyle = '#32373c'; ctx.lineCap = 'round';          // the pole itself: drawn first, normal blending, so it reads as a solid post
     for (const [lx, ly] of LAMPS) {
       cam.project(lx, ly, 16, tmp); if (tmp.z < NEAR || tmp.x < -40 || tmp.x > M.w + 40 || tmp.y < -40 || tmp.y > M.h + 40) continue;
-      const r = clamp(30 * tmp.k, 5, 44);
-      ctx.globalAlpha = amt * .95;
-      if (low) { ctx.fillStyle = 'rgba(255,214,120,.9)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, Math.max(1.6, r * .16), 0, TAU); ctx.fill(); }
-      else ctx.drawImage(spr, tmp.x - r, tmp.y - r, r * 2, r * 2);
+      cam.project(lx, ly, 0, base);
+      ctx.lineWidth = clamp(2.4 * tmp.k, .6, 3.4);
+      ctx.beginPath(); ctx.moveTo(base.x, base.y); ctx.lineTo(tmp.x, tmp.y); ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [lx, ly] of LAMPS) {
+      cam.project(lx, ly, 16, tmp); if (tmp.z < NEAR || tmp.x < -40 || tmp.x > M.w + 40 || tmp.y < -40 || tmp.y > M.h + 40) continue;
+      const r = clamp(24 * tmp.k, 5, 34), bulb = Math.max(1.2, r * .09);   // smaller + softer glow (dimmed)
+      ctx.globalAlpha = amt * .42;
+      if (low) { ctx.fillStyle = 'rgba(255,214,120,.6)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill(); continue }
+      ctx.drawImage(spr, tmp.x - r, tmp.y - r, r * 2, r * 2);                         // wide soft halo
+      ctx.fillStyle = 'rgba(255,245,210,.7)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, bulb, 0, TAU); ctx.fill();   // small hot bulb at the centre, atop the pole
     }
     ctx.restore();
   }
   /* called once at the end of build(): lay out asphalt tiles, road decals and danfos (own random stream, so the rest of the city is unchanged) */
   function lrBuild() {
     let sd = 99; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-    LRX.tiles = []; LRX.decals = []; LRX.buses = [];
+    LRX.tiles = []; LRX.decals = []; LRX.buses = []; KX.straight = []; KX.cross = []; KX.cars = [];
     const roads = flats.filter(f => f.r && f.c === '#b4b8bd');
     const KINDS = [['pothole', 6, 6, 3], ['manhole', 5, 5, 3], ['drain', 6, 6, 2], ['mud', 8, 7, 2], ['puddle', 9, 8, 2], ['oil', 8, 7, 1], ['sachet', 6, 5, 2], ['trash', 7, 6, 2], ['skidA', 3, 16, 2], ['skidB', 3.6, 16, 2]];
     const tot = KINDS.reduce((a, k) => a + k[3], 0);
@@ -434,6 +764,12 @@
         const tw = horiz ? Math.min(T, L - d) : w, th = horiz ? h : Math.min(T, L - d), cx = horiz ? x + d + tw / 2 : x + w / 2, cy = horiz ? y + h / 2 : y + d + th / 2;
         if (!isLand(cx, cy)) continue;
         LRX.tiles.push({ x: cx, y: cy, w: tw + .8, h: th + .8, sx: Math.floor(r() * 384), sy: Math.floor(r() * 384) });
+        // same chunk, but as a Kenney straight-road stamp: its lane line has a direction, so swap which way it faces for a horizontal vs a vertical road.
+        // each tile is only an approximate (affine, not true-perspective) warp of a flat square, so neighbouring tiles don't line up pixel-for-pixel at
+        // the seam between them under tilt — padding generously along the tiling direction (not across it, or the road would look wider than it is)
+        // makes consecutive tiles overlap enough that the mismatch is hidden under the overlap instead of showing as a gap or a jagged edge.
+        const cross = horiz ? th : tw, along = horiz ? tw : th;
+        KX.straight.push({ x: cx, y: cy, ww: cross + 1, wh: along + 5, ang: horiz ? Math.PI / 2 : 0 });
       }
       const n = Math.floor(L / 70);
       for (let i = 0; i < n; i++) {
@@ -447,7 +783,9 @@
     const hr = roads.filter(f => f.r[2] > f.r[3]), vr = roads.filter(f => f.r[3] > f.r[2]);
     for (const a of hr) for (const b of vr) {
       const jx = b.r[0] + b.r[2] / 2, jy = a.r[1] + a.r[3] / 2;
-      if (jy < b.r[1] || jy > b.r[1] + b.r[3] || r() > .3 || !isLand(jx, jy - 17)) continue;
+      if (jy < b.r[1] || jy > b.r[1] + b.r[3]) continue;                        // b doesn't actually reach this row: not a real junction
+      if (isLand(jx, jy)) KX.cross.push({ x: jx, y: jy });
+      if (r() > .3 || !isLand(jx, jy - 17)) continue;
       LRX.decals.push({ k: 'zebra', x: jx, y: jy - 16, w: 11, h: 8, a: 0 });
     }
     // danfos on the horizontal roads (one lane each way)
@@ -455,12 +793,22 @@
       const n = 1 + (i % 2);
       for (let j = 0; j < n; j++) { const dir = j % 2 ? -1 : 1; LRX.buses.push({ y: f.r[1] + (dir > 0 ? 4 : 10), x0: r() * 940, dir, sp: 12 + r() * 10, clip: f.clipLand }); }
     });
+    // kenney_racing-kit cars on the vertical roads (buses never ran there, so this road direction was empty before)
+    vr.forEach((f, i) => {
+      const n = 1 + (i % 2);
+      for (let j = 0; j < n; j++) { const dir = j % 2 ? -1 : 1; KX.cars.push({ x: f.r[0] + (dir > 0 ? 4 : 10), y0: r() * f.r[3], dir, sp: 11 + r() * 9, lo: f.r[1], hi: f.r[1] + f.r[3], col: KX_CAR_COLS[Math.floor(r() * KX_CAR_COLS.length)] }); }
+    });
     LRX.decals.sort((p, q) => (p.k === 'zebra') - (q.k === 'zebra'));
   }
   function lrGround(ctx) {
-    if (!LRX.on || cam.D > 700) return;
-    if (LRX.asph) for (const t of LRX.tiles) lrTex(ctx, LRX.asph, t.x, t.y, t.w, t.h, .5, 0, .82, [t.sx, t.sy, 128, 128]);
-    for (const d of LRX.decals) { const im = LRX.img[d.k]; if (im) lrTex(ctx, im, d.x, d.y, d.w, d.h, .7, d.a, d.k === 'zebra' ? .8 : .95); }
+    if (cam.D > 700) return;
+    if (KX.on) {                                                               // the clean Kenney road replaces the plain-asphalt base when it's loaded
+      for (const s of KX.straight) lrTex(ctx, KX.img.straight, s.x, s.y, s.ww, s.wh, .45, s.ang, 1);
+    } else if (LRX.on && LRX.asph) {
+      for (const t of LRX.tiles) lrTex(ctx, LRX.asph, t.x, t.y, t.w, t.h, .5, 0, .82, [t.sx, t.sy, 128, 128]);
+    }
+    if (LRX.on) for (const d of LRX.decals) { const im = LRX.img[d.k]; if (im) lrTex(ctx, im, d.x, d.y, d.w, d.h, .7, d.a, d.k === 'zebra' ? .8 : KX.on ? .55 : .95); }  // weathering over the clean road, lighter so the road underneath still reads
+    if (KX.on) for (const c of KX.cross) lrTex(ctx, KX.img.cross, c.x, c.y, 17, 17, .5, 0, 1);   // crisp rounded-corner junction on top of everything
   }
   /* small flat roofs get a Lagos roof: zinc patchwork, red metal, blue tarp, clothesline, satellite dish, water tank */
   const ROOFS = ['zinc', 'zinc', 'zinc', 'red', 'red', 'tarp', 'cloth', 'sat', 'tank'];
@@ -476,6 +824,13 @@
     if (wpx < 6) return;
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, wpx * .44, wpx * .1, 0, 0, TAU); ctx.fill();
     ctx.save(); ctx.translate(b.x, b.y); if (o.dir < 0) ctx.scale(-1, 1); ctx.drawImage(im, -wpx / 2, -hpx * .93, wpx, hpx); ctx.restore();
+  }
+  function drawCar(ctx, o) {
+    const im = KX.img[`car-${o.col}-${o.dir > 0 ? 'S' : 'N'}`]; if (!im) return;        // dir>0 = heading south: show the car's front (S); heading north shows its back (N)
+    const b = cam.project(o.x, o.y, 0, {}), W0 = 6.4, wpx = W0 * b.k, hpx = wpx * im.naturalHeight / im.naturalWidth;   // a lane is 7 units wide (road 14)
+    if (wpx < 3) return;
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, wpx * .5, wpx * .14, 0, 0, TAU); ctx.fill();
+    ctx.drawImage(im, b.x - wpx / 2, b.y - hpx * .85, wpx, hpx);
   }
 
   function drawBox(ctx, o) {
@@ -494,7 +849,7 @@
         const t0 = .42, t1 = .58; if (f[2] === 0 && f[3] === 1) poly(ctx, [[f[0][0] + (f[1][0] - f[0][0]) * t0, f[0][1], 0], [f[0][0] + (f[1][0] - f[0][0]) * t1, f[0][1], 0], [f[0][0] + (f[1][0] - f[0][0]) * t1, f[0][1], 12], [f[0][0] + (f[1][0] - f[0][0]) * t0, f[0][1], 12]], '#4a2f1c');
       }
     }
-    if (o.style === 'hip') {                                            // pyramid roof
+    if (o.style === 'hip' && M.hs > .5) {                               // pyramid roof (drawn flat in the 2D overview)
       const ap = [o.x, o.y, h + (o.rh || 10)], c = [[x0 - 2, y0 - 2], [x1 + 2, y0 - 2], [x1 + 2, y1 + 2], [x0 - 2, y1 + 2]];
       const sh = [-.05, -.2, -.28, -.12];
       for (let i = 0; i < 4; i++) { const a = c[i], b = c[(i + 1) % 4], cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, nx = Math.sign(cx - o.x) * (Math.abs(cx - o.x) > Math.abs(cy - o.y) ? 1 : 0), ny = Math.sign(cy - o.y) * (Math.abs(cy - o.y) >= Math.abs(cx - o.x) ? 1 : 0);
@@ -503,7 +858,7 @@
     } else {
       poly(ctx, rect(x0, y0, o.w, o.d, h), mix(o.roof, .0), 'rgba(0,0,0,.25)');
       if (o.style === 'dome') { const c = cam.project(o.x, o.y, h + 6, {}), r = o.w * .34 * c.k; ctx.beginPath(); ctx.arc(c.x, c.y - r * .35, r, 0, TAU); ctx.fillStyle = o.roof; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.stroke(); }
-      else if (lrRoof(ctx, o, x0, y0, h)) { /* Lagos Run roof texture drawn */ }
+      else if (lrRoof(ctx, o, x0, y0, h)) { /* Drive roof texture drawn */ }
       else if (o.h < 60) poly(ctx, rect(x0 + 5, y0 + 5, o.w - 10, o.d - 10, h + 1.5), mix(o.roof, -.12));
       if (o.o.tag === 'tower') { const c = cam.project(o.x, o.y, h + 3, {}); ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(c.x, c.y, Math.max(2, 6 * c.k), 0, TAU); ctx.fill(); }
     }
@@ -606,6 +961,21 @@
     ctx.save(); ctx.globalAlpha = .55; ctx.fillStyle = '#eaf6ff'; ctx.font = '800 13px Outfit,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.letterSpacing = '4px';
     ctx.fillText('ATLANTIC OCEAN', tmp.x, tmp.y + 28); ctx.restore();
   }
+  /* big, faint, ground-painted district name (the "YABA" / "MAINLAND" look): one short word lying flat on the
+     road, fading out as you zoom in close enough that the small pin label (drawn later, in screen space) takes over. */
+  function drawGroundLabels(ctx) {
+    if (cam.D > 1300) return;
+    for (const p of PINS) {
+      if (p[5] !== 'district') continue;
+      const [nm, , px, py] = p; cam.project(px, py, .4, tmp); if (tmp.z < NEAR) continue;
+      const a = clamp(.26 - (900 - cam.D) / 3200, .06, .26); if (a <= .06 && cam.D < 420) continue;
+      const word = nm.split(' ')[0].toUpperCase(), size = clamp(30 * tmp.k, 10, 34);
+      ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = '#f3f7ea';
+      ctx.translate(tmp.x, tmp.y); ctx.rotate(-cam.yaw);
+      ctx.font = `800 ${size}px Outfit,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.letterSpacing = (size * .14) + 'px';
+      ctx.fillText(word, 0, 0); ctx.restore();
+    }
+  }
   function drawClusters(ctx) {
     if (!HUD.neighbours || cam.D > 1400) return;
     const spots = PINS.filter(p => p[5] !== 'soon-y').map(p => ({ x: p[2], y: p[3], n: 0, live: 0, pin: p }));
@@ -644,11 +1014,12 @@
 
   function drawPlots(ctx) {
     for (let i = 0; i < ads.n; i++) {
-      const col = i % 10, row = Math.floor(i / 10), x = 282 + col * 23, y = 410 + row * 44, ad = ads.plots.get(i);
+      const col = i % 10, row = Math.floor(i / 10), x = PLOT_ANCHOR.x + col * 23, y = PLOT_ANCHOR.y + row * 44, ad = ads.plots.get(i);
       const q = rect(x, y, 19, 36, 1.5);
       poly(ctx, q, ad ? '#ffffff' : 'rgba(255,255,255,.2)', ad ? '#1f6fd0' : 'rgba(255,255,255,.5)');
       const c = cam.project(x + 9.5, y + 18, 1.6, {}); if (c.z < NEAR || c.x < -30 || c.x > M.w + 30 || c.y < -30 || c.y > M.h + 30) continue;
       if (ad) { let h = 0; for (const ch of String(ad.title || '')) h = (h * 31 + ch.charCodeAt(0)) % 360; poly(ctx, rect(x + 2, y + 2, 15, 32, 1.7), `hsl(${h},65%,52%)`); if (c.k > 1.1) { ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(Math.min(26, 11 * c.k))}px Outfit,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(ad.title || '📢').trim().charAt(0).toUpperCase(), c.x, c.y); } }
+      else if (c.k > 1.1) { ctx.fillStyle = 'rgba(255,255,255,.8)'; ctx.font = `700 ${Math.round(Math.min(16, 7 * c.k))}px Outfit,system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('FOR SALE', c.x, c.y); }   // an empty plot reads as a plain "for sale" sign until someone buys it
       const xs = q.map(p => cam.project(p[0], p[1], 1.5, {})); const x0 = Math.min(...xs.map(p => p.x)), x1 = Math.max(...xs.map(p => p.x)), y0 = Math.min(...xs.map(p => p.y)), y1 = Math.max(...xs.map(p => p.y));
       M.hits.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, kind: 'plot', slot: i });
     }
@@ -684,6 +1055,7 @@
     drawRoadMarks(ctx);
     drawGoSlow(ctx, t);
     if (HUD.sea) drawPlots(ctx);
+    drawGroundLabels(ctx);
     drawOceanLabel(ctx);
     BRIDGES.forEach(b => { ctx.setLineDash([]); for (let y = b[1] + 6; y < b[1] + b[3] - 6; y += 18) poly(ctx, rect(b[0] + b[2] / 2 - .6, y, 1.2, 8, 1.4), 'rgba(255,255,255,.75)'); });
   }
@@ -710,7 +1082,7 @@
   }
   function setPlayers(list) {
     const keep = new Set(), net = getNET(), myName = net && net.user && net.user.displayName, myId = net && net.user && String(net.user.id || '');
-    (list || []).filter(p => playerKey(p) && String(p.id || '') !== myId && p.name !== myName).slice(0, 40).forEach(p => {
+    (list || []).filter(p => playerKey(p) && String(p.id || '') !== myId && p.name !== myName && (p.c || 'lagos') === HUD.city).slice(0, 40).forEach(p => {
       const live = Number.isFinite(p.x) && Number.isFinite(p.y);
       const key = playerKey(p); let o = M.others.get(key) || [...M.others.values()].find(x => x.name === p.name);
       if (!live && !o) return;                                   // only draw people with a real map point — no parked placeholders
@@ -731,6 +1103,7 @@
   function applyPos(p) {
     if (!p) return; const net = getNET(), myId = net && net.user && String(net.user.id || '');
     if (String(p.id || '') === myId || (p.name && net && net.user && p.name === net.user.displayName)) return;
+    if ((p.c || 'lagos') !== HUD.city) { M.others.delete(playerKey(p)); return }       // standing in a different city
     const key = playerKey(p); let o = M.others.get(key) || [...M.others.values()].find(x => x.name === p.name);
     if (!o) { setPlayers([{ ...p }]); return; }
     applyLive(o, p);
@@ -769,7 +1142,7 @@
     const now = performance.now(); if (!force && now - lastPosAt < 70) return;
     if (!force && Math.hypot(a.x - lastSent[0], a.y - lastSent[1]) < .45 && Math.abs(a.h - lastSent[2]) < .05 && a.state === lastSent[3] && now - lastPosAt < 700) return;
     lastPosAt = now; lastSent = [a.x, a.y, a.h, a.state];
-    try { net.sock.emit('pos', { x: +a.x.toFixed(1), y: +a.y.toFixed(1), h: +a.h.toFixed(3), st: a.state }); } catch (e) {}
+    try { net.sock.emit('pos', { x: +a.x.toFixed(1), y: +a.y.toFixed(1), h: +a.h.toFixed(3), st: a.state, c: HUD.city !== 'lagos' ? HUD.city : undefined }); } catch (e) {}
   }
   function turn(a, b, k) { let d = ((b - a + Math.PI * 3) % TAU) - Math.PI; return a + d * Math.min(1, k); }
 
@@ -819,6 +1192,35 @@
   }
 
   /* ---------- frame ---------- */
+
+  /* ---------- 2D overview (desktop) <-> 3D street view (after "Step outside") ----------
+     On a big screen the Map is a flat top-down plan: buildings are footprints, places are icons, and rings + counters show
+     where things are happening. The tall 3D buildings only appear in the street view you get when you step outside. */
+  const SOLID = { box: 1, tank: 1, poster: 1, mast: 1 };
+  function applyHeights() { for (const o of objs) { if (!SOLID[o.t]) continue; if (o.hb === undefined) { o.hb = o.h; o.rb = o.rh || 0 } o.h = Math.max(1.2, o.hb * M.hs); if (o.t === 'box') o.rh = o.rb * M.hs } }
+  function modeStep(dt) {
+    const flat = M.w >= 768 && !M.outside && !M.force3d; M.flat = flat;
+    const k = 1 - Math.exp(-dt * 7), tH = flat ? .06 : 1;
+    if (Math.abs(tH - M.hs) > .002) { M.hs += (tH - M.hs) * k; if (Math.abs(tH - M.hs) <= .002) M.hs = tH; applyHeights() }
+    if (flat) { cam.tilt += (0 - cam.tilt) * k; cam.yaw += (0 - cam.yaw) * k; if (!M.wasFlat) { M.wasFlat = true; M.tD = Math.max(M.tD, 1100) } }
+    else { if (M.wasFlat) { M.wasFlat = false; M.ease3d = true } if (M.ease3d) { cam.tilt += (1.02 - cam.tilt) * k; cam.yaw += (-.28 - cam.yaw) * k; if (Math.abs(cam.tilt - 1.02) < .01) M.ease3d = false } }
+  }
+  // which kinds of place are buzzing because of the current city event
+  const EVENT_KINDS = { owambe: ['hall', 'club', 'hotel', 'boat', 'park'], market: ['shop'], fuel: ['refinery'] };
+  function liveKinds() { try { const ev = g.LAGOS && g.LAGOS.d && g.LAGOS.d.event; return ev ? (EVENT_KINDS[ev.id] || []) : [] } catch (e) { return [] } }
+  function mapChrome() {
+    if ($('mapView')) return; const box = M.cv.parentNode, d = document.createElement('div'); d.id = 'mapView';
+    d.innerHTML = '<button id="mapLive" class="mvlive" onclick="MAP3D.showEvents()" aria-label="What is happening now"></button><button id="mapDim" class="mvdim" onclick="MAP3D.toggle3d()" aria-label="Switch between 2D map and 3D street view">3D</button>';
+    box.appendChild(d); const st = document.createElement('style');
+    st.textContent = '#mapView{position:absolute;left:16px;top:74px;z-index:6;display:none;flex-direction:column;align-items:flex-start;gap:8px;font-family:"Plus Jakarta Sans",system-ui,sans-serif}@media(min-width:768px){#mapView{display:flex}}#mapView button{border:0;cursor:pointer;font:700 13px "Plus Jakarta Sans",system-ui,sans-serif;color:#fff;background:rgba(18,24,38,.88);border-radius:999px;height:34px;padding:0 14px;box-shadow:0 4px 14px rgba(0,0,0,.3);backdrop-filter:blur(6px)}#mapView .mvlive:empty{display:none}#mapView button:hover{background:rgba(40,52,80,.95)}';
+    document.head.appendChild(st);
+  }
+  function chromeUpdate(now) {
+    if (now - M.liveT < 900) return; M.liveT = now; const live = $('mapLive'), dim = $('mapDim'); if (!live) return;
+    const ev = g.LAGOS && g.LAGOS.d && g.LAGOS.d.event, ks = liveKinds(), n = PINS.filter(p => ks.includes(p[4])).length;
+    live.textContent = ev && n ? (ev.icon || '🎉') + ' ' + (ev.title || 'Event') + ' · ' + n + ' place' + (n > 1 ? 's' : '') + ' buzzing' : '';
+    dim.textContent = M.flat ? '3D' : (M.outside ? '2D' : '2D'); dim.style.display = M.outside ? 'none' : '';
+  }
   function frame(now) {
     if (!M.on) return; M.raf = requestAnimationFrame(frame);
     const dt = Math.min(.05, (now - M.last) / 1000 || .016); M.last = now; const t = now / 1000;
@@ -826,39 +1228,45 @@
     // zoom easing + inertia
     const dz = M.tD - M.D; if (Math.abs(dz) > .01) { const before = M.zoomAt ? (cam.update(), cam.pick(M.zoomAt[0], M.zoomAt[1], 0)) : null; M.D += dz * (1 - Math.exp(-dt * 10)); cam.D = M.D; cam.update(); if (before) { const after = cam.pick(M.zoomAt[0], M.zoomAt[1], 0); if (after) { cam.tx += before.x - after.x; cam.ty += before.y - after.y; } } }
     if (!M.drag && (Math.abs(M.vel[0]) + Math.abs(M.vel[1]) > .05)) { cam.tx += M.vel[0] * dt; cam.ty += M.vel[1] * dt; const f = Math.exp(-dt * 4); M.vel[0] *= f; M.vel[1] *= f; }
-    updateMe(dt); updateOthers(dt);
+    updateMe(dt); updateOthers(dt); modeStep(dt); chromeUpdate(now);
     cam.tx = clamp(cam.tx, -EXT * .75, W + EXT * .75); cam.ty = clamp(cam.ty, -EXT * .75, W + EXT * .75); cam.update();
     draw(t);
     const cp = $('mpCompass'); if (cp) cp.firstElementChild.style.transform = `rotate(${-cam.yaw}rad)`;
   }
   function draw(t) {
     const ctx = M.ctx; ctx.setTransform(M.dpr, 0, 0, M.dpr, 0, 0); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    lrLoad(); M.hits = []; drawWorld(ctx, t);
-    // collect visible standing things
-    const list = [], m = 90;
+    lrLoad(); kxLoad(); M.hits = []; drawWorld(ctx, t);
+    // collect visible standing things (the flat 2D overview draws none: no buildings, trees, cars, boats or characters)
+    const solid = M.hs > .12, list = [], m = 90;
     const scan = arr => { for (const o of arr) {
       const p = cam.project(o.x, o.y, 0, tmp); if (tmp.z < NEAR) continue; const rr = (o.r + (o.h || 40)) * tmp.k + m;
       if (tmp.x < -rr || tmp.x > M.w + rr || tmp.y < -rr * 1.5 || tmp.y > M.h + rr) continue;
       if (o.t === 'tree' && cam.D > 800) continue;
       list.push([tmp.z, o]);
     } };
-    scan(objs.filter(o => {
+    scan((solid ? objs : []).filter(o => {
       if (!HUD.ads && (o.t === 'board' || o.t === 'poster')) return false;
       if (!HUD.gov && o.o && o.o.tag === 'gov') return false;
       return true;
-    })); scan(XOBJ);
-    if (LRX.on && LRX.img.bus && cam.D < 1000) for (const bu of LRX.buses) {            // danfos drive back and forth along their road
+    })); if (solid) scan(XOBJ);
+    if (solid && LRX.on && LRX.img.bus && cam.D < 1000) for (const bu of LRX.buses) {            // danfos drive back and forth along their road
       const span = 940, px = ((bu.x0 + bu.dir * bu.sp * t) % span + span) % span, bx = 30 + px, ob = { t: 'bus', x: bx, y: bu.y, dir: bu.dir, r: 14, h: 16 };
       if (!isLand(bx, bu.y) || onBridge(bx, bu.y)) continue;
       cam.project(bx, bu.y, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
     }
+    if (solid && KX.on && cam.D < 1000) for (const ca of KX.cars) {                              // Kenney race cars on the vertical roads, same idea, north-south
+      const span = ca.hi - ca.lo, py = ((ca.y0 + ca.dir * ca.sp * t) % span + span) % span, cy = ca.lo + py, ob = { t: 'car', x: ca.x, y: cy, dir: ca.dir, col: ca.col, r: 14, h: 16 };
+      if (!isLand(ca.x, cy) || onBridge(ca.x, cy)) continue;
+      cam.project(ca.x, cy, 0, tmp); if (tmp.z < NEAR || tmp.x < -60 || tmp.x > M.w + 60 || tmp.y < -80 || tmp.y > M.h + 80) continue; list.push([tmp.z - 2, ob]);
+    }
     const A = [M.me]; if (HUD.neighbours) for (const o of M.others.values()) A.push(o.av);
-    for (const a of A) { cam.project(a.x, a.y, 0, tmp); if (tmp.z >= NEAR && tmp.x > -60 && tmp.x < M.w + 60 && tmp.y > -80 && tmp.y < M.h + 80) list.push([tmp.z - 4, a]); }
+    const dots = [];                                                                       // in 2D, people are simple coloured dots
+    for (const a of A) { cam.project(a.x, a.y, 0, tmp); if (tmp.z >= NEAR && tmp.x > -60 && tmp.x < M.w + 60 && tmp.y > -80 && tmp.y < M.h + 80) { if (solid) list.push([tmp.z - 4, a]); else dots.push([tmp.x, tmp.y, a]) } }
     list.sort((p, q) => q[0] - p[0]);
     const tags = [];
     for (const [, o] of list) {
       if (o instanceof Avatar) { const info = o.draw(ctx, cam, SC); if (info.h > 24) tags.push([o, info]); continue; }
-      if (o.t === 'box') drawBox(ctx, o); else if (o.t === 'tree') drawTree(ctx, o); else if (o.t === 'board') drawBoard(ctx, o); else if (o.t === 'boat') drawBoat(ctx, o, t); else if (o.t === 'mast') drawMast(ctx, o); else if (o.t === 'bus') drawBus(ctx, o); else if (o.t === 'poster') drawPoster(ctx, o); else if (o.t === 'tank') drawTank(ctx, o); else if (o.t === 'plane') drawPlane(ctx, o);
+      if (o.t === 'box') drawBox(ctx, o); else if (o.t === 'tree') drawTree(ctx, o); else if (o.t === 'board') drawBoard(ctx, o); else if (o.t === 'boat') drawBoat(ctx, o, t); else if (o.t === 'mast') drawMast(ctx, o); else if (o.t === 'bus') drawBus(ctx, o); else if (o.t === 'car') drawCar(ctx, o); else if (o.t === 'poster') drawPoster(ctx, o); else if (o.t === 'tank') drawTank(ctx, o); else if (o.t === 'plane') drawPlane(ctx, o);
     }
     drawLiveTracks(ctx, t);
     // destination marker
@@ -870,37 +1278,63 @@
       ctx.fillStyle = a === M.me ? '#22b573' : 'rgba(27,34,54,.82)'; rr(ctx, x - w / 2, y - 9, w, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(nm, x, y + .5);
       if (a !== M.me) M.hits.push({ x: x - w / 2, y: y - 9, w, h: info.h + 20, name: nm, kind: 'player' });
     }
+    if (dots.length) {
+      const mine = M.me, names = new Map([...M.others.values()].map(o => [o.av, o]));
+      ctx.font = '700 11px "Plus Jakarta Sans",system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (const [dx, dy, a] of dots) {
+        const me = a === mine, o = names.get(a); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 1;
+        ctx.fillStyle = me ? '#22b573' : (o && o.top) || '#3a7bd5'; ctx.beginPath(); ctx.arc(dx, dy, me ? 8 : 6, 0, TAU); ctx.fill();
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+        if (me) { ctx.fillStyle = '#1b2236'; ctx.fillText('You', dx, dy - 16) } else if (o) M.hits.push({ x: dx - 10, y: dy - 10, w: 20, h: 20, name: o.name, kind: 'player' });
+      }
+    }
     drawClusters(ctx);
     for (const f of LAYERS.world) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
-    // pin labels
+    // pin labels: every place is a small icon bubble. Tap it (or hover it with a mouse) and it opens into [icon  name  Open >].
     ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
+    let openPin = null; const liveK = liveKinds();
     for (const p of PINS) {
       const [nm, em, x, y, kind, act] = p; if (!HUD.gov && (kind === 'gov' || kind === 'court')) continue; if (!HUD.ads && kind === 'radio') continue;
       const hh = p[7] || { radio: 72, hall: 36, shop: 26, home: 54, glass: 82, dome: 56, airport: 30, gym: 36, court: 58, hotel: 112, club: 42, tower: 102, boat: 40, park: 20, refinery: 26 }[kind] || 30;
       const b = cam.project(x, y, hh + 10, tmp); if (tmp.z < NEAR || tmp.x < -80 || tmp.x > M.w + 80 || tmp.y < 40 || tmp.y > M.h + 40) continue;
-      if ((cam.D > 1100 || (act === 'district' && cam.D > 650)) && kind !== 'home') { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 11, 0, TAU); ctx.fill(); ctx.font = '13px system-ui'; ctx.fillStyle = '#000'; ctx.fillText(em, tmp.x, tmp.y + 1); ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif'; M.hits.push({ x: tmp.x - 12, y: tmp.y - 12, w: 24, h: 24, pin: p, kind: 'pin' }); continue; }
-      const label = em + ' ' + nm, w = ctx.measureText(label).width + 18, px = tmp.x, py = tmp.y - 10;
-      ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.96)'; ctx.shadowColor = 'rgba(0,0,0,.25)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
-      rr(ctx, px - w / 2, py - 12, w, 24, 12); ctx.fill(); ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-      ctx.beginPath(); ctx.moveTo(px - 5, py + 11.5); ctx.lineTo(px + 5, py + 11.5); ctx.lineTo(px, py + 17); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#1b1f33'; ctx.fillText(label, px, py + 1);
-      M.hits.push({ x: px - w / 2, y: py - 12, w, h: 30, pin: p, kind: 'pin' });
+      if (M.exp === p || M.hov === p) { openPin = { p, x: tmp.x, y: tmp.y }; continue; }
+      ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+      if (liveK.includes(kind)) { const ph = performance.now() / 1000; ctx.save(); ctx.strokeStyle = 'rgba(255,92,60,' + (.45 + .35 * Math.sin(ph * 3.2)) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 17 + 3 * Math.sin(ph * 3.2), 0, TAU); ctx.stroke(); ctx.restore() }
+      ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.97)'; ctx.beginPath(); ctx.arc(tmp.x, tmp.y, 12, 0, TAU); ctx.fill();
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.font = '14px system-ui'; ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.fillText(em, tmp.x, tmp.y + 1); ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif';
+      M.hits.push({ x: tmp.x - 15, y: tmp.y - 15, w: 30, h: 30, pin: p, kind: 'pin', expand: true });
+    }
+    if (openPin) { ctx.save();   // the opened pill is drawn last so it sits on top of the other icons
+      const { p, x: px, y: py } = openPin, [nm, em, , , , act] = p, name = nm.replace(' · Coming soon', ''), nw = ctx.measureText(name).width, ew = 18, bw = ctx.measureText('Open ›').width + 18;
+      const w = 10 + ew + 6 + nw + 8 + bw + 5, h = 28, x0 = px - w / 2, y0 = py - h / 2;
+      ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2; ctx.fillStyle = act === 'soon-y' ? '#ffd60a' : 'rgba(250,250,253,.98)'; rr(ctx, x0, y0, w, h, 14); ctx.fill();
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = '14px system-ui'; ctx.fillStyle = '#000'; ctx.fillText(em, x0 + 10, py + 1);
+      ctx.font = '700 12px "Plus Jakarta Sans",system-ui,sans-serif'; ctx.fillStyle = '#1b1f33'; ctx.fillText(name, x0 + 10 + ew + 6, py + 1);
+      const bx = x0 + w - bw - 5; ctx.fillStyle = '#075BFF'; rr(ctx, bx, y0 + 4, bw, h - 8, 10); ctx.fill();
+      ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText('Open ›', bx + bw / 2, py + 1);
+      M.hits.push({ x: x0, y: y0, w, h, pin: p, kind: 'pin', expand: true });
+      M.hits.push({ x: bx - 4, y: y0, w: bw + 8, h, pin: p, kind: 'pin', go: true });
+      ctx.restore();
     }
     // night tint from the in-game clock
     const hrs = ((getS() && getS().min) || 720) / 60 % 24, night = hrs >= 19.5 || hrs < 5.5 ? 1 : hrs >= 18 ? (hrs - 18) / 1.5 : hrs < 7 ? (7 - hrs) / 1.5 : 0;
     const dk = darkTheme(), nightAmt = dk ? 1 : night;                         // dark mode always shows the city at night
     if (nightAmt > 0) { ctx.fillStyle = dk ? 'rgba(6,14,58,.52)' : `rgba(10,20,70,${.27 * night})`; ctx.fillRect(0, 0, M.w, M.h); }
-    if (nightAmt > .3) drawLamps(ctx, Math.min(1, (nightAmt - .3) / .5));
+    if (nightAmt > .3 && M.hs > .12) drawLamps(ctx, Math.min(1, (nightAmt - .3) / .5));
     for (const f of LAYERS.screen) try { ctx.save(); f(ctx, t, HELP); ctx.restore() } catch (e) { ctx.restore() }
   }
   function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
   /* ---------- input ---------- */
   const ptrs = new Map();
+  let guidedTour = null;
   function rectXY(e) { const r = M.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
   const maxD = () => (M.w > 900 ? 2100 : 1700);                  // wider screens can zoom out further, the extended world fills the view
   function zoomBy(f, at) { M.tD = clamp(M.tD * f, 80, maxD()); M.zoomAt = at || [M.w / 2, M.h / 2]; }
   function onDown(e) {
+    if (guidedTour) API.stopTour();
     M.cv.setPointerCapture(e.pointerId); const [x, y] = rectXY(e); ptrs.set(e.pointerId, { x, y, sx: x, sy: y, t: performance.now(), btn: e.button });
     M.vel = [0, 0];
     if (ptrs.size === 1) { M.drag = { mode: (e.button === 2 || e.ctrlKey || e.shiftKey) ? 'rot' : 'pan', anchor: cam.pick(x, y, 0), moved: 0, lx: x, ly: y }; }
@@ -908,10 +1342,11 @@
     e.preventDefault();
   }
   function onMove(e) {
+    if (e.pointerType === 'mouse' && !M.drag) { const [hx, hy] = rectXY(e), hh = [...M.hits].reverse().find(h => h.kind === 'pin' && hx >= h.x && hx <= h.x + h.w && hy >= h.y && hy <= h.y + h.h); M.hov = hh ? hh.pin : null; M.cv.style.cursor = hh ? 'pointer' : '' }
     const p = ptrs.get(e.pointerId); if (!p) return; const [x, y] = rectXY(e), px = p.x, py = p.y; p.x = x; p.y = y;
     if (ptrs.size === 1 && M.drag) {
       const d = M.drag; d.moved += Math.abs(x - d.lx) + Math.abs(y - d.ly);
-      if (d.mode === 'rot') { cam.yaw += (x - d.lx) * .008; cam.tilt = clamp(cam.tilt + (y - d.ly) * .005, 0, 1.15); cam.update(); }
+      if (d.mode === 'rot' && !M.flat) { cam.yaw += (x - d.lx) * .008; cam.tilt = clamp(cam.tilt + (y - d.ly) * .005, 0, 1.15); cam.update(); }
       else if (d.moved > 6) { M.follow = false; cam.update(); const q = cam.pick(x, y, 0); if (q && d.anchor) { const dx = d.anchor.x - q.x, dy = d.anchor.y - q.y; cam.tx += dx; cam.ty += dy; M.vel = [dx * 50, dy * 50]; cam.update(); } }
       d.lx = x; d.ly = y;
     } else if (ptrs.size === 2 && M.pin) {
@@ -919,7 +1354,7 @@
       const dyA = a.y - (a === p ? py : a.y), dyB = b.y - (b === p ? py : b.y);
       const rot = ((ang - pn.a + Math.PI * 3) % TAU) - Math.PI, sc = dist / pn.d, parallel = Math.abs(rot) < .08 && Math.abs(sc - 1) < .08 && Math.abs(my - pn.my) > Math.abs(mx - pn.mx);
       M.follow = false;
-      if (parallel && (Math.abs(a.y - a.sy) > 14 || pn.tilting)) { pn.tilting = true; cam.tilt = clamp(cam.tilt - (dyA + dyB) / 2 * .006, 0, 1.15); cam.update(); }
+      if (!M.flat && parallel && (Math.abs(a.y - a.sy) > 14 || pn.tilting)) { pn.tilting = true; cam.tilt = clamp(cam.tilt - (dyA + dyB) / 2 * .006, 0, 1.15); cam.update(); }
       else {
         cam.yaw -= (rot) * 1; M.D = M.tD = clamp(M.D / sc, 80, maxD()); cam.D = M.D; cam.update();
         const q = cam.pick(mx, my, 0); if (q && pn.anchor) { cam.tx += pn.anchor.x - q.x; cam.ty += pn.anchor.y - q.y; cam.update(); }
@@ -969,20 +1404,30 @@
   }
   function tap(x, y) {
     const hit = [...M.hits].reverse().find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+    if (hit && hit.kind === 'pin' && hit.expand && !hit.go) { M.exp = M.exp === hit.pin ? null : hit.pin; return; }
+    if (!hit || hit.kind !== 'pin') M.exp = null;
     if (hit && hit.kind === 'pin') {
       const [nm, em, px, py, , act] = hit.pin;
       if (act === 'home') return g.nav('home');
       if (API.onPin && API.onPin(hit.pin)) return;
       openPlace(hit.pin); return;                       /* a landmark only opens its popup; the popup checks first whether it is walkable */
     }
-    if (hit && hit.kind === 'plot') { const ad = ads.plots.get(hit.slot); if (ad && g.ADS) g.ADS.goPlot(hit.slot); else g.toast('🌊 Free sea plot · book it in Phone → Ads'); return; }
+    if (hit && hit.kind === 'plot') { const ad = ads.plots.get(hit.slot); if (ad && g.ADS) g.ADS.goPlot(hit.slot); else if (g.ADS && g.ADS.banner) g.ADS.banner('Free sea plot'); else g.toast('🌊 Free sea plot · book it in Phone → Ads'); return; }
     if (hit && hit.kind === 'board') { const n = ads.billboards.length, ad = n ? ads.billboards[hit.idx % n] : null; if (ad && g.ADS) g.ADS.go(ad); else { g.nav('phone'); setTimeout(() => g.PH && g.PH.open('ads'), 0); } return; }
     if (hit && hit.kind === 'player') { g.toast('👤 ' + hit.name); return; }
     const q = cam.pick(x, y, 0); if (!q) return;
-    if (!isLand(q.x, q.y)) return g.toast('🌊 Can’t walk on water — use a bridge');
-    const mp = M.me && findPath(M.me.x, M.me.y, q.x, q.y);        // check first that it is trekkable; a long trek opens the transport options instead
-    if (mp && g.MT && g.MT.WALK_MAX && mp.reduce((s, c, i) => i ? s + Math.hypot(c[0] - mp[i - 1][0], c[1] - mp[i - 1][1]) : 0, 0) > g.MT.WALK_MAX) { g.MT.destSheet({ name: 'That spot', emoji: '📍', x: q.x, y: q.y }, { title: '📍 That spot', sub: 'Too far to walk from here' }); return; }
-    if (!walkTo(q.x, q.y)) g.toast('Can’t get there');
+    if (!isLand(q.x, q.y)) {
+      // beyond the real 1000x1000 play area (past the sea belt around it) is just distant scenery, painted so the world
+      // doesn't look like it stops dead at the edge — it was never meant to be reachable, so say that plainly instead
+      // of telling the player it's water right where they can clearly see land and buildings.
+      const far = q.x < -GAP || q.x > W + GAP || q.y < -GAP || q.y > W + GAP;
+      if (g.ADS && g.ADS.banner) return g.ADS.banner(far ? 'Nothing to visit out here' : 'Can’t walk on water. Use a bridge'); return g.toast(far ? '🏙️ That’s just the skyline in the distance — nothing out there to visit' : '🌊 Can’t walk on water — use a bridge');
+    }
+    if (!M.me || !findPath(M.me.x, M.me.y, q.x, q.y)) { g.toast('Can’t get there'); return; }
+    // every bare-ground tap opens the same destination sheet a landmark does — no more silently auto-walking;
+    // the sheet itself shows the distance and, for a close spot, a "Walk there now" button, or, for a far one, the transport options.
+    if (g.MT && g.MT.destSheet) g.MT.destSheet({ name: 'That spot', emoji: '📍', x: q.x, y: q.y }, { title: '📍 That spot' });
+    else if (!walkTo(q.x, q.y)) g.toast('Can’t get there');
   }
   function onWheel(e) {
     e.preventDefault(); const [x, y] = rectXY(e);
@@ -1000,18 +1445,52 @@
     const box = $('map'); if (!box || !M.cv) return; M.dpr = Math.min(2, g.devicePixelRatio || 1);
     M.w = box.clientWidth; M.h = box.clientHeight; M.cv.width = M.w * M.dpr; M.cv.height = M.h * M.dpr; cam.cx = M.w / 2; cam.cy = M.h * .56; cam.F = Math.max(M.w, M.h * .6) * 1.15; cam.update();
   }
+  function stopTour() {
+    if (guidedTour) { clearTimeout(guidedTour.timer); cancelAnimationFrame(guidedTour.raf); guidedTour = null; }
+    const b = $('mapTourBtn'), l = $('mapTourLabel'); if (b) b.textContent = '🧭 City Tour'; if (l) l.style.display = 'none';
+  }
+  function startTour() {
+    if (guidedTour) { stopTour(); if (g.toast) g.toast('City Tour stopped.'); return; }
+    API.show();
+    const stops = PINS.filter(p => p[5] === 'district').slice(0, 7);
+    if (!stops.length) { if (g.toast) g.toast('No city stops are available right now.'); return; }
+    const state = guidedTour = { i: 0, raf: 0, timer: 0 }, btn = $('mapTourBtn'), label = $('mapTourLabel');
+    if (btn) btn.textContent = '■ Stop tour'; if (g.toggleMapMore) g.toggleMapMore(true);
+    const go = () => {
+      if (guidedTour !== state || !M.on) return;
+      if (state.i >= stops.length) { stopTour(); if (g.toast) g.toast('You have finished the city tour. Explore anywhere on the map.'); return; }
+      const p = stops[state.i++], from = { x: cam.tx, y: cam.ty }, started = performance.now(), duration = 1100;
+      M.follow = false; M.path = null; M.dest = null; M.tD = 245;
+      if (label) { label.textContent = `${p[1]}  ${p[0]} · stop ${state.i} of ${stops.length}`; label.style.display = 'block'; }
+      const fly = now => {
+        if (guidedTour !== state || !M.on) return;
+        const t = Math.min(1, (now - started) / duration), e = t * t * (3 - 2 * t);
+        cam.tx = from.x + (p[2] - from.x) * e; cam.ty = from.y + (p[3] - from.y) * e; cam.update();
+        if (t < 1) state.raf = requestAnimationFrame(fly);
+        else state.timer = setTimeout(go, 2700);
+      };
+      state.raf = requestAnimationFrame(fly);
+    };
+    go();
+  }
   const API = {
     init() {
-      if (M.cv) return; build(); M.cv = $('mapCv'); M.ctx = M.cv.getContext('2d');
+      if (M.cv) return; buildLagos(); M.cv = $('mapCv'); M.ctx = M.cv.getContext('2d');
       M.cv.addEventListener('pointerdown', onDown); M.cv.addEventListener('pointermove', onMove); M.cv.addEventListener('pointerup', onUp); M.cv.addEventListener('pointercancel', onUp);
       M.cv.addEventListener('wheel', onWheel, { passive: false }); M.cv.addEventListener('contextmenu', e => e.preventDefault()); g.addEventListener('keydown', onKey); g.addEventListener('resize', resize);
       ensureMe(); cam.tx = M.me.x; cam.ty = M.me.y; cam.yaw = -.28; cam.tilt = 1.02; M.D = M.tD = 340; cam.D = 340;
+      if (g.innerWidth >= 768) { cam.yaw = 0; cam.tilt = 0; M.hs = .06; M.D = M.tD = cam.D = 1250; M.wasFlat = true; applyHeights(); cam.update() }
+      mapChrome();
     },
     show() { API.init(); M.on = true; resize(); if (M.saved) { API.restorePos(M.saved); M.saved = null; } sendPos(true); cancelAnimationFrame(M.raf); M.last = performance.now(); M.raf = requestAnimationFrame(frame); },
-    hide() { M.on = false; cancelAnimationFrame(M.raf); },
+    hide() { stopTour(); M.on = false; cancelAnimationFrame(M.raf); },
     zoom(f) { zoomBy(f); },
     rotate(a) { cam.yaw += a; cam.update(); },
     tilt(a) { cam.tilt = clamp(cam.tilt + a, 0, 1.15); cam.update(); },
+    inside() { M.outside = false },
+    isOutside() { return !!M.outside },
+    toggle3d() { M.force3d = !M.force3d; const b = $('mapDim'); if (b) b.textContent = M.force3d ? '2D' : '3D' },
+    showEvents() { try { g.LAGOS.open() } catch (e) { } },
     toggleTilt() { cam.tilt = cam.tilt > .5 ? 0 : .95; cam.update(); },
     resetNorth() { cam.yaw = 0; cam.update(); },
     recenter() { M.follow = true; M.tD = Math.min(M.tD, 240); },
@@ -1023,8 +1502,31 @@
     setEmote(e) { M.emote = e; if (e) { M.path = null; if (M.me) { if (e === 'dance') M.me.nextDance(); else M.me.setState(e); } } else if (M.me) M.me.setState('idle'); },
     hud: HUD,
     setFilter(k, on) { if (k in HUD && k !== 'city') HUD[k] = on ? 1 : 0; },
-    setCity(id) { HUD.city = id; if (id !== 'lagos' && g.toast) g.toast(id === 'ph' ? 'Port Harcourt map · coming soon' : 'Abuja map · coming soon'); },
-    walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
+    /* label is the readable name shown in the "coming soon" toast for any state that isn't built yet (anything not in CITIES);
+       returns true when id is now (or already was) the active city, false for a not-built-yet state, so callers know whether
+       to move the "on" highlight. */
+    setCity(id, label, quiet) {
+      if (id === HUD.city) return true;
+      if (!CITIES[id]) { if (!quiet && g.toast) g.toast('🚧 ' + (label || 'That state') + ' is coming soon — you’re still in ' + (CITY_NAME[HUD.city] || 'Lagos')); return false }
+      loadCity(id); HUD.city = id;
+      const [sx, sy] = CITIES[id].spawn; teleport(sx, sy);
+      if (M.flat) { cam.tx = sx; cam.ty = sy; M.D = M.tD = cam.D = 1100; cam.update() }                  // keep the 2D overview centred on the new city
+      M.others.clear(); M.exp = null; sendPos(true);                                    // players in other cities are not drawn here
+      if (!quiet && g.toast) g.toast(CITY_WELCOME[id] || '🏠 Back in Lagos');
+      return true;
+    },
+    /* moves the "Home" pin to the player's actual house: the numbered slot the server gave them in their chosen hood (see HUB.loadMe) */
+    setHome(hood, slot) {
+      const xy = hoodSlotXY(hood, slot); const home = PINS.find(p => p[5] === 'home'); if (!xy || !home) return;
+      home[2] = xy[0]; home[3] = xy[1];
+    },
+    /* leaving your home: you appear on the street just outside your door; coming back is the "Step inside" button (door.js) */
+    homePin() { return PINS.find(p => p[5] === 'home') },
+    stepOutside() { API.init(); M.outside = true; const h = API.homePin(); if (!h) return; ensureMe(); teleport(h[2], h[3] + 34); M.follow = true; M.tD = Math.min(M.tD || 240, 240) },
+    nearHome(r) { const h = API.homePin(); return !!(h && M.me && Math.hypot(M.me.x - h[2], M.me.y - (h[3] + 34)) <= (r || 70)) },
+    walkHome() { const h = API.homePin(); if (h) { M.outside = true; M.follow = true; API.walkTo(h[2], h[3] + 34) } },
+    walkYaba() { const p = PINS.find(q => q[4] === 'yaba'); if (p) { M.outside = true; API.show(); API.focus(p[2], p[3], 260); API.walkTo(p[2], p[3]); } },
+    startTour, stopTour,
     openByName(nm) { const p = PINS.find(q => q[0] === nm); if (p) openPlace(p); },
     visit(em, title) {      /* Visit only works when you are at the place; from farther away you travel there first */
       const p = PINS.find(q => q[0].replace(' · Coming soon', '') === title);

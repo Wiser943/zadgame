@@ -7,15 +7,25 @@ const ADS = {
   left(t) { const s = Math.max(0, (new Date(t) - Date.now()) / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600); return d ? d + 'd ' + h + 'h left' : h ? h + 'h left' : Math.max(1, Math.floor(s / 60)) + 'm left' },
   async open() {
     PH.view = 'ads';
-    PH.shell('My Ads', 'PH.close()', '<div class="abody" id="ab"><p class="empty">Loading…</p></div>');
-    if (this.cfg) this.draw();
+    PH.shell('Play Store', 'PH.close()', '<div class="abody" id="ab"><p class="empty">Loading…</p></div>');
+    this.draw(); this.loadApps().then(() => { if (PH.view === 'ads') this.draw() });
     await this.load(); if (PH.view === 'ads') this.draw()
   },
   async load() { try { const r = await NET.api('/api/ac/ads/mine'); this.mine = r.ads; this.cfg = r.config } catch (e) { toast(e.message) } },
+  /* Play Store: "Apps" = what players have published, "Publish" = promote your own app, billboard or sea plot */
   draw() {
-    const ab = document.getElementById('ab'); if (!ab || !this.cfg) return;
+    const ab = document.getElementById('ab'); if (!ab) return; const t = this.pt || 'apps';
+    ab.innerHTML = `<div class="mtabs pstabs" role="tablist"><button role="tab" class="${t === 'apps' ? 'on' : ''}" onclick="ADS.pstab('apps')">Apps</button><button role="tab" class="${t === 'publish' ? 'on' : ''}" onclick="ADS.pstab('publish')">Publish</button></div>` + (t === 'apps' ? this.storeHtml() : this.cfg ? this.publishHtml() : '<p class="empty">Loading…</p>')
+  },
+  pstab(t) { this.pt = t; this.draw() },
+  storeHtml() {
+    const apps = (this.apps || []).slice().sort((a, b) => (b.clicks || 0) - (a.clicks || 0)), host = l => { try { return new URL(l).host } catch (e) { return '' } };
+    if (!apps.length) return `<div class="psempty"><div>🛍️</div><h3>No apps yet</h3><p>Apps that players publish show up here and on every phone. Be the first.</p><button class="btn p" onclick="ADS.pstab('publish')">Publish an app</button></div>`;
+    return `<div class="pshero"><b>Top apps</b><small>Made by players. Tap Open to run one inside your phone.</small></div>` + apps.map(a => `<div class="psrow"><div class="psic">${a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.remove()">` : esc(a.emoji || '📱')}</div><div class="rt"><b>${esc(a.title)}</b><span>${esc(host(a.link))}${a.clicks ? ' · ' + a.clicks + ' open' + (a.clicks === 1 ? '' : 's') : ''}</span></div><button class="psget" onclick="ADS.openApp('${a.id}')">Open</button></div>`).join('')
+  },
+  publishHtml() {
     const b = this.cfg.billboard, s = this.cfg.sea, ap = this.cfg.app;
-    ab.innerHTML = `<div class="adpromo"><h3>Promote your business</h3><p>Every player sees it, and tapping it opens your link.</p>
+    return `<div class="adpromo"><h3>Promote your business</h3><p>Every player sees it, and tapping it opens your link.</p>
       <div class="adopts"><button onclick="ADS.sheet('billboard')"><span>📢</span><b>Book a billboard</b><small>${this.naira(b.price)} for ${b.days} days</small></button>
       <button onclick="ADS.sheet('sea')"><span>🌊</span><b>Rent a Sea Plot</b><small>${this.naira(s.price)} a plot, ${s.days} days</small></button>
       <button class="wide" onclick="ADS.sheet('app')"><span>📱</span><b>Create your own app</b><small>${this.naira(ap.price)} for ${ap.days === 1 ? '1 day' : ap.days + ' days'} · your logo on every phone, your website inside it</small></button></div></div>
@@ -200,4 +210,28 @@ const ADS = {
     el.innerHTML = `<div class="bbcard" onclick="ADS.go(ADS.live[${this.cur % this.live.length}])"><div class="adth">${a.image ? `<img src="${esc(a.image)}" alt="" onerror="this.remove()">` : '📢'}</div><div><b>${esc(a.title)}</b><small>Sponsored · tap to open</small></div></div>`
   }
 };
+/* Sponsored banner: shown when a map tap lands on nothing (far skyline, water, a free plot...).
+   It rotates through three sizes (strip, card, big rectangle) and three types (picture ad, text ad, "your ad here"). */
+Object.assign(ADS, {
+  bn: 0,
+  pool() { const b = this.board; return b ? [...(b.billboards || []), ...(b.plots || [])].filter(a => a && (a.title || a.image)) : [] },
+  async banner(note) {
+    if (!this.board) { try { this.board = await NET.api('/api/ac/ads/board') } catch (e) {} }
+    const pool = this.pool(), n = this.bn++, sizes = ['strip', 'card', 'rect'], size = sizes[n % 3];
+    const ad = pool.length ? pool[n % pool.length] : null;
+    let old = document.getElementById('adpop'); if (old) old.remove(); clearTimeout(this.pt);
+    const el = document.createElement('div'); el.id = 'adpop'; el.className = 'adpop ' + size;
+    const cfg = this.cfg || (this.board && this.board.config), price = cfg && cfg.billboard ? this.naira(cfg.billboard.price) : '';
+    const hue = ad ? [...String(ad.title || '')].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7) : 215;
+    const media = ad && ad.image ? `<div class="apm"><img src="${esc(ad.image)}" alt="" onerror="this.parentNode.classList.add('txt');this.remove()"></div>` : `<div class="apm txt" style="--h:${hue}">${ad ? esc((ad.title || '📢').slice(0, 2)) : '📢'}</div>`;
+    const body = ad
+      ? `${media}<div class="apt"><small>Sponsored</small><b>${esc(ad.title)}</b>${size !== 'strip' ? '<span>Tap to open</span>' : ''}</div>`
+      : `${media}<div class="apt"><small>Advertise here</small><b>Your ad could be on this spot</b>${size !== 'strip' ? `<span>Reach every player${price ? ' · from ' + price : ''}. Tap to book.</span>` : ''}</div>`;
+    el.innerHTML = `${note ? `<div class="apn">${esc(note)}</div>` : ''}<div class="apw"><div class="apb" role="button" tabindex="0">${body}</div><button class="apx" aria-label="Close ad">✕</button></div>`;
+    el.querySelector('.apb').onclick = () => { el.remove(); if (ad && ad.link) ADS.go(ad); else { nav('phone'); setTimeout(() => PH.open('ads'), 0) } };
+    el.querySelector('.apx').onclick = ev => { ev.stopPropagation(); el.remove() };
+    (document.getElementById('app') || document.body).appendChild(el);
+    this.pt = setTimeout(() => el.remove(), 9000);
+  }
+});
 window.ADS = ADS;

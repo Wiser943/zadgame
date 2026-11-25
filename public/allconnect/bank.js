@@ -1,6 +1,8 @@
 /* AllConnect Pay (Bank app): balance, Account ID, payment PIN, transfer to AllConnect users, history.
    "To Bank Account" is shown as coming soon. All money rules are enforced by /api/ac/bank/* on the server. */
 const naira=(n,d=0)=>'₦'+Number(n).toLocaleString('en-NG',{minimumFractionDigits:d,maximumFractionDigits:d});
+/* 3,000,000 -> "3m", 1,250,000 -> "1.25m". Rounds down (up for "left") so a player is never shown more than they have. Keeps the boxes from stretching as numbers grow. */
+const abbr=(n,up)=>{n=Number(n)||0;const a=Math.abs(n),r=v=>String(up?Math.ceil(v*100-1e-9)/100:Math.floor(v*100+1e-9)/100);if(a>=1e12)return r(n/1e12)+'t';if(a>=1e9)return r(n/1e9)+'b';if(a>=1e6)return r(n/1e6)+'m';if(a>=1e4)return r(n/1e3)+'k';return n.toLocaleString('en-NG')};
 const fdate=t=>{const d=new Date(t);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})};
 Object.assign(PH,{
   B:null,H:[],hideBal:false,X:null,
@@ -9,7 +11,7 @@ Object.assign(PH,{
     try{const [s,h]=await Promise.all([NET.api('/api/ac/bank/summary'),NET.api('/api/ac/bank/history')]);NET.cache.set('/api/ac/bank/summary',{d:s,t:Date.now()});NET.cache.set('/api/ac/bank/history',{d:h,t:Date.now()});this.B=s;this.H=h.txns;S.cash=s.cash;render()}catch(e){if(!this.B)return toast(e.message)}if(this.view==='bank')this.bankDraw()},
   txRow(t){const cr=t.type==='credit';return `<div class="tx"><span class="tic ${cr?'in':'out'}">${cr?'↙':'↗'}</span><div class="rt"><b>${cr?'Received from':'Transfer to'} ${esc(t.name||'')}</b><span>${fdate(t.at)}${t.note?' · '+esc(t.note):''}</span></div><div class="tam ${cr?'in':''}">${cr?'+':'-'}${naira(t.amount,2)}</div></div>`},
   bankDraw(){const B=this.B,el=document.getElementById('ab');if(!el)return;
-    const tiles=[['<i class="fa-solid fa-money-bill-transfer"></i>','Transfer','PH.xmenu()'],['<i class="fa-solid fa-download"></i>','Receive','PH.receive()'],['<i class="fa-solid fa-receipt"></i>','History','PH.history()'],['<i class="fa-solid fa-lock"></i>','Pay PIN','PH.pinMenu()'],['<i class="fa-solid fa-mobile-screen"></i>','Airtime','PH.soon()',1],['<i class="fa-solid fa-wifi"></i>','Data','PH.soon()',1],['<i class="fa-solid fa-lightbulb"></i>','Bills','PH.bills()',window.LAGOS?LAGOS.dueLabel():''],['<i class="fa-solid fa-piggy-bank"></i>','Savings','PH.soon()',1]];
+    const tiles=[['<i class="fa-solid fa-money-bill-transfer"></i>','Transfer','PH.xmenu()'],['<i class="fa-solid fa-download"></i>','Receive','PH.receive()'],['<i class="fa-solid fa-receipt"></i>','History','PH.history()'],['<i class="fa-solid fa-building-columns"></i>','Withdraw','PH.payouts()'],['<i class="fa-solid fa-lock"></i>','Pay PIN','PH.pinMenu()'],['<i class="fa-solid fa-mobile-screen"></i>','Airtime','PH.soon()',1],['<i class="fa-solid fa-wifi"></i>','Data','PH.soon()',1],['<i class="fa-solid fa-lightbulb"></i>','Bills','PH.bills()',window.LAGOS?LAGOS.dueLabel():'' ]];
     el.innerHTML=`<div class="bcard"><div class="bt"><span>Total Balance</span><button onclick="PH.toggleBal()">${this.hideBal?'<i class="fa-solid fa-eye-slash"></i>':'<i class="fa-solid fa-eye"></i>'}</button></div>
       <div class="bamt">${this.hideBal?'₦ ••••••':naira(B.cash,2)}</div>
       <div class="bid"><span>Account ID&nbsp; <b>${B.acNum}</b></span><button onclick="PH.copy('${B.acNum}')"><i class="fa-solid fa-copy"></i> Copy</button></div></div>
@@ -17,6 +19,33 @@ Object.assign(PH,{
       <div class="qgrid">${tiles.map(t=>`<button class="q" onclick="${t[2]}"><span class="qi">${t[0]}${t[3]?`<em${t[3]===1?'':' class="due"'}>${t[3]===1?'Soon':t[3]}</em>`:''}</span>${t[1]}</button>`).join('')}</div>
       <div class="sech"><b>Recent transactions</b>${this.H.length>5?`<a onclick="PH.history()">View all ›</a>`:''}</div>
       ${this.H.length?this.H.slice(0,5).map(t=>this.txRow(t)).join(''):`<p class="empty">No transactions yet. Send or receive money and it shows here.</p>`}`},
+  async payouts(){this.view='payouts';this.shell('Withdrawals','PH.bank()','<div class="abody bk" id="payoutBox"><p class="empty">Loading eligibility…</p></div>');try{this.P=await NET.api('/api/ac/payouts/status');this.payoutDraw()}catch(e){document.getElementById('payoutBox').innerHTML=`<p class="empty">${esc(e.message)}</p>`}},
+  /* if the server is an older version and sent no numbers, work them out from the season rules so the card is still detailed */
+  fillReq(r,p){if(r.need!=null)return r;const sr=((p.season&&p.season.rules)||[]).find(x=>x.key===r.key),v=sr?Number(sr.value||0):NaN,n=parseFloat(String(r.actual||'').replace(/,/g,'')),u={minBalance:'units',accountAgeDays:'days',posts:'posts'}[r.key];
+    if(!u||!isFinite(v)||!isFinite(n))return r;const f=x=>Number(x).toLocaleString('en-NG'),left=Math.max(0,v-n);
+    return Object.assign({},r,{have:n,need:v,left,unit:u,progress:v?Math.min(1,n/v):1,detail:r.ok?'You have '+abbr(n)+' '+u+'. The minimum is '+abbr(v)+'.':'You have '+abbr(n)+' of the '+abbr(v)+' '+u+' needed. You still need '+abbr(left,1)+' more.'})},
+  /* one requirement: what it is, how far along you are, and exactly how much is left */
+  reqCard(r){const f=n=>Number(n).toLocaleString('en-NG'),pct=Math.round((r.progress!=null?r.progress:(r.ok?1:0))*100),num=r.need!=null;
+    return '<div class="wdq '+(r.ok?'met':'todo')+'"><div class="wdqh"><span class="wdqi">'+(r.ok?'✓':'✕')+'</span><div><b>'+esc(r.label)+'</b>'+(r.description&&r.description!==r.label?'<small>'+esc(r.description)+'</small>':'')+'</div></div>'+
+      (num?'<div class="wdqbar"><i style="width:'+pct+'%"></i></div><div class="wdqn"><span><em>You have</em><b title="'+f(r.have)+'">'+abbr(r.have)+'</b></span><span><em>Needed</em><b title="'+f(r.need)+'">'+abbr(r.need)+'</b></span><span><em>'+(r.ok?'Status':'Remaining')+'</em><b title="'+(r.ok?'':f(r.left))+'">'+(r.ok?'Done':abbr(r.left,1))+'</b></span></div><div class="wdqu">'+esc(r.unit||'')+'</div>':'')+
+      '<p class="wdqd">'+esc(num&&r.key==='minBalance'?(r.ok?'You have '+abbr(r.have)+' units. The minimum is '+abbr(r.need)+'.':'You have '+abbr(r.have)+' of the '+abbr(r.need)+' units needed. You still need '+abbr(r.left,1)+' more units.'):(r.detail||r.actual||''))+'</p></div>'},
+  payoutDraw(){
+    const p=this.P,b=document.getElementById('payoutBox'); if(!b)return;
+    if(!p.season){b.innerHTML=NOTICE.html()+'<div class="card2"><h3>No withdrawal season is open</h3><p class="hint2">Keep playing and watch Updates for the next season announcement.</p></div>';return}
+    const e=p.eligibility||{}, fail=e.failed||[], rules=(e.rules||[]).map(r=>this.reqCard(this.fillReq(r,p))).join('');
+    const start=p.account&&p.account.startingBatch, requests=p.requests||[], slots=(p.schedule||[]).map((s,i)=>{const r=requests.find(x=>Number(x.slot)===i),bat=(p.season.batches||[]).find(x=>Number(x.number)===Number(s.batch));return '<div class="fopt"><span>Season '+p.season.seasonNo+' · Batch '+s.batch+'<small>'+(r?PH.payStatus(r):'Limited slot. Unused eligible units roll forward if this batch closes.')+'</small></span>'+(!r&&p.account&&p.account.bankBoundAt&&bat&&bat.status==='open'?'<button class="pbtn blu" onclick="PH.submitPayout('+i+')">Submit</button>':'')+'</div>'}).join('');
+    const all=e.rules||[], met=all.filter(x=>x.ok).length, pct=all.length?Math.round(met/all.length*100):100, fd=d=>d?new Date(d).toLocaleDateString('en-NG',{weekday:'short',day:'numeric',month:'short'}):'';
+    let html='<div class="wdh"><div class="wdt"><span>'+esc(p.season.name)+'</span><em class="wdp '+(fail.length?'todo':'met')+'">'+(fail.length?'Not eligible yet':'Eligible')+'</em></div><div class="wdbal"><small>Eligible balance</small><b title="'+Number(e.units||0).toLocaleString('en-NG')+'">'+abbr(e.units||0)+'</b><u>units</u></div><div class="wdmeta"><span>Up to '+p.season.maxPayoutsPerSeason+' payout'+(Number(p.season.maxPayoutsPerSeason)===1?'':'s')+'</span>'+(p.season.endsAt?'<span>Season ends '+fd(p.season.endsAt)+'</span>':'')+'</div><div class="wdsum"><i style="width:'+pct+'%"></i></div><small class="wdsl">'+met+' of '+all.length+' requirements met</small></div>';
+    if(fail.length) html+='<div class="sech"><b>Your requirements</b></div>'+rules+'<p class="wdnote">Still to do: '+fail.map(x=>esc(x.label.toLowerCase())).join(', ')+'. Complete these, then come back when a batch is open.</p>';
+    else if(!start) html+='<div class="card2"><h3>Choose your first batch carefully</h3><p class="hint2">The three coconuts are a playful picker. We do not recommend a “best” batch. Your choice sets your future rotation.</p><div class="cocoPick"><button onclick="PH.pickBatch(1)">🥥<small>Batch 1</small></button><button onclick="PH.pickBatch(2)">🥥<small>Batch 2</small></button><button onclick="PH.pickBatch(3)">🥥<small>Batch 3</small></button></div></div>';
+    else html+='<div class="sech"><b>Your requirements</b></div>'+rules+'<div class="card2"><h3>Ready to submit</h3><p class="hint2">You are eligible. Bind your bank details in AllConnect Pay, then submit during an open scheduled slot.</p><button class="btn p" onclick="PH.payoutBank()">'+(p.account&&p.account.bankBoundAt?'Review bank details':'Bind bank details')+'</button>'+slots+'</div>';
+    b.innerHTML=NOTICE.html()+html;
+  },
+  payStatus(r){const L={submitted:'Waiting for review',held:'On hold while the team reviews it',approved:'Approved. Your payment is being sent by bank transfer',processing:'Being paid',paid:'Paid',rejected:'Not approved',rolled_over:'Rolled over to your next slot',failed:'Payment failed. Please contact support'};let t='Status: '+(L[r.status]||esc(r.status))+' · ₦'+Number(r.payoutAmount||0).toLocaleString('en-NG');if(r.status==='paid'&&r.reference)t+=' · ref '+esc(r.reference);if(r.status==='rejected'&&r.reason)t+=' · '+esc(r.reason);return t},
+  async pickBatch(n){if(!await PH.ask({title:`Choose Batch ${n}?`,msg:'This choice controls your future rotation.',ok:`Choose Batch ${n}`}))return;const bs=[...document.querySelectorAll('.cocoPick button')];bs.forEach(x=>x.disabled=true);let t=0;const spin=setInterval(()=>{bs.forEach((x,i)=>{x.style.transform=`rotate(${(t+i)*18}deg) scale(${1+((t+i)%2)*.06})`;x.style.opacity=((t+i)%3===0)?'.55':'1'});t++},70);setTimeout(async()=>{clearInterval(spin);bs.forEach(x=>{x.style.transform='';x.style.opacity='';});try{this.P=await NET.api('/api/ac/payouts/select-batch',{method:'POST',body:{batch:n}});this.payoutDraw()}catch(e){bs.forEach(x=>x.disabled=false);toast(e.message)}},850)},
+  payoutBank(){const a=this.P&&this.P.account||{};this.view='payout-bank';this.shell('Bind bank details','PH.payouts()',`<div class="abody bk"><p class="hint2">Your bank details are used only for payout review. Confirm them carefully before submitting.</p><label class="lab2">BANK NAME<input class="sinput" id="poBank" value="${esc(a.bankName||'')}" placeholder="e.g. Access Bank"></label><label class="lab2">ACCOUNT NAME<input class="sinput" id="poName" value="${esc(a.accountName||'')}" placeholder="Name on the account"></label><label class="lab2">10-DIGIT ACCOUNT NUMBER<input class="sinput" id="poNum" inputmode="numeric" maxlength="10" placeholder="0123456789"></label><button class="btn p" onclick="PH.savePayoutBank()">Save bank details</button></div>`)},
+  async savePayoutBank(){try{await NET.api('/api/ac/payouts/bank',{method:'POST',body:{bankName:document.getElementById('poBank').value,accountName:document.getElementById('poName').value,accountNumber:document.getElementById('poNum').value}});toast('Bank details saved ✓');this.payouts()}catch(e){toast(e.message)}},
+  async submitPayout(slot){if(!await PH.ask({title:'Submit withdrawal?',msg:'Your scheduled slot will be locked and the request will go to admin review.',ok:'Submit'}))return;try{await NET.api('/api/ac/payouts/submit',{method:'POST',body:{slot,idempotencyKey:`${NET.user.id}:${this.P.season.id}:${slot}`}});toast('Withdrawal submitted ✓');this.payouts()}catch(e){toast(e.message)}},
   /* Deposit page (opened from the + next to the balance). Payments are not live yet. */
   deposit(){this.view='bank-d';this.shell('Deposit','PH.bank()',`<div class="abody bk"><div class="lab2">AMOUNT</div><div class="amt"><span>₦</span><input id="dpamt" inputmode="numeric" placeholder="0" oninput="PH.dpfmt()" autocomplete="off"></div>
       <div class="pre">${[1000,5000,10000,20000].map(n=>`<button onclick="PH.dppick(${n})">${n.toLocaleString('en-NG')}</button>`).join('')}</div>
@@ -31,7 +60,7 @@ Object.assign(PH,{
   copy(t){const ok=()=>toast('Copied ✓');try{navigator.clipboard.writeText(t).then(ok,()=>this.copyOld(t,ok))}catch(e){this.copyOld(t,ok)}},
   copyOld(t,ok){const i=document.createElement('textarea');i.value=t;document.body.appendChild(i);i.select();try{document.execCommand('copy');ok()}catch(e){toast('Copy failed')}i.remove()},
   history(){this.view='bank-h';this.shell('Transactions','PH.bank()',`<div class="abody bk">${this.H.length?this.H.map(t=>this.txRow(t)).join(''):'<p class="empty">No transactions yet.</p>'}</div>`)},
-  receive(){this.view='bank-r';const B=this.B;this.shell('Receive money','PH.bank()',`<div class="abody bk"><div class="rcv"><span class="avi big" style="background:#00a86b">${esc((B.name||'?')[0].toUpperCase())}</span><h3>${esc(B.name)}</h3><p>${B.username?'@'+esc(B.username):'Set a username in Settings'}</p>
+  receive(){this.view='bank-r';const B=this.B;this.shell('Receive money','PH.bank()',`<div class="abody bk"><div class="rcv">${PH.av({avatar:(NET.user&&NET.user.avatar)||'',displayName:B.name},1)}<h3>${esc(B.name)}</h3><p>${B.username?'@'+esc(B.username):'Set a username in Settings'}</p>
       <div class="rid">${B.acNum}</div><button class="btn p" onclick="PH.copy('${B.acNum}')">Copy Account ID</button><p class="hint2" style="margin-top:12px">Share your Account ID (or @username) with another AllConnect player so they can send you money.</p></div></div>`)},
   /* ----- transfer ----- */
   xmenu(){this.xBack=null;this.view='bank-m';this.shell('Transfer','PH.bank()',`<div class="abody bk"><button class="opt" onclick="PH.xfer()"><span class="oi" style="background:var(--sfg)"><i class="fa-solid fa-crown"></i></span><div><b>To AllConnect User</b><small>Instant · Free · Needs Account ID</small></div><i>›</i></button>
@@ -82,3 +111,42 @@ Object.assign(PH,{
     document.addEventListener('keydown',kd,true);
     ov.querySelector('.keys').onclick=e=>{const k=e.target.closest('button');if(k)press(k.dataset.k)};ov.querySelector('.px').onclick=()=>done(null);ov.onclick=e=>{if(e.target===ov)done(null)}})}
 });
+
+/* In-app confirm dialog (replaces the browser's "connectng.online says" box).
+   if(!await PH.ask({title:'Delete?',msg:'This cannot be undone.',ok:'Delete',danger:true}))return; */
+PH.ask = function (o) {
+  o = o || {};
+  if (!document.getElementById('askcss')) {
+    const st = document.createElement('style'); st.id = 'askcss';
+    st.textContent = `.acask{position:absolute;inset:0;z-index:60;display:grid;place-items:center;padding:24px;background:rgba(10,14,32,.52);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:askbd .16s ease}
+.acask .ackd{width:100%;max-width:330px;background:#fff;border-radius:26px;padding:22px 20px 16px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;animation:askpop .2s cubic-bezier(.2,.9,.3,1.2)}
+.acask h3{margin:0 0 8px;font-size:19px;line-height:1.25;color:#1b2030}
+.acask p{margin:0 0 18px;font-size:14px;line-height:1.5;color:#5d6475}
+.acask .acbt{display:flex;gap:10px}
+.acask .acbt button{flex:1;height:46px;border:0;border-radius:15px;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer}
+.acask .acno{background:#eef0f6;color:#1b2030}
+.acask .acyes{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;box-shadow:0 8px 18px rgba(234,88,12,.3)}
+.acask .acyes.danger{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 8px 18px rgba(220,38,38,.3)}
+.acask.out{opacity:0;transition:opacity .14s}
+html[data-theme="dark"] .acask .ackd{background:#1a1f33}
+html[data-theme="dark"] .acask h3{color:#f2f4fa}html[data-theme="dark"] .acask p{color:#a9b0c6}
+html[data-theme="dark"] .acask .acno{background:#2a3150;color:#f2f4fa}
+@keyframes askbd{from{opacity:0}to{opacity:1}}@keyframes askpop{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}`;
+    document.head.appendChild(st);
+  }
+  return new Promise(res => {
+    const host = PH.$a() || document.querySelector('.screen') || document.body;
+    host.querySelectorAll('.acask').forEach(x => x.remove());
+    const d = document.createElement('div'); d.className = 'acask'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true');
+    d.innerHTML = `<div class="ackd"><h3>${esc(o.title || 'Are you sure?')}</h3>${o.msg ? `<p>${esc(o.msg)}</p>` : ''}<div class="acbt"><button type="button" class="acno">${esc(o.cancel || 'Cancel')}</button><button type="button" class="acyes${o.danger ? ' danger' : ''}">${esc(o.ok || 'OK')}</button></div></div>`;
+    let done = false;
+    const end = v => { if (done) return; done = true; document.removeEventListener('keydown', key, true); d.classList.add('out'); setTimeout(() => d.remove(), 150); res(v) };
+    const key = e => { if (e.key === 'Escape') { e.preventDefault(); end(false) } };
+    d.onclick = e => { if (e.target === d) end(false) };
+    d.querySelector('.acno').onclick = () => end(false);
+    d.querySelector('.acyes').onclick = () => end(true);
+    document.addEventListener('keydown', key, true);
+    host.appendChild(d);
+    setTimeout(() => { try { d.querySelector('.acyes').focus() } catch (e) { } }, 30);
+  });
+};

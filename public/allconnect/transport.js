@@ -3,7 +3,7 @@
    Built on the shared SHEET (tabs + scrolling body) and CARD (result popup) from ui.js, and on the same row / bar / button styles
    as Lagos Life, Jobs and Invest. All prices and results come from the server (routes/actransport.js, utils/actransport.js). */
 const TR = {
-  D: null, cat: null, tab: 'garage', vid: null, vtab: 'care', busy: false, ph: 2, timer: null, tops: null, reps: null, rep: { road: '', kind: 'slow', note: '' }, g: null, loadError: '',
+  D: null, cat: null, tab: 'garage', vid: null, vtab: 'care', busy: false, ph: 2, timer: null, tops: null, reps: null, rep: { road: '', kind: 'slow', note: '' }, g: null, loadError: '', visa: null, visaBusy: false,
   esc: (s) => UI.esc(s),
   money: (n) => '₦' + Math.round(n || 0).toLocaleString('en-NG'),
   api: (path, body) => NET.api('/api/ac/transport/' + path, body === undefined ? undefined : { method: 'POST', body }),
@@ -39,7 +39,7 @@ const TR = {
   async open(tab) {
     this.tab = tab || this.tab; this.stop();
     SHEET.open({ id: 'transport', title: 'Transport', wide: true, tab: this.tab, onTab: (t) => { this.tab = t; this.enter(t) }, onClose: () => this.stop(),
-      tabs: () => [{ id: 'garage', label: 'Garage' }, { id: 'shop', label: 'Shop' }, { id: 'drive', label: 'Drive', badge: this.D && !this.D.licence.ok ? 1 : 0 }, { id: 'routes', label: 'Routes' }, { id: 'traffic', label: 'Traffic' }],
+      tabs: () => [{ id: 'garage', label: 'Garage' }, { id: 'shop', label: 'Shop' }, { id: 'drive', label: 'Drive', badge: this.D && !this.D.licence.ok ? 1 : 0 }, { id: 'routes', label: 'Routes' }, { id: 'traffic', label: 'Traffic' }, { id: 'visa', label: 'Residency' }],
       body: (t) => this.body(t) });
     try { await this.load() } catch (e) { this.loadError = e.message || 'Transport could not load.' }
     if (SHEET.isOpen('transport')) { SHEET.paint(); if (!this.loadError) this.enter(this.tab); this.timer = setInterval(() => this.tick(), 20000) }
@@ -47,15 +47,24 @@ const TR = {
   stop() { clearInterval(this.timer); this.timer = null; if (this.g) { clearTimeout(this.g.t); clearInterval(this.g.i); this.g = null } },
   /* keeps live numbers (route earnings, parking, rental) fresh while the sheet is open */
   async tick() {
+    if (SHEET.isOpen('trplay')) return;   /* a quiz / reaction game is running: never tear its state down */
     if (!SHEET.isOpen('transport') && !SHEET.isOpen('trveh')) return this.stop();
     if (this.busy || this.g) return; try { await this.load(); SHEET.paint() } catch (e) {}
   },
   enter(t) {
     if (t === 'traffic') this.loadReports();
     if (t === 'routes' && !this.tops) this.loadTop();
+    if (t === 'visa') this.loadVisa();
   },
   async loadReports() { try { this.reps = await this.api('reports'); if (SHEET.isOpen('transport') && this.tab === 'traffic') SHEET.paint() } catch (e) {} },
   async loadTop() { try { this.tops = await this.api('top'); if (SHEET.isOpen('transport') && this.tab === 'routes') SHEET.paint() } catch (e) {} },
+  async loadVisa() { try { this.visa = await this.api('visa'); if (SHEET.isOpen('transport') && this.tab === 'visa') SHEET.paint() } catch (e) {} },
+  async buyInvestor() {
+    if (this.visaBusy) return; this.visaBusy = true; SHEET.paint();
+    try { this.visa = await this.api('visa/investor', {}); toast('Investor Permit issued'); try { await this.load() } catch (_) {} }
+    catch (e) { toast(e.message || 'Could not issue the Investor Permit.') }
+    finally { this.visaBusy = false; SHEET.paint() }
+  },
   /* run one server action, then redraw whatever sheet is open */
   async act(path, body, after) {
     if (this.busy) return; this.busy = true;
@@ -87,7 +96,7 @@ const TR = {
   body(t) {
     if (this.loadError) return `<div class="lgwarn">${this.esc(this.loadError)}</div><div class="trc">${this.btn(this.busy ? 'Checking…' : 'Try again', 'TR.retryLoad()', { cls: 'big', off: this.busy })}</div>`;
     if (!this.D || !this.cat) return this.empty('Loading…');
-    return { garage: () => this.garage(), shop: () => this.shop(), drive: () => this.drive(), routes: () => this.routes(), traffic: () => this.traffic() }[t]();
+    return { garage: () => this.garage(), shop: () => this.shop(), drive: () => this.drive(), routes: () => this.routes(), traffic: () => this.traffic(), visa: () => this.visaBody() }[t]();
   },
 
   /* ================= Garage ================= */
@@ -192,8 +201,11 @@ const TR = {
       + UI.row({ ic: UI.ic('signs-post', '#3b82f6'), title: 'Road-sign quiz', sub: `${c.quiz.signs.count} signs, ${this.money(c.quiz.signs.pay)} each and ${this.money(c.quiz.signs.perfect)} for a perfect round · ${T.signsLeft} left today.`, right: this.btn('Play', "TR.quiz('signs')", { off: T.signsLeft <= 0 }) });
     return h + '<p class="lgnote">Rewards are capped every day. A perfect round also earns public-transport reputation.</p>';
   },
-  playSheet(title, onStart) {
-    SHEET.open({ id: 'trplay', title, back: "TR.leave()", onClose: () => this.stop(), body: () => '<div id="trg" class="trg"></div>', after: () => { if (!this.g || !this.g.started) { this.g = this.g || {}; this.g.started = true; onStart() } } });
+  playSheet(title, onStart, redraw) {
+    SHEET.open({ id: 'trplay', title, back: "TR.leave()", onClose: () => this.stop(), body: () => '<div id="trg" class="trg"></div>', after: () => {
+      if (!this.g || !this.g.started) { this.g = this.g || {}; this.g.started = true; onStart() }
+      else if (redraw) { const e = document.getElementById('trg'); if (e && !e.firstChild) redraw() }   /* sheet was repainted: put the question back */
+    } });
   },
   leave() { this.stop(); this.open('drive') },
   g$(h) { const e = document.getElementById('trg'); if (e) e.innerHTML = h },
@@ -204,14 +216,14 @@ const TR = {
     let r; try { r = await this.api('quiz/start', { kind }); this.cash(r.cash) } catch (e) { this.busy = false; return toast(e.message) }
     this.busy = false;
     this.g = { kind, token: r.token, qs: r.questions, i: 0, a: [] };
-    this.playSheet(kind === 'licence' ? 'Driving theory test' : 'Road-sign quiz', () => this.qDraw());
+    this.playSheet(kind === 'licence' ? 'Driving theory test' : 'Road-sign quiz', () => this.qDraw(), () => this.qDraw());
   },
   qDraw() {
     const g = this.g; if (!g) return; const q = g.qs[g.i];
     this.g$(`<div class="trprog"><small>Question ${g.i + 1} of ${g.qs.length}</small>${this.bar(((g.i) / g.qs.length) * 100, '#3b82f6')}</div>${q.sign ? `<div class="trsign">${q.sign}</div>` : ''}<h3 class="trq">${this.esc(q.q)}</h3>${q.opts.map((o, n) => `<button class="tropt" onclick="TR.qPick(${n})">${this.esc(o)}</button>`).join('')}`);
   },
   async qPick(n) {
-    const g = this.g; if (!g || g.lock) return; g.a.push(n); g.i++;
+    const g = this.g; if (!g || g.lock || g.picking) return; g.picking = true; setTimeout(() => { g.picking = false }, 250); g.a.push(n); g.i++;
     if (g.i < g.qs.length) return this.qDraw();
     g.lock = true; this.g$('<p class="empty">Marking…</p>');
     try {
@@ -322,6 +334,17 @@ const TR = {
     return h;
   },
   keep() { const n = document.getElementById('trnote'); if (n) this.rep.note = n.value },
+
+  /* ================= Residency / Visa ================= */
+  visaBody() {
+    const v = this.visa; let h = this.strip();
+    if (!v) return h + this.empty('Loading…');
+    h += `<h4>Your status</h4>` + v.tiers.map((t) => UI.row({ ic: `<span class="lgi">${t.have ? '✅' : '🔒'}</span>`, title: this.esc(t.name) + (t.id === v.tier ? ' · current' : ''), sub: this.esc(t.blurb) + (t.cost ? ` · ${this.money(t.cost)}` : ''),
+      right: t.id === 'investor' && !t.have ? this.btn('Buy', 'TR.buyInvestor()', { cls: 'ghost', off: this.visaBusy }) : '' })).join('');
+    h += `<h4>Lagos Indigene Status — meet any one</h4>` + v.checklist.map((c) => UI.row({ ic: `<span class="lgi">${c.done ? '✅' : '⬜️'}</span>`, title: this.esc(c.label) })).join('');
+    h += `<p class="lgnote">Meeting any single requirement above unlocks Indigene Status — everything in the city opens up. Status updates automatically; there is nothing to claim.</p>`;
+    return h;
+  },
   async post() {
     if (this.busy) return; this.keep(); this.busy = true;
     try { const r = await this.api('reports', { road: this.rep.road, kind: this.rep.kind, note: this.rep.note }); toast(r.flash); this.rep.note = ''; await this.loadReports(); this.D = { ...this.D }; this.loadTop() } catch (e) { toast(e.message) }

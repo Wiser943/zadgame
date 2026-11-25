@@ -26,6 +26,10 @@ const SHEET = {
     document.body.appendChild(m); requestAnimationFrame(() => m.classList.add('on'));
     this.paint(); return m;
   },
+  /* tab labels are plain text: strip emoji, flags and other pictures */
+  plain(s) { return String(s == null ? '' : s).replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\u20E3]/gu, '').replace(/\s{2,}/g, ' ').trim() },
+  /* a panel that cannot draw shows a message instead of an empty sheet */
+  fail(e) { return `<p class="empty">${UI.esc((e && e.message) || 'Something went wrong')}. Close this and open it again.</p>` },
   isOpen(id) { const m = document.getElementById('lgm'); return !!m && (!id || m.dataset.sheet === id) },
   close(quiet) {
     const m = document.getElementById('lgm'), o = this.o; if (m) m.remove(); this.o = null;
@@ -39,10 +43,10 @@ const SHEET = {
     const o = this.o, t = document.getElementById('lgtabs'), b = document.getElementById('lgbody'); if (!o || !t || !b) return;
     const tabs = typeof o.tabs === 'function' ? o.tabs() : o.tabs;
     t.style.display = tabs && tabs.length ? '' : 'none';
-    t.innerHTML = (tabs || []).map(x => `<button class="${this.tab === x.id ? 'on' : ''}" onclick="SHEET.setTab('${x.id}')">${x.label}${x.badge ? `<i>${x.badge}</i>` : ''}</button>`).join('');
+    t.innerHTML = (tabs || []).map(x => `<button class="${this.tab === x.id ? 'on' : ''}" onclick="SHEET.setTab('${x.id}')">${this.plain(x.label)}${x.badge ? `<i>${x.badge}</i>` : ''}</button>`).join('');
     const tab = this.tab, y = b.scrollTop;
-    let h = o.body(tab);
-    if (h && typeof h.then === 'function') { if (!b.dataset.t || b.dataset.t !== String(tab)) b.innerHTML = '<p class="empty">Loading…</p>'; try { h = await h } catch (e) { h = `<p class="empty">${UI.esc(e.message || 'Something went wrong')}</p>` } }
+    let h; try { h = o.body(tab) } catch (e) { h = this.fail(e) }
+    if (h && typeof h.then === 'function') { if (!b.dataset.t || b.dataset.t !== String(tab)) b.innerHTML = '<p class="empty">Loading…</p>'; try { h = await h } catch (e) { h = this.fail(e) } }
     if (this.o !== o || this.tab !== tab || !document.getElementById('lgbody')) return;
     b.innerHTML = h; b.dataset.t = String(tab); b.scrollTop = y;
     if (o.after) try { o.after(tab) } catch (e) {}

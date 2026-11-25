@@ -36,6 +36,15 @@ const hits = new Map();
 const limited = (key, max, ms) => { const n = Date.now(), a = (hits.get(key) || []).filter((t) => n - t < ms); if (a.length >= max) { hits.set(key, a); return true; } a.push(n); hits.set(key, a); return false; };
 setInterval(() => { const n = Date.now(); for (const [k, a] of hits) if (!a.some((t) => n - t < 3600e3)) hits.delete(k); }, 600e3).unref();
 
+/* ---------- give a mover the first free numbered house in their new area, or, once the area is full, the last one (shared) ---------- */
+async function assignHomeSlot(hood, me) {
+  const def = H.NEIGHBOURHOODS.find((x) => x.id === hood), cap = (def && def.cap) || 40;
+  const used = await User.find({ 'ac.hub.hood': hood, 'ac.hub.homeSlot': { $gte: 0 }, _id: { $ne: me } }).select('ac.hub.homeSlot').lean();
+  const taken = new Set(used.map((u) => u.ac.hub.homeSlot));
+  let slot = 0; while (taken.has(slot) && slot < cap - 1) slot++;
+  return slot;
+}
+
 /* ---------- pay a reward once, with a ledger line ---------- */
 async function pay(req, me, amount, note) {
   await ACTxn.create({ user: me, type: 'credit', amount, cpName: 'AllConnect', cpNum: '', note, ref: makeRef(), kind: 'reward' });
@@ -133,10 +142,11 @@ pub.post('/recover', async (req, res, next) => {
 router.use(ensureAuth);
 
 // Static-ish content for every hub screen (one call, cached by the client)
-router.get('/content', (req, res) => {
+router.get('/content', async (req, res, next) => {
   const now = Date.now();
+  let st = ''; try { const me = await User.findById(uid(req)).select('ac.stateCurrent').lean(); st = (me && me.ac && me.ac.stateCurrent) || '' } catch (e) { /* fall back to Lagos areas */ }
   res.json({
-    promise: H.PROMISE, hoods: H.NEIGHBOURHOODS, hobbies: H.HOBBIES, steps: H.ONBOARD_STEPS, theme: H.weeklyTheme(now),
+    stateName: st && st !== 'Outside Nigeria' ? st.replace(' (Abuja)', '') : '', promise: H.PROMISE, hoods: H.hoodsFor(st), hobbies: H.HOBBIES, steps: H.ONBOARD_STEPS, theme: H.weeklyTheme(now),
     jobs: J.catalogue().filter((j) => H.STARTER_JOBS.includes(j.id)), help: H.HELP, roadmap: H.ROADMAP, votes: H.VOTES, changelog: H.CHANGELOG, lore: H.LORE, anthem: H.ANTHEM,
     protect: { days: H.PROTECT_DAYS, transferMax: H.PROTECT.transferMax, investMax: H.PROTECT.investMax }, invite: H.INVITE
   });
@@ -161,7 +171,7 @@ router.get('/me', async (req, res, next) => {
     const claimable = st.list.filter((m) => m.done && !m.claimed).length;
     res.json({
       now, cash: u.ac.cash, joinedAt: u.createdAt,
-      hub: { hood: h.hood || '', hobby: h.hobby || '', done: !!h.done, tourDone: !!h.tourDone, controlsDone: !!h.controlsDone, hasRecovery: !!h.recoveryHash, username: u.acUsername || '', invites: h.invites || 0, invitedBy: !!h.invitedBy },
+      hub: { hood: h.hood || '', homeSlot: Number.isInteger(h.homeSlot) ? h.homeSlot : -1, hobby: h.hobby || '', done: !!h.done, tourDone: !!h.tourDone, controlsDone: !!h.controlsDone, hasRecovery: !!h.recoveryHash, username: u.acUsername || '', invites: h.invites || 0, invitedBy: !!h.invitedBy },
       protection: { active: prot, daysLeft: H.protectionLeftDays(u.createdAt, now), transferMax: H.PROTECT.transferMax, investMax: H.PROTECT.investMax },
       missions: { list: st.list, done: st.list.filter((m) => m.done).length, total: st.list.length, claimable },
       tasks: H.personalTasks({ hobby: h.hobby }, st.list), parcel: parcelState(u, now), timeline: (h.timeline || []).slice(-30).reverse(), map: H.progressMap(h, st.list), recap: recapData,
@@ -192,6 +202,8 @@ router.post('/onboard', async (req, res, next) => {
     if (!hood || !hobby) return bad(res, 400, 'Pick an area and a hobby.');
     const u0 = await ensureAC(me), first = !(u0.ac.hub && u0.ac.hub.done);
     const set = { 'ac.hub.hood': hood, 'ac.hub.hobby': hobby, 'ac.hub.done': true };
+    const movedIn = hood !== ((u0.ac.hub && u0.ac.hub.hood) || ''), prevSlot = u0.ac.hub && u0.ac.hub.homeSlot;
+    if (movedIn || !Number.isInteger(prevSlot) || prevSlot < 0) set['ac.hub.homeSlot'] = await assignHomeSlot(hood, me);  // new address: pick a free house in the new area. Same area as before: keep the one they already have.
     if (job && !u0.ac.jobId) set['ac.jobId'] = job;
     if ((b.gender === 'male' || b.gender === 'female') && !u0.ac.gender) set['ac.gender'] = b.gender;   // chosen once; later changes go through Style
     if (!(u0.ac.hub && u0.ac.hub.lastSeen)) set['ac.hub.lastSeen'] = new Date(now);
@@ -322,7 +334,21 @@ router.post('/vote', async (req, res, next) => {
 
 /* ---------- invite a friend (co-op onboarding) ---------- */
 router.get('/invite', async (req, res, next) => {
-  try { const u = await ensureAC(uid(req)); res.json({ code: u.acUsername || String(u._id), invites: (u.ac.hub && u.ac.hub.invites) || 0, ...H.INVITE }); } catch (e) { next(e); }
+  try {
+    const me = uid(req), u = await ensureAC(me), hub = u.ac.hub || {}, now = Date.now();
+    const rows = await User.find({ 'ac.hub.invitedBy': me }).sort({ 'ac.hub.invitedAt': -1 }).limit(50).select('displayName acUsername avatar ac.hub.invitedAt ac.hub.commissionGiven createdAt').lean();
+    const friends = rows.map((x) => {
+      const at = (x.ac && x.ac.hub && x.ac.hub.invitedAt) || x.createdAt, left = Math.max(0, Math.ceil((new Date(at).getTime() + H.INVITE.commissionDays * 86400e3 - now) / 86400e3));
+      return { id: String(x._id), name: x.acUsername ? '@' + x.acUsername : x.displayName, avatar: x.avatar || '', joinedAt: at, online: presence.isOnline(x._id), commission: (x.ac && x.ac.hub && x.ac.hub.commissionGiven) || 0, daysLeft: left };
+    });
+    const bonus = hub.inviteBonus || (hub.invites || 0) * H.INVITE.inviter, commission = hub.inviteCommission || 0;
+    const ago = (d) => now - new Date(d).getTime();
+    res.json({
+      code: u.acUsername || String(u._id), invites: hub.invites || 0, ...H.INVITE,
+      stats: { friends: friends.length, active: friends.filter((f) => f.daysLeft > 0).length, online: friends.filter((f) => f.online).length, bonus, commission, total: bonus + commission, thisWeek: friends.filter((f) => ago(f.joinedAt) < 7 * 86400e3).length },
+      friends
+    });
+  } catch (e) { next(e); }
 });
 router.post('/invite/redeem', async (req, res, next) => {
   try {
@@ -334,9 +360,9 @@ router.post('/invite/redeem', async (req, res, next) => {
     const inviter = mongoose.isValidObjectId(code) ? await User.findById(code) : await User.findOne({ acUsername: code });
     if (!inviter) return bad(res, 404, 'No player has that invite code.');
     if (String(inviter._id) === me) return bad(res, 400, "You can't invite yourself.");
-    const claim = await User.updateOne({ _id: me, 'ac.hub.invitedBy': '' }, { $set: { 'ac.hub.invitedBy': String(inviter._id) }, $inc: { 'ac.cash': H.INVITE.invitee } });
+    const claim = await User.updateOne({ _id: me, 'ac.hub.invitedBy': '' }, { $set: { 'ac.hub.invitedBy': String(inviter._id), 'ac.hub.invitedAt': new Date(now) }, $inc: { 'ac.cash': H.INVITE.invitee } });
     if (!claim.modifiedCount) return bad(res, 409, 'You already used an invite.');
-    await User.updateOne({ _id: inviter._id }, { $inc: { 'ac.cash': H.INVITE.inviter, 'ac.hub.invites': 1 } });
+    await User.updateOne({ _id: inviter._id }, { $inc: { 'ac.cash': H.INVITE.inviter, 'ac.hub.invites': 1, 'ac.hub.inviteBonus': H.INVITE.inviter } });
     await pay(req, me, H.INVITE.invitee, 'Invite bonus'); await ACTxn.create({ user: String(inviter._id), type: 'credit', amount: H.INVITE.inviter, cpName: 'AllConnect', cpNum: '', note: 'Friend joined with your invite', ref: makeRef(), kind: 'reward' });
     emitUser(io(req), String(inviter._id), 'cash', { delta: H.INVITE.inviter });
     queueCard(io(req), String(inviter._id), { icon: '🤝', title: 'Your friend joined!', text: `${u.displayName} joined Lagos with your invite. You both get a bonus.`, lines: [['Bonus', naira(H.INVITE.inviter)]], tone: 'gold' }).catch(() => {});

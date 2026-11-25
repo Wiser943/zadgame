@@ -11,7 +11,7 @@ const HUB = {
   /* ---------- boot (after the player taps Continue) ---------- */
   async boot() {
     if (this.booted) return; this.booted = true;
-    try { await Promise.all([this.loadContent(), this.loadMe()]) } catch (e) { return }
+    try { await Promise.all([this.loadContent(), this.loadMe()]) } catch (e) { this.booted = false; return }
     this.paintNow(); this.startTicker();
     setInterval(() => { if (!document.hidden) this.loadMe(true) }, 120000);
     await CARD.fetch();
@@ -27,10 +27,13 @@ const HUB = {
     if (m.parcel.claimable) return this.parcelCard();
   },
   async loadContent() { if (!this.C) this.C = await this.api('/content') },
+  /* every hub sheet reads this.C, so make sure it is there first (it is missing after a slow start or a failed first load) */
+  async ensure() { if (this.C) return true; try { await this.loadContent(); return !!this.C } catch (e) { toast('Could not load. Check your connection and try again.'); return false } },
   async loadMe(quiet) {
     const before = this.me && this.me.missions.claimable;
     this.me = await this.api('/me');
     if (typeof S !== 'undefined' && Number.isFinite(this.me.cash)) S.cash = this.me.cash;
+    if (this.me.hub.hood && window.MAP3D) MAP3D.setHome(this.me.hub.hood, this.me.hub.homeSlot);
     this.paintNow();
     if (quiet && before != null && this.me.missions.claimable > before && !this.busy()) toast('🎯 Mission done! Open "What can I do now?" to claim.');
     return this.me;
@@ -41,6 +44,13 @@ const HUB = {
     el.style.display = ''; const n = m.todo || 0;
     const dot = el.querySelector('.lgdot'); if (dot) dot.remove();
     if (n) el.insertAdjacentHTML('beforeend', `<em class="lgdot">${n}</em>`);
+    const sub = document.getElementById('q4sub');
+    if (sub) {
+      const first = Array.isArray(m.tasks) && m.tasks[0];
+      const hint = !m.hub?.done ? 'Finish your welcome setup' : m.parcel?.claimable ? 'Your welcome parcel is ready' : first?.done ? 'A mission reward is ready to claim' : first?.title || (m.todo ? `${m.todo} things ready for you` : 'See what is happening in the city');
+      sub.textContent = hint;
+      sub.setAttribute('aria-label', hint);
+    }
   },
   startTicker() {
     const sub = document.getElementById('q4sub'); if (!sub) return;
@@ -51,6 +61,7 @@ const HUB = {
 
   /* ---------- "What can I do now?" ---------- */
   async now() {
+    if (!(await this.ensure())) return;
     await this.loadMe().catch(() => {}); if (!this.me) return toast('Loading…');
     this.sheet('What can I do now?', () => this.nowHtml(), { id: 'now' });
   },
@@ -59,32 +70,38 @@ const HUB = {
     const m = this.me, C = this.C, th = C.theme, ev = LAGOS && LAGOS.d ? LAGOS.d : null, h = [];
     if (!m.hub.done) h.push(UI.row({ ic: UI.ic('user-plus', '#6366f1', 38), title: 'Finish your welcome setup', sub: 'Pick your area, job and hobby. Takes a minute.', right: '<span class="lgbtn">Start</span>', go: 'HUB.setup(0)' }));
     if (m.parcel.claimable) h.push(UI.row({ ic: UI.ic('gift', '#f59e0b', 38), title: `Welcome parcel, day ${m.parcel.day} of ${m.parcel.total}`, sub: 'Free ₦ every day in your first week.', right: `<button class="lgbtn" onclick="event.stopPropagation();HUB.parcel(this)">+${this.fmt(m.parcel.amount)}</button>` }));
-    if (ev && ev.daily && ev.daily.claimable) h.push(UI.row({ ic: UI.ic('calendar-check', '#22b573', 38), title: 'Daily bonus is ready', sub: `Day ${ev.daily.streak}. Keep your streak going.`, right: `<span class="lgbtn">Open</span>`, go: "SHEET.close();LAGOS.open('today')" }));
     if (ev && ev.bills && ev.bills.count) h.push(UI.row({ ic: UI.ic('bolt', '#e5484d', 38), title: `${ev.bills.count} bill${ev.bills.count > 1 ? 's' : ''} to pay`, sub: ev.bills.overdue ? 'Some are late. Pay to avoid a power cut.' : 'Pay before Sunday night.', right: '<span class="lgbtn">Pay</span>', go: "SHEET.close();LAGOS.open('bills')" }));
-    const tasks = m.tasks.slice(0, 4);
+    if (ev && ev.daily && ev.daily.claimable) h.push(UI.row({ ic: UI.ic('calendar-check', '#22b573', 38), title: 'Daily bonus is ready', sub: `Day ${ev.daily.streak}. Keep your streak going.`, right: `<span class="lgbtn">Open</span>`, go: "SHEET.close();LAGOS.open('today')" }));
+    if (ev && ev.title) h.push(UI.row({ ic: UI.ic('cloud-sun', '#0ea5e9', 38), title: `Happening now: ${this.esc(ev.title)}`, sub: this.esc(ev.pidgin || ev.text || 'The city is changing around you.'), right: '<span class="lgbtn">See</span>', go: "SHEET.close();LAGOS.open('today')" }));
+    const tasks = (m.tasks || []).slice(0, 4);
     h.push(`<h4>Your next steps</h4>`);
-    h.push(tasks.length ? tasks.map(t => this.missionRow(t)).join('') : '<p class="empty">All beginner missions done. You are a real Lagosian now!</p>');
+    h.push(tasks.length ? tasks.map(t => this.missionRow(t)).join('') : `<p class="empty">${NG.say('All beginner missions done. You are a real Naija person now!', 'All beginner missions don finish. You don turn correct Naija person!')}</p>`);
+    const remaining = Math.max(0, Number(m.missions?.total || 0) - Number(m.missions?.done || 0));
+    if (remaining > tasks.length) h.push(`<button class="hlink c" onclick="HUB.view('missions')">See all ${remaining} remaining missions ›</button>`);
     h.push(`<div class="hbanner" style="--c:${th.color}">${UI.ic(th.fa, th.color, 40)}<div><b>${this.esc(th.title)}</b><small>${this.esc(th.text)} <i>Goal: ${this.esc(th.goal)}</i></small></div><button class="lgbtn" onclick="HUB.themeGo('${th.go}')">Go</button></div>`);
     if (m.protection.active) h.push(`<div class="hprot"><span class="fa-solid fa-shield-heart"></span><div><b>New-player protection: ${m.protection.daysLeft} day${m.protection.daysLeft === 1 ? '' : 's'} left</b><small>Transfers up to ${this.fmt(m.protection.transferMax)}, investments up to ${this.fmt(m.protection.investMax)}, no ad booking, and a free Beginner queue in GameHub.</small></div></div>`);
+    h.push(`<div class="hquick" aria-label="Jump back into an app"><button onclick="SHEET.close();PET.open()">🐾<span>Pet</span></button><button onclick="SHEET.close();SONGIFY.open()">🎧<span>Songify</span></button><button onclick="SHEET.close();nav('phone');setTimeout(()=>PH.open('gist'),0)">📣<span>P-Gist</span></button><button onclick="SHEET.close();openHub()">🎮<span>GameHub</span></button></div>`);
     h.push(`<div class="hmore"><button onclick="HUB.menu()"><span class="fa-solid fa-grid-2"></span> More in the city</button></div>`);
     return h.join('');
   },
   themeGo(g) { SHEET.close(); ({ buy: () => nav('buy'), jobs: () => { nav('phone'); setTimeout(() => PH.open('jobs'), 0) }, contacts: () => { nav('phone'); setTimeout(() => PH.open('contacts'), 0) }, gamehub: () => openHub(), gist: () => { nav('phone'); setTimeout(() => PH.open('gist'), 0) }, invest: () => { nav('phone'); setTimeout(() => PH.open('invest'), 0) } }[g] || (() => {}))() },
+  cityTour() { SHEET.close(); nav('map'); setTimeout(() => { if (window.MAP3D && MAP3D.startTour) MAP3D.startTour() }, 100) },
 
   /* ---------- hub menu: every city screen ---------- */
-  menu() {
+  async menu() {
+    if (!(await this.ensure())) return;
     const t = (fa, c, name, v, badge) => `<button class="htile" onclick="HUB.view('${v}')">${UI.ic(fa, c, 44)}<b>${name}</b>${badge ? `<i>${badge}</i>` : ''}</button>`;
     const m = this.me || { missions: {}, hub: {} };
-    this.sheet('Lagos hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
-      ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('newspaper', '#0ea5e9', 'Newspaper', 'news')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}
-      ${t('gamepad', '#e5484d', 'Play path', 'play')}${t('map', '#6366f1', 'Map legend', 'legend')}${t('circle-question', '#64748b', 'Help desk', 'help')}${t('road', '#10b981', 'Roadmap', 'roadmap')}
-      ${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
-      ${t('user-group', '#3b82f6', 'Invite', 'invite')}${t('hand-pointer', '#f59e0b', 'Controls', 'controls')}${t('route', '#14b8a6', 'City tour', 'tour')}${t('signal', '#22b573', 'Status', 'status')}
-      ${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}</div>`, { id: 'menu', back: false });
+    this.sheet('Naija hub', () => `<p class="hlead">${this.esc(this.C.promise.tagline)}</p><div class="hgrid">
+      ${t('list-check', '#22b573', 'Missions', 'missions', m.missions.claimable || '')}${t('gift', '#f59e0b', 'Timeline', 'timeline')}${t('location-crosshairs', '#e8337a', 'Near me', 'near')}${t('gamepad', '#e5484d', 'Play path', 'play')}
+      ${t('circle-question', '#64748b', 'Help desk', 'help')}${t('check-to-slot', '#8b5cf6', 'Vote', 'vote')}${t('book-open', '#0f766e', 'Lore', 'lore')}${t('music', '#d946ef', 'Anthem', 'anthem')}
+      ${t('signal', '#22b573', 'Status', 'status')}${t('key', '#475569', 'Recovery', 'recovery')}${t('house-flag', '#1d4ed8', 'About', 'promise')}<button class="htile" onclick="SHEET.close();HUB.cityTour()">${UI.ic('route', '#14b8a6', 44)}<b>City tour</b></button>
+      ${t('map', '#6366f1', 'Map legend', 'legend')}${t('clock-rotate-left', '#f97316', 'What\'s new', 'changelog')}<button class="htile" onclick="SHEET.close();HUB.controls()">${UI.ic('hand-pointer', '#f59e0b', 44)}<b>Controls tutorial</b></button></div>`, { id: 'menu', back: false });
   },
-  view(v) {
+  async view(v) {
     const f = this['v_' + v]; if (!f) return;
     if (v === 'controls') { SHEET.close(); return this.controls() }
+    if (!(await this.ensure())) return;
     if (v === 'tour') { SHEET.close(); return this.tour() }
     f.call(this);
   },
@@ -124,7 +141,7 @@ const HUB = {
   /* ---------- welcome parcel ---------- */
   parcelCard() {
     const p = this.me.parcel;
-    CARD.show({ icon: '🎁', title: 'Welcome parcel', text: `Day ${p.day} of ${p.total}. A little something to settle into Lagos.`, lines: [['Inside', this.fmt(p.amount)]], tone: 'gold', btn: 'Collect ' + this.fmt(p.amount), onClose: () => this.parcel() });
+    CARD.show({ icon: '🎁', title: 'Welcome parcel', text: `Day ${p.day} of ${p.total}. A little something to settle into 9ja.`, lines: [['Inside', this.fmt(p.amount)]], tone: 'gold', btn: 'Collect ' + this.fmt(p.amount), onClose: () => this.parcel() });
   },
   async parcel(btn) {
     if (btn) btn.disabled = true;
@@ -139,7 +156,7 @@ const HUB = {
     if (r.unread) lines.push(['Unread messages', String(r.unread)]); if (r.bills) lines.push(['Bills waiting', String(r.bills)]);
     lines.push(['City right now', r.event.icon + ' ' + r.event.title]);
     CARD.show({ icon: '👋', title: 'Welcome back!', text: r.event.pidgin + (r.gift ? ' We kept a little gift for you.' : ''), lines, tone: 'info', btn: r.gift ? 'Collect ' + this.fmt(r.gift) : 'Continue', force: true, onClose: async () => {
-      try { const a = await this.api('/recap/ack', { method: 'POST' }); if (a.gift) { this.setCash(a.cash); CARD.show({ icon: '🎉', title: 'Welcome back event', text: 'Lagos missed you. Here is your return gift.', lines: [['Gift', this.fmt(a.gift)]], tone: 'gold', btn: 'Thank you' }) } } catch (e) {}
+      try { const a = await this.api('/recap/ack', { method: 'POST' }); if (a.gift) { this.setCash(a.cash); CARD.show({ icon: '🎉', title: 'Welcome back event', text: '9ja missed you. Here is your return gift.', lines: [['Gift', this.fmt(a.gift)]], tone: 'gold', btn: 'Thank you' }) } } catch (e) {}
       this.me.recap = null; if (this.me.parcel.claimable) setTimeout(() => this.parcelCard(), 400);
     } });
   },
@@ -150,7 +167,7 @@ const HUB = {
     if (!this.C) return;
     if (!su.name) su.name = (NET.user && NET.user.displayName) || '';
     if (su.askChar == null) su.askChar = !S.gender;     /* the character is chosen once, on the username step */
-    SHEET.open({ id: 'setup', title: 'Welcome to Lagos', body: () => this.setupHtml(), after: () => { if (this.su.step === 4 && this.su.askChar) initCharPicker(); else stopPreviews() }, onClose: () => { if (!this.me.hub.done && !this._skipped) { this._skipped = true; toast('You can finish setup any time from "What can I do now?"'); this.afterSkip() } } });
+    SHEET.open({ id: 'setup', title: NG.say('Welcome to 9ja', 'Welcome to 9ja o!'), body: () => this.setupHtml(), after: () => { if (this.su.step === 4 && this.su.askChar) initCharPicker(); else stopPreviews() }, onClose: () => { if (!this.me.hub.done && !this._skipped) { this._skipped = true; toast('You can finish setup any time from "What can I do now?"'); this.afterSkip() } } });
   },
   afterSkip() { if (this.me.parcel.claimable) setTimeout(() => this.parcelCard(), 500) },
   setupHtml() {
@@ -158,14 +175,14 @@ const HUB = {
     const nextBtn = (ok, label) => `<button class="rbigbtn" ${ok ? '' : 'disabled'} onclick="HUB.setupNext()">${label || 'Continue'}</button>`;
     const back = st > 0 ? `<button class="hlink" onclick="HUB.setup(${st - 1})">‹ Back</button>` : '';
     const pick = (list, key, fn) => `<div class="hopts">${list.map(o => `<button class="hopt ${su[key] === o.id ? 'on' : ''}" onclick="HUB.pick('${key}','${o.id}')"><span class="hem">${o.emoji || ''}</span><b>${this.esc(o.name)}</b><small>${this.esc(fn(o))}</small></button>`).join('')}</div>`;
-    if (st === 0) return `${dots}<div class="hhero"><div class="hbig">🏙️</div><h3>${this.esc(C.promise.tagline)}</h3><p>${this.esc(C.promise.line)}</p></div><ul class="hprom">${C.promise.day1.map(x => `<li><span class="fa-solid fa-circle-check"></span>${this.esc(x)}</li>`).join('')}</ul>${nextBtn(true, 'Set up my life (1 minute)')}<button class="hlink c" onclick="SHEET.close()">Skip for now</button>`;
-    if (st === 1) return `${dots}<h3 class="hq">Where will you live?</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
-    if (st === 2) return `${dots}<h3 class="hq">Choose a starter job</h3><p class="hsub">You can switch any time in Phone → Jobs.</p>${pick(C.jobs, 'job', o => `${o.startTitle} · ${this.fmt(o.startPay)} per shift`)}${nextBtn(!!su.job)}${back}`;
-    if (st === 3) return `${dots}<h3 class="hq">What do you love?</h3><p class="hsub">We use this to suggest missions and a username.</p>${pick(C.hobbies, 'hobby', () => '')}${nextBtn(!!su.hobby)}${back}`;
+    if (st === 0) return `${dots}<div class="hhero"><div class="hbig">🏙️</div><h3>${this.esc(NG.say(C.promise.tagline, 'Live your full Naija life, online.'))}</h3><p>${this.esc(NG.say(C.promise.line, 'Find work, pay your bills, fix your house, make padi, play games and watch 9ja change around you. AllConnect no dey reset: your life dey continue even when you close the app.'))}</p></div><ul class="hprom">${C.promise.day1.map(x => `<li><span class="fa-solid fa-circle-check"></span>${this.esc(x)}</li>`).join('')}</ul>${nextBtn(true, NG.say('Set up my life (1 minute)', 'Set up my life (1 minute)'))}<button class="hlink c" onclick="SHEET.close()">Skip for now</button>`;
+    if (st === 1) return `${dots}<h3 class="hq">${C.stateName ? NG.say('Where will you live in ' + C.stateName + '?', 'Where you wan live for ' + C.stateName + '?') : NG.say('Where will you live?', 'Where you wan live?')}</h3>${pick(C.hoods, 'hood', o => o.vibe)}${nextBtn(!!su.hood)}${back}`;
+    if (st === 2) return `${dots}<h3 class="hq">${NG.say('Choose a starter job', 'Pick your starter job')}</h3><p class="hsub">You can switch any time in Phone → Jobs.</p>${pick(C.jobs, 'job', o => `${o.startTitle} · ${this.fmt(o.startPay)} per shift`)}${nextBtn(!!su.job)}${back}`;
+    if (st === 3) return `${dots}<h3 class="hq">${NG.say('What do you love?', 'Wetin you love?')}</h3><p class="hsub">We use this to suggest missions and a username.</p>${pick(C.hobbies, 'hobby', () => '')}${nextBtn(!!su.hobby)}${back}`;
     if (st === 4) {
       if (!su.names) this.loadNames();
       const names = su.names || [];
-      return `${dots}<h3 class="hq">Pick a username</h3><p class="hsub">Friends find you with this. 3 to 16 letters, numbers or _</p><div class="hnames">${names.map(n => `<button class="${su.username === n ? 'on' : ''}" onclick="HUB.pickName('${n}')">@${n}</button>`).join('') || '<small>Finding names…</small>'}<button class="hre" onclick="HUB.loadNames(true)"><span class="fa-solid fa-rotate"></span></button></div><input class="sinput" id="hun" placeholder="or type your own" value="${this.esc(su.username)}" maxlength="16" autocapitalize="off" autocomplete="off" oninput="HUB.su.username=this.value.trim().replace(/^@/,'').toLowerCase();HUB.syncGo()">${su.askChar ? charPickerHtml() : ''}<div id="herr" class="aerr"></div><button class="rbigbtn" id="hgo" ${this.goOk() ? '' : 'disabled'} onclick="HUB.finishSetup(this)">Move into Lagos</button>${back}`;
+      return `${dots}<h3 class="hq">${NG.say('Pick a username', 'Pick your username')}</h3><p class="hsub">Friends find you with this. 3 to 16 letters, numbers or _</p><div class="hnames">${names.map(n => `<button class="${su.username === n ? 'on' : ''}" onclick="HUB.pickName('${n}')">@${n}</button>`).join('') || '<small>Finding names…</small>'}<button class="hre" onclick="HUB.loadNames(true)"><span class="fa-solid fa-rotate"></span></button></div><input class="sinput" id="hun" placeholder="or type your own" value="${this.esc(su.username)}" maxlength="16" autocapitalize="off" autocomplete="off" oninput="HUB.su.username=this.value.trim().replace(/^@/,'').toLowerCase();HUB.syncGo()">${su.askChar ? charPickerHtml() : ''}<div id="herr" class="aerr"></div><button class="rbigbtn" id="hgo" ${this.goOk() ? '' : 'disabled'} onclick="HUB.finishSetup(this)">${NG.say('Start my 9ja life', 'Enter 9ja, make we start')}</button>${back}`;
     }
     return '';
   },
@@ -195,7 +212,7 @@ const HUB = {
     const nice = code ? code.replace(/(.{4})(?=.)/g, '$1-') : '';
     return `<div class="hhero"><div class="hbig">🎉</div><h3>Welcome, @${this.esc(uname)}</h3><p>Save your recovery code. It is the one-tap way back into your account if you forget your password.</p></div>
       ${code ? `<div class="hcode" id="hcode">${nice}</div><button class="rbigbtn" onclick="HUB.copy('${nice}',this)"><span class="fa-solid fa-copy"></span> Copy my code</button><p class="hsub">We show it once. Screenshot it or paste it in your notes.</p>` : ''}
-      <button class="rbigbtn ghost" onclick="SHEET.close();HUB.tour(true)">Take the 60-second tour</button><button class="hlink c" onclick="SHEET.close();HUB.afterSetup()">Skip the tour</button>`;
+      <button class="rbigbtn ghost" onclick="SHEET.close();HUB.tour(true)">Start your 60-second site tour</button><button class="hlink c" onclick="SHEET.close();HUB.afterSetup()">Skip for now</button>`;
   },
   async copy(text, btn) {
     try { await navigator.clipboard.writeText(text); if (btn) btn.innerHTML = '<span class="fa-solid fa-check"></span> Copied'; toast('Copied ✓') } catch (e) { toast('Press and hold the text to copy') }
@@ -203,32 +220,34 @@ const HUB = {
   async redeemRef() {
     let c = ''; try { c = localStorage.getItem('ac:ref') || '' } catch (e) {}
     if (!c || !this.me.hub.done || this.me.hub.invitedBy) return;
-    try { const r = await this.api('/invite/redeem', { method: 'POST', body: { code: c } }); this.setCash(r.cash); CARD.show({ icon: '🤝', title: 'Invite bonus', text: `You joined Lagos with an invite from ${r.from}.`, lines: [['Bonus', this.fmt(r.bonus)]], tone: 'gold', btn: 'Thank you' }) } catch (e) { /* bad or used code */ }
+    try { const r = await this.api('/invite/redeem', { method: 'POST', body: { code: c } }); this.setCash(r.cash); CARD.show({ icon: '🤝', title: 'Invite bonus', text: `You joined 9ja with an invite from ${r.from}.`, lines: [['Bonus', this.fmt(r.bonus)]], tone: 'gold', btn: 'Thank you' }) } catch (e) { /* bad or used code */ }
     try { localStorage.removeItem('ac:ref') } catch (e) {}
   },
 
-  /* ---------- 60-second tour (signed in) and the guest tour (before sign-up) ---------- */
+  /* ---------- first-time site tour (signed in) and the guest tour (before sign-up) ---------- */
   TOUR: [
-    { ic: '🏠', t: 'Your flat', x: 'This is home. Your needs (food, light, fun, chat, bath, toilet) drop slowly. Tap things to use them.' },
-    { ic: '💼', t: 'Get paid', x: 'Phone → Jobs. Work shifts to earn ₦ and climb the ladder. Tick Go automatically.' },
-    { ic: '💡', t: 'Pay your bills', x: 'Bills arrive every Monday. Pay on time, or the light goes. The city event changes prices.' },
-    { ic: '🛋️', t: 'Make it yours', x: 'Tap Buy to decorate. Friends can visit your place.' },
-    { ic: '🗺️', t: 'The city', x: 'The Map shows Lagos, other players, ads and homes. Open the legend if you are lost.' },
-    { ic: '🎮', t: 'Play and connect', x: 'GameHub for games, Contacts for friends, P-Gist for the gist. Start with the Beginner queue.' }
+    { ic: '🏠', t: 'Your flat', x: NG.say('This is home. Your needs (food, light, fun, chat, bath, toilet) drop slowly. Tap things to use them.', 'This na your house. Your needs (food, light, fun, chat, bath, toilet) dey drop small small. Tap things to use dem.') },
+    { ic: '💼', t: NG.say('Get paid', 'Collect money'), x: NG.say('Phone → Jobs. Work shifts to earn ₦ and climb the ladder. Tick Go automatically.', 'Phone → Jobs. Do shift collect ₦ and climb the ladder. Tick Go automatically.') },
+    { ic: '💡', t: NG.say('Bills and your home', 'Bills and your house'), x: NG.say('Bills arrive every Monday. Pay on time, then use Buy to decorate and let friends visit.', 'Bills dey come every Monday. Pay on time, use Buy decorate, invite your padi dem come.') },
+    { ic: '🗺️', t: 'The city', x: NG.say('The Map shows the city, other players, ads and homes. Open the legend if you are lost.', 'The Map dey show the city, other players, ads and homes. Open the legend if you lost.') },
+    { ic: '📱', t: 'Your phone apps', x: 'Open the phone grid to find your apps. Contacts helps you add friends; Messages is where chats and updates arrive.' },
+    { ic: '🎬', t: 'P-Gist and Songify', x: 'Share posts, photos, and vertical Reels in P-Gist. Songify is for listening; use a shared song link to open the track in Songify.' },
+    { ic: '🐱', t: 'Meet your pet', x: 'In Pet, follow the care guide, teach tricks, choose a room corner, and set alert types and quiet hours. Visitbook keeps recent friend visits. Answer mode uses Gemini when the server is configured.' },
+    { ic: '🎮', t: 'Choose a game', x: NG.say('Open GameHub, choose a game such as Ludo, chess or Connect Four, then practice with a bot or join a room with friends.', 'Open GameHub, choose Ludo, chess or Connect Four, practise with bot or join your padi dem.') }
   ],
   GUEST: [
-    { ic: '🏙️', t: 'Welcome to Lagos', x: 'A Lagos life-sim that never resets. Your life continues even when you close the app.' },
-    { ic: '⛈️', t: 'A city that changes', x: 'Every 12 hours: rain, NEPA, fuel queues, owambe. Prices and pay change with it.' },
-    { ic: '💼', t: 'Work, earn, climb', x: 'Danfo conductor to Bus Owner. Intern to CTO. Pick a job and grow.' },
-    { ic: '🛋️', t: 'Your own flat', x: 'Decorate it, pay the bills, invite friends over.' },
-    { ic: '🎮', t: 'Games and friends', x: 'Play Ludo, chess and more with real people. One account for everything.' }
+    { ic: '🏙️', t: NG.say('Welcome to 9ja', 'Welcome to 9ja o!'), x: NG.say('A Naija life-sim that never resets. Your life continues even when you close the app.', 'Naija life-sim wey no dey reset. Your life dey continue even when you close the app.') },
+    { ic: '⛈️', t: NG.say('A city that changes', 'City wey dey change'), x: NG.say('Every 12 hours: rain, NEPA, fuel queues, owambe. Prices and pay change with it.', 'Every 12 hours: rain, NEPA, fuel queue, owambe. Prices and pay dey change with am.') },
+    { ic: '💼', t: NG.say('Work, earn, climb', 'Work, collect, climb'), x: NG.say('Danfo conductor to Bus Owner. Intern to CTO. Pick a job and grow.', 'From danfo conductor reach Bus Owner. Intern reach CTO. Pick job and grow.') },
+    { ic: '🛋️', t: NG.say('Your own flat', 'Your own flat'), x: NG.say('Decorate it, pay the bills, invite friends over.', 'Decorate am, pay bills, invite your padi dem come.') },
+    { ic: '🎮', t: NG.say('Games and friends', 'Games and padi dem'), x: NG.say('Play Ludo, chess and more with real people. One account for everything.', 'Play Ludo, chess and more with real people. One account, everything inside.') }
   ],
   tour(first) { this.tr = { i: 0, list: this.TOUR, guest: false, first: !!first, t: 0 }; this.tourDraw() },
   guestTour() { this.tr = { i: 0, list: this.GUEST, guest: true, t: 0 }; this.tourDraw() },
   tourDraw() {
-    const tr = this.tr, s = tr.list[tr.i], last = tr.i === tr.list.length - 1, per = tr.guest ? 7000 : 10000;
+    const tr = this.tr, s = tr.list[tr.i], last = tr.i === tr.list.length - 1, per = tr.guest ? 7000 : 7000;
     clearTimeout(tr.t); tr.t = setTimeout(() => { if (SHEET.isOpen('tour') && this.tr === tr) this.tourNext() }, per);
-    SHEET.open({ id: 'tour', title: tr.guest ? 'See Lagos first' : '60-second tour', onClose: () => { clearTimeout(tr.t); if (!tr.guest && !tr.done) this.tourEnd(tr) },
+    SHEET.open({ id: 'tour', title: tr.guest ? NG.say('See 9ja first', 'Come see 9ja first') : '60-second site tour', onClose: () => { clearTimeout(tr.t); if (!tr.guest && !tr.done) this.tourEnd(tr) },
       body: () => `<div class="hdots">${tr.list.map((_, i) => `<i class="${i < tr.i ? 'done' : i === tr.i ? 'on' : ''}"></i>`).join('')}</div><div class="htour"><div class="hbig">${s.ic}</div><h3>${s.t}</h3><p>${s.x}</p><div class="htimer"><i style="animation-duration:${per}ms"></i></div></div>
         <button class="rbigbtn" onclick="HUB.tourNext()">${last ? (tr.guest ? 'Create my account' : 'Start playing') : 'Next'}</button><button class="hlink c" onclick="SHEET.close()">${tr.guest ? 'Close' : 'Skip tour'}</button>` });
   },
@@ -286,7 +305,7 @@ const HUB = {
   /* ---------- timeline ---------- */
   async v_timeline() {
     const r = await this.api('/timeline');
-    this.sheet('My life in Lagos', () => `<div class="hjoin">${UI.ic('cake-candles', '#e8337a', 38)}<div><b>Joined Lagos</b><small>${new Date(r.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</small></div></div>` +
+    this.sheet('My life in 9ja', () => `<div class="hjoin">${UI.ic('cake-candles', '#e8337a', 38)}<div><b>Joined 9ja</b><small>${new Date(r.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</small></div></div>` +
       (r.items.length ? `<div class="htl">${r.items.map(i => `<div><span>${i.icon || '•'}</span><div><b>${this.esc(i.text)}</b><small>${UI.ago(i.at)}</small></div></div>`).join('')}</div>` : '<p class="empty">Your story starts now. Work a shift, make a friend, finish a mission. It will show up here.</p>'), { id: 'timeline' });
   },
 
@@ -308,7 +327,7 @@ const HUB = {
 
   /* ---------- newspaper ---------- */
   async v_news() {
-    this.sheet('The Lagos Gist', async () => {
+    this.sheet('The Naija Gist', async () => {
       if (!this.news) this.news = await this.api('/news'); const n = this.news, p = n.paper;
       return `<div class="hpaper"><div class="hmast"><b>${this.esc(p.name)}</b><small>${this.esc(p.date)} · ${this.esc(p.issue)}</small></div>
         <h4>Happening now</h4><ul class="hticks">${n.ticker.map(t => `<li>${this.esc(t)}</li>`).join('')}</ul>
@@ -329,10 +348,18 @@ const HUB = {
     }, { id: 'near' });
   },
 
-  /* ---------- map legend ---------- */
+  /* ---------- map legend ----------
+     the old filter-chip row above the map (Go-slow/Billboards/Neighbours/Sea/Gov) duplicated these same five rows,
+     so each toggleable one now carries the map key it controls (5th item) and doubles as that layer's on/off switch;
+     Homes and Events have no map filter so they stay plain info rows, same as before. */
   v_legend() {
-    const L = [['#f59e0b', 'car-side', 'Go-slow', 'Orange roads are jammed. Road jobs pay more.'], ['#e8337a', 'bullhorn', 'Ads', 'Billboards and sponsored places. Tap one to visit.'], ['#22b573', 'house', 'Homes', 'Player homes. Visit friends here.'], ['#0ea5e9', 'water', 'Sea', 'Sea plots, ferries and the lagoon.'], ['#64748b', 'landmark', 'Government', 'Offices, police and city services.'], ['#6366f1', 'user', 'Players', 'Dots are real people on the map right now.'], ['#e5484d', 'cloud-showers-heavy', 'Events', 'Flood, power cuts and fuel queues show up on affected areas.']];
-    this.sheet('Map legend', () => `<p class="hlead">Drag to move, pinch to zoom, twist with two fingers to rotate.</p>` + L.map(l => UI.row({ ic: UI.ic(l[1], l[0], 38), title: l[2], sub: l[3] })).join('') + `<button class="rbigbtn ghost" onclick="SHEET.close();nav('map')">Open the map</button>`, { id: 'legend' });
+    const L = [['#f59e0b', 'car-side', 'Go-slow', 'Orange roads are jammed. Road jobs pay more.', 'goslow'], ['#e8337a', 'bullhorn', 'Ads', 'Billboards and sponsored places. Tap one to visit.', 'ads'], ['#22b573', 'house', 'Homes', 'Player homes. Visit friends here.', null], ['#0ea5e9', 'water', 'Sea', 'Sea plots, ferries and the lagoon.', 'sea'], ['#64748b', 'landmark', 'Government', 'Offices, police and city services.', 'gov'], ['#6366f1', 'user', 'Players', 'Dots are real people on the map right now.', 'neighbours'], ['#e5484d', 'cloud-showers-heavy', 'Events', 'Flood, power cuts and fuel queues show up on affected areas.', null]];
+    this.sheet('Map legend', () => `<p class="hlead">Drag to move, pinch to zoom, twist with two fingers to rotate. Tap a layer to show or hide it on the map.</p>` +
+      L.map(l => {
+        const k = l[4], on = k && window.MAP3D ? MAP3D.hud[k] : null;
+        const right = k ? `<button type="button" class="lgtoggle ${on ? 'on' : ''}" onclick="event.stopPropagation();legendToggle('${k}')">${on ? 'On' : 'Off'}</button>` : '';
+        return UI.row({ ic: UI.ic(l[1], l[0], 38), title: l[2], sub: l[3], right });
+      }).join('') + `<button class="rbigbtn ghost" onclick="SHEET.close();nav('map')">Open the map</button>`, { id: 'legend' });
   },
 
   /* ---------- help desk ---------- */
@@ -360,8 +387,18 @@ const HUB = {
     }, { id: 'vote', back: 'HUB.view(\'roadmap\')' });
   },
   async vote(id, btn) { if (btn) btn.disabled = true; try { await this.api('/vote', { method: 'POST', body: { id } }); SHEET.paint() } catch (e) { toast(e.message); if (btn) btn.disabled = false } },
-  v_changelog() {
-    this.sheet("What's new", () => this.C.changelog.map(c => `<div class="hlog"><div class="hlh"><b>${this.esc(c.title)}</b><small>v${this.esc(c.v)} · ${new Date(c.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><ul>${c.items.map(i => `<li>${this.esc(i)}</li>`).join('')}</ul></div>`).join(''), { id: 'changelog' });
+  /* What's new: three tabs. Added = shipped (changelog, newest first) / Building = roadmap lane "Now" / Planned = "Next" then "Later". */
+  v_changelog(tab) {
+    const R = l => this.C.roadmap.filter(r => r.lane === l);
+    const row = (r, fa, col) => UI.row({ ic: UI.ic(fa, col, 36), title: this.esc(r.title), sub: this.esc(r.note || '') });
+    const group = (label, list, fa, col) => list.length ? `<h4>${label}</h4>` + list.map(r => row(r, fa, col)).join('') : '';
+    const body = t => {
+      if (t === 'building') return `<p class="hlead">What the team is working on right now.</p>` + (R('Now').map(r => row(r, 'hammer', '#22b573')).join('') || '<p class="empty">Nothing in progress at the moment.</p>');
+      if (t === 'planned') return `<p class="hlead">Coming after what we are building. Vote to move something up.</p>` + (group('Up next', R('Next'), 'forward', '#6366f1') + group('Later', R('Later'), 'hourglass-half', '#94a3b8') || '<p class="empty">Nothing planned yet.</p>') + `<button class="rbigbtn" onclick="HUB.view('vote')">Vote on features</button>`;
+      return this.C.changelog.map(c => `<div class="hlog"><div class="hlh"><b>${this.esc(c.title)}</b><small>v${this.esc(c.v)} · ${new Date(c.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><ul>${c.items.map(i => `<li>${this.esc(i)}</li>`).join('')}</ul></div>`).join('');
+    };
+    SHEET.open({ id: 'changelog', title: "What's new", back: 'HUB.menu()', tab: tab || 'added',
+      tabs: [{ id: 'added', label: 'Added' }, { id: 'building', label: 'Building', badge: R('Now').length || '' }, { id: 'planned', label: 'Planned', badge: (R('Next').length + R('Later').length) || '' }], body });
   },
   v_lore() {
     this.sheet('Lore archive', () => `<p class="hlead">Stories behind the city.</p>` + this.C.lore.map(l => `<details class="hq2"><summary>${UI.ic(l.fa, '#0f766e', 28)} ${this.esc(l.title)}</summary><p>${this.esc(l.text)}</p></details>`).join(''), { id: 'lore' });
@@ -410,7 +447,7 @@ const HUB = {
     }, { id: 'invite' });
   },
   async shareInvite() {
-    const text = 'Come live in Lagos with me on AllConnect: ' + this.link;
+    const text = 'Come live your Naija life with me on AllConnect: ' + this.link;
     try { if (navigator.share) await navigator.share({ title: 'AllConnect', text, url: this.link }); else { await navigator.clipboard.writeText(text); toast('Invite link copied ✓') } } catch (e) {}
   },
   async redeem(btn) {
